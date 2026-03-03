@@ -1,0 +1,30 @@
+{
+  "skills": {
+    "tts": {
+      "path": "skills/tts",
+      "capabilities": [
+        "speak",
+        "tts",
+        "voice",
+        "mowa"
+      ],
+      "description": "TTS"
+    },
+    "echo": {
+      "path": "skills/echo",
+      "capabilities": [
+        "echo",
+        "test"
+      ],
+      "description": "Echo"
+    }
+  },
+  "capability_index": {
+    "speak": "tts",
+    "tts": "tts",
+    "voice": "tts",
+    "mowa": "tts",
+    "echo": "echo",
+    "test": "echo"
+  }
+}

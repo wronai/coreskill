@@ -1,4 +1,12 @@
 #!/usr/bin/env python3
+"""Build script: generates cores/v1/core.py for evo-engine"""
+import os
+import textwrap
+
+CORE_PATH = "/home/claude/evo/cores/v1/core.py"
+
+code = textwrap.dedent(r'''
+#!/usr/bin/env python3
 """
 evo-engine Core v1 - text2pipeline Evolutionary Chat
 =====================================================
@@ -607,3 +615,9 @@ def main():
 
 if __name__ == "__main__":
     main()
+''').lstrip()
+
+os.makedirs(os.path.dirname(CORE_PATH), exist_ok=True)
+with open(CORE_PATH, "w") as f:
+    f.write(code)
+print(f"Generated: {CORE_PATH} ({len(code)} bytes)")
