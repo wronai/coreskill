@@ -96,8 +96,21 @@ class EvoEngine:
                 "skill": skill_name, "attempt": attempt + 1,
                 "success": result.get("success"), "goal": goal})
 
-            # Step 3: Validate result
+            # Step 3: Validate result (always run normal validation first)
             validation = self._validate_result(skill_name, result, goal, user_msg)
+
+            # Step 3b: On first attempt, check for stub code (not output — code only)
+            if attempt == 0 and validation["verdict"] in ("success", "partial"):
+                skill_path = self.sm.skill_path(skill_name)
+                stub_check = self.evo_guard.check_execution_result(
+                    skill_name, result, skill_path)
+                if stub_check.get("is_stub"):
+                    cpr(C.YELLOW, f"[PIPE] ⚠ Stub code: {stub_check['issue']}")
+                    error_info = (f"Stub skill: {stub_check['issue']}. "
+                                  f"{stub_check['suggestion']}")
+                    self.evo_guard.record_error(skill_name, error_info, version)
+                    validation = {"verdict": "fail", "reason": error_info}
+
             cpr(C.DIM, f"[PIPE] Validate: {validation['verdict']} "
                        f"(reason: {validation['reason'][:60]})")
             self.log.core("pipeline_validate", {

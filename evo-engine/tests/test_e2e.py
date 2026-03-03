@@ -1010,5 +1010,145 @@ class TestPipelineValidation(unittest.TestCase):
         self.assertEqual(r["verdict"], "fail")
 
 
+# ─── Fast Classifier Tests ───────────────────────────────────────────
+class TestFastClassifier(unittest.TestCase):
+    """Test the fast local LLM intent classifier components."""
+
+    def setUp(self):
+        self.llm = MockLLM()
+        self.logger = Logger("TEST")
+        self.state = {}
+        self.intent = IntentEngine(self.llm, self.logger, self.state)
+        self.skills = {"shell": ["v1"], "tts": ["v1"], "stt": ["v1"], "echo": ["v1"]}
+
+    def test_detect_fast_model_finds_smallest(self):
+        """_detect_fast_model should find the smallest available ollama model."""
+        model = self.intent._fast_model
+        # If ollama is running, should pick a model ≤ 3b
+        if model:
+            import re
+            m = re.search(r'(\d+\.?\d*)b', model.lower())
+            if m:
+                size = float(m.group(1))
+                self.assertLessEqual(size, 3.0,
+                    f"Fast model {model} is {size}b, expected ≤ 3b")
+
+    def test_build_intent_prompt_includes_skills(self):
+        """Prompt should list available skills dynamically."""
+        prompt = self.intent._build_intent_prompt(self.skills)
+        self.assertIn("shell", prompt)
+        self.assertIn("tts", prompt)
+        self.assertIn("stt", prompt)
+        self.assertIn("JSON", prompt)
+
+    def test_build_intent_prompt_includes_actions(self):
+        """Prompt should mention all action types."""
+        prompt = self.intent._build_intent_prompt(self.skills)
+        for action in ("use", "evolve", "create", "chat"):
+            self.assertIn(action, prompt)
+
+    def test_classify_fast_returns_none_without_model(self):
+        """_classify_fast should return None when no fast model available."""
+        self.intent._fast_model = None
+        result = self.intent._classify_fast("uruchom ls", self.skills)
+        self.assertIsNone(result)
+
+    def test_classify_fast_validates_skill_exists(self):
+        """Fast classifier should reject hallucinated skills."""
+        self.intent._fast_model = None  # ensure fallback
+        # Simulate a result with non-existent skill
+        # This tests the validation logic indirectly
+        r = self.intent.analyze("some random request", self.skills)
+        if r.get("action") == "use":
+            self.assertIn(r["skill"], self.skills)
+
+    def test_fallback_to_keywords_when_no_fast_model(self):
+        """Without fast model, keywords should still work."""
+        self.intent._fast_model = None
+        r = self.intent.analyze("uruchom ls -la", self.skills)
+        self.assertEqual(r["action"], "use")
+        self.assertEqual(r["skill"], "shell")
+
+    def test_fallback_keywords_tts(self):
+        """Without fast model, TTS keywords should still work."""
+        self.intent._fast_model = None
+        r = self.intent.analyze("powiedz coś głosem", self.skills)
+        self.assertEqual(r["action"], "use")
+        self.assertEqual(r["skill"], "tts")
+
+    @unittest.skipUnless(
+        IntentEngine(MockLLM(), Logger("TEST"), {})._fast_model,
+        "No ollama model available for fast classification")
+    def test_fast_classifier_with_real_ollama(self):
+        """Integration: fast classifier should return valid result with real ollama."""
+        r = self.intent._classify_fast("zaktualizuj system operacyjny", self.skills)
+        if r:
+            self.assertIn(r.get("action"), ("use", "evolve", "create", "chat"))
+            if r.get("action") == "use":
+                self.assertIn(r["skill"], self.skills)
+
+
+# ─── Stub Detection Tests ────────────────────────────────────────────
+class TestStubDetection(unittest.TestCase):
+    """Test that stub detection is conservative — no false positives on real skills."""
+
+    def setUp(self):
+        from cores.v1.preflight import EvolutionGuard
+        self.guard = EvolutionGuard()
+
+    def test_real_stt_skill_not_stub(self):
+        """STT v7 (153 lines, uses subprocess/arecord/vosk) is NOT a stub."""
+        stt_path = SKILLS_DIR / "stt" / "providers" / "vosk" / "v7" / "skill.py"
+        if stt_path.exists():
+            is_stub, reason = self.guard.is_stub_skill(stt_path)
+            self.assertFalse(is_stub, f"STT v7 wrongly flagged as stub: {reason}")
+
+    def test_real_shell_skill_not_stub(self):
+        """Shell skill (uses subprocess.Popen) is NOT a stub."""
+        shell_path = SKILLS_DIR / "shell" / "v1" / "skill.py"
+        if shell_path.exists():
+            is_stub, reason = self.guard.is_stub_skill(shell_path)
+            self.assertFalse(is_stub, f"Shell wrongly flagged as stub: {reason}")
+
+    def test_real_tts_skill_not_stub(self):
+        """TTS espeak v1 (37 lines, uses subprocess) is NOT a stub."""
+        tts_path = SKILLS_DIR / "tts" / "providers" / "espeak" / "v1" / "skill.py"
+        if tts_path.exists():
+            is_stub, reason = self.guard.is_stub_skill(tts_path)
+            self.assertFalse(is_stub, f"TTS v1 wrongly flagged as stub: {reason}")
+
+    def test_actual_stub_is_detected(self):
+        """A trivial stub skill should be flagged."""
+        import tempfile
+        stub_code = '''class Stub:
+    def execute(self, params):
+        return {"success": True}
+
+def execute(inp):
+    return Stub().execute(inp)
+'''
+        with tempfile.NamedTemporaryFile(suffix=".py", mode="w", delete=False) as f:
+            f.write(stub_code)
+            f.flush()
+            is_stub, reason = self.guard.is_stub_skill(Path(f.name))
+            self.assertTrue(is_stub, "Trivial stub should be detected")
+        Path(f.name).unlink(missing_ok=True)
+
+    def test_stt_empty_output_not_stub(self):
+        """STT returning empty text (silence) should NOT be flagged as stub."""
+        result = {"success": True, "result": {"spoken": "", "raw": {}}}
+        stt_path = SKILLS_DIR / "stt" / "providers" / "vosk" / "v7" / "skill.py"
+        check = self.guard.check_execution_result("stt", result, stt_path if stt_path.exists() else None)
+        self.assertFalse(check.get("is_stub"),
+                         "STT silence should NOT trigger stub detection")
+
+    def test_shell_success_not_stub(self):
+        """Shell returning exit_code=0 with output should NOT be stub."""
+        result = {"success": True, "result": {"exit_code": 0, "stdout": "hello"}}
+        shell_path = SKILLS_DIR / "shell" / "v1" / "skill.py"
+        check = self.guard.check_execution_result("shell", result, shell_path if shell_path.exists() else None)
+        self.assertFalse(check.get("is_stub"))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

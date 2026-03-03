@@ -334,3 +334,64 @@ class EvolutionGuard:
                 )
 
         return "\n".join(parts) if parts else ""
+
+    def is_stub_skill(self, skill_path):
+        """Detect if skill is a stub (placeholder/test implementation).
+        Conservative: only flag clearly non-functional code.
+        Real skills with subprocess/os/urllib calls are never stubs."""
+        if not skill_path or not skill_path.exists():
+            return False, "File not found"
+
+        code = skill_path.read_text()
+        lines = [l.strip() for l in code.split("\n") if l.strip()]
+
+        # Skills with actual system calls are never stubs
+        _functional = ("subprocess", "os.system", "urllib", "socket",
+                       "shutil.which", "Popen", "tempfile")
+        if any(f in code for f in _functional):
+            return False, ""
+
+        # Check 1: Very short AND no functional code
+        if len(lines) < 8:
+            return True, f"Too short ({len(lines)} lines) with no functional code"
+
+        # Check 2: Almost no meaningful lines
+        body_lines = [l for l in lines
+                      if not l.startswith("#") and not l.startswith('"""')
+                      and not l.startswith("'''")]
+        trivial = {"pass", "return", "return None", "return {}",
+                   "return True", "return False"}
+        meaningful = [l for l in body_lines if l not in trivial]
+        if len(meaningful) < 5:
+            return True, f"Only {len(meaningful)} meaningful lines"
+
+        # Check 3: Class with ONLY a trivial execute that returns hardcoded success
+        # (not a wrapper like `return SomeClass().execute(...)`)
+        if re.search(
+            r'def execute\(self[^)]*\):\s*\n\s*return\s*\{\s*["\']success["\']\s*:\s*True\s*\}',
+            code, re.MULTILINE
+        ):
+            # Count lines in execute body — if only 1-2 lines, it's a stub
+            m = re.search(r'def execute\(self[^)]*\):(.*?)(?=\n    def |\nclass |\Z)',
+                          code, re.DOTALL)
+            if m:
+                body = [l.strip() for l in m.group(1).split("\n")
+                        if l.strip() and not l.strip().startswith("#")]
+                if len(body) <= 2:
+                    return True, "execute() returns hardcoded success with no logic"
+
+        return False, ""
+
+    def check_execution_result(self, skill_name, result, skill_path=None):
+        """Analyze skill execution result for stub detection - ONLY based on code, not output."""
+        # Check skill code if path provided
+        if skill_path:
+            is_stub, reason = self.is_stub_skill(skill_path)
+            if is_stub:
+                return {
+                    "is_stub": True,
+                    "issue": f"Stub skill detected: {reason}",
+                    "suggestion": "Rewrite skill with full implementation"
+                }
+        
+        return {"is_stub": False}

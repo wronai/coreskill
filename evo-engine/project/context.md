@@ -4,19 +4,19 @@
 
 - **Project**: /home/tom/github/wronai/coreskill/evo-engine
 - **Analysis Mode**: static
-- **Total Functions**: 397
-- **Total Classes**: 61
-- **Modules**: 58
-- **Entry Points**: 372
+- **Total Functions**: 477
+- **Total Classes**: 82
+- **Modules**: 79
+- **Entry Points**: 452
 
 ## Architecture by Module
 
 ### cores.v1.core
-- **Functions**: 35
+- **Functions**: 36
 - **File**: `core.py`
 
 ### cores.v1.intent_engine
-- **Functions**: 23
+- **Functions**: 26
 - **Classes**: 1
 - **File**: `intent_engine.py`
 
@@ -31,7 +31,7 @@
 - **File**: `preflight.py`
 
 ### cores.v1.preflight
-- **Functions**: 15
+- **Functions**: 17
 - **Classes**: 3
 - **File**: `preflight.py`
 
@@ -50,15 +50,15 @@
 - **Classes**: 1
 - **File**: `llm_client.py`
 
-### cores.v1.resource_monitor
-- **Functions**: 12
-- **Classes**: 1
-- **File**: `resource_monitor.py`
-
 ### TODO1.system_identity
 - **Functions**: 12
 - **Classes**: 2
 - **File**: `system_identity.py`
+
+### cores.v1.resource_monitor
+- **Functions**: 12
+- **Classes**: 1
+- **File**: `resource_monitor.py`
 
 ### skills.web_search.providers.duckduckgo.v1.skill
 - **Functions**: 12
@@ -100,12 +100,12 @@
 - **Classes**: 1
 - **File**: `skill.py`
 
-### skills.stt.providers.vosk.v1.skill
+### skills.stt.providers.vosk.v3.skill
 - **Functions**: 8
 - **Classes**: 1
 - **File**: `skill.py`
 
-### skills.stt.providers.vosk.v3.skill
+### skills.stt.providers.vosk.v7.skill
 - **Functions**: 8
 - **Classes**: 1
 - **File**: `skill.py`
@@ -138,10 +138,6 @@ Main execution flows into the system:
 Uses subprocess to avoid polluting current process.
 Catches the exact "name 'X' is not defined" problem.
 - **Calls**: set, set, ast.walk, PreflightResult, ast.parse, isinstance, PreflightResult, skill_path.exists
-
-### cores.v1.intent_engine.IntentEngine.analyze
-> Multi-stage intent detection with full conversation context.
-- **Calls**: self._update_topics, self._recent_topic, self._build_context, user_msg.strip, stripped.split, self._kw_classify, self._llm_classify, self._ctx_infer
 
 ### cores.v1.preflight.SkillPreflight.check_imports
 > Stage 2: Do all imports resolve? Detect missing stdlib imports.
@@ -178,15 +174,37 @@ add 'import shutil' at the top.
 ### skills.stt.providers.vosk.v6.skill.STTSkill.execute
 - **Calls**: int, params.get, params.get, int, params.get, params.get, self._transcribe_vosk, isinstance
 
+### skills.stt.providers.vosk.v3.skill.STTSkill.execute
+- **Calls**: int, params.get, params.get, int, params.get, params.get, self._transcribe_vosk, isinstance
+
+### skills.stt.providers.vosk.v7.skill.STTSkill.execute
+- **Calls**: int, params.get, params.get, int, params.get, params.get, self._transcribe_vosk, isinstance
+
 ### skills.stt.providers.vosk.v1.skill.STTSkill.execute
 - **Calls**: int, params.get, params.get, int, params.get, params.get, self._transcribe_vosk, isinstance
 
-### skills.stt.providers.vosk.v3.skill.STTSkill.execute
-- **Calls**: int, params.get, params.get, int, params.get, params.get, self._transcribe_vosk, isinstance
+### cores.v1.intent_engine.IntentEngine.analyze
+> Multi-stage intent detection.
+Stage 0: Trivial filter
+Stage 1: Fast local LLM (primary — handles typos, Polish, synonyms)
+Stage 2: Keyword fallback (w
+- **Calls**: self._update_topics, self._recent_topic, user_msg.strip, stripped.split, self._classify_fast, self._kw_classify, self._ctx_infer, self.record_unhandled
+
+### cores.v1.preflight.EvolutionGuard.is_stub_skill
+> Detect if skill is a stub (placeholder/test implementation).
+Conservative: only flag clearly non-functional code.
+Real skills with subprocess/os/urlli
+- **Calls**: skill_path.read_text, any, re.search, l.strip, len, len, re.search, skill_path.exists
 
 ### cores.v1.evo_engine.EvoEngine.evolve_skill
 > Create + evolutionary test loop for new skills.
 - **Calls**: cores.v1.config.cpr, self.log.core, cores.v1.config.cpr, self.sm.create_skill, cores.v1.config.cpr, range, self.log.core, self.sm.rollback
+
+### cores.v1.intent_engine.IntentEngine._detect_fast_model
+> Find the best small ollama model for intent classification.
+Priority: preferred families (qwen2.5, gemma, llama3) > other language > code.
+Size: ≥ 2b 
+- **Calls**: cores.v1.llm_client._detect_ollama_models, re.search, float, m.lower, any, any, re.search, all_sized.sort
 
 ### cores.v1.resource_monitor.ResourceMonitor.can_run
 > Check if system meets requirements. Returns (bool, reason).
@@ -195,6 +213,10 @@ add 'import shutil' at the top.
 ### cores.v1.llm_client.LLMClient.analyze_need
 > Analyze user request. Keywords FIRST (fast+reliable), LLM only for ambiguous.
 - **Calls**: user_msg.lower, any, any, any, any, any, json.dumps, self.chat
+
+### cores.v1.intent_engine.IntentEngine._classify_fast
+> Use small local LLM for intent classification (primary method).
+- **Calls**: self._build_intent_prompt, messages.append, litellm.completion, json.loads, result.get, messages.append, cores.v1.utils.clean_json, result.get
 
 ### cores.v1.pipeline_manager.PipelineManager.run_p
 - **Calls**: json.loads, enumerate, pf.exists, pf.read_text, pipe.get, st.get, si.update, cores.v1.config.cpr
@@ -209,34 +231,9 @@ add 'import shutil' at the top.
 ### cores.v1.core._cmd_profile
 - **Calls**: intent._recent_topic, cores.v1.config.cpr, cores.v1.config.cpr, cores.v1.config.cpr, cores.v1.config.cpr, cores.v1.config.cpr, p.get, cores.v1.config.cpr
 
-### skills.llm_router.v1.skill.LLMRouterSkill._discover_remote
-> Fetch free models from OpenRouter API.
-- **Calls**: urllib.request.Request, data.get, free.sort, urllib.request.urlopen, json.loads, m.get, m.get, float
-
-### TODO1.preflight.SkillPreflight.check_interface
-> Stage 3: Does the skill expose required interface?
-- get_info() function
-- health_check() function
-- execute() function OR class with execute() method
-- **Calls**: set, ast.iter_child_nodes, PreflightResult, ast.parse, isinstance, PreflightResult, PreflightResult, top_level_funcs.add
-
-### TODO1.preflight.patch_exec_skill
-> Wrap SkillManager.exec_skill to add pre-flight checks.
-
-BEFORE: load module → run execute() → crash with 'shutil not defined'
-AFTER:  preflight check 
-- **Calls**: skill_base.exists, original_exec_skill, sorted, skill_p.exists, preflight.check_all, result.details.get, skill_p.read_text, preflight.auto_fix_imports
-
-### TODO1.preflight.patch_smart_evolve
-> Wrap SkillManager.smart_evolve to add evolution guards.
-
-BEFORE: generate code → save → test → fail → repeat same bug
-AFTER:  check error history → ad
-- **Calls**: str, guard.suggest_strategy, guard.record_error, guard.build_evolution_prompt_context, original_smart_evolve, sorted, skill_p.exists, skill_p.read_text
-
-### cores.v1.logger.Logger.learn_summary
-> Build a summary of past errors and successes for learning.
-- **Calls**: self.read_skill_log, self.read_core_log, summary.append, summary.append, None.join, l.get, None.join, l.get
+### cores.v1.core._cmd_stt
+> Direct STT command: /stt [duration_seconds]
+- **Calls**: ctx.get, cores.v1.config.cpr, evo.handle_request, a1.isdigit, int, sm.list_skills, cores.v1.core._extract_stt_text, intent.record_skill_use
 
 ## Process Flows
 
@@ -281,24 +278,25 @@ handle_request [cores.v1.evo_engine.EvoEngine]
 check_imports [TODO1.preflight.SkillPreflight]
 ```
 
-### Flow 7: analyze
-```
-analyze [cores.v1.intent_engine.IntentEngine]
-```
-
-### Flow 8: auto_fix_imports
+### Flow 7: auto_fix_imports
 ```
 auto_fix_imports [TODO1.preflight.SkillPreflight]
 ```
 
-### Flow 9: execute
+### Flow 8: execute
 ```
 execute [skills.shell.v1.skill.ShellSkill]
 ```
 
-### Flow 10: _extract_shell_command
+### Flow 9: _extract_shell_command
 ```
 _extract_shell_command [cores.v1.intent_engine.IntentEngine]
+```
+
+### Flow 10: create_skill
+```
+create_skill [cores.v1.skill_manager.SkillManager]
+  └─ →> clean_code
 ```
 
 ## Key Classes
@@ -307,8 +305,8 @@ _extract_shell_command [cores.v1.intent_engine.IntentEngine]
 > Multi-stage intent detection with conversation context and learning.
 Stages:
   1. Topic tracking (vo
-- **Methods**: 23
-- **Key Methods**: cores.v1.intent_engine.IntentEngine.__init__, cores.v1.intent_engine.IntentEngine.save, cores.v1.intent_engine.IntentEngine._detect_topics, cores.v1.intent_engine.IntentEngine._update_topics, cores.v1.intent_engine.IntentEngine._recent_topic, cores.v1.intent_engine.IntentEngine._build_context, cores.v1.intent_engine.IntentEngine.record_skill_use, cores.v1.intent_engine.IntentEngine.record_correction, cores.v1.intent_engine.IntentEngine.record_unhandled, cores.v1.intent_engine.IntentEngine.analyze
+- **Methods**: 26
+- **Key Methods**: cores.v1.intent_engine.IntentEngine.__init__, cores.v1.intent_engine.IntentEngine._detect_fast_model, cores.v1.intent_engine.IntentEngine._build_intent_prompt, cores.v1.intent_engine.IntentEngine._classify_fast, cores.v1.intent_engine.IntentEngine.save, cores.v1.intent_engine.IntentEngine._detect_topics, cores.v1.intent_engine.IntentEngine._update_topics, cores.v1.intent_engine.IntentEngine._recent_topic, cores.v1.intent_engine.IntentEngine._build_context, cores.v1.intent_engine.IntentEngine.record_skill_use
 
 ### cores.v1.skill_manager.SkillManager
 - **Methods**: 18
@@ -340,6 +338,12 @@ Stages:
 - **Methods**: 10
 - **Key Methods**: cores.v1.supervisor.Supervisor.__init__, cores.v1.supervisor.Supervisor.active, cores.v1.supervisor.Supervisor.active_version, cores.v1.supervisor.Supervisor.list_cores, cores.v1.supervisor.Supervisor.switch, cores.v1.supervisor.Supervisor.health, cores.v1.supervisor.Supervisor.create_next_core, cores.v1.supervisor.Supervisor.promote_core, cores.v1.supervisor.Supervisor.rollback_core, cores.v1.supervisor.Supervisor.recover
 
+### cores.v1.preflight.EvolutionGuard
+> Prevents evolution loops where the same error repeats.
+Tracks error fingerprints and suggests strate
+- **Methods**: 9
+- **Key Methods**: cores.v1.preflight.EvolutionGuard.__init__, cores.v1.preflight.EvolutionGuard.fingerprint, cores.v1.preflight.EvolutionGuard.record_error, cores.v1.preflight.EvolutionGuard.is_repeating, cores.v1.preflight.EvolutionGuard.get_error_summary, cores.v1.preflight.EvolutionGuard.suggest_strategy, cores.v1.preflight.EvolutionGuard.build_evolution_prompt_context, cores.v1.preflight.EvolutionGuard.is_stub_skill, cores.v1.preflight.EvolutionGuard.check_execution_result
+
 ### TODO1.system_identity.SystemIdentity
 > Builds dynamic system prompt that separates:
 - What the SYSTEM can do (capabilities)
@@ -370,12 +374,6 @@ Stages:
 PROBLEM: v6→v7→v8→v9 all with "shutil not de
 - **Methods**: 7
 - **Key Methods**: TODO1.preflight.EvolutionGuard.__init__, TODO1.preflight.EvolutionGuard.fingerprint, TODO1.preflight.EvolutionGuard.record_error, TODO1.preflight.EvolutionGuard.is_repeating, TODO1.preflight.EvolutionGuard.get_error_summary, TODO1.preflight.EvolutionGuard.suggest_strategy, TODO1.preflight.EvolutionGuard.build_evolution_prompt_context
-
-### cores.v1.preflight.EvolutionGuard
-> Prevents evolution loops where the same error repeats.
-Tracks error fingerprints and suggests strate
-- **Methods**: 7
-- **Key Methods**: cores.v1.preflight.EvolutionGuard.__init__, cores.v1.preflight.EvolutionGuard.fingerprint, cores.v1.preflight.EvolutionGuard.record_error, cores.v1.preflight.EvolutionGuard.is_repeating, cores.v1.preflight.EvolutionGuard.get_error_summary, cores.v1.preflight.EvolutionGuard.suggest_strategy, cores.v1.preflight.EvolutionGuard.build_evolution_prompt_context
 
 ### skills.deps.v2.skill.DepsSkill
 - **Methods**: 7
@@ -438,7 +436,6 @@ Functions exposed as public API (no underscore prefix):
 - `cores.v1.skill_manager.SkillManager.smart_evolve` - 31 calls
 - `cores.v1.evo_engine.EvoEngine.handle_request` - 28 calls
 - `TODO1.preflight.SkillPreflight.check_imports` - 27 calls
-- `cores.v1.intent_engine.IntentEngine.analyze` - 27 calls
 - `cores.v1.preflight.SkillPreflight.check_imports` - 27 calls
 - `TODO1.preflight.SkillPreflight.auto_fix_imports` - 26 calls
 - `cores.v1.preflight.SkillPreflight.auto_fix_imports` - 26 calls
@@ -446,8 +443,11 @@ Functions exposed as public API (no underscore prefix):
 - `skills.git_ops.v1.skill.GitOpsSkill.execute` - 23 calls
 - `cores.v1.skill_manager.SkillManager.create_skill` - 23 calls
 - `skills.stt.providers.vosk.v6.skill.STTSkill.execute` - 23 calls
-- `skills.stt.providers.vosk.v1.skill.STTSkill.execute` - 23 calls
 - `skills.stt.providers.vosk.v3.skill.STTSkill.execute` - 23 calls
+- `skills.stt.providers.vosk.v7.skill.STTSkill.execute` - 23 calls
+- `skills.stt.providers.vosk.v1.skill.STTSkill.execute` - 23 calls
+- `cores.v1.intent_engine.IntentEngine.analyze` - 22 calls
+- `cores.v1.preflight.EvolutionGuard.is_stub_skill` - 22 calls
 - `cores.v1.evo_engine.EvoEngine.evolve_skill` - 19 calls
 - `cores.v1.resource_monitor.ResourceMonitor.can_run` - 17 calls
 - `cores.v1.llm_client.LLMClient.analyze_need` - 17 calls
@@ -470,8 +470,6 @@ Functions exposed as public API (no underscore prefix):
 - `TODO.migrate_skills.main` - 11 calls
 - `cores.v1.supervisor.Supervisor.create_next_core` - 11 calls
 - `cores.v1.provider_selector.ProviderSelector.select` - 11 calls
-- `cores.v1.provider_selector.ProviderSelector.get_skill_path` - 11 calls
-- `skills.devops.v1.skill.DevOpsSkill.execute` - 11 calls
 
 ## System Interactions
 
@@ -502,13 +500,13 @@ graph TD
     check_imports --> walk
     check_imports --> PreflightResult
     check_imports --> parse
-    analyze --> _update_topics
-    analyze --> _recent_topic
-    analyze --> _build_context
-    analyze --> strip
-    analyze --> split
     auto_fix_imports --> set
     auto_fix_imports --> walk
+    auto_fix_imports --> split
+    auto_fix_imports --> enumerate
+    auto_fix_imports --> join
+    execute --> strip
+    execute --> min
 ```
 
 ## Reverse Engineering Guidelines

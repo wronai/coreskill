@@ -325,6 +325,43 @@ def _cmd_resources(**ctx):
     else:
         cpr(C.YELLOW, "ResourceMonitor not initialized")
 
+def _cmd_stt(a1, **ctx):
+    """Direct STT command: /stt [duration_seconds]"""
+    sm = ctx["sm"]
+    evo = ctx["evo"]
+    intent = ctx["intent"]
+    llm = ctx["llm"]
+    conv = ctx["conv"]
+    identity = ctx.get("identity")
+
+    # Parse duration
+    duration = 4
+    if a1 and a1.isdigit():
+        duration = int(a1)
+
+    cpr(C.CYAN, f"\n🎤 Nagrywam... (mów teraz, {duration}s)")
+
+    # Execute STT skill directly
+    outcome = evo.handle_request(
+        f"[stt command]",
+        sm.list_skills(),
+        analysis={"action": "use", "skill": "stt", "input": {"duration_s": duration, "lang": "pl"}, "goal": "transcribe_audio"}
+    )
+
+    # Handle outcome like main loop
+    if outcome and outcome.get("skill") == "stt":
+        stt_text = _extract_stt_text(outcome)
+        intent.record_skill_use("stt")
+        if stt_text:
+            cpr(C.GREEN, f"[STT] Usłyszałem: \"{stt_text}\"")
+            mprint(f"### 🎤 Usłyszałem: *{stt_text}*")
+            conv.append({"role": "user", "content": f"[głosowo] {stt_text}"})
+            _handle_chat(llm, sm, ctx["logger"], conv, identity=identity)
+        else:
+            cpr(C.YELLOW, "[STT] Nie usłyszałem nic. Spróbuj mówić głośniej lub bliżej mikrofonu.")
+            mprint("### 🎤 Nie usłyszałem nic\nSpróbuj powiedzieć coś głośniej.")
+            conv.append({"role": "assistant", "content": "Nie usłyszałem nic. Spróbuj ponownie."})
+
 
 # Command dispatch table
 COMMANDS = {
@@ -354,6 +391,7 @@ COMMANDS = {
     "/topic": _cmd_topic,
     "/providers": _cmd_providers,
     "/resources": _cmd_resources,
+    "/stt": _cmd_stt,
 }
 
 

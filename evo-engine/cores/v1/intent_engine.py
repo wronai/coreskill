@@ -71,26 +71,56 @@ class IntentEngine:
             cpr(C.DIM, f"[INTENT] Fast classifier: {self._fast_model}")
 
     # ── Fast model detection ──
+    _CODE_MODELS = ("coder", "starcoder", "codellama", "deepseek-coder")
+    _PREFERRED_FAMILIES = ("qwen2.5:", "qwen2.5-", "gemma", "llama3", "phi3", "phi:")
+    _MIN_PARAMS = 2.0  # models < 2b often can't produce reliable JSON
+
     def _detect_fast_model(self):
-        """Find the smallest available ollama model for intent classification."""
+        """Find the best small ollama model for intent classification.
+        Priority: preferred families (qwen2.5, gemma, llama3) > other language > code.
+        Size: ≥ 2b (reliable JSON) and ≤ INTENT_MODEL_MAX_PARAMS."""
         try:
             models = _detect_ollama_models()
         except Exception:
             return None
         if not models:
             return None
-        # Extract parameter sizes from model names, prefer smallest ≤ INTENT_MODEL_MAX_PARAMS
-        sized = []
+
+        preferred = []
+        lang_models = []
+        code_models = []
+        for m in models:
+            match = re.search(r'(\d+\.?\d*)b', m.lower())
+            if not match:
+                continue
+            size = float(match.group(1))
+            if size < self._MIN_PARAMS or size > INTENT_MODEL_MAX_PARAMS:
+                continue
+            ml = m.lower()
+            is_code = any(c in ml for c in self._CODE_MODELS)
+            is_preferred = any(f in ml for f in self._PREFERRED_FAMILIES)
+            if is_preferred and not is_code:
+                preferred.append((size, m))
+            elif not is_code:
+                lang_models.append((size, m))
+            else:
+                code_models.append((size, m))
+
+        # Pick smallest from best available pool
+        for pool in (preferred, lang_models, code_models):
+            if pool:
+                pool.sort()
+                return pool[0][1]
+
+        # Fallback: any model at all (relax size constraint)
+        all_sized = []
         for m in models:
             match = re.search(r'(\d+\.?\d*)b', m.lower())
             if match:
-                sized.append((float(match.group(1)), m))
-        if sized:
-            sized.sort()  # smallest first
-            small = [(s, m) for s, m in sized if s <= INTENT_MODEL_MAX_PARAMS]
-            if small:
-                return small[0][1]
-            return sized[0][1]  # all models are large, use smallest anyway
+                all_sized.append((float(match.group(1)), m))
+        if all_sized:
+            all_sized.sort()
+            return all_sized[0][1]
         return models[0] if models else None
 
     # ── Dynamic intent prompt ──
@@ -124,20 +154,22 @@ class IntentEngine:
             descs[sk] = sk
 
         skills_block = "\n".join(f"- {k}: {v}" for k, v in descs.items())
-        return f"""Classify user intent into one action. Reply ONLY valid JSON.
-Available skills:
+        return f"""Classify user intent. Reply ONLY valid JSON, no markdown.
+Skills:
 {skills_block}
 
-Actions:
-- use: run an existing skill (specify skill name + input params)
-- evolve: improve/fix an existing skill
-- create: build a new skill
-- chat: just conversation, no skill needed
+Actions: use (run skill), evolve (improve skill), create (new skill), chat (conversation)
 
-For shell commands: extract the actual command to run.
-For ambiguous voice requests: prefer tts (speak) over stt (listen).
-Prefer action over chat. User speaks Polish.
-JSON format: {{"action":"use|evolve|create|chat","skill":"name","input":{{}},"goal":"brief"}}"""
+Key rules:
+- tts = user wants system to SAY/SPEAK something aloud
+- stt = user wants system to LISTEN/RECORD from microphone ("słyszysz","nagraj","posłuchaj","mikrofon")
+- shell = user wants to RUN a system command ("uruchom","wykonaj","sudo","apt","pip")
+- Questions like "jaka pogoda?" or "co to jest?" = chat (no skill needed)
+- "zmień"/"napraw"/"popraw" existing skill = evolve
+- "stwórz"/"zrób"/"napisz" new thing = create
+- For shell: extract the actual command in input.command
+
+JSON: {{"action":"use|evolve|create|chat","skill":"name","input":{{}},"goal":"brief"}}"""
 
     def _classify_fast(self, msg, skills, conv=None):
         """Use small local LLM for intent classification (primary method)."""
@@ -160,16 +192,39 @@ JSON format: {{"action":"use|evolve|create|chat","skill":"name","input":{{}},"go
                 messages=messages,
                 temperature=0.1,
                 max_tokens=200,
-                timeout=5,
+                timeout=10,  # first call may need model loading
             )
             raw = r.choices[0].message.content
             result = json.loads(clean_json(raw))
 
-            # Validate: skill must exist or action must be create/chat
+            # Normalize: small models sometimes return skill name as action
             action = result.get("action", "chat")
-            skill = result.get("skill", "")
+            skill = result.get("skill") or ""
+            if skill in ("none", "null", "None", ""):
+                skill = ""
+                result["skill"] = ""
+
+            # If action is a skill name, normalize to "use"
+            if action in skills:
+                result["skill"] = action
+                result["action"] = "use"
+                action = "use"
+                skill = result["skill"]
+
+            # Normalize action aliases
+            _action_map = {"run": "use", "execute": "use", "fix": "evolve",
+                           "improve": "evolve", "build": "create", "make": "create"}
+            if action in _action_map:
+                result["action"] = _action_map[action]
+                action = result["action"]
+
+            # Validate: skill must exist for "use" action
             if action == "use" and skill not in skills:
-                return None  # LLM hallucinated a skill
+                return None
+
+            # Ensure input is a dict
+            if not isinstance(result.get("input"), dict):
+                result["input"] = {}
 
             # Post-process: enrich shell commands from conversation context
             if skill == "shell":
@@ -177,7 +232,7 @@ JSON format: {{"action":"use|evolve|create|chat","skill":"name","input":{{}},"go
                 if not cmd:
                     cmd = self._extract_shell_command(msg.lower(), msg, conv)
                     if cmd:
-                        result.setdefault("input", {})["command"] = cmd
+                        result["input"]["command"] = cmd
 
             return result
         except Exception as e:
