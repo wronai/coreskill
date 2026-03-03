@@ -78,6 +78,20 @@ class STTSkill:
         subprocess.run(cmd, check=True)
         return wav_path
 
+    def _find_model_path(self, lang: str | None = None) -> str | None:
+        """Find extracted vosk model directory in cache."""
+        cache = Path.home() / ".cache" / "vosk"
+        if not cache.is_dir():
+            return None
+        tag = f"-{lang}" if lang else ""
+        for d in sorted(cache.iterdir(), reverse=True):
+            if d.is_dir() and "model" in d.name.lower():
+                if tag and tag not in d.name:
+                    continue
+                if (d / "conf" / "model.conf").exists() or (d / "graph").is_dir():
+                    return str(d)
+        return None
+
     def _transcribe_vosk(self, wav_path: str, lang: str | None = None) -> dict:
         if not self._has_vosk:
             raise RuntimeError("Missing system command: vosk-transcriber")
@@ -86,7 +100,10 @@ class STTSkill:
         os.close(fd)
 
         cmd = ["vosk-transcriber", "--input", wav_path, "--output", out_path, "--output-type", "json"]
-        if lang:
+        model_path = self._find_model_path(lang)
+        if model_path:
+            cmd += ["--model", model_path]
+        elif lang:
             cmd += ["--lang", lang]
 
         subprocess.run(cmd, check=True, capture_output=True, text=True)
