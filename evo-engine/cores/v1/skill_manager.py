@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 
 from .config import SKILLS_DIR, save_state, cpr, C
 from .utils import clean_code
+from .preflight import SkillPreflight
 
 
 def _load_bootstrap_skill(name):
@@ -54,6 +55,7 @@ class SkillManager:
         self.llm = llm
         self.log = logger
         self.provider_selector = provider_selector
+        self.preflight = SkillPreflight()
         SKILLS_DIR.mkdir(parents=True, exist_ok=True)
         # Load bootstrap skills for internal use
         self._devops = _load_bootstrap_skill("devops")
@@ -269,13 +271,52 @@ class SkillManager:
             return {"success": True, "result": result, "info": info}
         return {"success": True, "result": info}
 
+    def check_health(self, name):
+        """Check if a skill passes preflight and health_check()."""
+        p = self.skill_path(name)
+        if not p or not p.exists():
+            return False
+        pf = self.preflight.check_all(p)
+        if not pf.ok:
+            return False
+        try:
+            spec = importlib.util.spec_from_file_location(f"hc_{name}", str(p))
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            if hasattr(mod, "health_check"):
+                return bool(mod.health_check())
+            return True
+        except Exception:
+            return False
+
+    def _preflight_and_fix(self, p, name):
+        """Run preflight on skill, auto-fix imports if possible. Returns PreflightResult."""
+        pf = self.preflight.check_all(p)
+        if not pf.ok and pf.stage == "imports" and pf.details.get("missing_imports"):
+            code = p.read_text()
+            fixed = self.preflight.auto_fix_imports(code)
+            if fixed != code:
+                p.write_text(fixed)
+                self.log.skill(name, "auto_fix", {"fixed": pf.details["missing_imports"]})
+                cpr(C.DIM, f"[PREFLIGHT] Auto-fixed imports in {name}: {pf.details['missing_imports']}")
+                pf = self.preflight.check_all(p)
+        return pf
+
     def exec_skill(self, name, version=None, inp=None):
-        """Execute skill, always using latest version."""
+        """Execute skill with preflight validation."""
         if not version: version = self.latest_v(name)
         if not version: return {"success": False, "error": f"'{name}' not found"}
 
         p = self._resolve_skill_path(name, version)
         if not p.exists(): return {"success": False, "error": f"Not found: {p}"}
+
+        # Pre-flight check with auto-fix
+        pf = self._preflight_and_fix(p, name)
+        if not pf.ok:
+            self.log.skill(name, "preflight_fail", pf.to_dict())
+            return {"success": False, "error": f"Preflight ({pf.stage}): {pf.error}",
+                    "preflight": pf.to_dict()}
+
         try:
             return self._load_and_run(name, version, p, inp)
         except Exception as e:
@@ -322,6 +363,9 @@ class SkillManager:
         code = clean_code(self.llm.gen_code(prompt))
         if not code or "[ERROR]" in code:
             return False, "LLM failed to generate fix"
+
+        # Pre-flight new code before saving
+        code = self.preflight.auto_fix_imports(code)
 
         nv = f"v{int(cv[1:]) + 1}"
         # Determine target directory

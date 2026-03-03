@@ -3,6 +3,7 @@
 evo-engine EvoEngine — evolutionary skill building with diagnosis loop.
 """
 from .config import MAX_EVO_ITERATIONS, cpr, C
+from .preflight import EvolutionGuard
 
 
 class EvoEngine:
@@ -16,6 +17,7 @@ class EvoEngine:
         self.sm = sm
         self.llm = llm
         self.log = logger
+        self.evo_guard = EvolutionGuard()
 
     def handle_request(self, user_msg, skills, analysis=None):
         """Full pipeline: analyze → execute/create/evolve → validate. No user prompts."""
@@ -106,6 +108,23 @@ class EvoEngine:
 
             if attempt >= max_retries:
                 break
+
+            # Record error in evolution guard
+            self.evo_guard.record_error(skill_name, error_info,
+                                         self.sm.latest_v(skill_name) or "?")
+
+            # Check if guard suggests auto-fix instead of LLM
+            strategy = self.evo_guard.suggest_strategy(skill_name, error_info)
+            if strategy["strategy"] == "auto_fix_imports":
+                p = self.sm.skill_path(skill_name)
+                if p and p.exists():
+                    code = p.read_text()
+                    fixed = self.sm.preflight.auto_fix_imports(code)
+                    if fixed != code:
+                        p.write_text(fixed)
+                        cpr(C.GREEN, f"[EVO] Auto-fixed imports in {skill_name}")
+                        self.log.skill(skill_name, "auto_fix_imports", {})
+                        continue  # retry with fixed code
 
             # Diagnose → evolve (conservative)
             cpr(C.DIM, f"[EVO] Diagnosing '{skill_name}'...")
