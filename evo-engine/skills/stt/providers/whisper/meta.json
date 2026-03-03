@@ -1,0 +1,18 @@
+{
+  "provider": "whisper",
+  "tier": "premium",
+  "quality_score": 9,
+  "requirements": {
+    "python_packages": [
+      "openai-whisper"
+    ],
+    "gpu": true,
+    "min_ram_mb": 4096
+  },
+  "fallback_to": "vosk",
+  "tags": [
+    "neural",
+    "high-quality",
+    "multilingual"
+  ]
+}

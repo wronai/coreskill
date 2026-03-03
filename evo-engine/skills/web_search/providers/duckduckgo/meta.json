@@ -1,0 +1,11 @@
+{
+  "provider": "duckduckgo",
+  "tier": "lite",
+  "quality_score": 5,
+  "requirements": {},
+  "fallback_to": null,
+  "tags": [
+    "no-api-key",
+    "privacy"
+  ]
+}

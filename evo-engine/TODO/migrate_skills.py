@@ -13,7 +13,7 @@ import shutil
 import sys
 from pathlib import Path
 
-SKILLS_DIR = Path(__file__).parent / "skills"
+SKILLS_DIR = Path(__file__).parent.parent / "skills"
 
 
 # Definitions: which skills to split into providers

@@ -1,0 +1,16 @@
+{
+  "provider": "espeak",
+  "tier": "lite",
+  "quality_score": 3,
+  "requirements": {
+    "system_packages": [
+      "espeak"
+    ]
+  },
+  "fallback_to": null,
+  "tags": [
+    "offline",
+    "fast",
+    "low-quality"
+  ]
+}

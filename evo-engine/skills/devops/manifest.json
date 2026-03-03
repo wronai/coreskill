@@ -1,0 +1,9 @@
+{
+  "capability": "devops",
+  "description": "Skill: devops",
+  "providers": [
+    "default"
+  ],
+  "default_provider": "default",
+  "selection_strategy": "single"
+}

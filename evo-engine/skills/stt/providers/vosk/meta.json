@@ -1,0 +1,14 @@
+{
+  "provider": "vosk",
+  "tier": "standard",
+  "quality_score": 6,
+  "requirements": {
+    "python_packages": [
+      "vosk"
+    ]
+  },
+  "fallback_to": null,
+  "tags": [
+    "offline"
+  ]
+}

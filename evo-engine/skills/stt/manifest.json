@@ -1,0 +1,20 @@
+{
+  "capability": "stt",
+  "description": "Speech-to-Text: transcribes audio to text",
+  "interface": {
+    "input": {
+      "audio_path": "str",
+      "lang": "str"
+    },
+    "output": {
+      "text": "str",
+      "confidence": "float"
+    }
+  },
+  "providers": [
+    "vosk",
+    "whisper"
+  ],
+  "default_provider": "vosk",
+  "selection_strategy": "best_available"
+}

@@ -1,0 +1,15 @@
+{
+  "provider": "pyttsx3",
+  "tier": "standard",
+  "quality_score": 5,
+  "requirements": {
+    "python_packages": [
+      "pyttsx3"
+    ]
+  },
+  "fallback_to": "espeak",
+  "tags": [
+    "offline",
+    "medium-quality"
+  ]
+}

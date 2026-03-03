@@ -1,0 +1,9 @@
+{
+  "capability": "git_ops",
+  "description": "Skill: git_ops",
+  "providers": [
+    "default"
+  ],
+  "default_provider": "default",
+  "selection_strategy": "single"
+}

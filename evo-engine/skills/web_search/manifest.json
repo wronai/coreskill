@@ -1,0 +1,18 @@
+{
+  "capability": "web_search",
+  "description": "Web search: searches the internet",
+  "interface": {
+    "input": {
+      "query": "str",
+      "max_results": "int"
+    },
+    "output": {
+      "results": "list[dict]"
+    }
+  },
+  "providers": [
+    "duckduckgo"
+  ],
+  "default_provider": "duckduckgo",
+  "selection_strategy": "best_available"
+}

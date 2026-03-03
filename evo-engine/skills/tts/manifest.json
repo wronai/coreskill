@@ -1,0 +1,21 @@
+{
+  "capability": "tts",
+  "description": "Text-to-Speech: converts text to spoken audio",
+  "interface": {
+    "input": {
+      "text": "str",
+      "lang": "str (default: pl)"
+    },
+    "output": {
+      "spoken": "bool",
+      "method": "str"
+    }
+  },
+  "providers": [
+    "espeak",
+    "pyttsx3",
+    "coqui"
+  ],
+  "default_provider": "espeak",
+  "selection_strategy": "best_available"
+}

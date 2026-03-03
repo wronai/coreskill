@@ -60,10 +60,30 @@ def bootstrap():
     core_path = CORES / f"v{ver}" / "core.py"
     log(f"Loading core v{ver} (active: {active})")
 
-    spec = importlib.util.spec_from_file_location("core", str(core_path))
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    mod.main()
+    # Add cores/ to sys.path so relative imports work in the package
+    cores_parent = str(CORES.parent)
+    if cores_parent not in sys.path:
+        sys.path.insert(0, cores_parent)
+    # Also add evo-engine root so 'cores.v1' resolves
+    evo_root = str(ROOT)
+    if evo_root not in sys.path:
+        sys.path.insert(0, evo_root)
+
+    # Try loading as package first (new modular structure)
+    try:
+        pkg_name = f"cores.v{ver}"
+        import importlib
+        pkg = importlib.import_module(pkg_name)
+        # If package has main() from __init__.py re-exports, use core module
+        core_mod = importlib.import_module(f"{pkg_name}.core")
+        core_mod.main()
+    except (ImportError, AttributeError):
+        # Fallback: load as single file (legacy)
+        log(f"Fallback: loading core.py as single file")
+        spec = importlib.util.spec_from_file_location("core", str(core_path))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        mod.main()
 
 if __name__ == "__main__":
     if "--check" in sys.argv:

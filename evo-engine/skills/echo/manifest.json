@@ -1,0 +1,9 @@
+{
+  "capability": "echo",
+  "description": "Skill: echo",
+  "providers": [
+    "default"
+  ],
+  "default_provider": "default",
+  "selection_strategy": "single"
+}
