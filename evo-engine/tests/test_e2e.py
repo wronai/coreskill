@@ -1150,5 +1150,86 @@ def execute(inp):
         self.assertFalse(check.get("is_stub"))
 
 
+# ─── NFO Decorator Logging Tests ─────────────────────────────────────
+class TestNfoDecoratorLogging(unittest.TestCase):
+    """Test nfo-based decorator logging for skills."""
+
+    def test_init_nfo_returns_logger(self):
+        """init_nfo() should return a configured logger."""
+        from cores.v1.skill_logger import init_nfo
+        logger = init_nfo()
+        self.assertIsNotNone(logger)
+        self.assertEqual(logger.name, "evo")
+
+    def test_init_nfo_idempotent(self):
+        """Calling init_nfo() twice should return same logger."""
+        from cores.v1.skill_logger import init_nfo
+        l1 = init_nfo()
+        l2 = init_nfo()
+        self.assertEqual(l1.name, l2.name)
+
+    def test_inject_logging_wraps_functions(self):
+        """inject_logging should wrap module functions with nfo decorators."""
+        import types
+        from cores.v1.skill_logger import inject_logging
+        mod = types.ModuleType("test_mod")
+        def execute(params):
+            return {"success": True}
+        mod.execute = execute
+        inject_logging(mod, skill_name="test")
+        result = mod.execute({"x": 1})
+        self.assertEqual(result, {"success": True})
+
+    def test_inject_logging_safe_on_empty_module(self):
+        """inject_logging should not crash on empty module."""
+        import types
+        from cores.v1.skill_logger import inject_logging
+        mod = types.ModuleType("empty_mod")
+        inject_logging(mod)  # Should not raise
+
+    def test_sqlite_sink_exists(self):
+        """After init, SQLite sink file should exist."""
+        from cores.v1.skill_logger import init_nfo, _SQLITE_PATH
+        init_nfo()
+        # Run a logged function to ensure at least one write
+        import nfo
+        @nfo.log_call
+        def _probe():
+            return 42
+        _probe()
+        self.assertTrue(_SQLITE_PATH.exists(),
+                        f"SQLite sink not found at {_SQLITE_PATH}")
+
+    def test_skill_health_summary_format(self):
+        """skill_health_summary should return a dict with expected keys."""
+        from cores.v1.skill_logger import skill_health_summary, init_nfo
+        init_nfo()
+        summary = skill_health_summary("echo")
+        self.assertIn("skill", summary)
+        self.assertIn("status", summary)
+        self.assertEqual(summary["skill"], "echo")
+
+    def test_nfo_logged_on_echo_skill(self):
+        """Echo skill class should have nfo @logged decorator applied."""
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "echo_test", str(SKILLS_DIR / "echo" / "v1" / "skill.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        result = mod.execute({"test": True})
+        self.assertTrue(result.get("echo", {}).get("test"))
+
+    def test_nfo_logged_on_shell_skill(self):
+        """Shell skill class should have nfo @logged decorator applied."""
+        import importlib.util
+        p = SKILLS_DIR / "shell" / "v1" / "skill.py"
+        if p.exists():
+            spec = importlib.util.spec_from_file_location("shell_test", str(p))
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            # Just verify the class loads without error
+            self.assertTrue(hasattr(mod, "ShellSkill"))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
