@@ -654,6 +654,16 @@ class IntentEngine:
         topic = self._recent_topic()
         context = self._build_context(conv)
 
+        # Stage 0: Very short / ambiguous → chat (don't waste LLM calls)
+        stripped = user_msg.strip()
+        words = stripped.split()
+        _trivial = {"czy", "co", "jak", "no", "ok", "hej", "elo", "hm", "ee",
+                     "nie", "tak", "aha", "wow", "ej", "hmm", "eee", "o",
+                     "a", "i", "to", "jest", "kto", "ile", "cześć", "czesc",
+                     "halo", "siema", "yo", "witam", "dzień", "dzien"}
+        if len(stripped) < 4 or (len(words) == 1 and words[0].lower().rstrip("?!.,") in _trivial):
+            return {"action": "chat"}
+
         # Stage 1: High-confidence keywords
         kw = self._kw_classify(user_msg, skills, topic)
         if kw and kw.pop("_conf", 0) >= 0.9:
@@ -1147,32 +1157,45 @@ class EvoEngine:
         return None
 
     def _execute_with_validation(self, skill_name, inp, goal, user_msg):
-        """Execute skill → validate → diagnose → evolve → retry loop."""
-        for attempt in range(MAX_EVO_ITERATIONS):
-            cpr(C.CYAN, f"[EVO] Running '{skill_name}' (attempt {attempt + 1}/{MAX_EVO_ITERATIONS})...")
+        """Execute skill → validate → retry (max 2 evolves for existing skills)."""
+        max_retries = 2  # conservative: don't destroy working skills
+        seen_errors = set()
+        start_version = self.sm.latest_v(skill_name)
+
+        for attempt in range(max_retries + 1):
+            cpr(C.CYAN, f"[EVO] Running '{skill_name}' (attempt {attempt + 1}/{max_retries + 1})...")
             result = self.sm.exec_skill(skill_name, inp=inp)
             self.log.core("skill_exec", {
                 "skill": skill_name, "attempt": attempt + 1,
                 "success": result.get("success"), "goal": goal})
 
+            # Success from skill → accept immediately, no over-validation
             if result.get("success"):
-                validated = self._validate_goal(skill_name, result, goal)
-                if validated:
+                inner = result.get("result", {})
+                # Only reject if inner explicitly says failure
+                if isinstance(inner, dict) and inner.get("success") is False:
+                    error_info = inner.get("error", "inner failure")
+                    cpr(C.YELLOW, f"[EVO] ✗ Partial fail: {error_info[:100]}")
+                else:
                     cpr(C.GREEN, f"[EVO] ✓ Goal achieved: {goal or 'OK'}")
                     self.log.skill(skill_name, "goal_achieved", {"goal": goal})
                     return {"type": "success", "skill": skill_name,
                             "result": result, "goal": goal}
-                error_info = (f"Goal '{goal}' not validated. "
-                              f"Result: {json.dumps(result.get('result',{}), default=str)[:200]}")
-                cpr(C.YELLOW, f"[EVO] Ran but goal not met. Fixing...")
             else:
                 error_info = result.get("error", "unknown error")
                 cpr(C.YELLOW, f"[EVO] ✗ Failed: {error_info[:100]}")
 
-            if attempt >= MAX_EVO_ITERATIONS - 1:
+            # Stop if max retries or same error repeats
+            err_key = error_info[:80] if 'error_info' in dir() else "?"
+            if err_key in seen_errors:
+                cpr(C.RED, f"[EVO] Same error repeated, stopping.")
+                break
+            seen_errors.add(err_key)
+
+            if attempt >= max_retries:
                 break
 
-            # Diagnose → smart evolve
+            # Diagnose → evolve (conservative)
             cpr(C.DIM, f"[EVO] Diagnosing '{skill_name}'...")
             diag = self.sm.diagnose_skill(skill_name)
             phase = diag.get("phase", "?")
@@ -1190,16 +1213,17 @@ class EvoEngine:
             ok, msg = self.sm.smart_evolve(skill_name, error_info, user_msg)
             if ok:
                 cpr(C.DIM, f"[EVO] {msg}")
-                # Quick test before re-executing
-                test_ok, test_out = self.sm.test_skill(skill_name)
-                if not test_ok:
-                    cpr(C.YELLOW, f"[EVO] Test failed: {test_out[:80]}")
-                    continue
             else:
                 cpr(C.RED, f"[EVO] Evolution failed: {msg}")
                 break
 
-        cpr(C.RED, f"[EVO] Could not achieve goal after {MAX_EVO_ITERATIONS} attempts")
+        # Rollback to original version if evolution created broken ones
+        cur_version = self.sm.latest_v(skill_name)
+        if cur_version != start_version:
+            cpr(C.DIM, f"[EVO] Rolling back {skill_name} to {start_version}")
+            self.sm.rollback(skill_name)
+
+        cpr(C.RED, f"[EVO] Could not achieve goal after {attempt + 1} attempts")
         self.log.core("goal_failed", {"skill": skill_name, "goal": goal})
         return {"type": "failed", "skill": skill_name, "goal": goal}
 
