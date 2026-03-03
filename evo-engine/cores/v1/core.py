@@ -56,7 +56,102 @@ class LLMClient:
                                    api_key=self.api_key)
             return r.choices[0].message.content
         except Exception as e:
-            log_ev("llm_error", {"error": str(e)}); return f"[LLM ERROR] {e}"
+            error_str = str(e)
+            log_ev("llm_error", {"error": error_str})
+            
+            # Self-healing mechanism for authentication errors
+            if "AuthenticationError" in error_str or "401" in error_str:
+                return self._handle_auth_error(e)
+            
+            return f"[LLM ERROR] {e}"
+    
+    def _handle_auth_error(self, original_error):
+        """Self-healing: Check API key and try fallback models or reset state"""
+        state = load_state()
+        
+        # First, check if API key is the issue
+        if not self.api_key or len(self.api_key) < 10:
+            cpr(C.RED, "[SELF-HEAL] Invalid or missing API key. Resetting...")
+            default_state = {
+                "active_core": "A",
+                "core_a_version": 1,
+                "core_b_version": 1,
+                "model": "openrouter/stepfun/step-3.5-flash:free",
+                "openrouter_api_key": "",
+                "tts_enabled": False,
+                "iteration": 0
+            }
+            save_state(default_state)
+            return f"[FATAL] Invalid API key. System reset. Please restart and provide valid API key."
+        
+        # Try a simple test with the current API key first
+        try:
+            cpr(C.YELLOW, "[SELF-HEAL] Testing API key validity...")
+            test_response = litellm.completion(
+                model="openrouter/stepfun/step-3.5-flash:free",
+                messages=[{"role":"user","content":"test"}],
+                api_key=self.api_key,
+                max_tokens=5
+            )
+            if test_response and test_response.choices:
+                cpr(C.GREEN, "[SELF-HEAL] API key works, trying alternative models...")
+        except Exception as test_error:
+            error_msg = str(test_error)
+            cpr(C.RED, f"[SELF-HEAL] API key test failed: {error_msg}")
+            if "401" in error_msg or "AuthenticationError" in error_msg or "User not found" in error_msg:
+                cpr(C.RED, "[SELF-HEAL] API key is invalid or account issue. Resetting...")
+                cpr(C.YELLOW, "[SELF-HEAL] Please check your OpenRouter account at: https://openrouter.ai/keys")
+                default_state = {
+                    "active_core": "A",
+                    "core_a_version": 1,
+                    "core_b_version": 1,
+                    "model": "openrouter/stepfun/step-3.5-flash:free",
+                    "openrouter_api_key": "",
+                    "tts_enabled": False,
+                    "iteration": 0,
+                    "last_reset": datetime.now(timezone.utc).isoformat()
+                }
+                save_state(default_state)
+                return f"[FATAL] API key invalid or account issue. System reset. Please check OpenRouter account."
+        
+        # If API key seems valid, try alternative models
+        fallback_models = [
+            "openrouter/google/gemma-3-1b-it:free",
+            "openrouter/meta-llama/llama-3.1-8b-instruct:free", 
+            "openrouter/qwen/qwen-2.5-72b-instruct:free"
+        ]
+        
+        for model in fallback_models:
+            if model == self.model:
+                continue
+            try:
+                cpr(C.YELLOW, f"[SELF-HEAL] Trying fallback model: {model}")
+                r = litellm.completion(model=model, messages=[{"role":"user","content":"test"}],
+                                       api_key=self.api_key, max_tokens=10)
+                if r and r.choices:
+                    # Update state to working model
+                    state["model"] = model
+                    save_state(state)
+                    self.model = model
+                    cpr(C.GREEN, f"[SELF-HEAL] Recovered with model: {model}")
+                    return f"[RECOVERED] Switched to {model} due to auth error"
+            except:
+                continue
+        
+        # If all models fail, reset to default state
+        cpr(C.RED, "[SELF-HEAL] All models failed, resetting to default state...")
+        default_state = {
+            "active_core": "A",
+            "core_a_version": 1,
+            "core_b_version": 1,
+            "model": "openrouter/stepfun/step-3.5-flash:free",
+            "openrouter_api_key": "",
+            "tts_enabled": False,
+            "iteration": 0,
+            "last_reset": datetime.now(timezone.utc).isoformat()
+        }
+        save_state(default_state)
+        return f"[FATAL] All models failed. System reset. Please restart and provide valid API key."
 
     def gen_code(self, prompt, ctx=""):
         s = ("You are an expert Python developer. Return ONLY Python code, "
@@ -260,6 +355,18 @@ HELP = """
 
 def main():
     state = load_state(); sv = Supervisor(state)
+    
+    # Check if we're in a restart loop
+    if state.get("last_reset"):
+        from datetime import datetime, timezone, timedelta
+        last_reset = datetime.fromisoformat(state["last_reset"])
+        if datetime.now(timezone.utc) - last_reset < timedelta(minutes=5):
+            cpr(C.RED, "\n=== RESTART LOOP DETECTED ===")
+            cpr(C.RED, "System has been reset multiple times. Please check your OpenRouter API key.")
+            cpr(C.YELLOW, "Visit: https://openrouter.ai/keys")
+            cpr(C.RED, "Manual intervention required. Exiting...")
+            sys.exit(1)
+    
     cpr(C.CYAN, "\n" + "="*48)
     cpr(C.CYAN, "  evo-engine | Evolutionary AI System")
     cpr(C.CYAN, "  Self-healing dual-core | Skill builder")
@@ -295,8 +402,17 @@ def main():
             sp = (f"You are evo-engine AI core. Skills:{json.dumps(sm.list_skills())} "
                   f"Pipelines:{pm.list_p()} Core:{sv.active()}. "
                   "Help build skills/pipelines. If Polish, respond in Polish. Be concise.")
+            conv.append({"role":"system","content":sp})
             cpr(C.DIM, "Thinking...")
             r = llm.chat([{"role":"system","content":sp}]+conv[-20:])
+            
+            # Check for fatal errors that require restart
+            if "[FATAL]" in r:
+                cpr(C.RED, "System reset detected. Restarting...")
+                import time
+                time.sleep(2)
+                os.execv(sys.executable, [sys.executable] + sys.argv)
+            
             conv.append({"role":"assistant","content":r})
             cpr(C.MAGENTA, f"evo> {r}\n"); continue
 
