@@ -29,6 +29,7 @@ from .supervisor import Supervisor
 from .resource_monitor import ResourceMonitor
 from .provider_selector import ProviderSelector
 from .system_identity import SystemIdentity
+from .skill_logger import init_nfo
 
 
 # ─── Docker Compose Generator ────────────────────────────────────────
@@ -362,6 +363,31 @@ def _cmd_stt(a1, **ctx):
             mprint("### 🎤 Nie usłyszałem nic\nSpróbuj powiedzieć coś głośniej.")
             conv.append({"role": "assistant", "content": "Nie usłyszałem nic. Spróbuj ponownie."})
 
+def _cmd_fix(a1, **ctx):
+    """Autonomous repair: /fix [skill_name]"""
+    sm = ctx["sm"]
+    evo = ctx["evo"]
+    skill_name = a1 or "stt"
+    
+    cpr(C.CYAN, f"\n[AUTO] Naprawa skill: {skill_name}")
+    
+    # Test the skill first
+    test_result = sm.exec_skill(skill_name, inp={"duration_s": 3, "lang": "pl"} if skill_name == "stt" else {})
+    
+    # Run autonomous repair
+    fixed, msg, new_result = evo._autonomous_stt_repair(skill_name, test_result, f"/fix {skill_name}")
+    
+    if fixed:
+        cpr(C.GREEN, f"✓ Naprawione: {msg[:100]}")
+        # Extract and show result for STT
+        if skill_name == "stt":
+            text = new_result.get("result", {}).get("spoken") or new_result.get("result", {}).get("text", "")
+            if text:
+                cpr(C.GREEN, f"🎤 Usłyszałem: \"{text}\"")
+    else:
+        cpr(C.YELLOW, f"✗ Nie udało się naprawić: {msg}")
+        cpr(C.DIM, "Spróbuj użyć innego providera lub sprawdź /diagnose")
+
 
 # Command dispatch table
 COMMANDS = {
@@ -392,6 +418,7 @@ COMMANDS = {
     "/providers": _cmd_providers,
     "/resources": _cmd_resources,
     "/stt": _cmd_stt,
+    "/fix": _cmd_fix,
 }
 
 
@@ -539,6 +566,8 @@ def _check_proactive_learning(intent):
 
 # ─── Main ────────────────────────────────────────────────────────────
 def main():
+    init_nfo()
+
     state = load_state()
     _check_restart_loop(state)
 

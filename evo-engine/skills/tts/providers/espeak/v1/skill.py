@@ -1,7 +1,9 @@
 import subprocess
 import shutil
+import nfo
 
 
+@nfo.logged
 class TTSSkill:
     """Text-to-Speech using espeak (stdlib + subprocess only, zero pip deps)."""
 

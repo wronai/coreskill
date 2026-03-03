@@ -5,6 +5,7 @@ import subprocess
 from pathlib import Path
 import tempfile
 import sys
+import nfo
 
 def get_info():
     return {
@@ -18,6 +19,7 @@ def health_check():
     has_vosk = shutil.which("vosk-transcriber") is not None
     return bool(has_vosk and has_arecord)
 
+@nfo.logged
 class STTSkill:
     def __init__(self):
         self._has_arecord = shutil.which("arecord") is not None

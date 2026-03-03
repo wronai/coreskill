@@ -9,11 +9,14 @@ import json
 import re
 from datetime import datetime, timezone
 
+import nfo
+
 from .config import SKILLS_DIR, INTENT_MODEL_MAX_PARAMS, save_state, cpr, C
 from .utils import litellm, clean_json
 from .llm_client import _detect_ollama_models
 
 
+@nfo.logged
 class IntentEngine:
     """
     Multi-stage intent detection with conversation context and learning.
@@ -192,7 +195,7 @@ JSON: {{"action":"use|evolve|create|chat","skill":"name","input":{{}},"goal":"br
                 messages=messages,
                 temperature=0.1,
                 max_tokens=200,
-                timeout=10,  # first call may need model loading
+                timeout=30,  # first call needs model loading (gemma2:2b ~1.6GB)
             )
             raw = r.choices[0].message.content
             result = json.loads(clean_json(raw))
@@ -233,6 +236,9 @@ JSON: {{"action":"use|evolve|create|chat","skill":"name","input":{{}},"goal":"br
                     cmd = self._extract_shell_command(msg.lower(), msg, conv)
                     if cmd:
                         result["input"]["command"] = cmd
+
+            # Add confidence for consistency with keyword classifier
+            result["_conf"] = 0.85  # fast LLM is reasonably confident
 
             return result
         except Exception as e:

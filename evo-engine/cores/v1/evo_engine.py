@@ -2,10 +2,13 @@
 """
 evo-engine EvoEngine — evolutionary skill building with diagnosis loop.
 """
+import nfo
+
 from .config import MAX_EVO_ITERATIONS, cpr, C
 from .preflight import EvolutionGuard
 
 
+@nfo.logged
 class EvoEngine:
     """
     Generic evolutionary algorithm:
@@ -127,6 +130,19 @@ class EvoEngine:
                 cpr(C.YELLOW, f"[PIPE] ~ Partial: {validation['reason'][:100]}")
                 self.log.skill(skill_name, "goal_partial", {
                     "goal": goal, "reason": validation["reason"]})
+                
+                # Autonomous repair for STT empty transcription
+                if skill_name == "stt" and "empty transcription" in validation["reason"]:
+                    cpr(C.CYAN, "[AUTO] Próbuję autonomicznej naprawy STT...")
+                    fixed, msg, new_result = self._autonomous_stt_repair(skill_name, result, user_msg)
+                    if fixed:
+                        cpr(C.GREEN, f"[AUTO] Naprawione! {msg[:100]}")
+                        # Return the successful result
+                        return {"type": "success", "skill": skill_name,
+                                "result": new_result, "goal": goal}
+                    else:
+                        cpr(C.YELLOW, f"[AUTO] Nie udało się naprawić: {msg}")
+                
                 return {"type": "success", "skill": skill_name,
                         "result": result, "goal": goal}
 
@@ -222,6 +238,88 @@ class EvoEngine:
                 return {"verdict": "fail", "reason": inner["error"]}
 
         return {"verdict": "success", "reason": "skill reports success"}
+
+    def _autonomous_stt_repair(self, skill_name, result, user_msg):
+        """Autonomous diagnosis and repair for STT empty transcription.
+        Returns (fixed, message, new_result)."""
+        import shutil, subprocess, os
+        from pathlib import Path
+
+        cpr(C.CYAN, "[AUTO] Diagnozuję problem ze STT...")
+
+        # Check 1: vosk-transcriber exists
+        if not shutil.which("vosk-transcriber"):
+            cpr(C.YELLOW, "[AUTO] Brak vosk-transcriber")
+            return False, "Brak vosk-transcriber. Zainstaluj: pip install vosk", result
+
+        # Check 2: Model exists
+        model_paths = [
+            Path.home() / ".cache" / "vosk" / "vosk-model-small-pl-0.22",
+            Path.home() / ".cache" / "vosk" / "model",
+            Path("/usr/share/vosk/model"),
+        ]
+        has_model = any(p.exists() for p in model_paths)
+
+        if not has_model:
+            cpr(C.YELLOW, "[AUTO] Brak modelu Vosk dla PL")
+            cpr(C.DIM, "[AUTO] Próbuję pobrać model...")
+            try:
+                # Try to download model via shell skill
+                cmd = ("mkdir -p ~/.cache/vosk && cd ~/.cache/vosk && "
+                       "curl -L -o model.zip 'https://alphacephei.com/vosk/models/vosk-model-small-pl-0.22.zip' && "
+                       "unzip -q model.zip && rm model.zip")
+                r = subprocess.run(cmd, shell=True, capture_output=True, timeout=120)
+                if r.returncode == 0:
+                    cpr(C.GREEN, "[AUTO] Model pobrany ✓")
+                    has_model = True
+                else:
+                    cpr(C.YELLOW, "[AUTO] Nie udało się pobrać modelu")
+            except Exception as e:
+                cpr(C.YELLOW, f"[AUTO] Błąd pobierania: {e}")
+
+        # Check 3: Microphone test
+        cpr(C.DIM, "[AUTO] Testuję mikrofon...")
+        try:
+            test_cmd = ["arecord", "-d", "1", "-f", "S16_LE", "-r", "16000", "-c", "1", "/tmp/stt_test.wav"]
+            r = subprocess.run(test_cmd, capture_output=True, timeout=5)
+            if r.returncode != 0:
+                cpr(C.YELLOW, "[AUTO] Mikrofon nie działa - sprawdź permissions")
+                return False, "Mikrofon niedostępny. Sprawdź: arecord -l", result
+            # Check if recorded file has content
+            if Path("/tmp/stt_test.wav").exists():
+                size = Path("/tmp/stt_test.wav").stat().st_size
+                if size < 1000:
+                    cpr(C.YELLOW, f"[AUTO] Mikrofon nagrywa ciszę ({size}b)")
+                    return False, "Mikrofon działa ale nagrywa ciszę - sprawdź ustawienia", result
+            cpr(C.GREEN, "[AUTO] Mikrofon OK ✓")
+        except Exception as e:
+            cpr(C.YELLOW, f"[AUTO] Test mikrofonu nieudany: {e}")
+
+        # Check 4: Try alternative provider (whisper)
+        if not has_model:
+            cpr(C.CYAN, "[AUTO] Próbuję alternatywnego providera (whisper)...")
+            # Check whisper availability
+            if shutil.which("whisper") or Path.home().joinpath(".local/bin/whisper").exists():
+                # Force whisper provider
+                result = self.sm.exec_skill(skill_name, inp={"duration_s": 4, "lang": "pl", "_provider": "whisper"})
+                if result.get("success"):
+                    inner = result.get("result", {})
+                    text = inner.get("spoken") or inner.get("text", "")
+                    if text.strip():
+                        cpr(C.GREEN, "[AUTO] Whisper działa! Przełączam...")
+                        return True, f"Używam alternatywnego providera (whisper): {text[:50]}", result
+
+        if has_model:
+            cpr(C.GREEN, "[AUTO] Wszystko sprawdzone. Ponawiam z nowym modelem...")
+            # Retry with explicit model path
+            result = self.sm.exec_skill(skill_name, inp={"duration_s": 4, "lang": "pl"})
+            if result.get("success"):
+                inner = result.get("result", {})
+                text = inner.get("spoken") or inner.get("text", "")
+                if text.strip():
+                    return True, f"Teraz działa: {text[:100]}", result
+
+        return False, "Nie udało się automatycznie naprawić. Sprawdź: /diagnose stt", result
 
     def evolve_skill(self, name, desc):
         """Create + evolutionary test loop for new skills."""

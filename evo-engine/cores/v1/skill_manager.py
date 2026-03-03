@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from .config import SKILLS_DIR, save_state, cpr, C
 from .utils import clean_code
 from .preflight import SkillPreflight
+from .skill_logger import inject_logging
 
 
 def _load_bootstrap_skill(name):
@@ -258,6 +259,7 @@ class SkillManager:
             f"sk_{name}_{version}_{id(self)}", str(p))
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
+        inject_logging(mod, skill_name=name)
         info = mod.get_info() if hasattr(mod, "get_info") else {"name": name}
         for a in dir(mod):
             o = getattr(mod, a)

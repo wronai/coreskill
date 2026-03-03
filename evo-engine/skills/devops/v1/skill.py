@@ -10,8 +10,10 @@ import json
 import ast
 import importlib.util
 from pathlib import Path
+import nfo
 
 
+@nfo.logged
 class DevOpsSkill:
     """Test, validate and deploy skills in isolated subprocess."""
 

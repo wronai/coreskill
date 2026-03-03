@@ -6,8 +6,10 @@ import subprocess
 import os
 import json
 from pathlib import Path
+import nfo
 
 
+@nfo.logged
 class GitOpsSkill:
     """Manage local git repos for skill development and versioning."""
 

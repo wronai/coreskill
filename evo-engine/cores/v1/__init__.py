@@ -23,3 +23,4 @@ from .resource_monitor import ResourceMonitor
 from .provider_selector import ProviderSelector
 from .system_identity import SystemIdentity, SkillStatus
 from .preflight import SkillPreflight, EvolutionGuard, PreflightResult
+from .skill_logger import init_nfo, inject_logging, get_skill_logger

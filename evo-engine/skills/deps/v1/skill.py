@@ -7,8 +7,10 @@ import sys
 import os
 import json
 import importlib.util
+import nfo
 
 
+@nfo.logged
 class DepsSkill:
     """Detect, install and manage Python and system dependencies."""
 

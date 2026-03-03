@@ -2,6 +2,7 @@
 """Echo Skill v1 - Base test skill for evo-engine."""
 import json
 from datetime import datetime, timezone
+import nfo
 
 def get_info():
     return {"name": "echo", "version": "v1", "description": "Echo test skill"}
@@ -9,6 +10,7 @@ def get_info():
 def health_check():
     return True
 
+@nfo.logged
 class EchoSkill:
     def execute(self, input_data):
         return {
@@ -18,6 +20,7 @@ class EchoSkill:
             "status": "ok",
         }
 
+@nfo.log_call
 def execute(input_data):
     return EchoSkill().execute(input_data)
 

@@ -3,8 +3,10 @@ import json
 import urllib.request
 import shutil
 import time
+import nfo
 
 
+@nfo.logged
 class LLMRouterSkill:
     """
     Model discovery & health checking skill (evolvable).
