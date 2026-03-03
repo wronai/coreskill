@@ -340,9 +340,9 @@ class LLMClient:
 
     # ── Core chat with tiered fallback ──
     def chat(self, messages, temperature=0.7, max_tokens=4096):
-        # 1. Try current model
+        # 1. Try current model (with retry on rate limit)
         if self._is_available(self.model):
-            result = self._try_model(self.model, messages, temperature, max_tokens)
+            result = self._try_model(self.model, messages, temperature, max_tokens, is_primary=True)
             if result is not None:
                 return result
 
@@ -393,14 +393,16 @@ class LLMClient:
             return "[ERROR] Models unavailable. Install ollama or change models."
         return f"[ERROR] All models failed ({self.tier_info()}). Last: {joined[:100]}"
 
-    def _try_model(self, model, messages, temperature, max_tokens):
+    def _try_model(self, model, messages, temperature, max_tokens, is_primary=False):
         is_local = model.startswith("ollama/")
         kw = dict(model=model, messages=messages,
-                  temperature=temperature, max_tokens=max_tokens)
+                  temperature=temperature, max_tokens=max_tokens,
+                  timeout=30 if is_local else 15)
         if not is_local:
             kw["api_key"] = self.api_key
 
-        for attempt in range(2):
+        retries = 2 if is_primary else 1  # only retry on primary model
+        for attempt in range(retries):
             try:
                 r = litellm.completion(**kw)
                 self._report_ok(model)
@@ -409,9 +411,9 @@ class LLMClient:
                 err = str(e)
                 if self.logger:
                     self.logger.core("llm_error", {"model": model, "error": err[:200]})
-                # Rate limit on first attempt → wait and retry
-                if ("RateLimitError" in err or "rate limit" in err.lower()) and attempt == 0:
-                    time.sleep(4)
+                # Rate limit on primary → wait and retry once
+                if is_primary and ("RateLimitError" in err or "rate limit" in err.lower()) and attempt == 0:
+                    time.sleep(3)
                     continue
                 self._report_fail(model, err)
                 return None
@@ -1108,7 +1110,6 @@ class EvoEngine:
 
     def handle_request(self, user_msg, skills, analysis=None):
         """Full pipeline: analyze → execute/create/evolve → validate. No user prompts."""
-        cpr(C.DIM, "[EVO] Analyzing...")
         if analysis is None:
             analysis = self.llm.analyze_need(user_msg, skills)
         action = analysis.get("action", "chat")
@@ -1118,6 +1119,8 @@ class EvoEngine:
 
         if action == "chat":
             return None
+
+        cpr(C.DIM, f"[EVO] {action}: {analysis.get('skill', analysis.get('name', '?'))}")
 
         if action == "use":
             skill_name = analysis.get("skill")
