@@ -87,6 +87,18 @@ class SkillManager:
             if vs: sk[d.name] = vs
         return sk
 
+    def _is_rolled_back(self, vdir):
+        """Check if a version directory is marked as rolled back."""
+        mp = vdir / "meta.json"
+        if mp.exists():
+            try:
+                m = json.loads(mp.read_text())
+                if m.get("rolled_back"):
+                    return True
+            except (json.JSONDecodeError, OSError):
+                pass
+        return False
+
     def latest_v(self, name):
         d = SKILLS_DIR / name
         if not d.exists(): return None
@@ -99,7 +111,8 @@ class SkillManager:
                 vs = []
                 for v in prov_dir.iterdir():
                     if v.is_dir() and v.name.startswith("v") and v.name[1:].isdigit():
-                        vs.append(v.name)
+                        if not self._is_rolled_back(v):
+                            vs.append(v.name)
                 vs.sort(key=lambda x: int(x[1:]))
                 return vs[-1] if vs else None
 
@@ -107,7 +120,8 @@ class SkillManager:
         vs = []
         for v in d.iterdir():
             if v.is_dir() and v.name.startswith("v") and v.name[1:].isdigit():
-                vs.append(v.name)
+                if not self._is_rolled_back(v):
+                    vs.append(v.name)
         vs.sort(key=lambda x: int(x[1:]))
         return vs[-1] if vs else None
 
