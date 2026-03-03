@@ -89,7 +89,15 @@ if __name__ == "__main__":
     if "--check" in sys.argv:
         print("Core v1:", "OK" if check(1) else "MISSING")
         for s in ["tts","echo"]:
-            print(f"Skill {s}:", "OK" if (SKILLS/s/"v1"/"skill.py").exists() else "MISSING")
+            # Check both new (providers/) and legacy (v1/) structure
+            found = (SKILLS/s/"v1"/"skill.py").exists()
+            if not found:
+                prov = SKILLS/s/"providers"
+                if prov.is_dir():
+                    found = any((prov/p/v/"skill.py").exists()
+                                for p in prov.iterdir() if p.is_dir()
+                                for v in p.iterdir() if v.is_dir())
+            print(f"Skill {s}:", "OK" if found else "MISSING")
     elif "--reset" in sys.argv:
         save_state(DEFAULT.copy())
         b = ROOT / "build_core.py"

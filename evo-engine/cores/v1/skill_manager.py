@@ -60,30 +60,28 @@ class SkillManager:
         self._deps = _load_bootstrap_skill("deps")
         self._git = _load_bootstrap_skill("git_ops")
 
+    def _collect_versions(self, skill_dir):
+        """Collect version dirs from a skill or provider directory."""
+        return sorted([v.name for v in skill_dir.iterdir()
+                       if v.is_dir() and v.name.startswith("v")
+                       and not v.name.startswith("__")])
+
     def list_skills(self):
         sk = {}
         if not SKILLS_DIR.exists(): return sk
         for d in sorted(SKILLS_DIR.iterdir()):
-            if d.is_dir() and not d.name.startswith("."):
-                # New structure: check providers/ subdir
-                prov_dir = d / "providers"
-                if prov_dir.is_dir():
-                    # Collect versions from all providers
-                    all_versions = []
-                    for provider in sorted(prov_dir.iterdir()):
-                        if provider.is_dir() and not provider.name.startswith("."):
-                            vs = sorted([v.name for v in provider.iterdir()
-                                         if v.is_dir() and v.name.startswith("v")
-                                         and not v.name.startswith("__")])
-                            all_versions.extend(vs)
-                    if all_versions:
-                        sk[d.name] = sorted(set(all_versions))
-                    continue
-                # Legacy structure
-                vs = sorted([v.name for v in d.iterdir()
-                             if v.is_dir() and v.name.startswith("v")
-                             and not v.name.startswith("__")])
-                if vs: sk[d.name] = vs
+            if not d.is_dir() or d.name.startswith("."): continue
+            prov_dir = d / "providers"
+            if prov_dir.is_dir():
+                all_versions = []
+                for provider in sorted(prov_dir.iterdir()):
+                    if provider.is_dir() and not provider.name.startswith("."):
+                        all_versions.extend(self._collect_versions(provider))
+                if all_versions:
+                    sk[d.name] = sorted(set(all_versions))
+                continue
+            vs = self._collect_versions(d)
+            if vs: sk[d.name] = vs
         return sk
 
     def latest_v(self, name):
@@ -235,48 +233,51 @@ class SkillManager:
             return True, diag.get("output", "OK")
         return False, diag.get("error", json.dumps(diag, default=str)[:300])
 
+    def _resolve_skill_path(self, name, version):
+        """Resolve skill path, skipping rolled-back versions."""
+        p = self.skill_path(name, version)
+        if not p or not p.exists():
+            p = SKILLS_DIR / name / version / "skill.py"
+
+        mp = p.parent / "meta.json"
+        if mp.exists():
+            m = json.loads(mp.read_text())
+            if m.get("rolled_back"):
+                parent_dir = p.parent.parent
+                vs = sorted([v.name for v in parent_dir.iterdir()
+                             if v.is_dir() and v.name.startswith("v") and v.name != version])
+                if vs:
+                    p = parent_dir / vs[-1] / "skill.py"
+        return p
+
+    def _load_and_run(self, name, version, p, inp):
+        """Load skill module and execute. Returns result dict."""
+        spec = importlib.util.spec_from_file_location(
+            f"sk_{name}_{version}_{id(self)}", str(p))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        info = mod.get_info() if hasattr(mod, "get_info") else {"name": name}
+        for a in dir(mod):
+            o = getattr(mod, a)
+            if isinstance(o, type) and hasattr(o, "execute"):
+                result = o().execute(inp or {})
+                self.log.skill(name, "exec_success", {"version": version})
+                return {"success": True, "result": result, "info": info}
+        if hasattr(mod, "execute"):
+            result = mod.execute(inp or {})
+            self.log.skill(name, "exec_success", {"version": version})
+            return {"success": True, "result": result, "info": info}
+        return {"success": True, "result": info}
+
     def exec_skill(self, name, version=None, inp=None):
         """Execute skill, always using latest version."""
         if not version: version = self.latest_v(name)
         if not version: return {"success": False, "error": f"'{name}' not found"}
 
-        # Find actual skill path (handles both new and legacy structure)
-        p = self.skill_path(name, version)
-        if not p or not p.exists():
-            # Fallback to legacy path
-            p = SKILLS_DIR / name / version / "skill.py"
-
-        # Skip rolled-back versions
-        mp = p.parent / "meta.json"
-        if mp.exists():
-            m = json.loads(mp.read_text())
-            if m.get("rolled_back"):
-                # Find previous non-rolled-back version
-                parent_dir = p.parent.parent
-                vs = sorted([v.name for v in parent_dir.iterdir()
-                             if v.is_dir() and v.name.startswith("v") and v.name != version])
-                if vs:
-                    version = vs[-1]
-                    p = parent_dir / version / "skill.py"
-
+        p = self._resolve_skill_path(name, version)
         if not p.exists(): return {"success": False, "error": f"Not found: {p}"}
         try:
-            spec = importlib.util.spec_from_file_location(
-                f"sk_{name}_{version}_{id(self)}", str(p))
-            mod = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(mod)
-            info = mod.get_info() if hasattr(mod, "get_info") else {"name": name}
-            for a in dir(mod):
-                o = getattr(mod, a)
-                if isinstance(o, type) and hasattr(o, "execute"):
-                    result = o().execute(inp or {})
-                    self.log.skill(name, "exec_success", {"version": version})
-                    return {"success": True, "result": result, "info": info}
-            if hasattr(mod, "execute"):
-                result = mod.execute(inp or {})
-                self.log.skill(name, "exec_success", {"version": version})
-                return {"success": True, "result": result, "info": info}
-            return {"success": True, "result": info}
+            return self._load_and_run(name, version, p, inp)
         except Exception as e:
             self.log.skill(name, "exec_error", {"error": str(e), "version": version})
             return {"success": False, "error": str(e), "tb": traceback.format_exc()}

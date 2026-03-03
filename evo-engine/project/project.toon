@@ -1,19 +1,49 @@
-# evo-engine | 13f 3627L | python:13
+# evo-engine | 43f 6544L | python:43
 # Keys: M=modules, D=details, i=imports, c=classes, f=functions, m=methods
-M[13]:
+M[43]:
   build_core.py,525
-  main.py,65
+  main.py,86
+  TODO/resource_monitor.py,152
+  TODO/provider_selector.py,242
+  TODO/migrate_skills.py,191
+  tests/__init__.py,0
+  tests/test_e2e.py,514
   skills/llm_router/v1/skill.py,107
-  skills/tts/v1/test_enhanced.py,65
-  skills/tts/v1/skill.py,30
-  skills/tts/v1/test.py,41
+  skills/tts/providers/coqui/v1/skill.py,7
+  skills/tts/providers/pyttsx3/v1/skill.py,7
+  skills/tts/providers/espeak/v2/skill.py,4
+  skills/tts/providers/espeak/v3/skill.py,4
+  skills/tts/providers/espeak/v1/test_enhanced.py,65
+  skills/tts/providers/espeak/v1/skill.py,30
+  skills/tts/providers/espeak/v1/test.py,41
+  skills/tts/providers/espeak/v4/skill.py,4
   skills/devops/v1/skill.py,208
-  skills/stt/v1/skill.py,131
+  skills/stt/providers/vosk/v6/skill.py,131
+  skills/stt/providers/vosk/v3/skill.py,131
+  skills/stt/providers/vosk/v5/skill.py,131
+  skills/stt/providers/vosk/v1/skill.py,131
+  skills/stt/providers/vosk/v4/skill.py,131
+  skills/stt/providers/whisper/v1/skill.py,7
   skills/deps/v1/skill.py,144
-  skills/web_search/v1/skill.py,131
+  skills/kalkulator/v2/skill.py,4
+  skills/kalkulator/v3/skill.py,4
+  skills/kalkulator/v1/skill.py,4
+  skills/web_search/providers/duckduckgo/v1/skill.py,131
   skills/echo/v1/skill.py,19
   skills/git_ops/v1/skill.py,114
-  cores/v1/core.py,1472
+  cores/v1/config.py,69
+  cores/v1/resource_monitor.py,129
+  cores/v1/intent_engine.py,224
+  cores/v1/supervisor.py,69
+  cores/v1/__init__.py,22
+  cores/v1/provider_selector.py,192
+  cores/v1/llm_client.py,272
+  cores/v1/evo_engine.py,158
+  cores/v1/utils.py,100
+  cores/v1/core.py,456
+  cores/v1/pipeline_manager.py,39
+  cores/v1/logger.py,48
+  cores/v1/skill_manager.py,299
 D:
   main.py:
     i: os,sys,json,subprocess,datetime,datetime.timezone,importlib.util,pathlib.Path
@@ -23,52 +53,148 @@ D:
     save_state(s)
     check(version=1)
     bootstrap()
+  TODO/resource_monitor.py:
+    i: os,shutil,subprocess,pathlib.Path
+    e: ResourceMonitor
+    ResourceMonitor: __init__(0),snapshot(0),_cpu_count(0),_ram_total(0),_ram_available(0)  # Detects CPU, RAM, GPU, disk, installe...
+  TODO/provider_selector.py:
+    i: json,pathlib.Path,typing.Optional
+    e: TIER_ORDER,ProviderInfo,ProviderSelector,EXAMPLE_TTS_MANIFEST,EXAMPLE_ESPEAK_META,EXAMPLE_COQUI_META
+    ProviderInfo: __init__(2)  # Parsed provider metadata.
+    ProviderSelector: __init__(2),list_capabilities(0),list_providers(1),load_manifest(1),load_meta(2)  # Selects the best available provider f...
+  TODO/migrate_skills.py:
+    i: json,os,shutil,sys,pathlib.Path
+    e: SKILLS_DIR,MIGRATIONS,SIMPLE_SKILLS,migrate_skill,add_manifest_to_simple,main
+    migrate_skill(name:str;config:dict;dry_run:bool=False)
+    add_manifest_to_simple(name:str;dry_run:bool=False)
+    main()
+  tests/test_e2e.py:
+    i: json,os,sys,tempfile,shutil,unittest,cores.v1.config.load_state,pathlib.Path,unittest.mock.{MagicMock,patch}
+    e: ROOT,MockLLM,TestIntentEngineKeywords,TestIntentEngineTopics,TestProviderSelector,TestResourceMonitor,TestSkillManagerProviders,TestEvoEngineDialogFlow
+    MockLLM: __init__(0),set_response(2),chat(3),gen_code(3),gen_pipeline(2)  # Mock LLM that returns predictable res...
+    TestIntentEngineKeywords: setUp(0),test_speak_command_pl(0),test_greet_command_pl(0),test_say_command_en(0),test_speak_command_en(0)  # Test that IntentEngine correctly clas...
+    TestIntentEngineTopics: setUp(0),test_topic_detection_voice(0),test_topic_detection_web(0),test_topic_detection_git(0),test_topic_detection_dev(0)
+    TestProviderSelector: setUp(0),test_list_capabilities(0),test_tts_has_multiple_providers(0),test_stt_has_providers(0),test_espeak_is_lite_tier(0)
+    TestResourceMonitor: setUp(0),test_snapshot_has_required_fields(0),test_cpu_count_positive(0),test_ram_positive(0),test_disk_positive(0)
   skills/llm_router/v1/skill.py:
     i: subprocess,json,shutil,time,urllib.request
     e: LLMRouterSkill,get_info,health_check
     LLMRouterSkill: execute(1),_discover_local(0),_discover_remote(0),_health_check(2),_full_status(1)  # Model discovery & health checking ski...
     get_info()
     health_check()
-  skills/tts/v1/test_enhanced.py:
+  skills/tts/providers/coqui/v1/skill.py:
+    e: get_info,health_check,CoquiSkill
+    CoquiSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/pyttsx3/v1/skill.py:
+    e: get_info,health_check,Pyttsx3Skill
+    Pyttsx3Skill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v2/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v3/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v1/test_enhanced.py:
     i: sys,os,subprocess,pathlib.Path,skills.tts.v1.skill.TTSSkill
     e: ROOT,test_tts,get_info,health_check,execute
     test_tts()
     get_info()
     health_check()
     execute(input_data=None)
-  skills/tts/v1/skill.py:
+  skills/tts/providers/espeak/v1/skill.py:
     i: subprocess,shutil
     e: TTSSkill,get_info,health_check
     TTSSkill: __init__(0),execute(1)  # Text-to-Speech using espeak (stdlib +...
     get_info()
     health_check()
-  skills/tts/v1/test.py:
+  skills/tts/providers/espeak/v1/test.py:
     i: sys,os,pathlib.Path,skills.tts.v1.skill.TTSSkill
     e: ROOT,test_tts,get_info,health_check,execute
     test_tts()
     get_info()
     health_check()
     execute(input_data=None)
+  skills/tts/providers/espeak/v4/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
   skills/devops/v1/skill.py:
     i: subprocess,sys,os,json,ast,importlib.util,pathlib.Path
     e: DevOpsSkill,get_info,health_check
     DevOpsSkill: check_syntax(1),detect_imports(1),check_deps(1),find_system_alternatives(1),test_skill(2)  # Test, validate and deploy skills in i...
     get_info()
     health_check()
-  skills/stt/v1/skill.py:
+  skills/stt/providers/vosk/v6/skill.py:
+    i: json,os,shutil,subprocess,tempfile,sys,pathlib.Path
+    e: get_info,health_check,STTSkill,execute
+    STTSkill: __init__(0),_record_wav(2),_ensure_wav(2),_transcribe_vosk(2),execute(1)
+    get_info()
+    health_check()
+    execute(input_data:dict)->dict
+  skills/stt/providers/vosk/v3/skill.py:
+    i: json,os,shutil,subprocess,tempfile,sys,pathlib.Path
+    e: get_info,health_check,STTSkill,execute
+    STTSkill: __init__(0),_record_wav(2),_ensure_wav(2),_transcribe_vosk(2),execute(1)
+    get_info()
+    health_check()
+    execute(input_data:dict)->dict
+  skills/stt/providers/vosk/v5/skill.py:
+    i: json,os,shutil,subprocess,tempfile,sys,pathlib.Path
+    e: get_info,health_check,STTSkill,execute
+    STTSkill: __init__(0),_record_wav(2),_ensure_wav(2),_transcribe_vosk(2),execute(1)
+    get_info()
+    health_check()
+    execute(input_data:dict)->dict
+  skills/stt/providers/vosk/v1/skill.py:
     i: json,os,shutil,subprocess,sys,tempfile,pathlib.Path
     e: get_info,health_check,STTSkill,execute
     STTSkill: __init__(0),_record_wav(2),_ensure_wav(2),_transcribe_vosk(2),execute(1)
     get_info()
     health_check()
     execute(input_data:dict)->dict
+  skills/stt/providers/vosk/v4/skill.py:
+    i: json,os,shutil,subprocess,tempfile,sys,pathlib.Path
+    e: get_info,health_check,STTSkill,execute
+    STTSkill: __init__(0),_record_wav(2),_ensure_wav(2),_transcribe_vosk(2),execute(1)
+    get_info()
+    health_check()
+    execute(input_data:dict)->dict
+  skills/stt/providers/whisper/v1/skill.py:
+    e: get_info,health_check,WhisperSkill
+    WhisperSkill: execute(1)
+    get_info()
+    health_check()
   skills/deps/v1/skill.py:
     i: subprocess,sys,os,json,importlib.util
     e: DepsSkill,get_info,health_check
     DepsSkill: check_python_module(1),check_system_command(1),pip_install(2),scan_system(0),suggest_alternatives(1)  # Detect, install and manage Python and...
     get_info()
     health_check()
-  skills/web_search/v1/skill.py:
+  skills/kalkulator/v2/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/kalkulator/v3/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/kalkulator/v1/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/web_search/providers/duckduckgo/v1/skill.py:
     i: subprocess,json,re,html.parser,urllib.{parse,request}
     e: SimpleHTMLTextExtractor,WebSearchSkill,get_info,health_check
     SimpleHTMLTextExtractor: __init__(0),handle_starttag(2),handle_endtag(1),handle_data(1),get_text(0)  # Extract visible text from HTML.
@@ -88,19 +214,72 @@ D:
     GitOpsSkill: __init__(1),_run(2),init(1),status(1),add(2)  # Manage local git repos for skill deve...
     get_info()
     health_check()
-  cores/v1/core.py:
-    i: os,sys,json,subprocess,hashlib,traceback,shutil,threading,time,warnings
-    e: _SPAM,ROOT,SKILLS_DIR,PIPELINES_DIR,LOGS_DIR,STATE_FILE,MAX_EVO_ITERATIONS,C
+  cores/v1/config.py:
+    i: os,json,datetime,datetime.timezone,pathlib.Path
+    e: ROOT,SKILLS_DIR,PIPELINES_DIR,LOGS_DIR,STATE_FILE,MAX_EVO_ITERATIONS,C,cpr
     C: 
-    Logger: __init__(1),_write(2),_entry(2),core(2),skill(3)  # Per-skill, per-core structured loggin...
-    LLMClient: __init__(4),tier_info(0),_is_available(1),_report_ok(1),_report_fail(2)  # Tiered LLM routing: free remote → loc...
-    IntentEngine: __init__(3),save(0),_detect_topics(1),_update_topics(1),_recent_topic(1)  # Multi-stage intent detection with con...
-    SkillManager: __init__(2),list_skills(0),latest_v(1),skill_path(2),create_skill(2)
-    _quiet_print()
-    _quiet_warning(msg;cat)
-    _setup_litellm()
     cpr(c;m)
-    _detect_ollama_models()
+    load_state()
+    save_state(s)
     _parse_models_override(raw)
     get_models_from_config(state)
-    load_state()
+  cores/v1/resource_monitor.py:
+    i: os,shutil,subprocess,pathlib.Path
+    e: ResourceMonitor
+    ResourceMonitor: __init__(0),snapshot(0),_cpu_count(0),_ram_total(0),_ram_available(0)  # Detects CPU, RAM, GPU, disk, installe...
+  cores/v1/intent_engine.py:
+    i: json,re,datetime,config.{SKILLS_DIR,save_state},datetime.timezone,utils.clean_json
+    e: IntentEngine
+    IntentEngine: __init__(3),save(0),_detect_topics(1),_update_topics(1),_recent_topic(1)  # Multi-stage intent detection with con...
+  cores/v1/supervisor.py:
+    i: json,shutil,datetime,config.{ROOT,save_state},datetime.timezone
+    e: Supervisor
+    Supervisor: __init__(2),active(0),active_version(0),list_cores(0),switch(0)  # Manages core versions: can create cor...
+  cores/v1/provider_selector.py:
+    i: json,config.SKILLS_DIR,pathlib.Path,typing.Optional
+    e: TIER_ORDER,ProviderInfo,ProviderSelector
+    ProviderInfo: __init__(2)  # Parsed provider metadata.
+    ProviderSelector: __init__(2),list_capabilities(0),list_providers(1),load_manifest(1),load_meta(2)  # Selects the best available provider f...
+  cores/v1/llm_client.py:
+    i: os,json,subprocess,time,re,config.{FREE_MODELS,LOCAL_PREFERRED,TIER_FREE,TIER_LOCAL,TIER_PAID}
+    e: discover_models,LLMClient
+    LLMClient: __init__(4),tier_info(0),_is_available(1),_report_ok(1),_report_fail(2)  # Tiered LLM routing: free remote → loc...
+    _detect_ollama_models()
+    discover_models()
+  cores/v1/evo_engine.py:
+    i: config.{C,MAX_EVO_ITERATIONS,cpr}
+    e: EvoEngine
+    EvoEngine: __init__(3),handle_request(3),_execute_with_validation(4),_validate_goal(3),evolve_skill(2)  # Generic evolutionary algorithm:
+  cores/v1/utils.py:
+    i: os,sys,subprocess,warnings,builtins,logging,rich.console.Console,rich.markdown.RichMarkdown,rich.theme.Theme
+    e: _SPAM,setup_litellm,clean_code,clean_json
+    _quiet_print()
+    _quiet_warning(msg;cat)
+    setup_litellm()
+    clean_code(code)
+    clean_json(text)
+  cores/v1/core.py:
+    i: os,sys,json,time,datetime,config.{C,ROOT,SKILLS_DIR},datetime.{timedelta,timezone}
+    e: gen_compose,HELP,COMMANDS,main
+    gen_compose(skills;state)
+    _cmd_help()
+    _cmd_quit()
+    _cmd_skills()
+    _cmd_create(a1;a2)
+    _cmd_test(a1)
+    _cmd_run(a1;a2)
+    _cmd_evolve(a1)
+  cores/v1/pipeline_manager.py:
+    i: json,datetime,config.{C,PIPELINES_DIR,cpr},datetime.timezone,utils.{clean_code,clean_json}
+    e: PipelineManager
+    PipelineManager: __init__(3),list_p(0),create_p(2),run_p(2)
+  cores/v1/logger.py:
+    i: json,datetime,config.LOGS_DIR,datetime.timezone
+    e: Logger
+    Logger: __init__(1),_write(2),_entry(2),core(2),skill(3)  # Per-skill, per-core structured loggin...
+  cores/v1/skill_manager.py:
+    i: json,hashlib,shutil,subprocess,sys,traceback,datetime,datetime.timezone,importlib.util,pathlib.Path
+    e: SkillManager
+    SkillManager: __init__(3),_collect_versions(1),list_skills(0),latest_v(1),_active_provider(1)
+    _load_bootstrap_skill(name)
+    _load_skill_from_path(p;mod_name='skill')
