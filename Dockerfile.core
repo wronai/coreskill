@@ -1,0 +1,19 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+RUN pip install --no-cache-dir litellm requests
+
+COPY cores/ /app/cores/
+COPY skills/ /app/skills/
+COPY logs/ /app/logs/
+COPY pipelines/ /app/pipelines/
+COPY main.py /app/main.py
+
+ENV CORE_ID=A
+ENV CORE_VERSION=1
+ENV PYTHONUNBUFFERED=1
+
+HEALTHCHECK --interval=30s --timeout=10s \
+    CMD python -c "import sys; sys.exit(0)"
+
+CMD ["python", "main.py"]
