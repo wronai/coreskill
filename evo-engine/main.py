@@ -14,7 +14,7 @@ LOGS = ROOT / "logs"
 STATE = ROOT / ".evo_state.json"
 
 DEFAULT = {"active_core":"A","core_a_version":1,"core_b_version":1,
-           "model":"openrouter/google/gemini-2.0-flash-exp:free",
+           "model":"openrouter/meta-llama/llama-3.3-70b-instruct:free",
            "openrouter_api_key":"","tts_enabled":False,"iteration":0}
 
 def log(msg, lvl="BOOT"):

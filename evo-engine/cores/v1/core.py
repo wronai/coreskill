@@ -103,15 +103,83 @@ class C:
 
 def cpr(c, m): print(f"{c}{m}{C.R}", flush=True)
 
-# ─── Free models (sorted by capability) ─────────────────────────────
-MODELS = [
-    "openrouter/google/gemini-2.0-flash-exp:free",
-    "openrouter/deepseek/deepseek-chat-v3-0324:free",
-    "openrouter/qwen/qwen-2.5-72b-instruct:free",
-    "openrouter/meta-llama/llama-3.1-8b-instruct:free",
-    "openrouter/google/gemma-3-1b-it:free",
+# ─── Model Tiers ─────────────────────────────────────────────────────
+TIER_FREE  = "free"       # OpenRouter free models (rate-limited)
+TIER_LOCAL = "local"      # Ollama local models (always available)
+TIER_PAID  = "paid"       # OpenRouter paid models (last resort)
+
+FREE_MODELS = [
+    "openrouter/meta-llama/llama-3.3-70b-instruct:free",
+    "openrouter/google/gemma-3-27b-it:free",
+    "openrouter/mistralai/mistral-small-3.1-24b-instruct:free",
+    "openrouter/google/gemma-3-12b-it:free",
+    "openrouter/google/gemma-3-4b-it:free",
 ]
-DEFAULT_MODEL = MODELS[0]
+
+# Preferred local models (sorted by quality for code gen + Polish)
+LOCAL_PREFERRED = [
+    "ollama/qwen2.5-coder:14b",
+    "ollama/mistral:7b-instruct",
+    "ollama/qwen2.5-coder:7b-instruct",
+    "ollama/llama3.2:latest",
+    "ollama/qwen2.5:3b",
+]
+
+PAID_MODELS = [
+    "openrouter/google/gemini-2.0-flash-001",
+    "openrouter/anthropic/claude-3.5-haiku",
+]
+
+# Backward compat
+MODELS = FREE_MODELS
+DEFAULT_MODEL = FREE_MODELS[0]
+
+# Cooldown durations (seconds)
+COOLDOWN_RATE_LIMIT = 60
+COOLDOWN_TIMEOUT    = 30
+COOLDOWN_SERVER_ERR = 20
+
+
+def _detect_ollama_models():
+    """Auto-detect available ollama models. Returns list of 'ollama/<name>' strings."""
+    try:
+        r = subprocess.run(["ollama", "list"], capture_output=True, text=True, timeout=5)
+        if r.returncode != 0:
+            return []
+        found = []
+        for line in r.stdout.strip().split("\n")[1:]:
+            if not line.strip():
+                continue
+            name = line.split()[0]
+            found.append(f"ollama/{name}")
+        # Sort: preferred first, then rest
+        preferred = [m for m in LOCAL_PREFERRED if m in found]
+        rest = [m for m in found if m not in preferred]
+        return preferred + rest
+    except Exception:
+        return []
+
+
+def _parse_models_override(raw):
+    if not raw:
+        return None
+    if isinstance(raw, list):
+        items = [str(x).strip() for x in raw if str(x).strip()]
+        return items or None
+    if isinstance(raw, str):
+        items = [x.strip() for x in raw.split(",") if x.strip()]
+        return items or None
+    return None
+
+
+def get_models_from_config(state):
+    env_models = _parse_models_override(os.environ.get("EVO_MODELS", ""))
+    if env_models:
+        return env_models
+    st_models = _parse_models_override(state.get("models")) if isinstance(state, dict) else None
+    if st_models:
+        return st_models
+    return FREE_MODELS
 
 # ─── State ───────────────────────────────────────────────────────────
 def load_state():
@@ -178,72 +246,176 @@ class Logger:
         return " | ".join(summary) if summary else "No history"
 
 
-# ─── LLM Client with multi-model routing ────────────────────────────
+# ─── LLM Client with tiered model routing ────────────────────────────
 class LLMClient:
-    def __init__(self, api_key, model, logger=None):
+    """
+    Tiered LLM routing: free remote → local (ollama) → paid remote.
+    - Rate-limited models get cooldown (not permanent blacklist)
+    - 404/auth errors permanently blacklist the model
+    - Auto-detects ollama on first init
+    - Silent fallback (no noisy output)
+    """
+
+    def __init__(self, api_key, model, logger=None, models=None):
         self.api_key = api_key
         self.model = model
         self.logger = logger
-        self._failed_models = set()
+        self.active_tier = TIER_FREE
+
+        # Build tier lists
+        self._tiers = {
+            TIER_FREE: models or FREE_MODELS,
+            TIER_LOCAL: _detect_ollama_models(),
+            TIER_PAID: PAID_MODELS if api_key else [],
+        }
+        # Backward compat
+        self.models = self._tiers[TIER_FREE]
+
+        # Health tracking
+        self._dead = set()        # permanently failed (404, auth)
+        self._cooldowns = {}      # model -> (available_after_ts, reason)
         self._last_errors = {}
+        self._stats = {}          # model -> {ok: int, fail: int}
+
         os.environ["OPENROUTER_API_KEY"] = api_key
 
-    def chat(self, messages, temperature=0.7, max_tokens=4096):
-        # Try primary model first
-        result = self._try_model(self.model, messages, temperature, max_tokens)
-        if result is not None:
-            return result
+        # Classify current model into a tier
+        for tier, ms in self._tiers.items():
+            if model in ms:
+                self.active_tier = tier
+                break
 
-        # Self-heal: try fallback models
-        cpr(C.YELLOW, f"[SELF-HEAL] Primary model failed, trying alternatives...")
-        for model in MODELS:
-            if model == self.model or model in self._failed_models:
-                continue
-            cpr(C.DIM, f"  -> {model}")
-            result = self._try_model(model, messages, temperature, max_tokens)
+        if logger:
+            local_n = len(self._tiers[TIER_LOCAL])
+            logger.core("llm_init", {
+                "model": model, "tier": self.active_tier,
+                "free": len(self._tiers[TIER_FREE]),
+                "local": local_n, "paid": len(self._tiers[TIER_PAID]),
+            })
+
+    # ── Public info ──
+    def tier_info(self):
+        """Return human-readable tier status."""
+        parts = []
+        for tier in (TIER_FREE, TIER_LOCAL, TIER_PAID):
+            n = len(self._tiers[tier])
+            avail = sum(1 for m in self._tiers[tier] if self._is_available(m))
+            if n > 0:
+                parts.append(f"{tier}:{avail}/{n}")
+        return " | ".join(parts)
+
+    # ── Availability checks ──
+    def _is_available(self, model):
+        if model in self._dead:
+            return False
+        cd = self._cooldowns.get(model)
+        if cd:
+            if time.time() < cd[0]:
+                return False
+            del self._cooldowns[model]
+        return True
+
+    def _report_ok(self, model):
+        s = self._stats.setdefault(model, {"ok": 0, "fail": 0})
+        s["ok"] += 1
+        self._cooldowns.pop(model, None)
+
+    def _report_fail(self, model, err):
+        s = self._stats.setdefault(model, {"ok": 0, "fail": 0})
+        s["fail"] += 1
+        self._last_errors[model] = err
+        el = err.lower()
+        if "notfound" in el or "404" in err or "no endpoints" in el:
+            self._dead.add(model)
+        elif "401" in err or "authentication" in el or "unauthorized" in el:
+            self._dead.add(model)
+        elif "ratelimit" in el or "rate limit" in el or "429" in err:
+            self._cooldowns[model] = (time.time() + COOLDOWN_RATE_LIMIT, "rate_limit")
+        elif "timeout" in el or "timed out" in el:
+            self._cooldowns[model] = (time.time() + COOLDOWN_TIMEOUT, "timeout")
+        elif "500" in err or "502" in err or "503" in err:
+            self._cooldowns[model] = (time.time() + COOLDOWN_SERVER_ERR, "server_error")
+        else:
+            self._cooldowns[model] = (time.time() + COOLDOWN_SERVER_ERR, "unknown")
+
+    # ── Core chat with tiered fallback ──
+    def chat(self, messages, temperature=0.7, max_tokens=4096):
+        # 1. Try current model
+        if self._is_available(self.model):
+            result = self._try_model(self.model, messages, temperature, max_tokens)
             if result is not None:
-                self.model = model
-                state = load_state()
-                state["model"] = model
-                save_state(state)
-                cpr(C.GREEN, f"[SELF-HEAL] Switched to {model}")
-                if self.logger: self.logger.core("model_switch", {"to": model})
                 return result
 
-        if self.logger: self.logger.core("all_models_failed")
+        # 2. Tiered fallback — free → local → paid
+        for tier in (TIER_FREE, TIER_LOCAL, TIER_PAID):
+            for model in self._tiers[tier]:
+                if model == self.model or not self._is_available(model):
+                    continue
+                result = self._try_model(model, messages, temperature, max_tokens)
+                if result is not None:
+                    old_model, old_tier = self.model, self.active_tier
+                    self.model = model
+                    self.active_tier = tier
+                    state = load_state()
+                    state["model"] = model
+                    state["model_tier"] = tier
+                    save_state(state)
+                    if self.logger:
+                        self.logger.core("model_switch", {
+                            "from": old_model, "to": model,
+                            "from_tier": old_tier, "to_tier": tier,
+                        })
+                    if tier != old_tier:
+                        cpr(C.DIM, f"[LLM] {old_tier}→{tier}: {model.split('/')[-1]}")
+                    return result
+
+        # 3. All failed
+        if self.logger:
+            self.logger.core("all_models_failed", {"tiers": self.tier_info()})
+        return self._build_error_msg()
+
+    def _build_error_msg(self):
         errs = list(self._last_errors.values())[-8:]
-        joined = " | ".join(e[:160].replace("\n", " ") for e in errs if e)
-        joined = joined[:320]
+        joined = " | ".join(e[:120].replace("\n", " ") for e in errs if e)[:300]
         lower = joined.lower()
-        if "401" in joined or "403" in joined or "authentication" in lower or "unauthorized" in lower:
-            msg = "[ERROR] Authentication failed (OpenRouter API key). Check: https://openrouter.ai/keys"
-        elif "ratelimit" in lower or "rate limit" in lower or "429" in joined:
-            msg = "[ERROR] Rate limit / quota exceeded on OpenRouter. Try again later or use a different model/key."
-        else:
-            msg = "[ERROR] All models failed. Last error: " + (joined or "(no details)")
-        return msg
+        has_local = bool(self._tiers[TIER_LOCAL])
+        if "ratelimit" in lower or "rate limit" in lower or "429" in joined:
+            if has_local:
+                return "[ERROR] Remote rate-limited, local models also failed. Spróbuj za chwilę."
+            return "[ERROR] Rate limit. Zainstaluj ollama dla lokalnych modeli: curl -fsSL https://ollama.com/install.sh | sh"
+        if "401" in joined or "authentication" in lower:
+            if has_local:
+                return "[ERROR] API key invalid, but local models also failed. Check key + ollama status."
+            return "[ERROR] API key invalid. Check: https://openrouter.ai/keys"
+        if "notfound" in lower or "404" in joined:
+            if has_local:
+                return "[ERROR] Remote models unavailable, local also failed. Try: ollama pull qwen2.5:3b"
+            return "[ERROR] Models unavailable. Install ollama or change models."
+        return f"[ERROR] All models failed ({self.tier_info()}). Last: {joined[:100]}"
 
     def _try_model(self, model, messages, temperature, max_tokens):
-        import time
-        for attempt in range(2):  # 2 attempts with delay
+        is_local = model.startswith("ollama/")
+        kw = dict(model=model, messages=messages,
+                  temperature=temperature, max_tokens=max_tokens)
+        if not is_local:
+            kw["api_key"] = self.api_key
+
+        for attempt in range(2):
             try:
-                r = litellm.completion(model=model, messages=messages,
-                                       temperature=temperature, max_tokens=max_tokens,
-                                       api_key=self.api_key)
+                r = litellm.completion(**kw)
+                self._report_ok(model)
                 return r.choices[0].message.content
             except Exception as e:
                 err = str(e)
-                self._last_errors[model] = err
-                if self.logger: self.logger.core("llm_error", {"model": model, "error": err[:200]})
-                # Rate limit - wait and retry
-                if "RateLimitError" in err or "rate limit" in err.lower():
-                    if attempt == 0:
-                        cpr(C.DIM, f"  Rate limited, waiting 2s...")
-                        time.sleep(2)
-                        continue
-                if "401" in err or "AuthenticationError" in err or "Authentication" in err:
-                    self._failed_models.add(model)
+                if self.logger:
+                    self.logger.core("llm_error", {"model": model, "error": err[:200]})
+                # Rate limit on first attempt → wait and retry
+                if ("RateLimitError" in err or "rate limit" in err.lower()) and attempt == 0:
+                    time.sleep(4)
+                    continue
+                self._report_fail(model, err)
                 return None
+        self._report_fail(model, "max_retries")
         return None
 
     def gen_code(self, prompt, ctx="", learning=""):
@@ -269,48 +441,23 @@ class LLMClient:
                           {"role":"user","content":prompt}], 0.2)
 
     def analyze_need(self, user_msg, skills):
-        """Analyze user request. Returns JSON with action."""
-        skill_list = json.dumps(skills)
-        s = f"""You are an action classifier for an AI system that can CREATE and RUN skills (Python modules).
-Available skills: {skill_list}
-
-RULES (follow strictly):
-1. If user wants voice/speech/TTS/"powiedz"/"mów"/"głosowo" → use tts skill:
-   {{"action":"use","skill":"tts","input":{{"text":"<what to say in context>"}},"goal":"produce_audio"}}
-2. If user wants to IMPROVE/CHANGE/FIX an existing skill ("zmień głos","lepszy tts","napraw") → evolve it:
-   {{"action":"evolve","skill":"<name>","feedback":"<what to change>","goal":"<outcome>"}}
-3. If user asks to CREATE/INSTALL/BUILD something new ("stwórz","zainstaluj","zrób","wgraj","dodaj skill") → create skill:
-   {{"action":"create","name":"<snake_case>","description":"<detailed what it does>","goal":"<outcome>"}}
-4. If an existing skill can handle the request → use it:
-   {{"action":"use","skill":"<name>","input":{{...}},"goal":"<outcome>"}}
-5. If user needs something that REQUIRES code/tool/capability not available → create skill:
-   {{"action":"create","name":"<snake_case>","description":"<what it does>","goal":"<outcome>"}}
-6. ONLY if it's pure conversation/question with no action needed → chat:
-   {{"action":"chat"}}
-
-PREFER action over chat. If in doubt, create a skill. Return ONLY JSON."""
-        raw = self.chat([{"role":"system","content":s},
-                         {"role":"user","content":user_msg}], 0.2, 500)
-        try:
-            parsed = json.loads(_clean_json(raw))
-            if parsed.get("action") and parsed["action"] != "chat":
-                return parsed
-            # LLM said chat - but double-check with keywords (LLM often misses Polish intent)
-            # Fall through to keyword fallback below
-        except:
-            pass
-        # Keyword fallback if LLM failed or returned garbage
+        """Analyze user request. Keywords FIRST (fast+reliable), LLM only for ambiguous."""
         ul = user_msg.lower()
         _evolve_kw = ("zmien", "zmień", "napraw", "popraw", "lepszy", "lepsza",
                        "ulepszy", "fix", "improve", "change")
         _create_kw = ("stworz", "stwórz", "zainstaluj", "zrob", "zrób",
-                       "create", "install", "build", "wgraj", "dodaj")
+                       "create", "install", "build", "wgraj", "dodaj", "napisz",
+                       "zbuduj", "chcialbym", "chciałbym", "potrzebuje", "potrzebuję",
+                       "zaimplementuj", "implement", "deploy", "aplikacj", "program")
         _tts_kw = ("glos", "głos", "voice", "tts", "mow", "mów", "glosowo")
-        _stt_kw = ("slyszysz", "słyszysz", "slychac", "słychać", "czy mnie slyszysz",
-                   "czy mnie słyszysz", "co mowie", "co mówię", "co mówie", "co powiedzialem",
-                   "co powiedziałem", "transkrybuj", "transkrypcja", "stt")
+        _speak_kw = ("powiedz", "przywitaj", "say", "speak", "mow ze", "mów ze",
+                     "mow do", "mów do", "pogadac", "pogadaj")
+        _stt_kw = ("slyszysz", "słyszysz", "slychac", "słychać", "mikrofon",
+                   "co mowie", "co mówię", "transkrybuj", "transkrypcja", "stt",
+                   "rozpozn", "nasłuch", "nasluch", "dyktuj", "dictate")
 
-        # 1. Evolve check FIRST (before use) - "zmien glos" = evolve, not use
+        # ── PHASE 1: Fast keyword detection (no LLM call needed) ──
+        # 1. Evolve check FIRST - "zmien glos" = evolve, not use
         if any(w in ul for w in _evolve_kw):
             for sk_name in skills:
                 if sk_name in ul:
@@ -318,11 +465,13 @@ PREFER action over chat. If in doubt, create a skill. Return ONLY JSON."""
             if any(w in ul for w in _tts_kw):
                 return {"action":"evolve","skill":"tts","feedback":user_msg,"goal":"improve tts"}
 
-        # 2. Create check
+        # 2. Create check ("chcialbym stworzyc aplikacje APK", "napisz program")
         if any(w in ul for w in _create_kw):
             words = ul.split()
             name = "new_skill"
-            skip = set(_create_kw) | {"skill", "mi", "nowy", "nowa", "do"}
+            skip = set(_create_kw) | {"skill", "mi", "nowy", "nowa", "do", "sie", "się",
+                                       "postaci", "jako", "moze", "może", "chce", "chcę",
+                                       "obslugi", "obsługi", "dokumentow", "dokumentów"}
             for w in reversed(words):
                 clean = re.sub(r'[^a-z0-9_]', '', w)
                 if clean and clean not in skip and len(clean) > 2:
@@ -330,16 +479,36 @@ PREFER action over chat. If in doubt, create a skill. Return ONLY JSON."""
                     break
             return {"action":"create","name":name,"description":user_msg,"goal":"fulfill request"}
 
-        # 3. STT (listen/transcribe) intents
+        # 3. Direct speak commands ("powiedz cos", "przywitaj sie glosowo")
+        if any(w in ul for w in _speak_kw):
+            return {"action":"use","skill":"tts","input":{"text":user_msg},"goal":"produce_audio"}
+
+        # 4. STT (listen/transcribe)
         if any(w in ul for w in _stt_kw):
             if "stt" in skills:
                 return {"action":"use","skill":"stt","input":{"duration_s": 4, "lang": "pl"},"goal":"transcribe_audio"}
-            return {"action":"create","name":"stt","description":"Speech-to-Text skill: record from microphone and transcribe.","goal":"enable_stt"}
+            return {"action":"create","name":"stt","description":"STT: nagrywanie z mikrofonu i transkrypcja po polsku, stdlib+subprocess only.","goal":"enable_stt"}
 
-        # 4. TTS (speak) intents
+        # 5. Voice/TTS mentions
         if any(w in ul for w in _tts_kw):
             return {"action":"use","skill":"tts","input":{"text":user_msg},"goal":"produce_audio"}
 
+        # ── PHASE 2: LLM for ambiguous cases (no keyword match) ──
+        skill_list = json.dumps(skills)
+        s = f"""Action classifier. Skills: {skill_list}
+Return ONLY JSON. Rules:
+1. If user wants something DONE (not just talk) → create skill or use existing.
+2. "tak"/"ok"/"dawaj" = confirm previous → {{"action":"create","name":"<from_context>","description":"<from_context>","goal":"confirm"}}
+3. Pure small-talk only → {{"action":"chat"}}
+PREFER action over chat. When in doubt → create."""
+        raw = self.chat([{"role":"system","content":s},
+                         {"role":"user","content":user_msg}], 0.2, 500)
+        try:
+            parsed = json.loads(_clean_json(raw))
+            if parsed.get("action"):
+                return parsed
+        except:
+            pass
         return {"action": "chat"}
 
 
@@ -366,6 +535,290 @@ def _clean_json(text):
     if start >= 0 and end > start:
         return text[start:end]
     return text
+
+
+# ─── Model Discovery ─────────────────────────────────────────────────
+def discover_models():
+    """Fetch available free models from OpenRouter API."""
+    import urllib.request
+    try:
+        req = urllib.request.Request("https://openrouter.ai/api/v1/models",
+                                     headers={"Accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read())
+        free = [m["id"] for m in data.get("data", []) if ":free" in m.get("id", "")]
+        pref = ["nvidia/", "meta-llama/", "google/", "qwen/", "mistralai/", "openai/"]
+        scored = []
+        for m in free:
+            score = sum(6 - i for i, p in enumerate(pref) if p in m)
+            scored.append((score, m))
+        scored.sort(reverse=True)
+        return [f"openrouter/{m}" for _, m in scored[:12]]
+    except Exception:
+        return []
+
+
+# ─── Intent Engine: context-aware multi-stage intent detection ────────
+class IntentEngine:
+    """
+    Multi-stage intent detection with conversation context and learning.
+    Stages:
+      1. Topic tracking (voice/web/files/git context)
+      2. High-confidence keyword patterns
+      3. LLM classification with full context
+      4. Low-confidence keyword fallback
+      5. Context inference (topic-based disambiguation)
+      6. Gap recording for proactive skill suggestions
+    """
+
+    _TOPIC_KW = {
+        "voice": ("glos", "głos", "voice", "mow", "mów", "tts", "stt",
+                  "slysz", "słysz", "mowi", "mówi", "nagr", "audio",
+                  "glosow", "głosow", "powiedz", "speak", "rozm"),
+        "web":   ("web", "http", "url", "stron", "internet", "search", "szukaj"),
+        "files": ("plik", "file", "folder", "katalog", "dir", "zapis", "odczyt"),
+        "git":   ("git", "commit", "push", "branch", "repo"),
+        "dev":   ("kod", "code", "program", "skrypt", "script", "debug"),
+    }
+
+    def __init__(self, llm, logger, state):
+        self.llm = llm
+        self.log = logger
+        self.state = state
+        self._p = state.setdefault("user_profile", {
+            "topics": [], "corrections": [], "preferences": {},
+            "skill_usage": {}, "unhandled": [],
+        })
+
+    def save(self):
+        self.state["user_profile"] = self._p
+        save_state(self.state)
+
+    # ── Topic tracking ──
+    def _detect_topics(self, msg):
+        ul = msg.lower()
+        return [t for t, kws in self._TOPIC_KW.items() if any(w in ul for w in kws)]
+
+    def _update_topics(self, msg):
+        new = self._detect_topics(msg)
+        if new:
+            self._p["topics"] = (new + self._p.get("topics", []))[:30]
+
+    def _recent_topic(self, n=10):
+        topics = self._p.get("topics", [])[:n]
+        if not topics: return None
+        from collections import Counter
+        return Counter(topics).most_common(1)[0][0]
+
+    # ── Context building ──
+    def _build_context(self, conv):
+        parts = []
+        topic = self._recent_topic()
+        if topic: parts.append(f"Active conversation topic: {topic}")
+        prefs = self._p.get("preferences", {})
+        if prefs: parts.append(f"User preferences: {json.dumps(prefs, ensure_ascii=False)}")
+        corrections = self._p.get("corrections", [])[-3:]
+        if corrections:
+            parts.append("Past intent corrections (user corrected me):\n" +
+                "\n".join(f"  '{c['msg'][:50]}' was wrongly '{c['wrong']}', should be '{c['correct']}'"
+                          for c in corrections))
+        recent = conv[-6:] if conv else []
+        if recent:
+            parts.append("Recent conversation:\n" +
+                "\n".join(f"  {m['role']}: {m['content'][:80]}" for m in recent))
+        return "\n".join(parts) if parts else "No prior context."
+
+    # ── Recording ──
+    def record_skill_use(self, skill):
+        u = self._p.setdefault("skill_usage", {})
+        u[skill] = u.get(skill, 0) + 1
+
+    def record_correction(self, msg, wrong, correct):
+        c = self._p.setdefault("corrections", [])
+        c.append({"msg": msg[:200], "wrong": wrong, "correct": correct,
+                  "ts": datetime.now(timezone.utc).isoformat()})
+        self._p["corrections"] = c[-50:]
+        self.save()
+        self.log.core("intent_correction", {"wrong": wrong, "correct": correct})
+
+    def record_unhandled(self, msg):
+        u = self._p.setdefault("unhandled", [])
+        u.append({"msg": msg[:200], "ts": datetime.now(timezone.utc).isoformat()})
+        self._p["unhandled"] = u[-30:]
+
+    # ── Main entry ──
+    def analyze(self, user_msg, skills, conv=None):
+        """Multi-stage intent detection with full conversation context."""
+        self._update_topics(user_msg)
+        conv = conv or []
+        topic = self._recent_topic()
+        context = self._build_context(conv)
+
+        # Stage 1: High-confidence keywords
+        kw = self._kw_classify(user_msg, skills, topic)
+        if kw and kw.pop("_conf", 0) >= 0.9:
+            self.log.core("intent_kw_hi", {"action": kw.get("action"), "skill": kw.get("skill","")})
+            return kw
+
+        # Stage 2: LLM with context
+        llm_r = self._llm_classify(user_msg, skills, context, topic)
+        if llm_r and llm_r.get("action") != "chat":
+            self.log.core("intent_llm", {"action": llm_r.get("action"), "skill": llm_r.get("skill","")})
+            return llm_r
+
+        # Stage 3: Low-confidence keyword fallback
+        if kw and kw.get("action") != "chat":
+            kw.pop("_conf", None)
+            self.log.core("intent_kw_lo", {"action": kw.get("action")})
+            return kw
+
+        # Stage 4: Context inference
+        ctx = self._ctx_infer(user_msg, skills, topic, conv)
+        if ctx:
+            self.log.core("intent_ctx", {"action": ctx.get("action")})
+            return ctx
+
+        self.record_unhandled(user_msg)
+        return {"action": "chat"}
+
+    # ── Stage 1: Keywords with confidence ──
+    def _kw_classify(self, msg, skills, topic):
+        ul = msg.lower()
+        _evolve = ("zmien", "zmień", "napraw", "popraw", "lepszy", "lepsza",
+                   "ulepszy", "fix", "improve", "change")
+        _create = ("stworz", "stwórz", "zainstaluj", "zrob", "zrób",
+                   "create", "install", "build", "wgraj", "dodaj", "napisz",
+                   "zbuduj", "chcialbym", "chciałbym", "potrzebuje", "potrzebuję",
+                   "zaimplementuj", "implement", "deploy", "aplikacj", "program")
+        _tts = ("powiedz", "przywitaj", "przeczytaj", "speak", "say",
+                "mow ze", "mów ze", "mow do", "mów do", "read aloud")
+        _stt = ("slyszysz", "słyszysz", "slychac", "słychać", "mikrofon",
+                "co mowie", "co mówię", "transkrybuj", "transkrypcja", "stt",
+                "nagraj", "nagrywaj", "record", "listen",
+                "rozpoznaj mow", "rozpoznaj mów", "posluchaj", "posłuchaj",
+                "dyktuj", "dictate", "nasłuch", "nasluch")
+        _voice = ("glos", "głos", "voice", "tts", "glosow", "głosow")
+        _conv  = ("pogad", "rozmaw", "rozmow", "rozmawiać", "porozmaw",
+                  "gadaj", "gadac", "gadać")
+
+        # 1. Evolve FIRST
+        if any(w in ul for w in _evolve):
+            for sk in skills:
+                if sk in ul:
+                    return {"action":"evolve","skill":sk,"feedback":msg,"goal":"improve skill","_conf":0.95}
+            if any(w in ul for w in _voice):
+                return {"action":"evolve","skill":"tts","feedback":msg,"goal":"improve tts","_conf":0.9}
+
+        # 2. Create (broad)
+        if any(w in ul for w in _create):
+            words = ul.split()
+            name = "new_skill"
+            skip = set(_create) | {"skill", "mi", "nowy", "nowa", "do", "sie", "się",
+                                    "postaci", "jako", "obslugi", "obsługi"}
+            for w in reversed(words):
+                c = re.sub(r'[^a-z0-9_]', '', w)
+                if c and c not in skip and len(c) > 2: name = c; break
+            return {"action":"create","name":name,"description":msg,"goal":"fulfill request","_conf":0.95}
+
+        # 3. TTS commands (speak/say/greet) — BEFORE STT and voice!
+        if any(w in ul for w in _tts):
+            return {"action":"use","skill":"tts","input":{"text":msg},
+                    "goal":"produce_audio","_conf":0.95}
+
+        # 4. STT (listen/transcribe)
+        if any(w in ul for w in _stt):
+            if "stt" in skills:
+                return {"action":"use","skill":"stt","input":{"duration_s":4,"lang":"pl"},
+                        "goal":"transcribe_audio","_conf":0.95}
+            return {"action":"create","name":"stt",
+                    "description":"STT: stdlib+subprocess only, record mic + transcribe po polsku.",
+                    "goal":"enable_stt","_conf":0.9}
+
+        # 5. Voice conversation ("pogadać głosowo") → STT first
+        if any(w in ul for w in _conv) and any(w in ul for w in _voice):
+            if "stt" in skills:
+                return {"action":"use","skill":"stt","input":{"duration_s":5,"lang":"pl"},
+                        "goal":"voice_conversation","_conf":0.9}
+            return {"action":"create","name":"stt",
+                    "description":"STT for voice conversation: stdlib only, record mic + transcribe",
+                    "goal":"enable_voice","_conf":0.9}
+
+        # 6. Ambiguous voice keywords → default to TTS (speak), NOT STT
+        if any(w in ul for w in _voice):
+            return {"action":"use","skill":"tts","input":{"text":msg},
+                    "goal":"produce_audio","_conf":0.7}
+
+        return {"action":"chat","_conf":0.5}
+
+    # ── Stage 2: LLM with conversation context ──
+    def _llm_classify(self, msg, skills, context, topic):
+        # Build skill descriptions from meta.json
+        descs = {}
+        for sk in skills:
+            vs = skills[sk]
+            mp = SKILLS_DIR / sk / (vs[-1] if vs else "v1") / "meta.json"
+            if mp.exists():
+                try: descs[sk] = json.loads(mp.read_text()).get("description", sk)
+                except: descs[sk] = sk
+            else: descs[sk] = sk
+
+        s = f"""Intent classifier for evo-engine. Skills: {json.dumps(descs, ensure_ascii=False)}
+Context: {context}
+
+RULES:
+1. "powiedz"/"przywitaj"/"mów coś"/"głosowo" (user wants system to SPEAK) → use tts
+2. "czy mnie słyszysz"/"nagraj"/"posłuchaj"/"mikrofon" (user wants system to LISTEN) → use stt
+3. "zmień"/"napraw"/"lepszy" → evolve existing skill
+4. "stwórz"/"zrób"/"napisz"/"chciałbym"/"aplikacja" → create new skill
+5. "tak"/"ok"/"dawaj" = confirm previous → create/use from context
+6. ONLY pure small-talk → chat
+
+DEFAULT: "głosowo" without clear listen-intent = TTS (speak), NOT STT.
+PREFER action over chat. When in doubt → create skill.
+Return ONLY JSON: {{"action":"use|create|evolve|chat","skill":"name","input":{{}},"goal":"..."}}"""
+
+        raw = self.llm.chat([{"role":"system","content":s},
+                             {"role":"user","content":msg}], 0.2, 500)
+        try:
+            return json.loads(_clean_json(raw))
+        except:
+            return None
+
+    # ── Stage 4: Context inference ──
+    def _ctx_infer(self, msg, skills, topic, conv):
+        """Infer intent from conversation context when other stages fail."""
+        ul = msg.lower()
+        if not topic:
+            return None
+        # In voice topic: only route to STT if explicitly about listening/microphone
+        if topic == "voice":
+            _listen = ("slysz", "słysz", "mikrofon", "nagr", "nasluch", "nasłuch")
+            if any(w in ul for w in _listen) and "stt" in skills:
+                return {"action":"use","skill":"stt",
+                        "input":{"duration_s":4,"lang":"pl"},"goal":"listen"}
+        return None
+
+    # ── Proactive gap detection ──
+    def suggest_skills(self):
+        """Analyze unhandled intents → suggest new skills."""
+        unhandled = self._p.get("unhandled", [])
+        if len(unhandled) < 3:
+            return []
+        msgs = [u["msg"] for u in unhandled[-10:]]
+        prompt = ("User messages that no skill handled:\n" +
+                  "\n".join(f"- {m}" for m in msgs) +
+                  "\n\nSuggest 1-3 Python skills to handle these."
+                  " Return JSON: [{\"name\":\"snake_case\",\"description\":\"what it does\"}]")
+        raw = self.llm.chat([{"role":"system","content":"Suggest skills. Return ONLY JSON array."},
+                             {"role":"user","content":prompt}], 0.3, 500)
+        try:
+            r = json.loads(_clean_json(raw.replace("[", "{", 1).replace("]", "}", 1)) if "{" not in raw[:5] else raw)
+            # Handle both array and object
+            if isinstance(r, list): return r[:3]
+            if isinstance(r, dict) and "name" in r: return [r]
+        except:
+            pass
+        return []
 
 
 # ─── Bootstrap skill loaders (no LLM needed) ────────────────────────
@@ -643,10 +1096,11 @@ class EvoEngine:
         self.llm = llm
         self.log = logger
 
-    def handle_request(self, user_msg, skills):
+    def handle_request(self, user_msg, skills, analysis=None):
         """Full pipeline: analyze → execute/create/evolve → validate. No user prompts."""
         cpr(C.DIM, "[EVO] Analyzing...")
-        analysis = self.llm.analyze_need(user_msg, skills)
+        if analysis is None:
+            analysis = self.llm.analyze_need(user_msg, skills)
         action = analysis.get("action", "chat")
         goal = analysis.get("goal", "")
         inp = analysis.get("input", {})
@@ -946,14 +1400,17 @@ HELP = """
   /diagnose <n>      Diagnose skill       /scan           System capabilities
   /pipeline list|create|run <n>          /compose        Docker compose
   /model <n>         Switch model        /models         Available models
-  /core              A/B status          /switch         Switch core
-  /log [skill]       Recent logs         /learn [skill]  Show learnings
-  /state             System state        /help           This help
-  /quit              Exit
+  /models refresh    Auto-discover       /core           A/B status
+  /switch            Switch core         /log [skill]    Recent logs
+  /learn [skill]     Show learnings      /state          System state
+  /correct <wrong> <right>  Correct last intent (teaches the system)
+  /profile           Show learned user profile & preferences
+  /suggest           Suggest new skills based on unhandled requests
+  /topic             Show current conversation topic
+  /help              This help           /quit           Exit
 
-  Bootstrap skills: git_ops, devops, deps, web_search
-  Chat naturally - evo auto-detects needs, builds+tests skills
-  evolutionarily, and validates that the goal was achieved.
+  Chat naturally - evo auto-detects needs with context-aware IntentEngine,
+  builds+tests skills, and validates goals. Learns from your corrections.
 """
 
 
@@ -974,9 +1431,9 @@ def main():
     sv = Supervisor(state, logger)
 
     cpr(C.CYAN, "\n" + "=" * 56)
-    cpr(C.CYAN, "  evo-engine | Evolutionary AI System v1.1")
-    cpr(C.CYAN, "  Self-healing dual-core | Auto skill builder")
-    cpr(C.CYAN, "  Evolutionary loop | Learning from logs")
+    cpr(C.CYAN, "  evo-engine | Evolutionary AI System v1.2")
+    cpr(C.CYAN, "  Context-aware IntentEngine | Self-healing dual-core")
+    cpr(C.CYAN, "  Auto skill builder | Learning from conversations")
     cpr(C.CYAN, "=" * 56)
 
     ak = state.get("openrouter_api_key") or os.environ.get("OPENROUTER_API_KEY", "")
@@ -992,25 +1449,28 @@ def main():
         state["created_at"] = datetime.now(timezone.utc).isoformat()
     save_state(state)
 
-    mdl = state.get("model", DEFAULT_MODEL)
-    # Auto-fix stale model (stepfun fails often)
-    if mdl not in MODELS or "stepfun" in mdl:
-        mdl = DEFAULT_MODEL
+    models = get_models_from_config(state)
+    mdl = os.environ.get("EVO_MODEL") or state.get("model") or (models[0] if models else DEFAULT_MODEL)
+    # Auto-fix stale model
+    if (not mdl) or "stepfun" in str(mdl):
+        mdl = models[0] if models else DEFAULT_MODEL
         state["model"] = mdl
         save_state(state)
-    llm = LLMClient(ak, mdl, logger)
+    llm = LLMClient(ak, mdl, logger, models=models)
     sm = SkillManager(llm, logger)
     pm = PipelineManager(sm, llm, logger)
     evo = EvoEngine(sm, llm, logger)
+    intent = IntentEngine(llm, logger, state)
 
-    cpr(C.DIM, f"Model: {mdl} | Core: {sv.active()}")
+    cpr(C.DIM, f"Model: {llm.model} | Core: {sv.active()} | Tiers: {llm.tier_info()}")
     sk = sm.list_skills()
     if sk:
         cpr(C.GREEN, f"Skills: {', '.join(sk.keys())}")
     else:
         cpr(C.YELLOW, "No skills yet. Chat or /create <n>")
     cpr(C.DIM, "/help for commands\n")
-    logger.core("boot", {"model": mdl, "skills": list(sk.keys())})
+    logger.core("boot", {"model": llm.model, "tier": llm.active_tier,
+                          "tiers": llm.tier_info(), "skills": list(sk.keys())})
 
     conv = []
     while True:
@@ -1098,9 +1558,44 @@ def main():
                 llm.model = nm
                 cpr(C.GREEN, f"Model -> {nm}")
             elif act == "/models":
-                for m2 in MODELS:
-                    t = " <-" if m2 == llm.model else ""
-                    cpr(C.DIM, f"  {m2}{t}")
+                if a1 == "refresh":
+                    cpr(C.DIM, "[DISCOVER] Fetching available free models from OpenRouter...")
+                    discovered = discover_models()
+                    if discovered:
+                        state["models"] = ",".join(discovered)
+                        save_state(state)
+                        llm._tiers[TIER_FREE] = discovered
+                        llm.models = discovered
+                        cpr(C.GREEN, f"[DISCOVER] Found {len(discovered)} free models")
+                    else:
+                        cpr(C.YELLOW, "[DISCOVER] Could not fetch. Using current list.")
+                    # Also refresh local
+                    local = _detect_ollama_models()
+                    llm._tiers[TIER_LOCAL] = local
+                    cpr(C.DIM, f"Local (ollama): {len(local)} models")
+                    cpr(C.GREEN, f"Tiers: {llm.tier_info()}")
+                else:
+                    cpr(C.CYAN, f"  Active: {llm.model} [{llm.active_tier}]")
+                    cpr(C.CYAN, f"  Tiers:  {llm.tier_info()}")
+                    for tier in (TIER_FREE, TIER_LOCAL, TIER_PAID):
+                        ms = llm._tiers[tier]
+                        if not ms:
+                            continue
+                        cpr(C.DIM, f"  [{tier}]")
+                        for m2 in ms[:8]:
+                            cur = " ← active" if m2 == llm.model else ""
+                            if m2 in llm._dead:
+                                st = " ✗ dead"
+                            elif m2 in llm._cooldowns:
+                                cd_t, cd_r = llm._cooldowns[m2]
+                                secs = int(cd_t - time.time())
+                                st = f" ⏳ {cd_r} ({secs}s)" if secs > 0 else ""
+                            else:
+                                st = ""
+                            short = m2.split("/")[-1] if "/" in m2 else m2
+                            cpr(C.DIM, f"    {short}{cur}{st}")
+                        if len(ms) > 8:
+                            cpr(C.DIM, f"    ... +{len(ms)-8} more")
             elif act == "/core":
                 if a1 == "rollback":
                     ok, msg = sv.rollback_core()
@@ -1147,24 +1642,64 @@ def main():
                     cpr(C.RED, "deps skill not loaded")
             elif act == "/state":
                 print(json.dumps(state, indent=2))
+            elif act == "/correct":
+                if not a1 or not a2:
+                    cpr(C.YELLOW, "Usage: /correct <wrong_action> <correct_action>")
+                    cpr(C.DIM, "  Example: /correct tts stt  (last msg should have used stt, not tts)")
+                else:
+                    last_msg = conv[-2]["content"] if len(conv) >= 2 else "unknown"
+                    intent.record_correction(last_msg, a1, a2)
+                    cpr(C.GREEN, f"[LEARN] Zapamiętano: '{last_msg[:50]}' → {a2} (nie {a1})")
+            elif act == "/profile":
+                p = intent._p
+                topic = intent._recent_topic()
+                cpr(C.CYAN, f"  Active topic: {topic or 'none'}")
+                cpr(C.CYAN, f"  Topics history: {p.get('topics', [])[:10]}")
+                cpr(C.CYAN, f"  Skill usage: {json.dumps(p.get('skill_usage', {}))}")
+                cpr(C.CYAN, f"  Corrections: {len(p.get('corrections', []))}")
+                cpr(C.CYAN, f"  Unhandled: {len(p.get('unhandled', []))}")
+                prefs = p.get("preferences", {})
+                if prefs: cpr(C.CYAN, f"  Preferences: {json.dumps(prefs, ensure_ascii=False)}")
+            elif act == "/suggest":
+                cpr(C.DIM, "[LEARN] Analyzing unhandled intents...")
+                suggestions = intent.suggest_skills()
+                if suggestions:
+                    cpr(C.CYAN, "[LEARN] Proponowane nowe skills:")
+                    for sg in suggestions:
+                        cpr(C.GREEN, f"  → {sg.get('name','?')}: {sg.get('description','')[:80]}")
+                    cpr(C.DIM, "  Użyj /create <name> aby zbudować.")
+                else:
+                    cpr(C.DIM, "[LEARN] Za mało danych (potrzeba min. 3 nieobsłużone intencje).")
+            elif act == "/topic":
+                topic = intent._recent_topic()
+                topics = intent._p.get("topics", [])[:10]
+                cpr(C.CYAN, f"  Current topic: {topic or 'none'}")
+                cpr(C.DIM, f"  Recent: {topics}")
             else:
                 cpr(C.YELLOW, f"Unknown: {act}. /help")
             continue
 
-        # ── Chat with auto-detection ──
+        # ── Chat with context-aware IntentEngine ──
         conv.append({"role": "user", "content": ui})
         logger.core("user_msg", {"msg": ui[:200]})
 
-        # Step 1: Let EvoEngine handle (detect need → execute → validate)
-        outcome = evo.handle_request(ui, sm.list_skills())
+        # Step 1: IntentEngine analyzes with full conversation context
+        sk = sm.list_skills()
+        analysis = intent.analyze(ui, sk, conv)
+        logger.core("intent_result", {
+            "action": analysis.get("action"), "skill": analysis.get("skill",""),
+            "goal": analysis.get("goal","")})
+
+        # Step 2: Let EvoEngine handle the pre-computed analysis
+        outcome = evo.handle_request(ui, sk, analysis=analysis)
 
         if outcome:
             otype = outcome.get("type")
             if otype == "success":
                 r = outcome.get("result", {})
                 skill = outcome.get("skill", "?")
+                intent.record_skill_use(skill)
                 res_data = r.get("result", {}) if isinstance(r, dict) else r
-                # Build markdown summary
                 md = f"### ✅ `{skill}` — done\n"
                 if isinstance(res_data, dict):
                     for k, v in res_data.items():
@@ -1203,6 +1738,17 @@ def main():
             conv.append({"role": "assistant", "content": r})
             mprint(f"**evo>** {r}\n")
         logger.core("chat_response", {"length": len(r) if r else 0})
+
+        # Step 4: Proactive learning - suggest skills for recurring gaps
+        unhandled = intent._p.get("unhandled", [])
+        if len(unhandled) >= 5 and len(unhandled) % 5 == 0:
+            suggestions = intent.suggest_skills()
+            if suggestions:
+                cpr(C.CYAN, "\n[LEARN] Wykryłem powtarzające się potrzeby. Proponuję nowe skills:")
+                for sg in suggestions:
+                    cpr(C.GREEN, f"  → {sg.get('name','?')}: {sg.get('description','')[:80]}")
+                cpr(C.DIM, "  Napisz 'stwórz <name>' lub /create <name> aby zbudować.")
+        intent.save()
 
 
 if __name__ == "__main__":

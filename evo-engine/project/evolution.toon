@@ -1,0 +1,45 @@
+# code2llm/evolution | 145 func | 9f | 2026-03-03
+
+NEXT[7] (ranked by impact):
+  [1] !! SPLIT           cores/v1/core.py
+      WHY: 1755L, 8 classes, max CC=122
+      EFFORT: ~4h  IMPACT: 214110
+
+  [2] !! SPLIT-FUNC      main  CC=122  fan=83
+      WHY: CC=122 exceeds 15
+      EFFORT: ~1h  IMPACT: 10126
+
+  [3] !  SPLIT-FUNC      SkillManager.exec_skill  CC=19  fan=25
+      WHY: CC=19 exceeds 15
+      EFFORT: ~1h  IMPACT: 475
+
+  [4] !  SPLIT-FUNC      LLMClient.analyze_need  CC=22  fan=12
+      WHY: CC=22 exceeds 15
+      EFFORT: ~1h  IMPACT: 264
+
+  [5] !! SPLIT-FUNC      IntentEngine._kw_classify  CC=25  fan=7
+      WHY: CC=25 exceeds 15
+      EFFORT: ~1h  IMPACT: 175
+
+  [6] !  SPLIT-FUNC      EvoEngine.handle_request  CC=16  fan=9
+      WHY: CC=16 exceeds 15
+      EFFORT: ~1h  IMPACT: 144
+
+  [7] !! SPLIT           build_core.py
+      WHY: 623L, 0 classes, max CC=0
+      EFFORT: ~4h  IMPACT: 0
+
+
+RISKS[2]:
+  ⚠ Splitting cores/v1/core.py may break 79 import paths
+  ⚠ Splitting build_core.py may break 0 import paths
+
+METRICS-TARGET:
+  CC̄:          5.0 → ≤3.5
+  max-CC:      122 → ≤20
+  god-modules: 2 → 0
+  high-CC(≥15): 6 → ≤3
+  hub-types:   0 → ≤0
+
+HISTORY:
+  (first run — no previous data)

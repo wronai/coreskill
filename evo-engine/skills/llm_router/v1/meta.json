@@ -1,0 +1,7 @@
+{
+  "name": "llm_router",
+  "version": "v1",
+  "description": "Model discovery & health: detect ollama, discover OpenRouter free models, test model health",
+  "created": "2026-03-03",
+  "stdlib_only": true
+}
