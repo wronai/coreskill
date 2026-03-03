@@ -4,10 +4,10 @@
 
 - **Project**: /home/tom/github/wronai/coreskill/evo-engine
 - **Analysis Mode**: static
-- **Total Functions**: 145
-- **Total Classes**: 16
-- **Modules**: 9
-- **Entry Points**: 129
+- **Total Functions**: 152
+- **Total Classes**: 17
+- **Modules**: 10
+- **Entry Points**: 136
 
 ## Architecture by Module
 
@@ -38,6 +38,11 @@
 
 ### skills.stt.v1.skill
 - **Functions**: 8
+- **Classes**: 1
+- **File**: `skill.py`
+
+### skills.llm_router.v1.skill
+- **Functions**: 7
 - **Classes**: 1
 - **File**: `skill.py`
 
@@ -106,6 +111,10 @@ Main execution flows into the system:
 ### cores.v1.core.PipelineManager.run_p
 - **Calls**: json.loads, enumerate, pf.exists, pf.read_text, pipe.get, st.get, si.update, cores.v1.core.cpr
 
+### skills.llm_router.v1.skill.LLMRouterSkill._discover_remote
+> Fetch free models from OpenRouter API.
+- **Calls**: urllib.request.Request, data.get, free.sort, urllib.request.urlopen, json.loads, m.get, m.get, float
+
 ### cores.v1.core.Logger.learn_summary
 > Build a summary of past errors and successes for learning.
 - **Calls**: self.read_skill_log, self.read_core_log, summary.append, summary.append, None.join, l.get, None.join, l.get
@@ -158,12 +167,9 @@ Main execution flows into the system:
 > Generate a prompt for LLM to fix a broken skill.
 - **Calls**: test_result.get, test_result.get, test_result.get, test_result.get, alternatives.items, open, f.read, alt.get
 
-### cores.v1.core.IntentEngine.suggest_skills
-> Analyze unhandled intents → suggest new skills.
-- **Calls**: self._p.get, self.llm.chat, len, json.loads, isinstance, None.join, isinstance, cores.v1.core._clean_json
-
-### cores.v1.core.SkillManager.list_skills
-- **Calls**: sorted, SKILLS_DIR.exists, SKILLS_DIR.iterdir, d.is_dir, sorted, d.name.startswith, d.iterdir, v.is_dir
+### skills.llm_router.v1.skill.LLMRouterSkill._discover_local
+> Detect available ollama models.
+- **Calls**: shutil.which, subprocess.run, None.split, line.split, models.append, len, line.strip, str
 
 ## Process Flows
 
@@ -288,6 +294,13 @@ Stages:
 - **Methods**: 5
 - **Key Methods**: skills.stt.v1.skill.STTSkill.__init__, skills.stt.v1.skill.STTSkill._record_wav, skills.stt.v1.skill.STTSkill._ensure_wav, skills.stt.v1.skill.STTSkill._transcribe_vosk, skills.stt.v1.skill.STTSkill.execute
 
+### skills.llm_router.v1.skill.LLMRouterSkill
+> Model discovery & health checking skill (evolvable).
+- Detects local ollama models
+- Discovers free 
+- **Methods**: 5
+- **Key Methods**: skills.llm_router.v1.skill.LLMRouterSkill.execute, skills.llm_router.v1.skill.LLMRouterSkill._discover_local, skills.llm_router.v1.skill.LLMRouterSkill._discover_remote, skills.llm_router.v1.skill.LLMRouterSkill._health_check, skills.llm_router.v1.skill.LLMRouterSkill._full_status
+
 ### cores.v1.core.EvoEngine
 > Generic evolutionary algorithm:
 1. Detect need → 2. Execute skill → 3. Validate goal → 4. If fail:
@@ -353,6 +366,7 @@ Functions exposed as public API (no underscore prefix):
 - `cores.v1.core.SkillManager.list_skills` - 10 calls
 - `cores.v1.core.SkillManager.diagnose_skill` - 10 calls
 - `skills.devops.v1.skill.DevOpsSkill.test_skill` - 8 calls
+- `skills.llm_router.v1.skill.LLMRouterSkill.execute` - 8 calls
 - `cores.v1.core.SkillManager.latest_v` - 8 calls
 - `cores.v1.core.gen_compose` - 8 calls
 - `skills.web_search.v1.skill.WebSearchSkill.fetch_page_text` - 7 calls
@@ -365,7 +379,6 @@ Functions exposed as public API (no underscore prefix):
 - `cores.v1.core.IntentEngine.record_correction` - 6 calls
 - `cores.v1.core.Supervisor.list_cores` - 6 calls
 - `cores.v1.core.get_models_from_config` - 5 calls
-- `cores.v1.core.LLMClient.tier_info` - 5 calls
 
 ## System Interactions
 

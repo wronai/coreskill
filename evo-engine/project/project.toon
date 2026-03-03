@@ -1,8 +1,9 @@
-# evo-engine | 12f 3508L | python:12
+# evo-engine | 13f 3627L | python:13
 # Keys: M=modules, D=details, i=imports, c=classes, f=functions, m=methods
-M[12]:
+M[13]:
   build_core.py,525
   main.py,65
+  skills/llm_router/v1/skill.py,107
   skills/tts/v1/test_enhanced.py,65
   skills/tts/v1/skill.py,30
   skills/tts/v1/test.py,41
@@ -22,6 +23,12 @@ D:
     save_state(s)
     check(version=1)
     bootstrap()
+  skills/llm_router/v1/skill.py:
+    i: subprocess,json,shutil,time,urllib.request
+    e: LLMRouterSkill,get_info,health_check
+    LLMRouterSkill: execute(1),_discover_local(0),_discover_remote(0),_health_check(2),_full_status(1)  # Model discovery & health checking ski...
+    get_info()
+    health_check()
   skills/tts/v1/test_enhanced.py:
     i: sys,os,subprocess,pathlib.Path,skills.tts.v1.skill.TTSSkill
     e: ROOT,test_tts,get_info,health_check,execute

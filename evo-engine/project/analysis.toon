@@ -1,5 +1,5 @@
-# code2llm | 9f 2748L | py:9 | 2026-03-03
-# CC̄=5.0 | critical:14/145 | dups:0 | cycles:0
+# code2llm | 10f 2866L | py:10 | 2026-03-03
+# CC̄=4.9 | critical:14/152 | dups:0 | cycles:0
 
 HEALTH[7]:
   🔴 GOD   cores/v1/core.py = 1755L, 8 classes, 79m, max CC=122
@@ -25,12 +25,13 @@ LAYERS:
   cores/                          CC̄=6.7    ←in:0  →out:0
   │ !! core                      1755L  8C   79m  CC=122    ←0
   │
-  skills/                         CC̄=3.0    ←in:0  →out:0
+  skills/                         CC̄=3.1    ←in:0  →out:0
   │ skill                      237L  1C   10m  CC=8      ←0
   │ skill                      160L  2C   12m  CC=6      ←0
   │ skill                      159L  1C    8m  CC=6      ←0
   │ !  skill                      159L  1C    8m  CC=13     ←0
   │ skill                      136L  1C   15m  CC=4      ←0
+  │ skill                      118L  1C    7m  CC=7      ←0
   │ skill                       38L  1C    4m  CC=5      ←0
   │ skill                       25L  1C    4m  CC=1      ←0
   │
@@ -40,7 +41,7 @@ LAYERS:
 
 DUPLICATES[0]: none
 
-FUNCTIONS (CC≥10, 14 of 145):
+FUNCTIONS (CC≥10, 14 of 152):
   122.0  main                                       40n   1exit  loops+cond  !! split
    25.0  IntentEngine._kw_classify                  36n  11exit  loops+cond+ret  !! split
    22.0  LLMClient.analyze_need                     30n   9exit  loops+cond+ret  !! split
@@ -57,8 +58,8 @@ FUNCTIONS (CC≥10, 14 of 145):
    10.0  SkillManager.list_skills                   11n   3exit  loops+cond+ret
 
   summary:
-    critical(≥10): 14 | high(5-10): 33 | medium(2-5): 56 | low(<2): 42
-    10% CC≥10  32% CC≥5
+    critical(≥10): 14 | high(5-10): 36 | medium(2-5): 57 | low(<2): 45
+    9% CC≥10  33% CC≥5
 
 HOTSPOTS:
   #1  main                                 fan=83   "calls 83 functions"
@@ -67,10 +68,10 @@ HOTSPOTS:
   #4  SkillManager.create_skill            fan=18   "SkillManager method, fan-out=18"
   #5  bootstrap                            fan=17   "calls 17 functions"
   #6  EvoEngine._execute_with_validation   fan=15   "EvoEngine method, fan-out=15"
-  #7  GitOpsSkill.execute                  fan=13   "GitOpsSkill method, fan-out=13"
-  #8  LLMClient.analyze_need               fan=12   "analysis pipeline, 12 stages"
-  #9  IntentEngine.analyze                 fan=12   "analysis pipeline, 12 stages"
-  #10 SkillManager.rollback                fan=12   "SkillManager method, fan-out=12"
+  #7  LLMRouterSkill._discover_remote      fan=14   "LLMRouterSkill method, fan-out=14"
+  #8  GitOpsSkill.execute                  fan=13   "GitOpsSkill method, fan-out=13"
+  #9  LLMClient.analyze_need               fan=12   "analysis pipeline, 12 stages"
+  #10 IntentEngine.analyze                 fan=12   "analysis pipeline, 12 stages"
 
 CLASSES:
   IntentEngine                   ████████████████████████  14m  CC̄=5.5   max=25    !!
@@ -84,6 +85,7 @@ CLASSES:
   SimpleHTMLTextExtractor        ████████                   5m  CC̄=1.8   max=3   
   WebSearchSkill                 ████████                   5m  CC̄=4.2   max=6   
   STTSkill                       ████████                   5m  CC̄=5.2   max=13  
+  LLMRouterSkill                 ████████                   5m  CC̄=4.4   max=7   
   EvoEngine                      ████████                   5m  CC̄=8.0   max=16    !!
   PipelineManager                ██████                     4m  CC̄=2.8   max=6   
   TTSSkill                       ███                        2m  CC̄=4.0   max=5   
@@ -144,6 +146,17 @@ D:
     save_state(s)
     check(version)
     bootstrap()
+  skills/llm_router/v1/skill.py:
+    e: LLMRouterSkill,get_info,health_check
+    LLMRouterSkill  # Model discovery & health checking skill (evolvable).
+- Detec...
+      execute(1)  CC=5.0
+        → _discover_local(0)  CC=7.0
+        → _discover_remote(0)  CC=5.0
+        → _health_check(2)  CC=4.0
+        → _full_status(1)  CC=1.0
+    get_info()
+    health_check()
   skills/web_search/v1/skill.py:
     e: SimpleHTMLTextExtractor,WebSearchSkill,get_info,health_check
     SimpleHTMLTextExtractor  # Extract visible text from HTML....

@@ -1,4 +1,4 @@
-# code2llm/evolution | 145 func | 9f | 2026-03-03
+# code2llm/evolution | 152 func | 10f | 2026-03-03
 
 NEXT[7] (ranked by impact):
   [1] !! SPLIT           cores/v1/core.py
@@ -35,11 +35,11 @@ RISKS[2]:
   ⚠ Splitting build_core.py may break 0 import paths
 
 METRICS-TARGET:
-  CC̄:          5.0 → ≤3.5
+  CC̄:          4.9 → ≤3.4
   max-CC:      122 → ≤20
   god-modules: 2 → 0
   high-CC(≥15): 6 → ≤3
   hub-types:   0 → ≤0
 
 HISTORY:
-  (first run — no previous data)
+  prev CC̄=5.0 → now CC̄=4.9
