@@ -48,6 +48,9 @@ PAID_MODELS = [
     "openrouter/anthropic/claude-3.5-haiku",
 ]
 
+# Fast intent classification — prefer smallest local model
+INTENT_MODEL_MAX_PARAMS = 3.0  # billions, prefer models ≤ this size
+
 # Backward compat
 MODELS = FREE_MODELS
 DEFAULT_MODEL = FREE_MODELS[0]

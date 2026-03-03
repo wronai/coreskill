@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 """
 evo-engine IntentEngine — context-aware multi-stage intent detection.
+
+Primary: fast local LLM (smallest available ollama model, e.g. 1.5-3b)
+Fallback: keyword matching (when ollama unavailable)
 """
 import json
 import re
 from datetime import datetime, timezone
 
-from .config import SKILLS_DIR, save_state
-from .utils import clean_json
+from .config import SKILLS_DIR, INTENT_MODEL_MAX_PARAMS, save_state, cpr, C
+from .utils import litellm, clean_json
+from .llm_client import _detect_ollama_models
 
 
 class IntentEngine:
@@ -62,6 +66,124 @@ class IntentEngine:
             "topics": [], "corrections": [], "preferences": {},
             "skill_usage": {}, "unhandled": [],
         })
+        self._fast_model = self._detect_fast_model()
+        if self._fast_model:
+            cpr(C.DIM, f"[INTENT] Fast classifier: {self._fast_model}")
+
+    # ── Fast model detection ──
+    def _detect_fast_model(self):
+        """Find the smallest available ollama model for intent classification."""
+        try:
+            models = _detect_ollama_models()
+        except Exception:
+            return None
+        if not models:
+            return None
+        # Extract parameter sizes from model names, prefer smallest ≤ INTENT_MODEL_MAX_PARAMS
+        sized = []
+        for m in models:
+            match = re.search(r'(\d+\.?\d*)b', m.lower())
+            if match:
+                sized.append((float(match.group(1)), m))
+        if sized:
+            sized.sort()  # smallest first
+            small = [(s, m) for s, m in sized if s <= INTENT_MODEL_MAX_PARAMS]
+            if small:
+                return small[0][1]
+            return sized[0][1]  # all models are large, use smallest anyway
+        return models[0] if models else None
+
+    # ── Dynamic intent prompt ──
+    def _build_intent_prompt(self, skills):
+        """Build intent classification prompt dynamically from skill metadata."""
+        descs = {}
+        for sk in skills:
+            # Try manifest.json first (has interface info)
+            manifest = SKILLS_DIR / sk / "manifest.json"
+            if manifest.exists():
+                try:
+                    m = json.loads(manifest.read_text())
+                    desc = m.get("description", sk)
+                    iface = m.get("interface", {})
+                    inp = iface.get("input", {})
+                    if inp:
+                        desc += f" input: {json.dumps(inp, ensure_ascii=False)}"
+                    descs[sk] = desc
+                    continue
+                except Exception:
+                    pass
+            # Try meta.json in latest version
+            vs = skills[sk]
+            mp = SKILLS_DIR / sk / (vs[-1] if vs else "v1") / "meta.json"
+            if mp.exists():
+                try:
+                    descs[sk] = json.loads(mp.read_text()).get("description", sk)
+                    continue
+                except Exception:
+                    pass
+            descs[sk] = sk
+
+        skills_block = "\n".join(f"- {k}: {v}" for k, v in descs.items())
+        return f"""Classify user intent into one action. Reply ONLY valid JSON.
+Available skills:
+{skills_block}
+
+Actions:
+- use: run an existing skill (specify skill name + input params)
+- evolve: improve/fix an existing skill
+- create: build a new skill
+- chat: just conversation, no skill needed
+
+For shell commands: extract the actual command to run.
+For ambiguous voice requests: prefer tts (speak) over stt (listen).
+Prefer action over chat. User speaks Polish.
+JSON format: {{"action":"use|evolve|create|chat","skill":"name","input":{{}},"goal":"brief"}}"""
+
+    def _classify_fast(self, msg, skills, conv=None):
+        """Use small local LLM for intent classification (primary method)."""
+        if not self._fast_model:
+            return None
+
+        prompt = self._build_intent_prompt(skills)
+
+        # Build messages with minimal conversation context
+        messages = [{"role": "system", "content": prompt}]
+        if conv:
+            for m in conv[-3:]:
+                messages.append({"role": m["role"],
+                                 "content": m.get("content", "")[:100]})
+        messages.append({"role": "user", "content": msg})
+
+        try:
+            r = litellm.completion(
+                model=self._fast_model,
+                messages=messages,
+                temperature=0.1,
+                max_tokens=200,
+                timeout=5,
+            )
+            raw = r.choices[0].message.content
+            result = json.loads(clean_json(raw))
+
+            # Validate: skill must exist or action must be create/chat
+            action = result.get("action", "chat")
+            skill = result.get("skill", "")
+            if action == "use" and skill not in skills:
+                return None  # LLM hallucinated a skill
+
+            # Post-process: enrich shell commands from conversation context
+            if skill == "shell":
+                cmd = result.get("input", {}).get("command", "")
+                if not cmd:
+                    cmd = self._extract_shell_command(msg.lower(), msg, conv)
+                    if cmd:
+                        result.setdefault("input", {})["command"] = cmd
+
+            return result
+        except Exception as e:
+            self.log.core("intent_fast_err",
+                          {"model": self._fast_model, "err": str(e)[:100]})
+            return None
 
     def save(self):
         self.state["user_profile"] = self._p
@@ -121,11 +243,15 @@ class IntentEngine:
 
     # ── Main entry ──
     def analyze(self, user_msg, skills, conv=None):
-        """Multi-stage intent detection with full conversation context."""
+        """Multi-stage intent detection.
+        Stage 0: Trivial filter
+        Stage 1: Fast local LLM (primary — handles typos, Polish, synonyms)
+        Stage 2: Keyword fallback (when fast LLM unavailable)
+        Stage 3: Context inference
+        """
         self._update_topics(user_msg)
         conv = conv or []
         topic = self._recent_topic()
-        context = self._build_context(conv)
 
         # Stage 0: Very short / ambiguous → chat (don't waste LLM calls)
         stripped = user_msg.strip()
@@ -137,32 +263,29 @@ class IntentEngine:
         if len(stripped) < 4 or (len(words) == 1 and words[0].lower().rstrip("?!.,") in _trivial):
             return {"action": "chat"}
 
-        # Stage 1: High-confidence keywords
+        # Stage 1: Fast local LLM classification (primary)
+        fast = self._classify_fast(user_msg, skills, conv)
+        if fast and fast.get("action") != "chat":
+            self.log.core("intent_fast", {
+                "action": fast.get("action"), "skill": fast.get("skill", ""),
+                "model": self._fast_model or "?"})
+            return fast
+
+        # Stage 2: Keyword fallback (when fast LLM unavailable or returned chat)
         kw = self._kw_classify(user_msg, skills, topic, conv)
-        if kw and kw.pop("_conf", 0) >= 0.9:
-            self.log.core("intent_kw_hi", {"action": kw.get("action"), "skill": kw.get("skill","")})
+        if kw and kw.pop("_conf", 0) >= 0.7:
+            self.log.core("intent_kw", {"action": kw.get("action"), "skill": kw.get("skill", "")})
             return kw
 
-        # Stage 2: LLM with context
-        llm_r = self._llm_classify(user_msg, skills, context, topic)
-        if llm_r and llm_r.get("action") != "chat":
-            self.log.core("intent_llm", {"action": llm_r.get("action"), "skill": llm_r.get("skill","")})
-            return llm_r
-
-        # Stage 3: Low-confidence keyword fallback
-        if kw and kw.get("action") != "chat":
-            kw.pop("_conf", None)
-            self.log.core("intent_kw_lo", {"action": kw.get("action")})
-            return kw
-
-        # Stage 4: Context inference
+        # Stage 3: Context inference
         ctx = self._ctx_infer(user_msg, skills, topic, conv)
         if ctx:
             self.log.core("intent_ctx", {"action": ctx.get("action")})
             return ctx
 
         self.record_unhandled(user_msg)
-        return {"action": "chat"}
+        # If fast LLM said chat, trust it
+        return fast if fast else {"action": "chat"}
 
     # ── Stage 1: Keywords with confidence ──
     def _match(self, ul, kws):
@@ -287,9 +410,9 @@ class IntentEngine:
                 or self._kw_voice_ambiguous(ul, msg)
                 or {"action":"chat","_conf":0.5})
 
-    # ── Stage 2: LLM with conversation context ──
+    # ── Stage 2 (legacy): Expensive LLM classify — only used if fast model AND keywords both fail ──
     def _llm_classify(self, msg, skills, context, topic):
-        # Build skill descriptions from meta.json
+        """Fallback: use main LLM for classification. Slower but more capable."""
         descs = {}
         for sk in skills:
             vs = skills[sk]
@@ -299,21 +422,9 @@ class IntentEngine:
                 except: descs[sk] = sk
             else: descs[sk] = sk
 
-        s = f"""Intent classifier for evo-engine. Skills: {json.dumps(descs, ensure_ascii=False)}
+        s = f"""Intent classifier. Skills: {json.dumps(descs, ensure_ascii=False)}
 Context: {context}
-
-RULES:
-1. "powiedz"/"przywitaj"/"mów coś"/"głosowo" (user wants system to SPEAK) → use tts
-2. "czy mnie słyszysz"/"nagraj"/"posłuchaj"/"mikrofon" (user wants system to LISTEN) → use stt
-3. "uruchom"/"wykonaj"/"odpal"/"sudo"/"apt" (user wants to RUN a command) → use shell, input:{{"command":"..."}}
-4. "zmień"/"napraw"/"lepszy" → evolve existing skill
-5. "stwórz"/"zrób"/"napisz"/"chciałbym"/"aplikacja" → create new skill
-6. "tak"/"ok"/"dawaj" = confirm previous → create/use from context
-7. ONLY pure small-talk → chat
-
-DEFAULT: "głosowo" without clear listen-intent = TTS (speak), NOT STT.
-PREFER action over chat. When in doubt → create skill.
-For shell: extract the actual command from user message or conversation context.
+Prefer action over chat. User speaks Polish.
 Return ONLY JSON: {{"action":"use|create|evolve|chat","skill":"name","input":{{}},"goal":"..."}}"""
 
         raw = self.llm.chat([{"role":"system","content":s},

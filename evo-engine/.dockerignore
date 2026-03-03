@@ -1,0 +1,66 @@
+# Docker ignore for evo-engine testing
+# Excludes unnecessary files to optimize build context
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs and data
+logs/
+*.log
+.evo_state.json
+.code2llm_cache/
+
+# Test outputs (will be mounted as volumes)
+test-results/
+coverage/
+htmlcov/
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+!README.md
+
+# Docker files (not needed in context)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Project files
+project/
+project.sh
+TODO/
+TODO1/
+
+# Skills cache
+skills/**/__pycache__/
+skills/**/*.pyc
+
+# Pipelines
+pipelines/*.json
+
+# Registry
+registry/*.json
