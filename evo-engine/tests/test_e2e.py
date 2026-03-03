@@ -74,7 +74,7 @@ class MockLLM:
 
 # ─── Test: IntentEngine keyword classification ────────────────────────
 class TestIntentEngineKeywords(unittest.TestCase):
-    """Test that IntentEngine correctly classifies Polish/English intents."""
+    """Test that IntentEngine correctly classifies Polish/English intents via keyword fallback."""
 
     def setUp(self):
         self.llm = MockLLM()
@@ -84,6 +84,7 @@ class TestIntentEngineKeywords(unittest.TestCase):
             "skill_usage": {}, "unhandled": [],
         }}
         self.intent = IntentEngine(self.llm, self.logger, self.state)
+        self.intent._fast_model = None  # force keyword fallback path
         self.skills = {
             "tts": ["v1"], "stt": ["v1"], "web_search": ["v1"],
             "deps": ["v1"], "devops": ["v1"], "git_ops": ["v1"],
@@ -237,6 +238,7 @@ class TestIntentEngineTopics(unittest.TestCase):
             "skill_usage": {}, "unhandled": [],
         }}
         self.intent = IntentEngine(self.llm, self.logger, self.state)
+        self.intent._fast_model = None  # force keyword fallback path
 
     def test_topic_detection_voice(self):
         topics = self.intent._detect_topics("powiedz coś głosem")
@@ -472,6 +474,7 @@ class TestEvoEngineDialogFlow(unittest.TestCase):
             "skill_usage": {}, "unhandled": [],
         }}
         self.intent = IntentEngine(self.llm, self.logger, self.state)
+        self.intent._fast_model = None  # force keyword fallback path
 
     def _dialog(self, user_msg, conv=None):
         """Simulate a dialog turn: analyze → handle."""
@@ -621,6 +624,7 @@ class TestPolishDialogScenarios(unittest.TestCase):
             "skill_usage": {}, "unhandled": [],
         }}
         self.intent = IntentEngine(self.llm, self.logger, self.state)
+        self.intent._fast_model = None  # force keyword fallback path
 
     def _classify(self, msg):
         return self.intent.analyze(msg, self.sm.list_skills())
@@ -933,6 +937,7 @@ class TestShellIntentRouting(unittest.TestCase):
         self.logger = Logger("TEST")
         self.state = {}
         self.intent = IntentEngine(self.llm, self.logger, self.state)
+        self.intent._fast_model = None  # force keyword fallback path
         self.skills = {"shell": ["v1"], "tts": ["v1"], "stt": ["v1", "v6"]}
 
     def test_uruchom_routes_to_shell(self):

@@ -74,13 +74,7 @@ services:
     container_name: evo-test-smoke
     environment:
       - EVO_TEST_MODE=1
-    command: >
-      python -c "
-        from cores.v1 import IntentEngine, LLMClient, SkillManager, EvoEngine;
-        from cores.v1.config import load_state;
-        print('✓ All core imports OK');
-        print('✓ Project structure valid')
-      "
+    command: ["python", "-c", "from cores.v1 import IntentEngine, LLMClient, SkillManager, EvoEngine; from cores.v1.config import load_state; print('✓ All core imports OK'); print('✓ Project structure valid')"]
     networks:
       - evo-test-net
 
