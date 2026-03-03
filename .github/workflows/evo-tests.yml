@@ -1,0 +1,86 @@
+name: evo-engine Tests
+
+on:
+  push:
+    branches: [ main, master, develop ]
+    paths:
+      - 'evo-engine/**'
+      - '.github/workflows/**'
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'evo-engine/**'
+
+jobs:
+  # Quick smoke test - fast feedback
+  smoke:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: evo-engine
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Smoke Test
+        run: ./scripts/run_tests.sh smoke
+
+  # Unit tests
+  unit-tests:
+    runs-on: ubuntu-latest
+    needs: smoke
+    defaults:
+      run:
+        working-directory: evo-engine
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Run Unit Tests
+        run: ./scripts/run_tests.sh unit
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unit-test-results
+          path: |
+            evo-engine/test-results/
+            evo-engine/coverage/
+
+  # Full test suite
+  full-tests:
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    defaults:
+      run:
+        working-directory: evo-engine
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Run Full Test Suite
+        run: ./scripts/run_tests.sh all
+
+      - name: Upload Coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          files: evo-engine/coverage/coverage.xml
+          fail_ci_if_error: false
+          verbose: true
+
+      - name: Upload Test Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: full-test-report
+          path: |
+            evo-engine/test-results/
+            evo-engine/coverage/
