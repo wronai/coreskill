@@ -1,0 +1,45 @@
+from skills.tts.v1.skill import TTSSkill
+import subprocess
+import sys
+
+def test_tts():
+    try:
+        tts = TTSSkill()
+        print("Available backends:", tts.get_available_backends())
+        preferred = tts.get_preferred_backend()
+        print(f"Preferred backend: {preferred}")
+
+        if preferred:
+            print("Testing TTS with: 'Test message from TTS skill'")
+            tts.speak("Test message from TTS skill", backend=preferred)
+            print("TTS test completed successfully!")
+        else:
+            print("No TTS backends available. Trying to install gtts...")
+            try:
+                subprocess.run([sys.executable, '-m', 'pip', 'install', 'gtts'], check=True)
+                print("gtts installed successfully!")
+                tts = TTSSkill()  # Reinitialize with new backend
+                preferred = tts.get_preferred_backend()
+                if preferred:
+                    print(f"Testing TTS with gtts backend: 'Test message from TTS skill'")
+                    tts.speak("Test message from TTS skill", backend=preferred)
+                    print("TTS test completed successfully!")
+                else:
+                    print("Still no TTS backends available after installing gtts")
+            except Exception as e:
+                print(f"Failed to install gtts: {e}")
+                print("Please install one of the following:")
+                print("  pip install pyttsx3")
+                print("  apt install espeak")
+                print("  pip install gtts")
+                print("  and install mpv for audio playback")
+    except Exception as e:
+        print(f"Error initializing TTS: {e}")
+        print("Please install one of the following TTS backends:")
+        print("  pip install pyttsx3")
+        print("  apt install espeak")
+        print("  pip install gtts")
+        print("  and install mpv for audio playback")
+
+if __name__ == "__main__":
+    test_tts()
