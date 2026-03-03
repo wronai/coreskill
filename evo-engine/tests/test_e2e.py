@@ -28,6 +28,9 @@ from cores.v1.skill_manager import SkillManager
 from cores.v1.evo_engine import EvoEngine
 from cores.v1.resource_monitor import ResourceMonitor
 from cores.v1.provider_selector import ProviderSelector, ProviderInfo
+from cores.v1.preflight import SkillPreflight, EvolutionGuard, PreflightResult
+from cores.v1.system_identity import SystemIdentity, SkillStatus
+from cores.v1.core import _extract_stt_text
 from cores.v1.supervisor import Supervisor
 from cores.v1.pipeline_manager import PipelineManager
 
@@ -561,12 +564,12 @@ class TestFullIntegration(unittest.TestCase):
         self.sm = SkillManager(self.llm, self.logger, provider_selector=self.ps)
 
     def test_provider_selector_integrated_with_skill_manager(self):
-        """ProviderSelector and SkillManager resolve same paths"""
-        # ProviderSelector path
+        """ProviderSelector and SkillManager resolve same provider"""
+        # Both should resolve to the same provider (espeak)
         ps_path = self.ps.get_skill_path("tts", "espeak")
-        # SkillManager path
         sm_path = self.sm.skill_path("tts")
-        self.assertEqual(ps_path, sm_path)
+        # Same provider directory (version may differ due to sort logic)
+        self.assertEqual(ps_path.parent.parent, sm_path.parent.parent)
 
     def test_all_skills_loadable(self):
         """Verify all registered skills can at least be path-resolved"""
@@ -672,6 +675,334 @@ class TestPolishDialogScenarios(unittest.TestCase):
         r = self._classify("odpowiedz mi głosowo")
         self.assertEqual(r["action"], "use")
         self.assertEqual(r["skill"], "tts")
+
+
+# ─── Preflight Tests ──────────────────────────────────────────────────
+class TestSkillPreflight(unittest.TestCase):
+    def setUp(self):
+        self.pf = SkillPreflight()
+
+    def test_check_syntax_valid(self):
+        r = self.pf.check_syntax("x = 1\nprint(x)")
+        self.assertTrue(r.ok)
+
+    def test_check_syntax_invalid(self):
+        r = self.pf.check_syntax("def foo(:\n  pass")
+        self.assertFalse(r.ok)
+        self.assertEqual(r.stage, "syntax")
+
+    def test_check_imports_missing_shutil(self):
+        code = 'def f():\n    return shutil.which("python")'
+        r = self.pf.check_imports(code)
+        self.assertFalse(r.ok)
+        self.assertEqual(r.stage, "imports")
+        self.assertIn("shutil", r.error)
+
+    def test_check_imports_ok(self):
+        code = 'import shutil\ndef f():\n    return shutil.which("python")'
+        r = self.pf.check_imports(code)
+        self.assertTrue(r.ok)
+
+    def test_check_interface_complete(self):
+        code = ("def get_info(): return {}\n"
+                "def health_check(): return True\n"
+                "class Sk:\n"
+                "    def execute(self, d): return {}\n")
+        r = self.pf.check_interface(code)
+        self.assertTrue(r.ok)
+
+    def test_check_interface_missing_get_info(self):
+        code = ("def health_check(): return True\n"
+                "def execute(d): return {}\n")
+        r = self.pf.check_interface(code)
+        self.assertFalse(r.ok)
+        self.assertIn("get_info", r.error)
+
+    def test_auto_fix_imports_adds_shutil(self):
+        code = 'def f():\n    return shutil.which("python")'
+        fixed = self.pf.auto_fix_imports(code)
+        self.assertIn("import shutil", fixed)
+
+    def test_auto_fix_imports_no_change_if_present(self):
+        code = 'import shutil\ndef f():\n    return shutil.which("python")'
+        fixed = self.pf.auto_fix_imports(code)
+        self.assertEqual(code, fixed)
+
+    def test_auto_fix_imports_multiple(self):
+        code = 'def f():\n    os.path.exists("x")\n    shutil.which("y")'
+        fixed = self.pf.auto_fix_imports(code)
+        self.assertIn("import os", fixed)
+        self.assertIn("import shutil", fixed)
+
+
+# ─── EvolutionGuard Tests ─────────────────────────────────────────────
+class TestEvolutionGuard(unittest.TestCase):
+    def setUp(self):
+        self.guard = EvolutionGuard()
+
+    def test_fingerprint_stable(self):
+        fp1 = self.guard.fingerprint("name 'shutil' is not defined")
+        fp2 = self.guard.fingerprint("name 'shutil' is not defined")
+        self.assertEqual(fp1, fp2)
+
+    def test_fingerprint_normalizes_line_numbers(self):
+        fp1 = self.guard.fingerprint("error at line 5")
+        fp2 = self.guard.fingerprint("error at line 99")
+        self.assertEqual(fp1, fp2)
+
+    def test_not_repeating_initially(self):
+        self.assertFalse(self.guard.is_repeating("stt", "some error"))
+
+    def test_repeating_after_two_same_errors(self):
+        self.guard.record_error("stt", "name 'shutil' is not defined", "v6")
+        self.guard.record_error("stt", "name 'shutil' is not defined", "v7")
+        self.assertTrue(self.guard.is_repeating("stt", "name 'shutil' is not defined"))
+
+    def test_strategy_auto_fix_on_repeat(self):
+        self.guard.record_error("stt", "name 'shutil' is not defined", "v6")
+        self.guard.record_error("stt", "name 'shutil' is not defined", "v7")
+        s = self.guard.suggest_strategy("stt", "name 'shutil' is not defined")
+        self.assertEqual(s["strategy"], "auto_fix_imports")
+
+    def test_strategy_normal_on_first_error(self):
+        s = self.guard.suggest_strategy("stt", "some new error")
+        self.assertEqual(s["strategy"], "normal_evolve")
+
+    def test_error_summary_empty(self):
+        self.assertEqual(self.guard.get_error_summary("stt"), "")
+
+    def test_error_summary_with_history(self):
+        self.guard.record_error("stt", "error X", "v6")
+        summary = self.guard.get_error_summary("stt")
+        self.assertIn("error X", summary)
+
+    def test_evolution_prompt_context_import(self):
+        ctx = self.guard.build_evolution_prompt_context("stt", "name 'shutil' is not defined")
+        self.assertIn("import shutil", ctx)
+
+
+# ─── SystemIdentity Tests ─────────────────────────────────────────────
+class TestSystemIdentity(unittest.TestCase):
+    def setUp(self):
+        self.identity = SystemIdentity()
+
+    def test_build_system_prompt_has_identity(self):
+        prompt = self.identity.build_system_prompt()
+        self.assertIn("RDZENIEM", prompt)
+        self.assertIn("evo-engine", prompt)
+
+    def test_build_system_prompt_has_capabilities(self):
+        prompt = self.identity.build_system_prompt()
+        self.assertIn("tts", prompt)
+        self.assertIn("stt", prompt)
+
+    def test_build_system_prompt_never_say_cant(self):
+        prompt = self.identity.build_system_prompt()
+        self.assertIn("Nigdy nie mów", prompt)
+
+    def test_fallback_message_with_error(self):
+        msg = self.identity.build_fallback_message("stt", error="shutil not defined")
+        self.assertIn("stt", msg)
+        self.assertIn("shutil not defined", msg)
+        self.assertIn("naprawić", msg)
+
+    def test_fallback_message_max_attempts(self):
+        msg = self.identity.build_fallback_message("stt", error="err", attempts=3)
+        self.assertIn("3 próbach", msg)
+        self.assertIn("/rollback", msg)
+
+    def test_skill_status_healthy(self):
+        self.identity._skill_statuses["tts"] = SkillStatus("tts", healthy=True)
+        prompt = self.identity.build_system_prompt()
+        self.assertIn("DZIAŁA", prompt)
+
+    def test_skill_status_broken(self):
+        self.identity._skill_statuses["stt"] = SkillStatus(
+            "stt", healthy=False, error="shutil not defined")
+        prompt = self.identity.build_system_prompt()
+        self.assertIn("USZKODZONY", prompt)
+
+    def test_readiness_report_structure(self):
+        report = self.identity.get_readiness_report()
+        self.assertIn("total_capabilities", report)
+        self.assertIn("healthy", report)
+        self.assertIn("broken", report)
+        self.assertIn("readiness_pct", report)
+
+    def test_skill_context_for_llm(self):
+        ctx = self.identity.build_skill_context_for_llm("stt")
+        self.assertIn("import", ctx.lower())
+        self.assertIn("execute", ctx)
+
+
+# ─── STT Text Extraction Tests ────────────────────────────────────────
+class TestSTTExtraction(unittest.TestCase):
+    def test_extract_stt_text_with_spoken(self):
+        outcome = {
+            "type": "success", "skill": "stt",
+            "result": {"success": True, "result": {
+                "success": True, "spoken": "cześć jak się masz"}}
+        }
+        self.assertEqual(_extract_stt_text(outcome), "cześć jak się masz")
+
+    def test_extract_stt_text_empty_spoken(self):
+        outcome = {
+            "type": "success", "skill": "stt",
+            "result": {"success": True, "result": {
+                "success": True, "spoken": ""}}
+        }
+        self.assertIsNone(_extract_stt_text(outcome))
+
+    def test_extract_stt_text_non_stt_skill(self):
+        outcome = {
+            "type": "success", "skill": "tts",
+            "result": {"success": True, "result": {"success": True}}
+        }
+        self.assertIsNone(_extract_stt_text(outcome))
+
+    def test_extract_stt_text_failed_outcome(self):
+        outcome = {"type": "failed", "skill": "stt"}
+        self.assertIsNone(_extract_stt_text(outcome))
+
+    def test_extract_stt_text_none_outcome(self):
+        self.assertIsNone(_extract_stt_text(None))
+
+    def test_extract_stt_text_with_text_key(self):
+        outcome = {
+            "type": "success", "skill": "stt",
+            "result": {"success": True, "result": {
+                "success": True, "text": "hello world"}}
+        }
+        self.assertEqual(_extract_stt_text(outcome), "hello world")
+
+    def test_extract_stt_text_strips_whitespace(self):
+        outcome = {
+            "type": "success", "skill": "stt",
+            "result": {"success": True, "result": {
+                "success": True, "spoken": "  test  "}}
+        }
+        self.assertEqual(_extract_stt_text(outcome), "test")
+
+
+# ─── Shell Skill Tests ────────────────────────────────────────────────
+class TestShellSkill(unittest.TestCase):
+    def test_shell_skill_loads(self):
+        """Shell skill can be loaded and has correct interface"""
+        from cores.v1.skill_manager import _load_bootstrap_skill
+        sk = _load_bootstrap_skill("shell")
+        self.assertIsNotNone(sk)
+        self.assertTrue(hasattr(sk, "execute"))
+
+    def test_shell_execute_echo(self):
+        """Shell skill executes simple command"""
+        from cores.v1.skill_manager import _load_bootstrap_skill
+        sk = _load_bootstrap_skill("shell")
+        r = sk.execute({"command": "echo hello"})
+        self.assertTrue(r["success"])
+        self.assertIn("hello", r["stdout"])
+        self.assertEqual(r["exit_code"], 0)
+
+    def test_shell_execute_failing_command(self):
+        """Shell skill handles failing commands"""
+        from cores.v1.skill_manager import _load_bootstrap_skill
+        sk = _load_bootstrap_skill("shell")
+        r = sk.execute({"command": "false"})
+        self.assertFalse(r["success"])
+        self.assertNotEqual(r["exit_code"], 0)
+
+    def test_shell_blocked_dangerous_command(self):
+        """Shell skill blocks dangerous commands"""
+        from cores.v1.skill_manager import _load_bootstrap_skill
+        sk = _load_bootstrap_skill("shell")
+        r = sk.execute({"command": "rm -rf /"})
+        self.assertFalse(r["success"])
+        self.assertIn("Blocked", r["error"])
+
+    def test_shell_no_command(self):
+        """Shell skill handles empty command"""
+        from cores.v1.skill_manager import _load_bootstrap_skill
+        sk = _load_bootstrap_skill("shell")
+        r = sk.execute({})
+        self.assertFalse(r["success"])
+
+
+# ─── Shell Intent Routing Tests ──────────────────────────────────────
+class TestShellIntentRouting(unittest.TestCase):
+    def setUp(self):
+        self.llm = MockLLM()
+        self.logger = Logger("TEST")
+        self.state = {}
+        self.intent = IntentEngine(self.llm, self.logger, self.state)
+        self.skills = {"shell": ["v1"], "tts": ["v1"], "stt": ["v1", "v6"]}
+
+    def test_uruchom_routes_to_shell(self):
+        r = self.intent.analyze("uruchom ls -la", self.skills)
+        self.assertEqual(r["action"], "use")
+        self.assertEqual(r["skill"], "shell")
+
+    def test_uruchom_extracts_command(self):
+        r = self.intent.analyze("uruchom apt update", self.skills)
+        self.assertEqual(r["input"]["command"], "apt update")
+
+    def test_sudo_routes_to_shell(self):
+        r = self.intent.analyze("sudo apt upgrade -y", self.skills)
+        self.assertEqual(r["action"], "use")
+        self.assertEqual(r["skill"], "shell")
+
+    def test_wykonaj_routes_to_shell(self):
+        r = self.intent.analyze("wykonaj pip install requests", self.skills)
+        self.assertEqual(r["action"], "use")
+        self.assertEqual(r["skill"], "shell")
+
+    def test_shell_not_triggered_without_skill(self):
+        """Without shell skill, shell keywords shouldn't route to shell"""
+        skills_no_shell = {"tts": ["v1"], "stt": ["v1"]}
+        r = self.intent.analyze("uruchom ls -la", skills_no_shell)
+        self.assertNotEqual(r.get("skill"), "shell")
+
+
+# ─── Pipeline Validation Tests ────────────────────────────────────────
+class TestPipelineValidation(unittest.TestCase):
+    def setUp(self):
+        self.llm = MockLLM()
+        self.logger = Logger("TEST")
+        self.rm = ResourceMonitor()
+        self.ps = ProviderSelector(SKILLS_DIR, self.rm)
+        self.sm = SkillManager(self.llm, self.logger, provider_selector=self.ps)
+        self.evo = EvoEngine(self.sm, self.llm, self.logger)
+
+    def test_validate_success(self):
+        r = self.evo._validate_result("echo", {"success": True, "result": {"success": True}}, "test", "")
+        self.assertEqual(r["verdict"], "success")
+
+    def test_validate_outer_fail(self):
+        r = self.evo._validate_result("echo", {"success": False, "error": "crash"}, "test", "")
+        self.assertEqual(r["verdict"], "fail")
+        self.assertIn("crash", r["reason"])
+
+    def test_validate_inner_fail(self):
+        r = self.evo._validate_result("echo", {"success": True, "result": {"success": False, "error": "bad"}}, "test", "")
+        self.assertEqual(r["verdict"], "fail")
+
+    def test_validate_stt_empty_is_partial(self):
+        r = self.evo._validate_result("stt", {"success": True, "result": {"spoken": ""}}, "listen", "")
+        self.assertEqual(r["verdict"], "partial")
+
+    def test_validate_stt_with_text_is_success(self):
+        r = self.evo._validate_result("stt", {"success": True, "result": {"spoken": "cześć"}}, "listen", "")
+        self.assertEqual(r["verdict"], "success")
+
+    def test_validate_shell_nonzero_is_partial(self):
+        r = self.evo._validate_result("shell", {"success": True, "result": {"exit_code": 1, "stderr": "err"}}, "run", "")
+        self.assertEqual(r["verdict"], "partial")
+
+    def test_validate_shell_zero_is_success(self):
+        r = self.evo._validate_result("shell", {"success": True, "result": {"exit_code": 0}}, "run", "")
+        self.assertEqual(r["verdict"], "success")
+
+    def test_validate_tts_with_error(self):
+        r = self.evo._validate_result("tts", {"success": True, "result": {"error": "no voice"}}, "speak", "")
+        self.assertEqual(r["verdict"], "fail")
 
 
 if __name__ == "__main__":

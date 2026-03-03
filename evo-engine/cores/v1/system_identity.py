@@ -48,6 +48,7 @@ class SystemIdentity:
         "git_ops": "Operacje na repozytoriach Git",
         "devops": "Testowanie i walidacja kodu",
         "deps": "Zarządzanie zależnościami Python/system",
+        "shell": "Wykonywanie komend systemowych (bash) — apt, pip, ls, etc.",
         "echo": "Test echo — weryfikacja działania systemu",
         "llm_router": "Routing zapytań LLM między modelami",
     }

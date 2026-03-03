@@ -37,6 +37,11 @@ def health_check():
 
 
 class ShellSkill:
+    def _is_interactive(self, command):
+        """Detect commands that need terminal stdin (sudo, passwd, etc.)."""
+        cmd_lower = command.lower().strip()
+        return any(cmd_lower.startswith(p) for p in ("sudo ", "passwd", "ssh "))
+
     def execute(self, input_data: dict) -> dict:
         command = input_data.get("command", "").strip()
         if not command:
@@ -50,47 +55,73 @@ class ShellSkill:
 
         timeout = min(int(input_data.get("timeout", 60)), MAX_TIMEOUT)
         cwd = input_data.get("cwd", os.path.expanduser("~"))
+        env = {**os.environ, "DEBIAN_FRONTEND": "noninteractive"}
+
+        print(f"\033[2m$ {command}\033[0m", flush=True)
 
         try:
-            result = subprocess.run(
-                ["bash", "-c", command],
-                capture_output=True,
-                text=True,
-                timeout=timeout,
-                cwd=cwd,
-                env={**os.environ, "DEBIAN_FRONTEND": "noninteractive"},
-            )
+            interactive = self._is_interactive(command)
 
-            stdout = result.stdout
-            stderr = result.stderr
+            if interactive:
+                # Interactive: pass stdin/stdout through to terminal
+                proc = subprocess.Popen(
+                    ["bash", "-c", command],
+                    cwd=cwd, env=env,
+                )
+                try:
+                    proc.wait(timeout=timeout)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    return {"success": False, "command": command,
+                            "error": f"Command timed out after {timeout}s"}
+                return {
+                    "success": proc.returncode == 0,
+                    "command": command,
+                    "exit_code": proc.returncode,
+                    "stdout": "(interactive — output shown in terminal)",
+                    "stderr": "",
+                }
+            else:
+                # Non-interactive: capture + stream output line by line
+                proc = subprocess.Popen(
+                    ["bash", "-c", command],
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                    text=True, cwd=cwd, env=env,
+                )
+                stdout_lines = []
+                line_count = 0
+                for line in proc.stdout:
+                    line_count += 1
+                    if line_count <= MAX_OUTPUT_LINES:
+                        stdout_lines.append(line.rstrip("\n"))
+                        print(f"\033[2m  {line}\033[0m", end="", flush=True)
+                    elif line_count == MAX_OUTPUT_LINES + 1:
+                        print(f"\033[2m  ... (truncating output)\033[0m", flush=True)
 
-            # Truncate very long output
-            stdout_lines = stdout.split("\n")
-            if len(stdout_lines) > MAX_OUTPUT_LINES:
-                stdout = "\n".join(stdout_lines[:MAX_OUTPUT_LINES])
-                stdout += f"\n... (truncated, {len(stdout_lines)} total lines)"
+                stderr = proc.stderr.read() if proc.stderr else ""
+                proc.wait(timeout=10)
 
-            return {
-                "success": result.returncode == 0,
-                "command": command,
-                "exit_code": result.returncode,
-                "stdout": stdout,
-                "stderr": stderr[:2000] if stderr else "",
-                "error": stderr[:500] if result.returncode != 0 and stderr else None,
-            }
+                stdout = "\n".join(stdout_lines)
+                if line_count > MAX_OUTPUT_LINES:
+                    stdout += f"\n... (truncated, {line_count} total lines)"
+
+                if stderr.strip() and proc.returncode != 0:
+                    print(f"\033[31m  stderr: {stderr.strip()[:200]}\033[0m", flush=True)
+
+                return {
+                    "success": proc.returncode == 0,
+                    "command": command,
+                    "exit_code": proc.returncode,
+                    "stdout": stdout,
+                    "stderr": stderr[:2000] if stderr else "",
+                    "error": stderr[:500] if proc.returncode != 0 and stderr else None,
+                }
 
         except subprocess.TimeoutExpired:
-            return {
-                "success": False,
-                "command": command,
-                "error": f"Command timed out after {timeout}s",
-            }
+            return {"success": False, "command": command,
+                    "error": f"Command timed out after {timeout}s"}
         except Exception as e:
-            return {
-                "success": False,
-                "command": command,
-                "error": str(e),
-            }
+            return {"success": False, "command": command, "error": str(e)}
 
 
 def execute(input_data: dict) -> dict:

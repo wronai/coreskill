@@ -47,6 +47,10 @@ class IntentEngine:
     _KW_VOICE = ("glos", "głos", "voice", "tts", "glosow", "głosow")
     _KW_CONV = ("pogad", "rozmaw", "rozmow", "rozmawiać", "porozmaw",
                 "gadaj", "gadac", "gadać")
+    _KW_SHELL = ("uruchom", "wykonaj", "odpal", "wlacz", "włącz",
+                 "run ", "exec ", "shell", "komend", "command",
+                 "sudo ", "apt ", "pip ", "systemctl", "bash",
+                 "terminal", "konsol", "aktualizuj", "zaktualizuj", "update ")
     _CREATE_SKIP = {"skill", "mi", "nowy", "nowa", "do", "sie", "się",
                     "postaci", "jako", "obslugi", "obsługi"}
 
@@ -134,7 +138,7 @@ class IntentEngine:
             return {"action": "chat"}
 
         # Stage 1: High-confidence keywords
-        kw = self._kw_classify(user_msg, skills, topic)
+        kw = self._kw_classify(user_msg, skills, topic, conv)
         if kw and kw.pop("_conf", 0) >= 0.9:
             self.log.core("intent_kw_hi", {"action": kw.get("action"), "skill": kw.get("skill","")})
             return kw
@@ -183,6 +187,68 @@ class IntentEngine:
             if c and c not in skip and len(c) > 2: name = c; break
         return {"action":"create","name":name,"description":msg,"goal":"fulfill request","_conf":0.95}
 
+    def _kw_shell(self, ul, msg, skills, conv=None):
+        if not self._match(ul, self._KW_SHELL): return None
+        if "shell" not in skills: return None
+        # Extract command from message or recent conversation
+        cmd = self._extract_shell_command(ul, msg, conv)
+        if cmd:
+            return {"action":"use","skill":"shell",
+                    "input":{"command":cmd},"goal":f"run: {cmd[:60]}","_conf":0.95}
+        return {"action":"use","skill":"shell",
+                "input":{"command":""},"goal":"run_command","_conf":0.8}
+
+    def _extract_shell_command(self, ul, msg, conv=None):
+        """Try to extract a shell command from user message or recent conversation."""
+        import re
+        # Direct command patterns: "uruchom ls -la" or "wykonaj apt update"
+        for prefix in ("uruchom ", "wykonaj ", "odpal ", "run ", "exec "):
+            if prefix in ul:
+                idx = ul.index(prefix) + len(prefix)
+                cmd = msg[idx:].strip().strip('"').strip("'")
+                if cmd:
+                    return cmd
+
+        # Common system operation patterns (Polish)
+        if any(w in ul for w in ("zaktualizuj", "aktualizuj", "update ")):
+            if "system" in ul or "systemu" in ul or "pakiet" in ul:
+                return "sudo apt update && sudo apt upgrade -y"
+            if "pip" in ul or "python" in ul:
+                return "pip list --outdated"
+
+        # Package installation patterns
+        if any(w in ul for w in ("zainstaluj", "zainstalować", "install ")):
+            # Try to extract package name after common install words
+            words = ul.split()
+            for i, w in enumerate(words):
+                if w in ("zainstaluj", "install", "apt", "pip") and i + 1 < len(words):
+                    pkg = words[i + 1].strip('"').strip("'").rstrip(".,!?")
+                    if pkg and pkg not in ("mi", "mnie", "to", "ten", "ta"):
+                        if "pip" in ul or pkg.startswith("python-"):
+                            return f"pip install {pkg}"
+                        return f"sudo apt install -y {pkg}"
+
+        # Check for backtick or code-block commands in recent conversation
+        if conv:
+            for m in reversed(conv[-6:]):
+                content = m.get("content", "")
+                # Match code blocks
+                code_match = re.findall(r'`([^`]+)`', content)
+                for c in code_match:
+                    c = c.strip()
+                    if any(c.startswith(p) for p in ("sudo", "apt", "pip", "systemctl",
+                                                      "ls", "cat", "grep", "find", "echo",
+                                                      "cd", "mkdir", "cp", "mv", "chmod")):
+                        return c
+                # Match plain command lines
+                for line in content.split("\n"):
+                    line = line.strip()
+                    if line.startswith("$ "):
+                        return line[2:]
+                    if line.startswith("sudo ") or line.startswith("apt "):
+                        return line
+        return None
+
     def _kw_tts(self, ul, msg):
         if not self._match(ul, self._KW_TTS): return None
         return {"action":"use","skill":"tts","input":{"text":msg},"goal":"produce_audio","_conf":0.95}
@@ -209,10 +275,11 @@ class IntentEngine:
         if not self._match(ul, self._KW_VOICE): return None
         return {"action":"use","skill":"tts","input":{"text":msg},"goal":"produce_audio","_conf":0.7}
 
-    def _kw_classify(self, msg, skills, topic):
+    def _kw_classify(self, msg, skills, topic, conv=None):
         ul = msg.lower()
-        # Priority order: evolve > create > TTS > STT > voice_conv > voice_ambiguous
+        # Priority order: evolve > shell > create > TTS > STT > voice_conv > voice_ambiguous
         return (self._kw_evolve(ul, msg, skills)
+                or self._kw_shell(ul, msg, skills, conv)
                 or self._kw_create(ul, msg)
                 or self._kw_tts(ul, msg)
                 or self._kw_stt(ul, msg, skills)
@@ -238,13 +305,15 @@ Context: {context}
 RULES:
 1. "powiedz"/"przywitaj"/"mów coś"/"głosowo" (user wants system to SPEAK) → use tts
 2. "czy mnie słyszysz"/"nagraj"/"posłuchaj"/"mikrofon" (user wants system to LISTEN) → use stt
-3. "zmień"/"napraw"/"lepszy" → evolve existing skill
-4. "stwórz"/"zrób"/"napisz"/"chciałbym"/"aplikacja" → create new skill
-5. "tak"/"ok"/"dawaj" = confirm previous → create/use from context
-6. ONLY pure small-talk → chat
+3. "uruchom"/"wykonaj"/"odpal"/"sudo"/"apt" (user wants to RUN a command) → use shell, input:{{"command":"..."}}
+4. "zmień"/"napraw"/"lepszy" → evolve existing skill
+5. "stwórz"/"zrób"/"napisz"/"chciałbym"/"aplikacja" → create new skill
+6. "tak"/"ok"/"dawaj" = confirm previous → create/use from context
+7. ONLY pure small-talk → chat
 
 DEFAULT: "głosowo" without clear listen-intent = TTS (speak), NOT STT.
 PREFER action over chat. When in doubt → create skill.
+For shell: extract the actual command from user message or conversation context.
 Return ONLY JSON: {{"action":"use|create|evolve|chat","skill":"name","input":{{}},"goal":"..."}}"""
 
         raw = self.llm.chat([{"role":"system","content":s},

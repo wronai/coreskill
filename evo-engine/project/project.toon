@@ -1,21 +1,26 @@
-# evo-engine | 48f 6757L | python:48
+# evo-engine | 63f 8191L | python:63
 # Keys: M=modules, D=details, i=imports, c=classes, f=functions, m=methods
-M[48]:
+M[63]:
   build_core.py,525
   main.py,86
   TODO/migrate_skills.py,191
   TODO1/system_identity.py,294
   TODO1/preflight.py,455
   tests/__init__.py,0
-  tests/test_e2e.py,514
+  tests/test_e2e.py,774
   skills/llm_router/v1/skill.py,107
   skills/tts/providers/coqui/v1/skill.py,7
   skills/tts/providers/pyttsx3/v1/skill.py,7
+  skills/tts/providers/espeak/v9/skill.py,4
   skills/tts/providers/espeak/v6/skill.py,4
   skills/tts/providers/espeak/v2/skill.py,4
   skills/tts/providers/espeak/v3/skill.py,4
+  skills/tts/providers/espeak/v10/skill.py,4
   skills/tts/providers/espeak/v7/skill.py,4
   skills/tts/providers/espeak/v5/skill.py,4
+  skills/tts/providers/espeak/v12/skill.py,4
+  skills/tts/providers/espeak/v8/skill.py,4
+  skills/tts/providers/espeak/v11/skill.py,4
   skills/tts/providers/espeak/v1/test_enhanced.py,65
   skills/tts/providers/espeak/v1/skill.py,30
   skills/tts/providers/espeak/v1/test.py,41
@@ -26,11 +31,19 @@ M[48]:
   skills/stt/providers/vosk/v7/skill.py,4
   skills/stt/providers/vosk/v1/skill.py,131
   skills/stt/providers/whisper/v1/skill.py,7
+  skills/shell/v1/skill.py,106
+  skills/deps/v2/skill.py,84
+  skills/deps/v3/skill.py,67
   skills/deps/v1/skill.py,144
+  skills/kalkulator/v9/skill.py,4
   skills/kalkulator/v6/skill.py,4
   skills/kalkulator/v2/skill.py,4
   skills/kalkulator/v3/skill.py,4
+  skills/kalkulator/v10/skill.py,4
+  skills/kalkulator/v7/skill.py,4
   skills/kalkulator/v5/skill.py,4
+  skills/kalkulator/v8/skill.py,4
+  skills/kalkulator/v11/skill.py,4
   skills/kalkulator/v1/skill.py,4
   skills/kalkulator/v4/skill.py,4
   skills/web_search/providers/duckduckgo/v1/skill.py,131
@@ -38,17 +51,19 @@ M[48]:
   skills/git_ops/v1/skill.py,114
   cores/v1/config.py,69
   cores/v1/resource_monitor.py,129
-  cores/v1/intent_engine.py,238
+  cores/v1/intent_engine.py,294
+  cores/v1/system_identity.py,157
   cores/v1/supervisor.py,69
-  cores/v1/__init__.py,22
+  cores/v1/__init__.py,24
   cores/v1/provider_selector.py,192
   cores/v1/llm_client.py,272
-  cores/v1/evo_engine.py,158
+  cores/v1/evo_engine.py,195
   cores/v1/utils.py,100
-  cores/v1/core.py,478
+  cores/v1/core.py,539
   cores/v1/pipeline_manager.py,39
+  cores/v1/preflight.py,279
   cores/v1/logger.py,48
-  cores/v1/skill_manager.py,299
+  cores/v1/skill_manager.py,336
 D:
   main.py:
     i: os,sys,json,subprocess,datetime,datetime.timezone,importlib.util,pathlib.Path
@@ -103,6 +118,11 @@ D:
     Pyttsx3Skill: execute(1)
     get_info()
     health_check()
+  skills/tts/providers/espeak/v9/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
   skills/tts/providers/espeak/v6/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill: execute(1)
@@ -118,12 +138,32 @@ D:
     TestSkill: execute(1)
     get_info()
     health_check()
+  skills/tts/providers/espeak/v10/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
   skills/tts/providers/espeak/v7/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill: execute(1)
     get_info()
     health_check()
   skills/tts/providers/espeak/v5/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v12/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v8/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v11/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill: execute(1)
     get_info()
@@ -190,10 +230,34 @@ D:
     WhisperSkill: execute(1)
     get_info()
     health_check()
+  skills/shell/v1/skill.py:
+    i: json,os,shutil,subprocess,shlex,sys
+    e: DANGEROUS_PREFIXES,BLOCKED_COMMANDS,MAX_OUTPUT_LINES,MAX_TIMEOUT,get_info,health_check,ShellSkill,execute
+    ShellSkill: _is_interactive(1),execute(1)
+    get_info()
+    health_check()
+    execute(input_data:dict)->dict
+  skills/deps/v2/skill.py:
+    i: subprocess,sys,os,json,importlib.util
+    e: DepsSkill,get_info,health_check
+    DepsSkill: __init__(0),check_system(1),check_python_module(1),pip_install(2),execute(1)
+    get_info()
+    health_check()
+  skills/deps/v3/skill.py:
+    i: subprocess,importlib,json
+    e: DepsSkill,get_info,health_check
+    DepsSkill: __init__(0),check_system(1),execute(1),get_info(0),health_check(0)
+    get_info()
+    health_check()
   skills/deps/v1/skill.py:
     i: subprocess,sys,os,json,importlib.util
     e: DepsSkill,get_info,health_check
     DepsSkill: check_python_module(1),check_system_command(1),pip_install(2),scan_system(0),suggest_alternatives(1)  # Detect, install and manage Python and...
+    get_info()
+    health_check()
+  skills/kalkulator/v9/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
     get_info()
     health_check()
   skills/kalkulator/v6/skill.py:
@@ -211,7 +275,27 @@ D:
     TestSkill: execute(1)
     get_info()
     health_check()
+  skills/kalkulator/v10/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/kalkulator/v7/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
   skills/kalkulator/v5/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/kalkulator/v8/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/kalkulator/v11/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill: execute(1)
     get_info()
@@ -263,6 +347,11 @@ D:
     i: json,re,datetime,config.{SKILLS_DIR,save_state},datetime.timezone,utils.clean_json
     e: IntentEngine
     IntentEngine: __init__(3),save(0),_detect_topics(1),_update_topics(1),_recent_topic(1)  # Multi-stage intent detection with con...
+  cores/v1/system_identity.py:
+    i: json,datetime,config.SKILLS_DIR,datetime.timezone
+    e: SkillStatus,SystemIdentity
+    SkillStatus: __init__(5),to_dict(0)  # Runtime status of a single capability.
+    SystemIdentity: __init__(2),refresh_statuses(0),get_status(1),build_system_prompt(0),build_fallback_message(3)  # Builds dynamic system prompt that sep...
   cores/v1/supervisor.py:
     i: json,shutil,datetime,config.{ROOT,save_state},datetime.timezone
     e: Supervisor
@@ -279,9 +368,9 @@ D:
     _detect_ollama_models()
     discover_models()
   cores/v1/evo_engine.py:
-    i: config.{C,MAX_EVO_ITERATIONS,cpr}
+    i: config.{C,MAX_EVO_ITERATIONS,cpr},preflight.EvolutionGuard
     e: EvoEngine
-    EvoEngine: __init__(3),handle_request(3),_execute_with_validation(4),_validate_goal(3),evolve_skill(2)  # Generic evolutionary algorithm:
+    EvoEngine: __init__(3),handle_request(3),_execute_with_validation(4),_validate_result(4),evolve_skill(2)  # Generic evolutionary algorithm:
   cores/v1/utils.py:
     i: os,sys,subprocess,warnings,builtins,logging,rich.console.Console,rich.markdown.RichMarkdown,rich.theme.Theme
     e: _SPAM,setup_litellm,clean_code,clean_json
@@ -292,7 +381,7 @@ D:
     clean_json(text)
   cores/v1/core.py:
     i: os,sys,json,time,datetime,config.{C,ROOT,SKILLS_DIR},datetime.{timedelta,timezone}
-    e: gen_compose,HELP,COMMANDS,SYSTEM_PROMPT,main
+    e: gen_compose,HELP,COMMANDS,main
     gen_compose(skills;state)
     _cmd_help()
     _cmd_quit()
@@ -305,6 +394,12 @@ D:
     i: json,datetime,config.{C,PIPELINES_DIR,cpr},datetime.timezone,utils.{clean_code,clean_json}
     e: PipelineManager
     PipelineManager: __init__(3),list_p(0),create_p(2),run_p(2)
+  cores/v1/preflight.py:
+    i: ast,hashlib,re,subprocess,sys,pathlib.Path
+    e: PreflightResult,STDLIB_MODULES,SkillPreflight,EvolutionGuard
+    PreflightResult: __init__(4),__repr__(0),to_dict(0)  # Result of pre-flight validation.
+    SkillPreflight: check_all(1),check_syntax(1),check_imports(2),check_interface(1),auto_fix_imports(1)  # Pre-flight validation for skill files.
+    EvolutionGuard: __init__(0),fingerprint(1),record_error(3),is_repeating(2),get_error_summary(1)  # Prevents evolution loops where the sa...
   cores/v1/logger.py:
     i: json,datetime,config.LOGS_DIR,datetime.timezone
     e: Logger

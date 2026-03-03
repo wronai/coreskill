@@ -1,49 +1,57 @@
-# code2llm/evolution | 317 func | 42f | 2026-03-03
+# code2llm/evolution | 397 func | 57f | 2026-03-03
 
-NEXT[8] (ranked by impact):
-  [1] !! SPLIT           TODO1/preflight.py
-      WHY: 592L, 3 classes, max CC=25
-      EFFORT: ~4h  IMPACT: 14800
+NEXT[10] (ranked by impact):
+  [1] !! SPLIT           cores/v1/core.py
+      WHY: 620L, 0 classes, max CC=25
+      EFFORT: ~4h  IMPACT: 15500
 
-  [2] !! SPLIT-FUNC      SkillPreflight.auto_fix_imports  CC=25  fan=18
+  [2] !! SPLIT-FUNC      main  CC=25  fan=45
+      WHY: CC=25 exceeds 15
+      EFFORT: ~1h  IMPACT: 1125
+
+  [3] !! SPLIT-FUNC      IntentEngine._extract_shell_command  CC=29  fan=16
+      WHY: CC=29 exceeds 15
+      EFFORT: ~1h  IMPACT: 464
+
+  [4] !! SPLIT-FUNC      SkillPreflight.auto_fix_imports  CC=25  fan=18
       WHY: CC=25 exceeds 15
       EFFORT: ~1h  IMPACT: 450
 
-  [3] !  SPLIT-FUNC      SkillPreflight.check_imports  CC=20  fan=16
+  [5] !! SPLIT-FUNC      SkillPreflight.auto_fix_imports  CC=25  fan=18
+      WHY: CC=25 exceeds 15
+      EFFORT: ~1h  IMPACT: 450
+
+  [6] !  SPLIT-FUNC      EvoEngine._execute_with_validation  CC=17  fan=23
+      WHY: CC=17 exceeds 15
+      EFFORT: ~1h  IMPACT: 391
+
+  [7] !  SPLIT-FUNC      SkillPreflight.check_imports  CC=20  fan=16
       WHY: CC=20 exceeds 15
       EFFORT: ~1h  IMPACT: 320
 
-  [4] !  SPLIT-FUNC      LLMClient.analyze_need  CC=22  fan=12
+  [8] !  SPLIT-FUNC      SkillPreflight.check_imports  CC=20  fan=16
+      WHY: CC=20 exceeds 15
+      EFFORT: ~1h  IMPACT: 320
+
+  [9] !  SPLIT-FUNC      ShellSkill.execute  CC=18  fan=17
+      WHY: CC=18 exceeds 15
+      EFFORT: ~1h  IMPACT: 306
+
+  [10] !  SPLIT-FUNC      LLMClient.analyze_need  CC=22  fan=12
       WHY: CC=22 exceeds 15
       EFFORT: ~1h  IMPACT: 264
-
-  [5] !  SPLIT-FUNC      EvoEngine.handle_request  CC=16  fan=9
-      WHY: CC=16 exceeds 15
-      EFFORT: ~1h  IMPACT: 144
-
-  [6] !  SPLIT-FUNC      ProviderSelector.get_skill_path  CC=16  fan=7
-      WHY: CC=16 exceeds 15
-      EFFORT: ~1h  IMPACT: 112
-
-  [7] !! SPLIT           tests/test_e2e.py
-      WHY: 678L, 0 classes, max CC=0
-      EFFORT: ~4h  IMPACT: 0
-
-  [8] !! SPLIT           build_core.py
-      WHY: 623L, 0 classes, max CC=0
-      EFFORT: ~4h  IMPACT: 0
 
 
 RISKS[3]:
   ⚠ Splitting tests/test_e2e.py may break 0 import paths
   ⚠ Splitting build_core.py may break 0 import paths
-  ⚠ Splitting TODO1/preflight.py may break 17 import paths
+  ⚠ Splitting cores/v1/core.py may break 35 import paths
 
 METRICS-TARGET:
   CC̄:          3.8 → ≤2.7
-  max-CC:      25 → ≤12
+  max-CC:      29 → ≤14
   god-modules: 4 → 0
-  high-CC(≥15): 7 → ≤3
+  high-CC(≥15): 14 → ≤7
   hub-types:   0 → ≤0
 
 HISTORY:

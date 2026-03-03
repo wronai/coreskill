@@ -28,6 +28,7 @@ from .pipeline_manager import PipelineManager
 from .supervisor import Supervisor
 from .resource_monitor import ResourceMonitor
 from .provider_selector import ProviderSelector
+from .system_identity import SystemIdentity
 
 
 # ─── Docker Compose Generator ────────────────────────────────────────
@@ -398,51 +399,85 @@ def _init_components(ak, mdl, models, logger, state):
     pm = PipelineManager(sm, llm, logger)
     evo = EvoEngine(sm, llm, logger)
     intent = IntentEngine(llm, logger, state)
-    return llm, sm, pm, evo, intent, provider_sel, resource_mon
+    identity = SystemIdentity(skill_manager=sm, resource_monitor=resource_mon)
+    return llm, sm, pm, evo, intent, provider_sel, resource_mon, identity
 
 
 # ─── Chat loop helpers ────────────────────────────────────────────────
-SYSTEM_PROMPT = ("Jesteś evo-engine, ewolucyjny asystent AI. "
-    "Masz umiejętności (skills): {skills}.\n\n"
-    "BEZWZGLĘDNE ZASADY:\n"
-    "1. Odpowiadaj po polsku jeśli user mówi po polsku.\n"
-    "2. NIGDY nie wypisuj bloków kodu (```). Zamiast tego stwórz skill.\n"
-    "3. NIGDY nie pytaj o wybór technologii. Sam wybierz najtańszą/najszybszą opcję i ZRÓB TO.\n"
-    "4. NIGDY nie dawaj listy opcji do wyboru. Sam podejmij decyzję.\n"
-    "5. NIGDY nie pisz instrukcji 'jak zainstalować'. Sam to zainstaluj.\n"
-    "6. Jeśli user mówi 'tak' - natychmiast działaj w kontekście poprzedniej rozmowy.\n"
-    "7. Bądź ULTRA zwięzły. Max 2-3 zdania. Używaj markdown.\n"
-    "8. Jeśli czegoś nie możesz zrobić - powiedz JEDNO zdanie i zaproponuj stworzenie skill.\n"
-    "9. Przy tworzeniu czegokolwiek - kalkuluj: co najtańsze, najszybsze, wymaga najmniej zasobów.\n")
+def _extract_stt_text(outcome):
+    """Extract transcribed text from STT result, if any."""
+    if not outcome or outcome.get("type") != "success":
+        return None
+    if outcome.get("skill") != "stt":
+        return None
+    r = outcome.get("result", {})
+    inner = r.get("result", {}) if isinstance(r, dict) else {}
+    if not isinstance(inner, dict):
+        return None
+    text = inner.get("spoken") or inner.get("text") or inner.get("transcript") or ""
+    if isinstance(text, str):
+        text = text.strip()
+    return text if text else None
 
-def _handle_outcome(outcome, intent, conv):
+def _handle_outcome(outcome, intent, conv, identity=None):
     """Process EvoEngine outcome. Returns True if handled (skip chat), False to fall through."""
     if not outcome:
         return False
     otype = outcome.get("type")
+    skill = outcome.get("skill", "?")
     if otype == "success":
         r = outcome.get("result", {})
-        skill = outcome.get("skill", "?")
         intent.record_skill_use(skill)
         res_data = r.get("result", {}) if isinstance(r, dict) else r
-        md = f"### ✅ `{skill}` — done\n"
-        if isinstance(res_data, dict):
-            for k, v in res_data.items():
-                if k not in ("success", "available_backends") and v:
-                    md += f"- **{k}**: {v}\n"
-        mprint(md)
-        conv.append({"role": "assistant", "content": f"Executed {skill} successfully."})
+
+        # Special shell output display
+        if skill == "shell" and isinstance(res_data, dict):
+            cmd = res_data.get("command", "?")
+            exit_code = res_data.get("exit_code", "?")
+            stdout = res_data.get("stdout", "").strip()
+            stderr = res_data.get("stderr", "").strip()
+            ok = res_data.get("success", True)
+            icon = "✅" if ok else "⚠️"
+            md = f"### {icon} `$ {cmd}` (exit: {exit_code})\n"
+            if stdout:
+                md += f"```\n{stdout[:3000]}\n```\n"
+            if stderr and not ok:
+                md += f"**stderr:** `{stderr[:500]}`\n"
+            mprint(md)
+            conv.append({"role": "assistant", "content":
+                f"Wykonałem: `{cmd}` → exit {exit_code}\n{stdout[:500]}"})
+        else:
+            md = f"### ✅ `{skill}` — done\n"
+            _skip = ("success", "available_backends", "raw", "audio_path",
+                     "exit_code", "stderr", "command")
+            if isinstance(res_data, dict):
+                for k, v in res_data.items():
+                    if k not in _skip and v:
+                        md += f"- **{k}**: {v}\n"
+            mprint(md)
+            conv.append({"role": "assistant", "content": f"Executed {skill} successfully."})
         return True
     elif otype == "evo_failed":
         mprint(f"### ❌ Build failed\n{outcome.get('message', '')}")
         conv.append({"role": "assistant", "content": outcome.get("message", "")})
         return True
     elif otype == "failed":
-        mprint(f"### ❌ Nie udało się: {outcome.get('goal', '?')}\nSpróbuję odpowiedzieć tekstowo.")
+        if identity:
+            msg = identity.build_fallback_message(skill, outcome.get("goal", ""))
+            mprint(f"### ❌ {msg}")
+            conv.append({"role": "system", "content":
+                f"Skill '{skill}' jest tymczasowo uszkodzony. "
+                f"NIE mów że nie umiesz. Powiedz że naprawiasz skill."})
+        else:
+            mprint(f"### ❌ Nie udało się: {outcome.get('goal', '?')}\nSpróbuję odpowiedzieć tekstowo.")
     return False
 
-def _handle_chat(llm, sm, logger, conv):
-    sp = SYSTEM_PROMPT.format(skills=json.dumps(list(sm.list_skills().keys())))
+def _handle_chat(llm, sm, logger, conv, identity=None):
+    if identity:
+        sp = identity.build_system_prompt()
+    else:
+        sp = ("Jesteś evo-engine, ewolucyjny asystent AI. "
+              f"Masz umiejętności (skills): {json.dumps(list(sm.list_skills().keys()))}.")
     cpr(C.DIM, "Thinking...")
     r = llm.chat([{"role": "system", "content": sp}] + conv[-20:])
     if r and "[ERROR]" in r:
@@ -480,8 +515,23 @@ def main():
 
     ak = _ensure_api_key(state)
     mdl, models = _resolve_model(state)
-    llm, sm, pm, evo, intent, provider_sel, resource_mon = _init_components(
+    llm, sm, pm, evo, intent, provider_sel, resource_mon, identity = _init_components(
         ak, mdl, models, logger, state)
+
+    # Startup health scan
+    identity.refresh_statuses()
+    report = identity.get_readiness_report()
+    if report["broken"]:
+        cpr(C.YELLOW, f"Uszkodzone skille: {', '.join(report['broken'])}")
+        for broken_skill in report["broken"]:
+            p = sm.skill_path(broken_skill)
+            if p and p.exists():
+                code = p.read_text()
+                fixed = sm.preflight.auto_fix_imports(code)
+                if fixed != code:
+                    p.write_text(fixed)
+                    cpr(C.GREEN, f"  Auto-fixed: {broken_skill}")
+        identity.refresh_statuses()
 
     cpr(C.DIM, f"Model: {llm.model} | Core: {sv.active()} | Tiers: {llm.tier_info()}")
     sk = sm.list_skills()
@@ -504,6 +554,7 @@ def main():
         "sm": sm, "llm": llm, "pm": pm, "evo": evo, "sv": sv,
         "intent": intent, "logger": logger, "state": state, "conv": conv,
         "provider_selector": provider_sel, "resource_monitor": resource_mon,
+        "identity": identity,
     }
 
     while True:
@@ -539,9 +590,27 @@ def main():
             "action": analysis.get("action"), "skill": analysis.get("skill",""),
             "goal": analysis.get("goal","")})
 
+        # Show feedback before STT/TTS execution
+        if analysis.get("action") == "use" and analysis.get("skill") == "stt":
+            cpr(C.CYAN, "\n🎤 Nagrywam... (mów teraz)")
+
         outcome = evo.handle_request(ui, sk, analysis=analysis)
-        if not _handle_outcome(outcome, intent, conv):
-            _handle_chat(llm, sm, logger, conv)
+
+        # Special STT flow: feed transcription back into conversation
+        if outcome and outcome.get("skill") == "stt" and outcome.get("type") == "success":
+            stt_text = _extract_stt_text(outcome)
+            intent.record_skill_use("stt")
+            if stt_text:
+                cpr(C.GREEN, f"[STT] Usłyszałem: \"{stt_text}\"")
+                mprint(f"### 🎤 Usłyszałem: *{stt_text}*")
+                conv.append({"role": "user", "content": f"[głosowo] {stt_text}"})
+                _handle_chat(llm, sm, logger, conv, identity=identity)
+            else:
+                cpr(C.YELLOW, "[STT] Nie usłyszałem nic. Spróbuj mówić głośniej lub bliżej mikrofonu.")
+                mprint("### 🎤 Nie usłyszałem nic\nSpróbuj powiedzieć coś głośniej lub użyj `/stt` ponownie.")
+                conv.append({"role": "assistant", "content": "Nie usłyszałem nic. Spróbuj ponownie."})
+        elif not _handle_outcome(outcome, intent, conv, identity=identity):
+            _handle_chat(llm, sm, logger, conv, identity=identity)
 
         _check_proactive_learning(intent)
         intent.save()
