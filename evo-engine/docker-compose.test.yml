@@ -1,0 +1,89 @@
+# Docker Compose for evo-engine automated testing
+version: '3.8'
+
+services:
+  # Main test runner
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: evo-test
+    volumes:
+      - ./test-results:/app/test-results
+      - ./coverage:/app/coverage
+    environment:
+      - EVO_TEST_MODE=1
+      - EVO_SKIP_LLM=1
+      - PYTEST_TIMEOUT=60
+    command: >
+      python -m pytest tests/
+      -v --tb=short --color=yes
+      --timeout=60
+      --cov=cores
+      --cov-report=term-missing
+      --cov-report=html:/app/coverage/html
+      --cov-report=xml:/app/coverage/coverage.xml
+      --junitxml=/app/test-results/junit.xml
+      --html=/app/test-results/report.html
+    networks:
+      - evo-test-net
+
+  # Fast unit tests only (no heavy integration)
+  test-unit:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: evo-test-unit
+    volumes:
+      - ./test-results:/app/test-results
+    environment:
+      - EVO_TEST_MODE=1
+      - EVO_SKIP_LLM=1
+    command: >
+      python -m pytest tests/test_e2e.py
+      -v --tb=short --color=yes
+      -k "TestIntentEngine or TestProviderSelector or TestResourceMonitor"
+      --timeout=30
+    networks:
+      - evo-test-net
+
+  # Integration tests (with mocked LLM)
+  test-integration:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: evo-test-integration
+    volumes:
+      - ./test-results:/app/test-results
+    environment:
+      - EVO_TEST_MODE=1
+      - EVO_SKIP_LLM=1
+    command: >
+      python -m pytest tests/test_e2e.py
+      -v --tb=short --color=yes
+      -k "TestEvoEngine or TestSkillManager"
+      --timeout=120
+    networks:
+      - evo-test-net
+
+  # Smoke test - quick validation
+  test-smoke:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: evo-test-smoke
+    environment:
+      - EVO_TEST_MODE=1
+    command: >
+      python -c "
+        from cores.v1 import IntentEngine, LLMClient, SkillManager, EvoEngine;
+        from cores.v1.config import load_state;
+        print('✓ All core imports OK');
+        print('✓ Project structure valid')
+      "
+    networks:
+      - evo-test-net
+
+networks:
+  evo-test-net:
+    driver: bridge
