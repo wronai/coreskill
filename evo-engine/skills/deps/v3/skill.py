@@ -1,4 +1,6 @@
 import subprocess
+import importlib
+import json
 
 class DepsSkill:
     def __init__(self):

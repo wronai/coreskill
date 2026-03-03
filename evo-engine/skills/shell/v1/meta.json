@@ -1,0 +1,7 @@
+{
+  "name": "shell",
+  "version": "v1",
+  "description": "Execute system commands (bash) and return output",
+  "created_at": "2025-03-03T20:00:00Z",
+  "capabilities": ["shell", "command", "system"]
+}
