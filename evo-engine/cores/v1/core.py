@@ -356,11 +356,8 @@ COMMANDS = {
 }
 
 
-# ─── Main ────────────────────────────────────────────────────────────
-def main():
-    state = load_state()
-
-    # Restart loop detection
+# ─── Init helpers ─────────────────────────────────────────────────────
+def _check_restart_loop(state):
     if state.get("last_reset"):
         lr = datetime.fromisoformat(state["last_reset"])
         if datetime.now(timezone.utc) - lr < timedelta(minutes=5):
@@ -369,15 +366,7 @@ def main():
             cpr(C.RED, "Exiting. Fix the issue and run again.")
             sys.exit(1)
 
-    logger = Logger(state.get("active_core", "A"))
-    sv = Supervisor(state, logger)
-
-    cpr(C.CYAN, "\n" + "=" * 56)
-    cpr(C.CYAN, "  evo-engine | Evolutionary AI System v2.0")
-    cpr(C.CYAN, "  Context-aware IntentEngine | Self-healing dual-core")
-    cpr(C.CYAN, "  Auto skill builder | Capability/Provider architecture")
-    cpr(C.CYAN, "=" * 56)
-
+def _ensure_api_key(state):
     ak = state.get("openrouter_api_key") or os.environ.get("OPENROUTER_API_KEY", "")
     if not ak or not ak.strip():
         cpr(C.YELLOW, "\nPodaj API key OpenRouter:")
@@ -390,16 +379,18 @@ def main():
     if not state.get("created_at"):
         state["created_at"] = datetime.now(timezone.utc).isoformat()
     save_state(state)
+    return ak
 
+def _resolve_model(state):
     models = get_models_from_config(state)
     mdl = os.environ.get("EVO_MODEL") or state.get("model") or (models[0] if models else DEFAULT_MODEL)
-    # Auto-fix stale model
     if (not mdl) or "stepfun" in str(mdl):
         mdl = models[0] if models else DEFAULT_MODEL
         state["model"] = mdl
         save_state(state)
+    return mdl, models
 
-    # Initialize components
+def _init_components(ak, mdl, models, logger, state):
     llm = LLMClient(ak, mdl, logger, models=models)
     resource_mon = ResourceMonitor()
     provider_sel = ProviderSelector(SKILLS_DIR, resource_mon)
@@ -407,6 +398,90 @@ def main():
     pm = PipelineManager(sm, llm, logger)
     evo = EvoEngine(sm, llm, logger)
     intent = IntentEngine(llm, logger, state)
+    return llm, sm, pm, evo, intent, provider_sel, resource_mon
+
+
+# ─── Chat loop helpers ────────────────────────────────────────────────
+SYSTEM_PROMPT = ("Jesteś evo-engine, ewolucyjny asystent AI. "
+    "Masz umiejętności (skills): {skills}.\n\n"
+    "BEZWZGLĘDNE ZASADY:\n"
+    "1. Odpowiadaj po polsku jeśli user mówi po polsku.\n"
+    "2. NIGDY nie wypisuj bloków kodu (```). Zamiast tego stwórz skill.\n"
+    "3. NIGDY nie pytaj o wybór technologii. Sam wybierz najtańszą/najszybszą opcję i ZRÓB TO.\n"
+    "4. NIGDY nie dawaj listy opcji do wyboru. Sam podejmij decyzję.\n"
+    "5. NIGDY nie pisz instrukcji 'jak zainstalować'. Sam to zainstaluj.\n"
+    "6. Jeśli user mówi 'tak' - natychmiast działaj w kontekście poprzedniej rozmowy.\n"
+    "7. Bądź ULTRA zwięzły. Max 2-3 zdania. Używaj markdown.\n"
+    "8. Jeśli czegoś nie możesz zrobić - powiedz JEDNO zdanie i zaproponuj stworzenie skill.\n"
+    "9. Przy tworzeniu czegokolwiek - kalkuluj: co najtańsze, najszybsze, wymaga najmniej zasobów.\n")
+
+def _handle_outcome(outcome, intent, conv):
+    """Process EvoEngine outcome. Returns True if handled (skip chat), False to fall through."""
+    if not outcome:
+        return False
+    otype = outcome.get("type")
+    if otype == "success":
+        r = outcome.get("result", {})
+        skill = outcome.get("skill", "?")
+        intent.record_skill_use(skill)
+        res_data = r.get("result", {}) if isinstance(r, dict) else r
+        md = f"### ✅ `{skill}` — done\n"
+        if isinstance(res_data, dict):
+            for k, v in res_data.items():
+                if k not in ("success", "available_backends") and v:
+                    md += f"- **{k}**: {v}\n"
+        mprint(md)
+        conv.append({"role": "assistant", "content": f"Executed {skill} successfully."})
+        return True
+    elif otype == "evo_failed":
+        mprint(f"### ❌ Build failed\n{outcome.get('message', '')}")
+        conv.append({"role": "assistant", "content": outcome.get("message", "")})
+        return True
+    elif otype == "failed":
+        mprint(f"### ❌ Nie udało się: {outcome.get('goal', '?')}\nSpróbuję odpowiedzieć tekstowo.")
+    return False
+
+def _handle_chat(llm, sm, logger, conv):
+    sp = SYSTEM_PROMPT.format(skills=json.dumps(list(sm.list_skills().keys())))
+    cpr(C.DIM, "Thinking...")
+    r = llm.chat([{"role": "system", "content": sp}] + conv[-20:])
+    if r and "[ERROR]" in r:
+        logger.core("chat_error", {"error": r[:200]})
+        cpr(C.RED, f"evo> {r}")
+    else:
+        conv.append({"role": "assistant", "content": r})
+        mprint(f"**evo>** {r}\n")
+    logger.core("chat_response", {"length": len(r) if r else 0})
+
+def _check_proactive_learning(intent):
+    unhandled = intent._p.get("unhandled", [])
+    if len(unhandled) >= 5 and len(unhandled) % 5 == 0:
+        suggestions = intent.suggest_skills()
+        if suggestions:
+            cpr(C.CYAN, "\n[LEARN] Wykryłem powtarzające się potrzeby. Proponuję nowe skills:")
+            for sg in suggestions:
+                cpr(C.GREEN, f"  → {sg.get('name','?')}: {sg.get('description','')[:80]}")
+            cpr(C.DIM, "  Napisz 'stwórz <name>' lub /create <name> aby zbudować.")
+
+
+# ─── Main ────────────────────────────────────────────────────────────
+def main():
+    state = load_state()
+    _check_restart_loop(state)
+
+    logger = Logger(state.get("active_core", "A"))
+    sv = Supervisor(state, logger)
+
+    cpr(C.CYAN, "\n" + "=" * 56)
+    cpr(C.CYAN, "  evo-engine | Evolutionary AI System v2.0")
+    cpr(C.CYAN, "  Context-aware IntentEngine | Self-healing dual-core")
+    cpr(C.CYAN, "  Auto skill builder | Capability/Provider architecture")
+    cpr(C.CYAN, "=" * 56)
+
+    ak = _ensure_api_key(state)
+    mdl, models = _resolve_model(state)
+    llm, sm, pm, evo, intent, provider_sel, resource_mon = _init_components(
+        ak, mdl, models, logger, state)
 
     cpr(C.DIM, f"Model: {llm.model} | Core: {sv.active()} | Tiers: {llm.tier_info()}")
     sk = sm.list_skills()
@@ -415,7 +490,6 @@ def main():
     else:
         cpr(C.YELLOW, "No skills yet. Chat or /create <n>")
 
-    # Show provider info if any multi-provider skills exist
     caps_with_providers = [c for c in provider_sel.list_capabilities()
                            if len(provider_sel.list_providers(c)) > 1]
     if caps_with_providers:
@@ -426,8 +500,6 @@ def main():
                           "tiers": llm.tier_info(), "skills": list(sk.keys())})
 
     conv = []
-
-    # Build context dict for command dispatch
     cmd_ctx = {
         "sm": sm, "llm": llm, "pm": pm, "evo": evo, "sv": sv,
         "intent": intent, "logger": logger, "state": state, "conv": conv,
@@ -449,11 +521,9 @@ def main():
             act = p[0].lower()
             a1 = p[1] if len(p) > 1 else ""
             a2 = p[2] if len(p) > 2 else ""
-
             handler = COMMANDS.get(act)
             if handler:
-                result = handler(a1=a1, a2=a2, **cmd_ctx)
-                if result == "QUIT":
+                if handler(a1=a1, a2=a2, **cmd_ctx) == "QUIT":
                     break
             else:
                 cpr(C.YELLOW, f"Unknown: {act}. /help")
@@ -463,71 +533,17 @@ def main():
         conv.append({"role": "user", "content": ui})
         logger.core("user_msg", {"msg": ui[:200]})
 
-        # Step 1: IntentEngine analyzes with full conversation context
         sk = sm.list_skills()
         analysis = intent.analyze(ui, sk, conv)
         logger.core("intent_result", {
             "action": analysis.get("action"), "skill": analysis.get("skill",""),
             "goal": analysis.get("goal","")})
 
-        # Step 2: Let EvoEngine handle the pre-computed analysis
         outcome = evo.handle_request(ui, sk, analysis=analysis)
+        if not _handle_outcome(outcome, intent, conv):
+            _handle_chat(llm, sm, logger, conv)
 
-        if outcome:
-            otype = outcome.get("type")
-            if otype == "success":
-                r = outcome.get("result", {})
-                skill = outcome.get("skill", "?")
-                intent.record_skill_use(skill)
-                res_data = r.get("result", {}) if isinstance(r, dict) else r
-                md = f"### ✅ `{skill}` — done\n"
-                if isinstance(res_data, dict):
-                    for k, v in res_data.items():
-                        if k not in ("success", "available_backends") and v:
-                            md += f"- **{k}**: {v}\n"
-                mprint(md)
-                conv.append({"role": "assistant", "content": f"Executed {skill} successfully."})
-                continue
-            elif otype == "failed":
-                mprint(f"### ❌ Nie udało się: {outcome.get('goal', '?')}\nSpróbuję odpowiedzieć tekstowo.")
-                # Fall through to regular chat
-            elif otype == "evo_failed":
-                mprint(f"### ❌ Build failed\n{outcome.get('message', '')}")
-                conv.append({"role": "assistant", "content": outcome.get("message", "")})
-                continue
-
-        # Step 3: Regular chat (strict: no questions, no code, just do it)
-        sp = (f"Jesteś evo-engine, ewolucyjny asystent AI. Masz umiejętności (skills): {json.dumps(list(sm.list_skills().keys()))}.\n\n"
-              f"BEZWZGLĘDNE ZASADY:\n"
-              f"1. Odpowiadaj po polsku jeśli user mówi po polsku.\n"
-              f"2. NIGDY nie wypisuj bloków kodu (```). Zamiast tego stwórz skill.\n"
-              f"3. NIGDY nie pytaj o wybór technologii. Sam wybierz najtańszą/najszybszą opcję i ZRÓB TO.\n"
-              f"4. NIGDY nie dawaj listy opcji do wyboru. Sam podejmij decyzję.\n"
-              f"5. NIGDY nie pisz instrukcji 'jak zainstalować'. Sam to zainstaluj.\n"
-              f"6. Jeśli user mówi 'tak' - natychmiast działaj w kontekście poprzedniej rozmowy.\n"
-              f"7. Bądź ULTRA zwięzły. Max 2-3 zdania. Używaj markdown.\n"
-              f"8. Jeśli czegoś nie możesz zrobić - powiedz JEDNO zdanie i zaproponuj stworzenie skill.\n"
-              f"9. Przy tworzeniu czegokolwiek - kalkuluj: co najtańsze, najszybsze, wymaga najmniej zasobów.\n")
-        cpr(C.DIM, "Thinking...")
-        r = llm.chat([{"role": "system", "content": sp}] + conv[-20:])
-
-        if r and "[ERROR]" in r:
-            logger.core("chat_error", {"error": r[:200]})
-            cpr(C.RED, f"evo> {r}")
-        else:
-            conv.append({"role": "assistant", "content": r})
-            mprint(f"**evo>** {r}\n")
-        logger.core("chat_response", {"length": len(r) if r else 0})
-
-        # Step 4: Proactive learning - suggest skills for recurring gaps
-        unhandled = intent._p.get("unhandled", [])
-        if len(unhandled) >= 5 and len(unhandled) % 5 == 0:
-            suggestions = intent.suggest_skills()
-            if suggestions:
-                cpr(C.CYAN, "\n[LEARN] Wykryłem powtarzające się potrzeby. Proponuję nowe skills:")
-                for sg in suggestions:
-                    cpr(C.GREEN, f"  → {sg.get('name','?')}: {sg.get('description','')[:80]}")
-                cpr(C.DIM, "  Napisz 'stwórz <name>' lub /create <name> aby zbudować.")
+        _check_proactive_learning(intent)
         intent.save()
 
 

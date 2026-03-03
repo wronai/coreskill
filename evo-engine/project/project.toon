@@ -1,18 +1,21 @@
-# evo-engine | 43f 6544L | python:43
+# evo-engine | 48f 6757L | python:48
 # Keys: M=modules, D=details, i=imports, c=classes, f=functions, m=methods
-M[43]:
+M[48]:
   build_core.py,525
   main.py,86
-  TODO/resource_monitor.py,152
-  TODO/provider_selector.py,242
   TODO/migrate_skills.py,191
+  TODO1/system_identity.py,294
+  TODO1/preflight.py,455
   tests/__init__.py,0
   tests/test_e2e.py,514
   skills/llm_router/v1/skill.py,107
   skills/tts/providers/coqui/v1/skill.py,7
   skills/tts/providers/pyttsx3/v1/skill.py,7
+  skills/tts/providers/espeak/v6/skill.py,4
   skills/tts/providers/espeak/v2/skill.py,4
   skills/tts/providers/espeak/v3/skill.py,4
+  skills/tts/providers/espeak/v7/skill.py,4
+  skills/tts/providers/espeak/v5/skill.py,4
   skills/tts/providers/espeak/v1/test_enhanced.py,65
   skills/tts/providers/espeak/v1/skill.py,30
   skills/tts/providers/espeak/v1/test.py,41
@@ -20,27 +23,29 @@ M[43]:
   skills/devops/v1/skill.py,208
   skills/stt/providers/vosk/v6/skill.py,131
   skills/stt/providers/vosk/v3/skill.py,131
-  skills/stt/providers/vosk/v5/skill.py,131
+  skills/stt/providers/vosk/v7/skill.py,4
   skills/stt/providers/vosk/v1/skill.py,131
-  skills/stt/providers/vosk/v4/skill.py,131
   skills/stt/providers/whisper/v1/skill.py,7
   skills/deps/v1/skill.py,144
+  skills/kalkulator/v6/skill.py,4
   skills/kalkulator/v2/skill.py,4
   skills/kalkulator/v3/skill.py,4
+  skills/kalkulator/v5/skill.py,4
   skills/kalkulator/v1/skill.py,4
+  skills/kalkulator/v4/skill.py,4
   skills/web_search/providers/duckduckgo/v1/skill.py,131
   skills/echo/v1/skill.py,19
   skills/git_ops/v1/skill.py,114
   cores/v1/config.py,69
   cores/v1/resource_monitor.py,129
-  cores/v1/intent_engine.py,224
+  cores/v1/intent_engine.py,238
   cores/v1/supervisor.py,69
   cores/v1/__init__.py,22
   cores/v1/provider_selector.py,192
   cores/v1/llm_client.py,272
   cores/v1/evo_engine.py,158
   cores/v1/utils.py,100
-  cores/v1/core.py,456
+  cores/v1/core.py,478
   cores/v1/pipeline_manager.py,39
   cores/v1/logger.py,48
   cores/v1/skill_manager.py,299
@@ -53,21 +58,27 @@ D:
     save_state(s)
     check(version=1)
     bootstrap()
-  TODO/resource_monitor.py:
-    i: os,shutil,subprocess,pathlib.Path
-    e: ResourceMonitor
-    ResourceMonitor: __init__(0),snapshot(0),_cpu_count(0),_ram_total(0),_ram_available(0)  # Detects CPU, RAM, GPU, disk, installe...
-  TODO/provider_selector.py:
-    i: json,pathlib.Path,typing.Optional
-    e: TIER_ORDER,ProviderInfo,ProviderSelector,EXAMPLE_TTS_MANIFEST,EXAMPLE_ESPEAK_META,EXAMPLE_COQUI_META
-    ProviderInfo: __init__(2)  # Parsed provider metadata.
-    ProviderSelector: __init__(2),list_capabilities(0),list_providers(1),load_manifest(1),load_meta(2)  # Selects the best available provider f...
   TODO/migrate_skills.py:
     i: json,os,shutil,sys,pathlib.Path
     e: SKILLS_DIR,MIGRATIONS,SIMPLE_SKILLS,migrate_skill,add_manifest_to_simple,main
     migrate_skill(name:str;config:dict;dry_run:bool=False)
     add_manifest_to_simple(name:str;dry_run:bool=False)
     main()
+  TODO1/system_identity.py:
+    i: json,datetime,datetime.timezone,pathlib.Path,typing.Optional
+    e: SkillStatus,SystemIdentity,patch_analyze_need,patch_handle_request_fallback,EXAMPLE_INTEGRATION
+    SkillStatus: __init__(6),to_dict(0)  # Runtime status of a single capability.
+    SystemIdentity: __init__(2),refresh_statuses(0),get_status(1),build_system_prompt(1),build_fallback_message(3)  # Builds dynamic system prompt that sep...
+    patch_analyze_need(original_analyze_need;identity:SystemIdentity)
+    patch_handle_request_fallback(identity:SystemIdentity)
+  TODO1/preflight.py:
+    i: ast,hashlib,json,subprocess,sys,textwrap,importlib.util,pathlib.Path,typing.Optional
+    e: PreflightResult,SkillPreflight,EvolutionGuard,patch_exec_skill,patch_smart_evolve
+    PreflightResult: __init__(4),__repr__(0),to_dict(0)  # Result of pre-flight validation.
+    SkillPreflight: check_all(1),check_syntax(1),check_imports(2),check_interface(1),auto_fix_imports(1)  # Pre-flight validation for skill files.
+    EvolutionGuard: __init__(0),fingerprint(1),record_error(3),is_repeating(2),get_error_summary(1)  # Prevents evolution loops where the sa...
+    patch_exec_skill(original_exec_skill;preflight:SkillPreflight)
+    patch_smart_evolve(original_smart_evolve;guard:EvolutionGuard;preflight:SkillPreflight)
   tests/test_e2e.py:
     i: json,os,sys,tempfile,shutil,unittest,cores.v1.config.load_state,pathlib.Path,unittest.mock.{MagicMock,patch}
     e: ROOT,MockLLM,TestIntentEngineKeywords,TestIntentEngineTopics,TestProviderSelector,TestResourceMonitor,TestSkillManagerProviders,TestEvoEngineDialogFlow
@@ -92,12 +103,27 @@ D:
     Pyttsx3Skill: execute(1)
     get_info()
     health_check()
+  skills/tts/providers/espeak/v6/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
   skills/tts/providers/espeak/v2/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill: execute(1)
     get_info()
     health_check()
   skills/tts/providers/espeak/v3/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v7/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v5/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill: execute(1)
     get_info()
@@ -147,22 +173,13 @@ D:
     get_info()
     health_check()
     execute(input_data:dict)->dict
-  skills/stt/providers/vosk/v5/skill.py:
-    i: json,os,shutil,subprocess,tempfile,sys,pathlib.Path
-    e: get_info,health_check,STTSkill,execute
-    STTSkill: __init__(0),_record_wav(2),_ensure_wav(2),_transcribe_vosk(2),execute(1)
+  skills/stt/providers/vosk/v7/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
     get_info()
     health_check()
-    execute(input_data:dict)->dict
   skills/stt/providers/vosk/v1/skill.py:
     i: json,os,shutil,subprocess,sys,tempfile,pathlib.Path
-    e: get_info,health_check,STTSkill,execute
-    STTSkill: __init__(0),_record_wav(2),_ensure_wav(2),_transcribe_vosk(2),execute(1)
-    get_info()
-    health_check()
-    execute(input_data:dict)->dict
-  skills/stt/providers/vosk/v4/skill.py:
-    i: json,os,shutil,subprocess,tempfile,sys,pathlib.Path
     e: get_info,health_check,STTSkill,execute
     STTSkill: __init__(0),_record_wav(2),_ensure_wav(2),_transcribe_vosk(2),execute(1)
     get_info()
@@ -179,6 +196,11 @@ D:
     DepsSkill: check_python_module(1),check_system_command(1),pip_install(2),scan_system(0),suggest_alternatives(1)  # Detect, install and manage Python and...
     get_info()
     health_check()
+  skills/kalkulator/v6/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
   skills/kalkulator/v2/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill: execute(1)
@@ -189,7 +211,17 @@ D:
     TestSkill: execute(1)
     get_info()
     health_check()
+  skills/kalkulator/v5/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
   skills/kalkulator/v1/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/kalkulator/v4/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill: execute(1)
     get_info()
@@ -260,7 +292,7 @@ D:
     clean_json(text)
   cores/v1/core.py:
     i: os,sys,json,time,datetime,config.{C,ROOT,SKILLS_DIR},datetime.{timedelta,timezone}
-    e: gen_compose,HELP,COMMANDS,main
+    e: gen_compose,HELP,COMMANDS,SYSTEM_PROMPT,main
     gen_compose(skills;state)
     _cmd_help()
     _cmd_quit()

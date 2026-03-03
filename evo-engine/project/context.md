@@ -4,36 +4,36 @@
 
 - **Project**: /home/tom/github/wronai/coreskill/evo-engine
 - **Analysis Mode**: static
-- **Total Functions**: 294
-- **Total Classes**: 36
-- **Modules**: 38
-- **Entry Points**: 275
+- **Total Functions**: 317
+- **Total Classes**: 43
+- **Modules**: 43
+- **Entry Points**: 293
 
 ## Architecture by Module
 
 ### cores.v1.core
-- **Functions**: 27
+- **Functions**: 34
 - **File**: `core.py`
+
+### cores.v1.intent_engine
+- **Functions**: 21
+- **Classes**: 1
+- **File**: `intent_engine.py`
 
 ### cores.v1.skill_manager
 - **Functions**: 18
 - **Classes**: 1
 - **File**: `skill_manager.py`
 
+### TODO1.preflight
+- **Functions**: 17
+- **Classes**: 3
+- **File**: `preflight.py`
+
 ### skills.git_ops.v1.skill
 - **Functions**: 15
 - **Classes**: 1
 - **File**: `skill.py`
-
-### cores.v1.intent_engine
-- **Functions**: 14
-- **Classes**: 1
-- **File**: `intent_engine.py`
-
-### TODO.provider_selector
-- **Functions**: 13
-- **Classes**: 2
-- **File**: `provider_selector.py`
 
 ### cores.v1.provider_selector
 - **Functions**: 13
@@ -45,10 +45,10 @@
 - **Classes**: 1
 - **File**: `llm_client.py`
 
-### TODO.resource_monitor
+### TODO1.system_identity
 - **Functions**: 12
-- **Classes**: 1
-- **File**: `resource_monitor.py`
+- **Classes**: 2
+- **File**: `system_identity.py`
 
 ### cores.v1.resource_monitor
 - **Functions**: 12
@@ -90,17 +90,7 @@
 - **Classes**: 1
 - **File**: `skill.py`
 
-### skills.stt.providers.vosk.v5.skill
-- **Functions**: 8
-- **Classes**: 1
-- **File**: `skill.py`
-
 ### skills.stt.providers.vosk.v1.skill
-- **Functions**: 8
-- **Classes**: 1
-- **File**: `skill.py`
-
-### skills.stt.providers.vosk.v4.skill
 - **Functions**: 8
 - **Classes**: 1
 - **File**: `skill.py`
@@ -110,12 +100,21 @@
 - **Classes**: 1
 - **File**: `skill.py`
 
+### main
+- **Functions**: 5
+- **File**: `main.py`
+
+### cores.v1.config
+- **Functions**: 5
+- **Classes**: 1
+- **File**: `config.py`
+
 ## Key Entry Points
 
 Main execution flows into the system:
 
 ### cores.v1.core.main
-- **Calls**: cores.v1.config.load_state, state.get, Logger, Supervisor, cores.v1.config.cpr, cores.v1.config.cpr, cores.v1.config.cpr, cores.v1.config.cpr
+- **Calls**: main.load_state, cores.v1.core._check_restart_loop, Logger, Supervisor, cores.v1.config.cpr, cores.v1.config.cpr, cores.v1.config.cpr, cores.v1.config.cpr
 
 ### cores.v1.evo_engine.EvoEngine._execute_with_validation
 > Execute skill → validate → retry (max 2 evolves for existing skills).
@@ -128,6 +127,13 @@ Main execution flows into the system:
 > Evolve skill using devops diagnosis + deps alternatives.
 - **Calls**: self.latest_v, self.skill_path, p.read_text, self.diagnose_skill, diag.get, self.log.learn_summary, cores.v1.utils.clean_code, self._active_provider
 
+### TODO1.preflight.SkillPreflight.check_imports
+> Stage 2: Do all imports resolve?
+
+Uses subprocess to avoid polluting current process.
+Catches the exact "name 'X' is not defined" problem.
+- **Calls**: set, set, ast.walk, PreflightResult, ast.parse, isinstance, PreflightResult, skill_path.exists
+
 ### cores.v1.intent_engine.IntentEngine.analyze
 > Multi-stage intent detection with full conversation context.
 - **Calls**: self._update_topics, self._recent_topic, self._build_context, user_msg.strip, stripped.split, self._kw_classify, self._llm_classify, self._ctx_infer
@@ -135,6 +141,13 @@ Main execution flows into the system:
 ### cores.v1.evo_engine.EvoEngine.handle_request
 > Full pipeline: analyze → execute/create/evolve → validate. No user prompts.
 - **Calls**: analysis.get, analysis.get, analysis.get, cores.v1.config.cpr, self.llm.analyze_need, isinstance, analysis.get, analysis.get
+
+### TODO1.preflight.SkillPreflight.auto_fix_imports
+> Attempt to auto-fix missing imports.
+
+If code uses shutil.which() but doesn't import shutil,
+add 'import shutil' at the top.
+- **Calls**: set, ast.walk, code.split, enumerate, None.join, ast.parse, isinstance, line.strip
 
 ### skills.git_ops.v1.skill.GitOpsSkill.execute
 > evo-engine interface.
@@ -152,22 +165,12 @@ Main execution flows into the system:
 ### skills.stt.providers.vosk.v3.skill.STTSkill.execute
 - **Calls**: int, params.get, params.get, int, params.get, params.get, self._transcribe_vosk, isinstance
 
-### skills.stt.providers.vosk.v5.skill.STTSkill.execute
-- **Calls**: int, params.get, params.get, int, params.get, params.get, self._transcribe_vosk, isinstance
-
 ### skills.stt.providers.vosk.v1.skill.STTSkill.execute
-- **Calls**: int, params.get, params.get, int, params.get, params.get, self._transcribe_vosk, isinstance
-
-### skills.stt.providers.vosk.v4.skill.STTSkill.execute
 - **Calls**: int, params.get, params.get, int, params.get, params.get, self._transcribe_vosk, isinstance
 
 ### cores.v1.evo_engine.EvoEngine.evolve_skill
 > Create + evolutionary test loop for new skills.
 - **Calls**: cores.v1.config.cpr, self.log.core, cores.v1.config.cpr, self.sm.create_skill, cores.v1.config.cpr, range, self.log.core, self.sm.rollback
-
-### TODO.resource_monitor.ResourceMonitor.can_run
-> Check if system meets requirements. Returns (bool, reason).
-- **Calls**: requirements.get, requirements.get, requirements.get, requirements.get, requirements.get, self._detect_gpu, requirements.get, self._ram_available
 
 ### cores.v1.resource_monitor.ResourceMonitor.can_run
 > Check if system meets requirements. Returns (bool, reason).
@@ -194,6 +197,27 @@ Main execution flows into the system:
 > Fetch free models from OpenRouter API.
 - **Calls**: urllib.request.Request, data.get, free.sort, urllib.request.urlopen, json.loads, m.get, m.get, float
 
+### TODO1.preflight.SkillPreflight.check_interface
+> Stage 3: Does the skill expose required interface?
+- get_info() function
+- health_check() function
+- execute() function OR class with execute() method
+- **Calls**: set, ast.iter_child_nodes, PreflightResult, ast.parse, isinstance, PreflightResult, PreflightResult, top_level_funcs.add
+
+### TODO1.preflight.patch_exec_skill
+> Wrap SkillManager.exec_skill to add pre-flight checks.
+
+BEFORE: load module → run execute() → crash with 'shutil not defined'
+AFTER:  preflight check 
+- **Calls**: skill_base.exists, original_exec_skill, sorted, skill_p.exists, preflight.check_all, result.details.get, skill_p.read_text, preflight.auto_fix_imports
+
+### TODO1.preflight.patch_smart_evolve
+> Wrap SkillManager.smart_evolve to add evolution guards.
+
+BEFORE: generate code → save → test → fail → repeat same bug
+AFTER:  check error history → ad
+- **Calls**: str, guard.suggest_strategy, guard.record_error, guard.build_evolution_prompt_context, original_smart_evolve, sorted, skill_p.exists, skill_p.read_text
+
 ### cores.v1.logger.Logger.learn_summary
 > Build a summary of past errors and successes for learning.
 - **Calls**: self.read_skill_log, self.read_core_log, summary.append, summary.append, None.join, l.get, None.join, l.get
@@ -201,17 +225,11 @@ Main execution flows into the system:
 ### cores.v1.skill_manager.SkillManager.list_skills
 - **Calls**: sorted, SKILLS_DIR.exists, SKILLS_DIR.iterdir, prov_dir.is_dir, self._collect_versions, d.name.startswith, sorted, d.is_dir
 
-### cores.v1.intent_engine.IntentEngine._kw_classify
-- **Calls**: msg.lower, any, any, any, any, any, any, ul.split
-
 ### cores.v1.skill_manager.SkillManager.rollback
 - **Calls**: self._active_provider, sorted, mp.exists, self.log.skill, d.exists, len, json.loads, mp.write_text
 
 ### cores.v1.core._cmd_core
 - **Calls**: sv.rollback_core, cores.v1.config.cpr, cores.v1.config.cpr, sv.list_cores, sv.active, sv.active_version, cores.v1.config.cpr, cores.v1.config.cpr
-
-### skills.stt.providers.vosk.v6.skill.STTSkill._ensure_wav
-- **Calls**: Path, tempfile.mkstemp, os.close, subprocess.run, p.exists, FileNotFoundError, p.suffix.lower, str
 
 ### skills.web_search.providers.duckduckgo.v1.skill.WebSearchSkill.search_duckduckgo
 > Search DuckDuckGo Lite (no JS needed).
@@ -224,6 +242,9 @@ Key execution flows identified:
 ### Flow 1: main
 ```
 main [cores.v1.core]
+  └─> _check_restart_loop
+      └─ →> cpr
+      └─ →> cpr
   └─ →> load_state
   └─ →> cpr
 ```
@@ -246,70 +267,55 @@ bootstrap [main]
 smart_evolve [cores.v1.skill_manager.SkillManager]
 ```
 
-### Flow 5: analyze
+### Flow 5: check_imports
+```
+check_imports [TODO1.preflight.SkillPreflight]
+```
+
+### Flow 6: analyze
 ```
 analyze [cores.v1.intent_engine.IntentEngine]
 ```
 
-### Flow 6: handle_request
+### Flow 7: handle_request
 ```
 handle_request [cores.v1.evo_engine.EvoEngine]
   └─ →> cpr
 ```
 
-### Flow 7: execute
+### Flow 8: auto_fix_imports
+```
+auto_fix_imports [TODO1.preflight.SkillPreflight]
+```
+
+### Flow 9: execute
 ```
 execute [skills.git_ops.v1.skill.GitOpsSkill]
 ```
 
-### Flow 8: create_skill
+### Flow 10: create_skill
 ```
 create_skill [cores.v1.skill_manager.SkillManager]
   └─ →> clean_code
 ```
 
-### Flow 9: _cmd_models
-```
-_cmd_models [cores.v1.core]
-  └─ →> cpr
-  └─ →> cpr
-  └─ →> discover_models
-```
-
-### Flow 10: evolve_skill
-```
-evolve_skill [cores.v1.evo_engine.EvoEngine]
-  └─ →> cpr
-  └─ →> cpr
-```
-
 ## Key Classes
-
-### cores.v1.skill_manager.SkillManager
-- **Methods**: 16
-- **Key Methods**: cores.v1.skill_manager.SkillManager.__init__, cores.v1.skill_manager.SkillManager._collect_versions, cores.v1.skill_manager.SkillManager.list_skills, cores.v1.skill_manager.SkillManager.latest_v, cores.v1.skill_manager.SkillManager._active_provider, cores.v1.skill_manager.SkillManager.skill_path, cores.v1.skill_manager.SkillManager.create_skill, cores.v1.skill_manager.SkillManager.diagnose_skill, cores.v1.skill_manager.SkillManager._raw_test, cores.v1.skill_manager.SkillManager.test_skill
 
 ### cores.v1.intent_engine.IntentEngine
 > Multi-stage intent detection with conversation context and learning.
 Stages:
   1. Topic tracking (vo
-- **Methods**: 14
+- **Methods**: 21
 - **Key Methods**: cores.v1.intent_engine.IntentEngine.__init__, cores.v1.intent_engine.IntentEngine.save, cores.v1.intent_engine.IntentEngine._detect_topics, cores.v1.intent_engine.IntentEngine._update_topics, cores.v1.intent_engine.IntentEngine._recent_topic, cores.v1.intent_engine.IntentEngine._build_context, cores.v1.intent_engine.IntentEngine.record_skill_use, cores.v1.intent_engine.IntentEngine.record_correction, cores.v1.intent_engine.IntentEngine.record_unhandled, cores.v1.intent_engine.IntentEngine.analyze
+
+### cores.v1.skill_manager.SkillManager
+- **Methods**: 16
+- **Key Methods**: cores.v1.skill_manager.SkillManager.__init__, cores.v1.skill_manager.SkillManager._collect_versions, cores.v1.skill_manager.SkillManager.list_skills, cores.v1.skill_manager.SkillManager.latest_v, cores.v1.skill_manager.SkillManager._active_provider, cores.v1.skill_manager.SkillManager.skill_path, cores.v1.skill_manager.SkillManager.create_skill, cores.v1.skill_manager.SkillManager.diagnose_skill, cores.v1.skill_manager.SkillManager._raw_test, cores.v1.skill_manager.SkillManager.test_skill
 
 ### skills.git_ops.v1.skill.GitOpsSkill
 > Manage local git repos for skill development and versioning.
 - **Methods**: 13
 - **Key Methods**: skills.git_ops.v1.skill.GitOpsSkill.__init__, skills.git_ops.v1.skill.GitOpsSkill._run, skills.git_ops.v1.skill.GitOpsSkill.init, skills.git_ops.v1.skill.GitOpsSkill.status, skills.git_ops.v1.skill.GitOpsSkill.add, skills.git_ops.v1.skill.GitOpsSkill.commit, skills.git_ops.v1.skill.GitOpsSkill.log, skills.git_ops.v1.skill.GitOpsSkill.diff, skills.git_ops.v1.skill.GitOpsSkill.tag, skills.git_ops.v1.skill.GitOpsSkill.checkout
-
-### TODO.resource_monitor.ResourceMonitor
-> Detects CPU, RAM, GPU, disk, installed packages.
-- **Methods**: 12
-- **Key Methods**: TODO.resource_monitor.ResourceMonitor.__init__, TODO.resource_monitor.ResourceMonitor.snapshot, TODO.resource_monitor.ResourceMonitor._cpu_count, TODO.resource_monitor.ResourceMonitor._ram_total, TODO.resource_monitor.ResourceMonitor._ram_available, TODO.resource_monitor.ResourceMonitor._ram_from_proc, TODO.resource_monitor.ResourceMonitor._disk_free, TODO.resource_monitor.ResourceMonitor._detect_gpu, TODO.resource_monitor.ResourceMonitor._installed_packages, TODO.resource_monitor.ResourceMonitor.has_command
-
-### TODO.provider_selector.ProviderSelector
-> Selects the best available provider for a capability.
-- **Methods**: 12
-- **Key Methods**: TODO.provider_selector.ProviderSelector.__init__, TODO.provider_selector.ProviderSelector.list_capabilities, TODO.provider_selector.ProviderSelector.list_providers, TODO.provider_selector.ProviderSelector.load_manifest, TODO.provider_selector.ProviderSelector.load_meta, TODO.provider_selector.ProviderSelector.get_provider_info, TODO.provider_selector.ProviderSelector.select, TODO.provider_selector.ProviderSelector._check_runnable, TODO.provider_selector.ProviderSelector._score, TODO.provider_selector.ProviderSelector._fallback
 
 ### cores.v1.resource_monitor.ResourceMonitor
 > Detects CPU, RAM, GPU, disk, installed packages.
@@ -332,6 +338,13 @@ Stages:
 - **Methods**: 10
 - **Key Methods**: cores.v1.supervisor.Supervisor.__init__, cores.v1.supervisor.Supervisor.active, cores.v1.supervisor.Supervisor.active_version, cores.v1.supervisor.Supervisor.list_cores, cores.v1.supervisor.Supervisor.switch, cores.v1.supervisor.Supervisor.health, cores.v1.supervisor.Supervisor.create_next_core, cores.v1.supervisor.Supervisor.promote_core, cores.v1.supervisor.Supervisor.rollback_core, cores.v1.supervisor.Supervisor.recover
 
+### TODO1.system_identity.SystemIdentity
+> Builds dynamic system prompt that separates:
+- What the SYSTEM can do (capabilities)
+- What the LLM 
+- **Methods**: 8
+- **Key Methods**: TODO1.system_identity.SystemIdentity.__init__, TODO1.system_identity.SystemIdentity.refresh_statuses, TODO1.system_identity.SystemIdentity.get_status, TODO1.system_identity.SystemIdentity.build_system_prompt, TODO1.system_identity.SystemIdentity.build_fallback_message, TODO1.system_identity.SystemIdentity.build_skill_context_for_llm, TODO1.system_identity.SystemIdentity.detect_needed_capabilities, TODO1.system_identity.SystemIdentity.get_readiness_report
+
 ### cores.v1.logger.Logger
 > Per-skill, per-core structured logging with learning.
 - **Methods**: 8
@@ -342,10 +355,24 @@ Stages:
 - **Methods**: 8
 - **Key Methods**: skills.devops.v1.skill.DevOpsSkill.check_syntax, skills.devops.v1.skill.DevOpsSkill.detect_imports, skills.devops.v1.skill.DevOpsSkill.check_deps, skills.devops.v1.skill.DevOpsSkill.find_system_alternatives, skills.devops.v1.skill.DevOpsSkill.test_skill, skills.devops.v1.skill.DevOpsSkill.health_check_skill, skills.devops.v1.skill.DevOpsSkill.generate_fix_prompt, skills.devops.v1.skill.DevOpsSkill.execute
 
+### TODO1.preflight.EvolutionGuard
+> Prevents evolution loops where the same error repeats.
+
+PROBLEM: v6→v7→v8→v9 all with "shutil not de
+- **Methods**: 7
+- **Key Methods**: TODO1.preflight.EvolutionGuard.__init__, TODO1.preflight.EvolutionGuard.fingerprint, TODO1.preflight.EvolutionGuard.record_error, TODO1.preflight.EvolutionGuard.is_repeating, TODO1.preflight.EvolutionGuard.get_error_summary, TODO1.preflight.EvolutionGuard.suggest_strategy, TODO1.preflight.EvolutionGuard.build_evolution_prompt_context
+
 ### skills.deps.v1.skill.DepsSkill
 > Detect, install and manage Python and system dependencies.
 - **Methods**: 6
 - **Key Methods**: skills.deps.v1.skill.DepsSkill.check_python_module, skills.deps.v1.skill.DepsSkill.check_system_command, skills.deps.v1.skill.DepsSkill.pip_install, skills.deps.v1.skill.DepsSkill.scan_system, skills.deps.v1.skill.DepsSkill.suggest_alternatives, skills.deps.v1.skill.DepsSkill.execute
+
+### TODO1.preflight.SkillPreflight
+> Pre-flight validation for skill files.
+
+Run BEFORE exec_skill() and BEFORE accepting evolved code.
+- **Methods**: 5
+- **Key Methods**: TODO1.preflight.SkillPreflight.check_all, TODO1.preflight.SkillPreflight.check_syntax, TODO1.preflight.SkillPreflight.check_imports, TODO1.preflight.SkillPreflight.check_interface, TODO1.preflight.SkillPreflight.auto_fix_imports
 
 ### cores.v1.evo_engine.EvoEngine
 > Generic evolutionary algorithm:
@@ -353,10 +380,6 @@ Stages:
  
 - **Methods**: 5
 - **Key Methods**: cores.v1.evo_engine.EvoEngine.__init__, cores.v1.evo_engine.EvoEngine.handle_request, cores.v1.evo_engine.EvoEngine._execute_with_validation, cores.v1.evo_engine.EvoEngine._validate_goal, cores.v1.evo_engine.EvoEngine.evolve_skill
-
-### skills.stt.providers.vosk.v6.skill.STTSkill
-- **Methods**: 5
-- **Key Methods**: skills.stt.providers.vosk.v6.skill.STTSkill.__init__, skills.stt.providers.vosk.v6.skill.STTSkill._record_wav, skills.stt.providers.vosk.v6.skill.STTSkill._ensure_wav, skills.stt.providers.vosk.v6.skill.STTSkill._transcribe_vosk, skills.stt.providers.vosk.v6.skill.STTSkill.execute
 
 ### skills.web_search.providers.duckduckgo.v1.skill.SimpleHTMLTextExtractor
 > Extract visible text from HTML.
@@ -369,21 +392,24 @@ Stages:
 - **Methods**: 5
 - **Key Methods**: skills.web_search.providers.duckduckgo.v1.skill.WebSearchSkill._fetch_url, skills.web_search.providers.duckduckgo.v1.skill.WebSearchSkill.search_duckduckgo, skills.web_search.providers.duckduckgo.v1.skill.WebSearchSkill.fetch_page_text, skills.web_search.providers.duckduckgo.v1.skill.WebSearchSkill.search_and_summarize, skills.web_search.providers.duckduckgo.v1.skill.WebSearchSkill.execute
 
+### skills.stt.providers.vosk.v6.skill.STTSkill
+- **Methods**: 5
+- **Key Methods**: skills.stt.providers.vosk.v6.skill.STTSkill.__init__, skills.stt.providers.vosk.v6.skill.STTSkill._record_wav, skills.stt.providers.vosk.v6.skill.STTSkill._ensure_wav, skills.stt.providers.vosk.v6.skill.STTSkill._transcribe_vosk, skills.stt.providers.vosk.v6.skill.STTSkill.execute
+
 ### skills.stt.providers.vosk.v3.skill.STTSkill
 - **Methods**: 5
 - **Key Methods**: skills.stt.providers.vosk.v3.skill.STTSkill.__init__, skills.stt.providers.vosk.v3.skill.STTSkill._record_wav, skills.stt.providers.vosk.v3.skill.STTSkill._ensure_wav, skills.stt.providers.vosk.v3.skill.STTSkill._transcribe_vosk, skills.stt.providers.vosk.v3.skill.STTSkill.execute
-
-### skills.stt.providers.vosk.v5.skill.STTSkill
-- **Methods**: 5
-- **Key Methods**: skills.stt.providers.vosk.v5.skill.STTSkill.__init__, skills.stt.providers.vosk.v5.skill.STTSkill._record_wav, skills.stt.providers.vosk.v5.skill.STTSkill._ensure_wav, skills.stt.providers.vosk.v5.skill.STTSkill._transcribe_vosk, skills.stt.providers.vosk.v5.skill.STTSkill.execute
 
 ### skills.stt.providers.vosk.v1.skill.STTSkill
 - **Methods**: 5
 - **Key Methods**: skills.stt.providers.vosk.v1.skill.STTSkill.__init__, skills.stt.providers.vosk.v1.skill.STTSkill._record_wav, skills.stt.providers.vosk.v1.skill.STTSkill._ensure_wav, skills.stt.providers.vosk.v1.skill.STTSkill._transcribe_vosk, skills.stt.providers.vosk.v1.skill.STTSkill.execute
 
-### skills.stt.providers.vosk.v4.skill.STTSkill
+### skills.llm_router.v1.skill.LLMRouterSkill
+> Model discovery & health checking skill (evolvable).
+- Detects local ollama models
+- Discovers free 
 - **Methods**: 5
-- **Key Methods**: skills.stt.providers.vosk.v4.skill.STTSkill.__init__, skills.stt.providers.vosk.v4.skill.STTSkill._record_wav, skills.stt.providers.vosk.v4.skill.STTSkill._ensure_wav, skills.stt.providers.vosk.v4.skill.STTSkill._transcribe_vosk, skills.stt.providers.vosk.v4.skill.STTSkill.execute
+- **Key Methods**: skills.llm_router.v1.skill.LLMRouterSkill.execute, skills.llm_router.v1.skill.LLMRouterSkill._discover_local, skills.llm_router.v1.skill.LLMRouterSkill._discover_remote, skills.llm_router.v1.skill.LLMRouterSkill._health_check, skills.llm_router.v1.skill.LLMRouterSkill._full_status
 
 ## Data Transformation Functions
 
@@ -400,46 +426,46 @@ Key functions that process and transform data:
 
 Functions exposed as public API (no underscore prefix):
 
-- `cores.v1.core.main` - 118 calls
+- `cores.v1.core.main` - 55 calls
 - `TODO.migrate_skills.migrate_skill` - 33 calls
 - `main.bootstrap` - 33 calls
 - `cores.v1.skill_manager.SkillManager.smart_evolve` - 30 calls
+- `TODO1.preflight.SkillPreflight.check_imports` - 27 calls
 - `cores.v1.intent_engine.IntentEngine.analyze` - 27 calls
 - `cores.v1.evo_engine.EvoEngine.handle_request` - 27 calls
+- `TODO1.preflight.SkillPreflight.auto_fix_imports` - 26 calls
 - `skills.git_ops.v1.skill.GitOpsSkill.execute` - 23 calls
 - `cores.v1.skill_manager.SkillManager.create_skill` - 23 calls
 - `skills.stt.providers.vosk.v6.skill.STTSkill.execute` - 23 calls
 - `skills.stt.providers.vosk.v3.skill.STTSkill.execute` - 23 calls
-- `skills.stt.providers.vosk.v5.skill.STTSkill.execute` - 23 calls
 - `skills.stt.providers.vosk.v1.skill.STTSkill.execute` - 23 calls
-- `skills.stt.providers.vosk.v4.skill.STTSkill.execute` - 23 calls
 - `cores.v1.evo_engine.EvoEngine.evolve_skill` - 19 calls
-- `TODO.resource_monitor.ResourceMonitor.can_run` - 17 calls
 - `cores.v1.resource_monitor.ResourceMonitor.can_run` - 17 calls
 - `cores.v1.llm_client.LLMClient.analyze_need` - 17 calls
 - `cores.v1.pipeline_manager.PipelineManager.run_p` - 17 calls
 - `cores.v1.skill_manager.SkillManager.latest_v` - 17 calls
+- `TODO1.preflight.SkillPreflight.check_interface` - 15 calls
+- `TODO1.preflight.patch_exec_skill` - 15 calls
+- `TODO1.preflight.patch_smart_evolve` - 15 calls
 - `cores.v1.logger.Logger.learn_summary` - 15 calls
 - `cores.v1.skill_manager.SkillManager.list_skills` - 15 calls
 - `TODO.migrate_skills.add_manifest_to_simple` - 14 calls
 - `cores.v1.skill_manager.SkillManager.rollback` - 13 calls
 - `skills.web_search.providers.duckduckgo.v1.skill.WebSearchSkill.search_duckduckgo` - 13 calls
 - `skills.devops.v1.skill.DevOpsSkill.detect_imports` - 13 calls
-- `TODO.provider_selector.ProviderSelector.list_capabilities` - 12 calls
 - `cores.v1.provider_selector.ProviderSelector.list_capabilities` - 12 calls
 - `cores.v1.llm_client.LLMClient.chat` - 12 calls
 - `cores.v1.pipeline_manager.PipelineManager.create_p` - 12 calls
 - `TODO.migrate_skills.main` - 11 calls
-- `TODO.provider_selector.ProviderSelector.select` - 11 calls
-- `TODO.provider_selector.ProviderSelector.get_skill_path` - 11 calls
 - `cores.v1.supervisor.Supervisor.create_next_core` - 11 calls
 - `cores.v1.provider_selector.ProviderSelector.select` - 11 calls
 - `cores.v1.provider_selector.ProviderSelector.get_skill_path` - 11 calls
 - `skills.devops.v1.skill.DevOpsSkill.execute` - 11 calls
-- `TODO.provider_selector.ProviderSelector.load_meta` - 10 calls
-- `cores.v1.provider_selector.ProviderSelector.load_meta` - 10 calls
 - `cores.v1.intent_engine.IntentEngine.suggest_skills` - 10 calls
+- `cores.v1.provider_selector.ProviderSelector.load_meta` - 10 calls
 - `cores.v1.llm_client.discover_models` - 10 calls
+- `cores.v1.skill_manager.SkillManager.diagnose_skill` - 10 calls
+- `skills.deps.v1.skill.DepsSkill.execute` - 10 calls
 
 ## System Interactions
 
@@ -448,7 +474,7 @@ How components interact:
 ```mermaid
 graph TD
     main --> load_state
-    main --> get
+    main --> _check_restart_loop
     main --> Logger
     main --> Supervisor
     main --> cpr
@@ -464,6 +490,10 @@ graph TD
     smart_evolve --> read_text
     smart_evolve --> diagnose_skill
     smart_evolve --> get
+    check_imports --> set
+    check_imports --> walk
+    check_imports --> PreflightResult
+    check_imports --> parse
     analyze --> _update_topics
     analyze --> _recent_topic
     analyze --> _build_context
@@ -472,11 +502,7 @@ graph TD
     handle_request --> get
     handle_request --> cpr
     handle_request --> analyze_need
-    execute --> get
-    execute --> fn
-    execute --> init
-    create_skill --> latest_v
-    create_skill --> _active_provider
+    auto_fix_imports --> set
 ```
 
 ## Reverse Engineering Guidelines

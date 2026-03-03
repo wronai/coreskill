@@ -31,6 +31,24 @@ class IntentEngine:
         "git":   ("git", "commit", "push", "branch", "repo"),
         "dev":   ("kod", "code", "program", "skrypt", "script", "debug"),
     }
+    _KW_EVOLVE = ("zmien", "zmień", "napraw", "popraw", "lepszy", "lepsza",
+                  "ulepszy", "fix", "improve", "change")
+    _KW_CREATE = ("stworz", "stwórz", "zainstaluj", "zrob", "zrób",
+                  "create", "install", "build", "wgraj", "dodaj", "napisz",
+                  "zbuduj", "chcialbym", "chciałbym", "potrzebuje", "potrzebuję",
+                  "zaimplementuj", "implement", "deploy", "aplikacj", "program")
+    _KW_TTS = ("powiedz", "przywitaj", "przeczytaj", "speak", "say",
+               "mow ze", "mów ze", "mow do", "mów do", "read aloud")
+    _KW_STT = ("slyszysz", "słyszysz", "slychac", "słychać", "mikrofon",
+               "co mowie", "co mówię", "transkrybuj", "transkrypcja", "stt",
+               "nagraj", "nagrywaj", "record", "listen",
+               "rozpoznaj mow", "rozpoznaj mów", "posluchaj", "posłuchaj",
+               "dyktuj", "dictate", "nasłuch", "nasluch")
+    _KW_VOICE = ("glos", "głos", "voice", "tts", "glosow", "głosow")
+    _KW_CONV = ("pogad", "rozmaw", "rozmow", "rozmawiać", "porozmaw",
+                "gadaj", "gadac", "gadać")
+    _CREATE_SKIP = {"skill", "mi", "nowy", "nowa", "do", "sie", "się",
+                    "postaci", "jako", "obslugi", "obsługi"}
 
     def __init__(self, llm, logger, state):
         self.llm = llm
@@ -143,73 +161,64 @@ class IntentEngine:
         return {"action": "chat"}
 
     # ── Stage 1: Keywords with confidence ──
+    def _match(self, ul, kws):
+        return any(w in ul for w in kws)
+
+    def _kw_evolve(self, ul, msg, skills):
+        if not self._match(ul, self._KW_EVOLVE): return None
+        for sk in skills:
+            if sk in ul:
+                return {"action":"evolve","skill":sk,"feedback":msg,"goal":"improve skill","_conf":0.95}
+        if self._match(ul, self._KW_VOICE):
+            return {"action":"evolve","skill":"tts","feedback":msg,"goal":"improve tts","_conf":0.9}
+        return None
+
+    def _kw_create(self, ul, msg):
+        if not self._match(ul, self._KW_CREATE): return None
+        words = ul.split()
+        name = "new_skill"
+        skip = set(self._KW_CREATE) | self._CREATE_SKIP
+        for w in reversed(words):
+            c = re.sub(r'[^a-z0-9_]', '', w)
+            if c and c not in skip and len(c) > 2: name = c; break
+        return {"action":"create","name":name,"description":msg,"goal":"fulfill request","_conf":0.95}
+
+    def _kw_tts(self, ul, msg):
+        if not self._match(ul, self._KW_TTS): return None
+        return {"action":"use","skill":"tts","input":{"text":msg},"goal":"produce_audio","_conf":0.95}
+
+    def _kw_stt(self, ul, msg, skills):
+        if not self._match(ul, self._KW_STT): return None
+        if "stt" in skills:
+            return {"action":"use","skill":"stt","input":{"duration_s":4,"lang":"pl"},
+                    "goal":"transcribe_audio","_conf":0.95}
+        return {"action":"create","name":"stt",
+                "description":"STT: stdlib+subprocess only, record mic + transcribe po polsku.",
+                "goal":"enable_stt","_conf":0.9}
+
+    def _kw_voice_conv(self, ul, msg, skills):
+        if not (self._match(ul, self._KW_CONV) and self._match(ul, self._KW_VOICE)): return None
+        if "stt" in skills:
+            return {"action":"use","skill":"stt","input":{"duration_s":5,"lang":"pl"},
+                    "goal":"voice_conversation","_conf":0.9}
+        return {"action":"create","name":"stt",
+                "description":"STT for voice conversation: stdlib only, record mic + transcribe",
+                "goal":"enable_voice","_conf":0.9}
+
+    def _kw_voice_ambiguous(self, ul, msg):
+        if not self._match(ul, self._KW_VOICE): return None
+        return {"action":"use","skill":"tts","input":{"text":msg},"goal":"produce_audio","_conf":0.7}
+
     def _kw_classify(self, msg, skills, topic):
         ul = msg.lower()
-        _evolve = ("zmien", "zmień", "napraw", "popraw", "lepszy", "lepsza",
-                   "ulepszy", "fix", "improve", "change")
-        _create = ("stworz", "stwórz", "zainstaluj", "zrob", "zrób",
-                   "create", "install", "build", "wgraj", "dodaj", "napisz",
-                   "zbuduj", "chcialbym", "chciałbym", "potrzebuje", "potrzebuję",
-                   "zaimplementuj", "implement", "deploy", "aplikacj", "program")
-        _tts = ("powiedz", "przywitaj", "przeczytaj", "speak", "say",
-                "mow ze", "mów ze", "mow do", "mów do", "read aloud")
-        _stt = ("slyszysz", "słyszysz", "slychac", "słychać", "mikrofon",
-                "co mowie", "co mówię", "transkrybuj", "transkrypcja", "stt",
-                "nagraj", "nagrywaj", "record", "listen",
-                "rozpoznaj mow", "rozpoznaj mów", "posluchaj", "posłuchaj",
-                "dyktuj", "dictate", "nasłuch", "nasluch")
-        _voice = ("glos", "głos", "voice", "tts", "glosow", "głosow")
-        _conv  = ("pogad", "rozmaw", "rozmow", "rozmawiać", "porozmaw",
-                  "gadaj", "gadac", "gadać")
-
-        # 1. Evolve FIRST
-        if any(w in ul for w in _evolve):
-            for sk in skills:
-                if sk in ul:
-                    return {"action":"evolve","skill":sk,"feedback":msg,"goal":"improve skill","_conf":0.95}
-            if any(w in ul for w in _voice):
-                return {"action":"evolve","skill":"tts","feedback":msg,"goal":"improve tts","_conf":0.9}
-
-        # 2. Create (broad)
-        if any(w in ul for w in _create):
-            words = ul.split()
-            name = "new_skill"
-            skip = set(_create) | {"skill", "mi", "nowy", "nowa", "do", "sie", "się",
-                                    "postaci", "jako", "obslugi", "obsługi"}
-            for w in reversed(words):
-                c = re.sub(r'[^a-z0-9_]', '', w)
-                if c and c not in skip and len(c) > 2: name = c; break
-            return {"action":"create","name":name,"description":msg,"goal":"fulfill request","_conf":0.95}
-
-        # 3. TTS commands (speak/say/greet) — BEFORE STT and voice!
-        if any(w in ul for w in _tts):
-            return {"action":"use","skill":"tts","input":{"text":msg},
-                    "goal":"produce_audio","_conf":0.95}
-
-        # 4. STT (listen/transcribe)
-        if any(w in ul for w in _stt):
-            if "stt" in skills:
-                return {"action":"use","skill":"stt","input":{"duration_s":4,"lang":"pl"},
-                        "goal":"transcribe_audio","_conf":0.95}
-            return {"action":"create","name":"stt",
-                    "description":"STT: stdlib+subprocess only, record mic + transcribe po polsku.",
-                    "goal":"enable_stt","_conf":0.9}
-
-        # 5. Voice conversation ("pogadać głosowo") → STT first
-        if any(w in ul for w in _conv) and any(w in ul for w in _voice):
-            if "stt" in skills:
-                return {"action":"use","skill":"stt","input":{"duration_s":5,"lang":"pl"},
-                        "goal":"voice_conversation","_conf":0.9}
-            return {"action":"create","name":"stt",
-                    "description":"STT for voice conversation: stdlib only, record mic + transcribe",
-                    "goal":"enable_voice","_conf":0.9}
-
-        # 6. Ambiguous voice keywords → default to TTS (speak), NOT STT
-        if any(w in ul for w in _voice):
-            return {"action":"use","skill":"tts","input":{"text":msg},
-                    "goal":"produce_audio","_conf":0.7}
-
-        return {"action":"chat","_conf":0.5}
+        # Priority order: evolve > create > TTS > STT > voice_conv > voice_ambiguous
+        return (self._kw_evolve(ul, msg, skills)
+                or self._kw_create(ul, msg)
+                or self._kw_tts(ul, msg)
+                or self._kw_stt(ul, msg, skills)
+                or self._kw_voice_conv(ul, msg, skills)
+                or self._kw_voice_ambiguous(ul, msg)
+                or {"action":"chat","_conf":0.5})
 
     # ── Stage 2: LLM with conversation context ──
     def _llm_classify(self, msg, skills, context, topic):
