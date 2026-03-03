@@ -233,6 +233,5 @@ def health_check():
 if __name__ == "__main__":
     d = DevOpsSkill()
     print(f"Info: {json.dumps(get_info(), indent=2)}")
-    # Self-test
-    r = d.test_skill(__file__)
-    print(f"Self-test: {json.dumps(r, indent=2)}")
+    print(f"Syntax self-check: {d.check_syntax(__file__)}")
+    print(f"Deps self-check: {json.dumps(d.check_deps(__file__), indent=2)}")

@@ -51,6 +51,7 @@ class DepsSkill:
         tools = {
             "tts": ["espeak", "festival", "say"],
             "audio": ["aplay", "paplay", "ffplay", "mpv", "sox"],
+            "stt": ["arecord", "parec", "pactl", "ffmpeg", "vosk-transcriber"],
             "network": ["curl", "wget"],
             "dev": ["git", "docker", "python3", "pip3", "node"],
             "text": ["sed", "awk", "grep", "jq"],

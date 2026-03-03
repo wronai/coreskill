@@ -17,82 +17,83 @@ class TTSSkill:
     def _detect_backends(self) -> Dict[str, bool]:
         """Detect available TTS backends"""
         available = {}
-        # Check pyttsx3
         try:
             engine = pyttsx3.init()
             available['pyttsx3'] = True
         except Exception:
             available['pyttsx3'] = False
-
-        # Check espeak
         try:
             subprocess.run(['espeak', '--version'], capture_output=True, check=True)
             available['espeak'] = True
         except Exception:
             available['espeak'] = False
-
-        # Check gtts (requires mpv for playback)
         try:
             import gtts
             subprocess.run(['mpv', '--version'], capture_output=True, check=True)
             available['gtts'] = True
         except Exception:
             available['gtts'] = False
-
         return available
 
     def _pyttsx3_backend(self, text: str) -> None:
-        """Text-to-speech using pyttsx3"""
-        if not self.available_backends.get('pyttsx3', False):
-            raise RuntimeError("pyttsx3 backend not available")
         engine = pyttsx3.init()
         engine.say(text)
         engine.runAndWait()
 
     def _espeak_backend(self, text: str) -> None:
-        """Text-to-speech using espeak"""
-        if not self.available_backends.get('espeak', False):
-            raise RuntimeError("espeak backend not available")
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt') as temp_file:
-            temp_file.write(text)
-            temp_file.flush()
-            subprocess.run(['espeak', '-f', temp_file.name], check=True)
+        subprocess.run(['espeak', text], check=True)
 
     def _gtts_backend(self, text: str) -> None:
-        """Text-to-speech using gTTS + mpv"""
-        if not self.available_backends.get('gtts', False):
-            raise RuntimeError("gtts backend not available")
         tts = gTTS(text)
-        with tempfile.NamedTemporaryFile(suffix='.mp3') as temp_file:
-            tts.save(temp_file.name)
-            temp_file.flush()
-            subprocess.run(['mpv', temp_file.name], check=True)
+        with tempfile.NamedTemporaryFile(suffix='.mp3') as f:
+            tts.save(f.name)
+            subprocess.run(['mpv', f.name], check=True)
 
     def speak(self, text: str, backend: Optional[str] = None) -> None:
-        """
-        Speak the given text using the specified backend or auto-detect
-        """
         if backend is None:
-            # Auto-select backend in order of preference
             for preferred in ['pyttsx3', 'espeak', 'gtts']:
                 if self.available_backends.get(preferred, False):
                     backend = preferred
                     break
             if backend is None:
                 raise RuntimeError("No TTS backends available")
-
-        if backend not in self.backends:
-            raise ValueError(f"Unknown backend: {backend}")
-
         self.backends[backend](text)
 
+    def execute(self, input_data: dict) -> dict:
+        text = input_data.get("text", "")
+        if not text:
+            return {"success": False, "error": "No text provided"}
+        try:
+            self.speak(text)
+            return {"success": True, "spoken": True, "text": text}
+        except Exception as e:
+            return {"success": False, "error": str(e), "spoken": False}
+
     def get_available_backends(self) -> Dict[str, bool]:
-        """Return dictionary of available backends"""
         return self.available_backends
 
     def get_preferred_backend(self) -> Optional[str]:
-        """Return the preferred available backend"""
         for preferred in ['pyttsx3', 'espeak', 'gtts']:
             if self.available_backends.get(preferred, False):
                 return preferred
         return None
+
+def get_info():
+    return {"name": "tts", "version": "v1", "description": "Text-to-Speech with pyttsx3/espeak/gtts"}
+
+def health_check():
+    try:
+        tts = TTSSkill()
+        return tts.get_preferred_backend() is not None
+    except:
+        return False
+
+if __name__ == "__main__":
+    tts = TTSSkill()
+    print(f"Backends: {tts.get_available_backends()}")
+    print(f"Preferred: {tts.get_preferred_backend()}")
+    if tts.get_preferred_backend():
+        tts.speak("Test TTS")
+        print("OK")
+    else:
+        print("No backend")
