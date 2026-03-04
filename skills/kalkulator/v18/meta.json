@@ -1,0 +1,7 @@
+{
+  "name": "kalkulator",
+  "version": "v18",
+  "parent": "v17",
+  "phase": "syntax",
+  "created_at": "2026-03-04T09:45:04.008028+00:00"
+}
