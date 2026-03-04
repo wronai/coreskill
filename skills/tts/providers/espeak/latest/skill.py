@@ -20,7 +20,8 @@ class TTSSkill:
         if not self._backend:
             return {"success": False, "error": "espeak not installed (apt install espeak)"}
         try:
-            result = subprocess.run(
+            # Use espeak with Polish voice (-v pl) and ensure proper encoding
+            subprocess.run(
                 [self._backend, "-v", "pl", "--", text],
                 check=True, capture_output=True, timeout=30
             )
@@ -36,11 +37,17 @@ def get_info():
 
 
 def health_check():
-    espeak = shutil.which("espeak-ng") or shutil.which("espeak")
-    if espeak:
-        return {"status": "ok"}
-    else:
-        return {"status": "error", "message": "espeak/espeak-ng not found"}
+    espeak_path = shutil.which("espeak-ng") or shutil.which("espeak")
+    if espeak_path:
+        try:
+            # Quick test: espeak should respond to --version
+            result = subprocess.run([espeak_path, "--version"], 
+                                   capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:
+                return {"status": "ok"}
+        except Exception:
+            pass
+    return {"status": "error", "message": "espeak not available"}
 
 
 def execute(params: dict) -> dict:
@@ -49,7 +56,8 @@ def execute(params: dict) -> dict:
 
 
 if __name__ == "__main__":
-    # Simple test
-    test_text = "Cześć, to jest test systemu mówienia."
+    # Test block
+    import sys
+    test_text = sys.argv[1] if len(sys.argv) > 1 else "Witaj w systemie TTS."
     result = execute({"text": test_text})
     print(result)
