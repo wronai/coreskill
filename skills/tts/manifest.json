@@ -14,9 +14,8 @@
   },
   "providers": [
     "pyttsx3",
-    "piper",
     "espeak",
-    "coqui"
+    "piper"
   ],
   "default_provider": "pyttsx3",
   "selection_strategy": "best_available"

@@ -108,7 +108,25 @@ class EvoEngine:
         if not isinstance(inp, dict): inp = {}
 
         if action == "chat":
-            return None
+            # AUTO-CREATE SKILL: when intent is unknown/chat - create skill to answer this query
+            new_skill_name = self._generate_skill_name(user_msg)
+            skill_desc = f"Skill odpowiadający na zapytanie: '{user_msg}'. " \
+                          f"Zadanie: odpowiedzieć na to pytanie/potrzebę użytkownika. " \
+                          f"Funkcjonalność: {goal or 'obsługa tego typu zapytań'}"
+            
+            cpr(C.CYAN, f"[AUTO-CREATE] Nieznane zapytanie - tworzę skill '{new_skill_name}'...")
+            
+            # Auto-create the skill
+            ok, msg = self.evolve_skill(new_skill_name, skill_desc)
+            if ok:
+                cpr(C.GREEN, f"[AUTO-CREATE] ✓ Skill '{new_skill_name}' stworzony!")
+                cpr(C.DIM, f"[AUTO-CREATE] Wykonuję nowy skill...")
+                # Execute the newly created skill with the original input
+                inp = {"text": user_msg}
+                return self._execute_with_validation(new_skill_name, inp, user_msg, user_msg)
+            else:
+                cpr(C.YELLOW, f"[AUTO-CREATE] ✗ Nie udało się stworzyć: {msg}")
+                return None  # Fallback to normal chat if creation fails
 
         # Check if we should trigger auto-reflection before proceeding
         if self.failure_tracker.should_reflect() and self.reflection:
@@ -371,6 +389,28 @@ class EvoEngine:
                 cpr(C.YELLOW, f"[PIPE] ~ Partial: {validation['reason'][:100]}")
                 self.log.skill(skill_name, "goal_partial", {
                     "goal": goal, "reason": validation["reason"]})
+                
+                # AUTO-CREATE SKILL: when existing skill returns empty/inadequate results
+                # Generate skill name from user query and auto-create via LLM
+                if skill_name == "web_search" and "empty results" in validation["reason"]:
+                    # Generate skill name from the query
+                    new_skill_name = self._generate_skill_name(user_msg)
+                    skill_desc = f"Skill odpowiadający na zapytanie: '{user_msg}'. " \
+                                  f"Poprzedni skill '{skill_name}' zwrócił puste wyniki. " \
+                                  f"Wymagana funkcjonalność: {goal}"
+                    
+                    cpr(C.CYAN, f"[AUTO-CREATE] Brak wyników z '{skill_name}'.")
+                    cpr(C.CYAN, f"[AUTO-CREATE] Automatycznie tworzę skill '{new_skill_name}'...")
+                    
+                    # Auto-create the skill
+                    ok, msg = self.evolve_skill(new_skill_name, skill_desc)
+                    if ok:
+                        cpr(C.GREEN, f"[AUTO-CREATE] ✓ Skill '{new_skill_name}' stworzony!")
+                        cpr(C.DIM, f"[AUTO-CREATE] Wykonuję nowy skill...")
+                        # Execute the newly created skill
+                        return self._execute_with_validation(new_skill_name, inp, goal, user_msg)
+                    else:
+                        cpr(C.YELLOW, f"[AUTO-CREATE] ✗ Nie udało się stworzyć: {msg}")
                 
                 # Autonomous repair for STT empty transcription
                 # Skip repair in voice_conversation mode — silence is normal
@@ -787,3 +827,57 @@ class EvoEngine:
             attempts=MAX_EVO_ITERATIONS)
         self.sm.rollback(name)
         return False, f"Skill '{name}' failed after {MAX_EVO_ITERATIONS} iter"
+
+    def _generate_skill_name(self, user_msg: str) -> str:
+        """Generate snake_case skill name from user query using LLM or fallback to simple extraction."""
+        import re
+        
+        # Try to use LLM to generate a good name
+        try:
+            prompt = f"""Generate a short, descriptive snake_case skill name for this user request:
+"{user_msg}"
+
+Rules:
+- Use only lowercase letters, numbers, and underscores
+- Max 30 characters
+- Should describe WHAT the skill does
+- No verbs like "get", "find", "search" - just the topic
+- Examples: "camera_scanner", "weather_forecast", "currency_converter", "ip_geolocation"
+
+Return ONLY the name, nothing else:"""
+            
+            response = self.llm.chat([
+                {"role": "system", "content": "You generate short snake_case skill names."},
+                {"role": "user", "content": prompt}
+            ], temperature=0.3, max_tokens=50)
+            
+            # Clean up the response
+            name = response.strip().lower()
+            # Remove any non-alphanumeric except underscore
+            name = re.sub(r'[^a-z0-9_]', '', name)
+            # Remove leading/trailing underscores
+            name = name.strip('_')
+            
+            if name and len(name) >= 3:
+                return name[:30]
+        except Exception:
+            pass
+        
+        # Fallback: simple keyword extraction
+        # Remove common stop words and extract key terms
+        stop_words = {'the', 'a', 'an', 'in', 'on', 'at', 'to', 'for', 'of', 'and', 'or', 
+                      'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had',
+                      'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might',
+                      'co', 'jest', 'są', 'w', 'na', 'z', 'do', 'dla', 'i', 'lub', 'ale', 
+                      'który', 'która', 'jak', 'co', 'tym', 'tych', 'te', 'ta', 'to'}
+        
+        words = re.findall(r'\b[a-zA-Z_]+\b', user_msg.lower())
+        key_words = [w for w in words if w not in stop_words and len(w) > 2]
+        
+        if key_words:
+            # Take first 2-3 significant words
+            name = '_'.join(key_words[:3])
+            name = re.sub(r'[^a-z0-9_]', '', name)
+            return name[:30] if name else "custom_skill"
+        
+        return "custom_skill"

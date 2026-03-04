@@ -539,6 +539,22 @@ def _handle_outcome(outcome, intent, conv, identity=None):
                         md += f"- **{k}**: {v}\n"
             mprint(md)
             conv.append({"role": "assistant", "content": f"Executed {skill} successfully."})
+        
+        # Handle skill creation suggestion (e.g., from web_search empty results for local network)
+        suggestion = outcome.get("suggestion")
+        if suggestion:
+            skill_name = suggestion.get("skill_name", "?")
+            desc = suggestion.get("description", "")
+            reason = suggestion.get("reason", "")
+            cpr(C.CYAN, f"\n💡 SUGESTIA: Brak odpowiedniego skillu!")
+            cpr(C.YELLOW, f"   Powód: {reason}")
+            cpr(C.GREEN, f"   Proponowany skill: '{skill_name}'")
+            cpr(C.DIM, f"   Opis: {desc[:80]}")
+            cpr(C.CYAN, f"   Powiedz: 'stwórz {skill_name}' aby go zbudować.")
+            # Add to conversation context
+            conv.append({"role": "system", "content": 
+                f"System sugeruje stworzenie nowego skillu '{skill_name}' "
+                f"ponieważ: {reason}. Użytkownik może powiedzieć 'stwórz {skill_name}' aby zbudować."})
         return True
     elif otype == "evo_failed":
         mprint(f"### ❌ Build failed\n{outcome.get('message', '')}")
