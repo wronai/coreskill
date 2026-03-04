@@ -1,0 +1,8 @@
+{
+  "name": "currency_converter_gbp_to_jpy",
+  "version": "v1",
+  "description": "Skill odpowiadaj\u0105cy na zapytanie: 'przelicz tysi\u0105c funt\u00f3w szterling\u00f3w na jeny japo\u0144skie'. Zadanie: odpowiedzie\u0107 na to pytanie/potrzeb\u0119 u\u017cytkownika. Funkcjonalno\u015b\u0107: przelicz tysi\u0105c funt\u00f3w szterling\u00f3w na jeny japo\u0144skie",
+  "created_at": "2026-03-04T19:53:10.207015+00:00",
+  "checksum": "fb474517e07a9d4392c63e68209d4807",
+  "quality_score": 0.775
+}
