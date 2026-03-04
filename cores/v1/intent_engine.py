@@ -16,6 +16,10 @@ from datetime import datetime, timezone
 from .config import SKILLS_DIR, save_state, get_config_value
 from .utils import clean_json
 from .smart_intent import SmartIntentClassifier
+from .i18n import (
+    ALL_CONFIGURE_KEYWORDS, ALL_CREATE_KW_FLAT, ALL_EVOLVE_KEYWORDS,
+    ALL_SHELL_KEYWORDS, ALL_SEARCH_KEYWORDS, match_any_keyword,
+)
 
 
 # Load topic map from system configuration
@@ -137,33 +141,19 @@ class IntentEngine:
         u.append({"msg": msg[:200], "ts": datetime.now(timezone.utc).isoformat()})
         self._p["unhandled"] = u[-30:]
 
-    # ── Main entry ────────────────────────────────────────────────────
-    def analyze(self, user_msg, skills, conv=None):
-        """
-        ML-based intent detection.
-        
-        Flow:
-          Stage 0: Trivial filter
-          Stage 1: SmartIntentClassifier (embedding → local LLM → remote LLM)
-          Stage 2: Context inference
-          Stage 3: Gap recording
-        """
-        conv = conv or []
-        has_conv = bool(conv)
+    # ── Stage handlers ──────────────────────────────────────────────
 
-        # Stage 0: Very short / trivial → chat
+    def _is_trivial(self, user_msg: str) -> bool:
+        """Stage 0: Check if message is trivial (very short / greetings)."""
         stripped = user_msg.strip()
         words = stripped.split()
-        if len(stripped) < 4 or (len(words) == 1
-                and words[0].lower().rstrip("?!.,") in self._TRIVIAL):
-            return {"action": "chat"}
+        return len(stripped) < 4 or (len(words) == 1
+                and words[0].lower().rstrip("?!.,") in self._TRIVIAL)
 
-        # Stage 0b: Deterministic configuration patterns (avoid ML mistakes)
-        # Example: "ustaw LLM qwen/qwen3.5-flash-02-23" should configure LLM,
-        # not call a skill named "llm".
+    def _check_deterministic_config(self, user_msg: str) -> dict | None:
+        """Stage 0b: Check for deterministic configuration patterns."""
         ul = user_msg.lower()
-        _cfg_verbs = ("ustaw", "przełącz", "przelacz", "zmień", "zmien", "używaj", "uzywaj", "switch", "set", "change", "use")
-        if any(v in ul for v in _cfg_verbs) and any(k in ul for k in (" llm", "model", "mózg", "mozg")):
+        if match_any_keyword(ul, ALL_CONFIGURE_KEYWORDS) and any(k in ul for k in (" llm", "model", "mózg", "mozg")):
             return {
                 "action": "configure",
                 "category": "llm",
@@ -172,11 +162,12 @@ class IntentEngine:
                 "_conf": 0.95,
                 "_tier": "rule_config_llm",
             }
+        return None
 
-        # Stage 0c: Deterministic utility queries (prevent hallucinations)
-        # Route time/date/weather questions to real skills when available.
+    def _check_utility_queries(self, user_msg: str, skills: dict | list) -> dict | None:
+        """Stage 0c: Check for time/weather utility queries."""
         skills_list = list(skills.keys()) if isinstance(skills, dict) else list(skills)
-        _ul = ul
+        _ul = user_msg.lower()
 
         if "time" in skills_list:
             _time_q = (
@@ -206,87 +197,192 @@ class IntentEngine:
                     "_conf": 0.95,
                     "_tier": "rule_weather",
                 }
+        return None
+
+    def _needs_ml_reset(self, result, topic_now: str | None, user_msg: str) -> bool:
+        """Check if ML result should be reset for context-based reprocessing."""
+        if not result or result.action != "configure":
+            return False
+        if result.skill not in ("tts", "voice"):
+            return False
+        if topic_now == "voice":
+            return False
+        ul = user_msg.lower()
+        _voice_words = ("głos", "glos", "mowa", "voice", "tts", "speech", "syntez")
+        return any(w in ul for w in _voice_words)
+
+    def _process_ml_result(self, result, user_msg: str, skills: list, conv: list) -> dict | None:
+        """Process successful ML classification result and build analysis."""
+        has_conv = bool(conv)
+
+        if has_conv:
+            self._update_topics_from_result(result.to_analysis())
+        self.log.core("intent_ml", {
+            "action": result.action,
+            "skill": result.skill,
+            "conf": result.confidence,
+            "tier": result.tier,
+        })
+
+        # Handle CONFIGURE intent - session configuration changes
+        if result.action == "configure":
+            return {
+                "action": "configure",
+                "category": result.skill,  # llm, tts, stt, voice
+                "target": self._extract_config_target(user_msg, result.skill),
+                "original_msg": user_msg,
+                "_conf": result.confidence,
+            }
+
+        analysis = result.to_analysis()
+
+        # Shell: extract actual command if not already set
+        if result.skill == "shell":
+            cmd = self._extract_shell_command(user_msg, conv)
+            if cmd:
+                analysis.setdefault("input", {})["command"] = cmd
+
+        # STT: add default input params
+        if result.skill == "stt" and not analysis.get("input"):
+            analysis["input"] = {"duration_s": 5, "lang": "pl"}
+
+        # TTS: add message as text
+        if result.skill == "tts":
+            analysis.setdefault("input", {})["text"] = user_msg
+
+        # Create: extract skill name from message
+        if result.action == "create" and not analysis.get("name"):
+            name = self._extract_skill_name(user_msg)
+            if name:
+                analysis["name"] = name
+                analysis["description"] = user_msg
+
+        # Evolve: try to detect target skill
+        if result.action == "evolve" and not result.skill:
+            target = self._detect_evolve_target(user_msg, skills)
+            if target:
+                analysis["skill"] = target
+
+        return analysis
+
+    def _check_voice_context_inference(self, user_msg: str, skills: list, topic: str | None) -> dict | None:
+        """Stage 2: Context inference for voice topic."""
+        if topic != "voice":
+            return None
+
+        ul = user_msg.lower()
+
+        # STT intent detection
+        _listen = ("słysz", "slysz", "mikrofon", "nagr", "nasłuch", "nasluch")
+        if any(w in ul for w in _listen) and "stt" in skills:
+            return {"action": "use", "skill": "stt",
+                    "input": {"duration_s": 4, "lang": "pl"}, "goal": "listen"}
+
+        # Voice configuration quality words
+        _quality_words = ("lepszy", "lepsza", "gorszy", "gorsza", "szybszy", "szybsza",
+                       "better", "worse", "faster", "slower", "quality", "jakość")
+        if any(w in ul for w in _quality_words):
+            _llm_indicators = ("model", "gemini", "gpt", "claude", "llama", "qwen",
+                              "llm", "nai", "mozgo", "mózgo")
+            if not any(m in ul for m in _llm_indicators):
+                return {
+                    "action": "configure",
+                    "category": "tts",
+                    "target": self._extract_config_target(user_msg, "tts"),
+                    "original_msg": user_msg,
+                    "_conf": 0.75,
+                }
+        return None
+
+    def _check_quality_config_fallback(self, user_msg: str) -> dict | None:
+        """Check for quality-related configuration (fallback when not in voice context)."""
+        ul = user_msg.lower()
+
+        _quality_words = ("lepszy", "lepsza", "gorszy", "gorsza", "szybszy", "szybsza",
+                       "better", "worse", "faster", "slower", "quality", "jakość",
+                       "przełącz", "zmień", "używaj", "switch", "change", "use")
+        if not any(w in ul for w in _quality_words):
+            return None
+
+        _llm_indicators = ("model", "gemini", "gpt", "claude", "llama", "qwen",
+                          "llm", "nai", "mozgo", "mózgo")
+        _voice_indicators = ("głos", "głosik", "mowa", "mówić", "voice", "tts",
+                           "speech", "syntezator", "speak", "rozpoznawanie", "stt")
+
+        if any(m in ul for m in _llm_indicators):
+            return {
+                "action": "configure",
+                "category": "llm",
+                "target": self._extract_config_target(user_msg, "llm"),
+                "original_msg": user_msg,
+                "_conf": 0.70,
+            }
+        elif not any(v in ul for v in _voice_indicators):
+            # No voice indicators - FALLBACK to LLM as default
+            return {
+                "action": "configure",
+                "category": "llm",
+                "target": self._extract_config_target(user_msg, "llm"),
+                "original_msg": user_msg,
+                "_conf": 0.65,
+                "_fallback": True,
+            }
+        return None
+
+    # ── Main entry ────────────────────────────────────────────────────
+    def analyze(self, user_msg, skills, conv=None):
+        """
+        ML-based intent detection.
+
+        Flow:
+          Stage 0: Trivial filter
+          Stage 1: SmartIntentClassifier (embedding → local LLM → remote LLM)
+          Stage 2: Context inference
+          Stage 3: Gap recording
+        """
+        conv = conv or []
+        has_conv = bool(conv)
+
+        # Stage 0: Very short / trivial → chat
+        if self._is_trivial(user_msg):
+            return {"action": "chat"}
+
+        # Stage 0b: Deterministic configuration patterns
+        result = self._check_deterministic_config(user_msg)
+        if result:
+            return result
+
+        # Stage 0c: Deterministic utility queries
+        result = self._check_utility_queries(user_msg, skills)
+        if result:
+            return result
 
         # Stage 1: ML classification
-        # Build skills dict with metadata for rich schema
+        skills_list = list(skills.keys()) if isinstance(skills, dict) else list(skills)
         if isinstance(skills, dict):
             skills_dict = skills
         else:
-            skills_dict = {name: {} for name in skills_list}  # Minimal metadata
+            skills_dict = {name: {} for name in skills_list}
         context = self._build_context(conv) if has_conv else ""
 
         result = self._classifier.classify(
             user_msg,
-            skills=skills_dict,  # Pass full dict with metadata for schema
+            skills=skills_dict,
             context=context,
             conv=conv,
         )
 
         # Guard: without voice-topic context, treat configure-tts/voice as uncertain
-        # and let Stage 2 context inference decide.
         topic_now = self._recent_topic() if has_conv else None
-        ul = user_msg.lower()
-        _voice_words = ("głos", "glos", "mowa", "voice", "tts", "speech", "syntez")
-        if (
-            result.action == "configure"
-            and result.skill in ("tts", "voice")
-            and topic_now != "voice"
-            and any(w in ul for w in _voice_words)
-        ):
+        if self._needs_ml_reset(result, topic_now, user_msg):
             result = None
 
         if result and result.action != "chat" and result.confidence >= 0.40:
-            analysis = result.to_analysis()
-            if has_conv:
-                self._update_topics_from_result(analysis)
-            self.log.core("intent_ml", {
-                "action": result.action,
-                "skill": result.skill,
-                "conf": result.confidence,
-                "tier": result.tier,
-            })
-
-            # Handle CONFIGURE intent - session configuration changes
-            if result.action == "configure":
-                return {
-                    "action": "configure",
-                    "category": result.skill,  # llm, tts, stt, voice
-                    "target": self._extract_config_target(user_msg, result.skill),
-                    "original_msg": user_msg,
-                    "_conf": result.confidence,
-                }
-
-            # Shell: extract actual command if not already set
-            if result.skill == "shell":
-                cmd = self._extract_shell_command(user_msg, conv)
-                if cmd:
-                    analysis.setdefault("input", {})["command"] = cmd
-
-            # STT: add default input params
-            if result.skill == "stt" and not analysis.get("input"):
-                analysis["input"] = {"duration_s": 5, "lang": "pl"}
-
-            # TTS: add message as text
-            if result.skill == "tts":
-                analysis.setdefault("input", {})["text"] = user_msg
-
-            # Create: extract skill name from message
-            if result.action == "create" and not analysis.get("name"):
-                name = self._extract_skill_name(user_msg)
-                if name:
-                    analysis["name"] = name
-                    analysis["description"] = user_msg
-
-            # Evolve: try to detect target skill
-            if result.action == "evolve" and not result.skill:
-                target = self._detect_evolve_target(user_msg, skills_list)
-                if target:
-                    analysis["skill"] = target
-
-            return analysis
+            analysis = self._process_ml_result(result, user_msg, skills_list, conv)
+            if analysis:
+                return analysis
 
         # Stage 1b: Skill name matching — catch references to existing skills
-        # when ML classifier returns low confidence (common for dynamically created skills)
         matched = self._match_existing_skill(user_msg, skills_list)
         if matched:
             self.log.core("intent_skill_match", {
@@ -296,65 +392,14 @@ class IntentEngine:
                     "_conf": 0.70, "_tier": "skill_name_match"}
 
         # Stage 2: Context inference
-        topic = self._recent_topic() if has_conv else None
-        ul = user_msg.lower()
-        
-        if topic == "voice":
-            _listen = ("słysz", "slysz", "mikrofon", "nagr", "nasłuch", "nasluch")
-            if any(w in ul for w in _listen) and "stt" in skills_list:
-                return {"action": "use", "skill": "stt",
-                        "input": {"duration_s": 4, "lang": "pl"}, "goal": "listen"}
-            
-            # Voice configuration: better/worse/faster voice quality defaults to TTS
-            # when in voice loop and no clear LLM model mentioned
-            _quality_words = ("lepszy", "lepsza", "gorszy", "gorsza", "szybszy", "szybsza",
-                           "better", "worse", "faster", "slower", "quality", "jakość")
-            if any(w in ul for w in _quality_words):
-                # Check if it's clearly about LLM (model name mentioned)
-                _llm_indicators = ("model", "gemini", "gpt", "claude", "llama", "qwen", 
-                                  "llm", "nai", "mozgo", "mózgo")
-                if not any(m in ul for m in _llm_indicators):
-                    # Default to TTS config when in voice loop and no LLM indicator
-                    return {
-                        "action": "configure",
-                        "category": "tts",
-                        "target": self._extract_config_target(user_msg, "tts"),
-                        "original_msg": user_msg,
-                        "_conf": 0.75,  # High confidence due to context
-                    }
-        
+        result = self._check_voice_context_inference(user_msg, skills_list, topic_now)
+        if result:
+            return result
+
         # FALLBACK: Not in voice context, but quality words present
-        # Check if this could be a config intent with LLM priority
-        _quality_words = ("lepszy", "lepsza", "gorszy", "gorsza", "szybszy", "szybsza",
-                       "better", "worse", "faster", "slower", "quality", "jakość",
-                       "przełącz", "zmień", "używaj", "switch", "change", "use")
-        if any(w in ul for w in _quality_words):
-            # Check for LLM indicators first (prioritize LLM)
-            _llm_indicators = ("model", "gemini", "gpt", "claude", "llama", "qwen", 
-                              "llm", "nai", "mozgo", "mózgo")
-            _voice_indicators = ("głos", "głosik", "mowa", "mówić", "voice", "tts", 
-                               "speech", "syntezator", "speak", "rozpoznawanie", "stt")
-            
-            if any(m in ul for m in _llm_indicators):
-                # LLM pattern detected - prioritize LLM config
-                return {
-                    "action": "configure",
-                    "category": "llm",
-                    "target": self._extract_config_target(user_msg, "llm"),
-                    "original_msg": user_msg,
-                    "_conf": 0.70,
-                }
-            elif not any(v in ul for v in _voice_indicators):
-                # No voice indicators either - FALLBACK to LLM as default
-                # This prioritizes LLM over TTS when ambiguous
-                return {
-                    "action": "configure",
-                    "category": "llm",
-                    "target": self._extract_config_target(user_msg, "llm"),
-                    "original_msg": user_msg,
-                    "_conf": 0.65,  # Lower confidence due to ambiguity
-                    "_fallback": True,  # Mark as fallback for debugging
-                }
+        result = self._check_quality_config_fallback(user_msg)
+        if result:
+            return result
 
         # Stage 3: Unhandled
         self.record_unhandled(user_msg)
@@ -428,11 +473,8 @@ class IntentEngine:
             return None
         ul = msg.lower()
 
-        # Skip when message contains create/evolve intent keywords
-        _CREATE_KW = ("stwórz", "stworz", "zbuduj", "napisz", "zrób", "zrob",
-                       "create", "build", "make", "napisz mi",
-                       "ulepsz", "popraw", "evolve", "improve", "fix")
-        if any(kw in ul for kw in _CREATE_KW):
+        # Skip when message contains create/evolve intent keywords (multilingual)
+        if match_any_keyword(ul, ALL_CREATE_KW_FLAT) or match_any_keyword(ul, ALL_EVOLVE_KEYWORDS):
             return None
 
         # 1. Direct skill name match (e.g., "kalkulator", "echo", "shell")

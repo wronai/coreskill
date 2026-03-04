@@ -134,6 +134,47 @@ class SkillQualityGate:
         """True if new version is not a regression (score >= old - 0.1)."""
         return new_report.score >= (old_report.score - 0.1)
 
+    # ── Event Bus Handlers ─────────────────────────────────────────────
+
+    def on_skill_changed(self, sender, **kwargs):
+        """EventBus handler: re-evaluate skill quality after repair.
+
+        Triggered by RepairCompletedEvent. Logs quality score change.
+        """
+        event = kwargs.get("event")
+        if not event or not event.success:
+            return
+        # Try to find and evaluate the repaired skill
+        try:
+            from .config import SKILLS_DIR
+            from .skill_manager import SkillManager
+            # Locate skill path heuristically
+            skill_dir = SKILLS_DIR / event.skill_name
+            if not skill_dir.exists():
+                return
+            # Find any skill.py under the skill directory
+            candidates = list(skill_dir.rglob("skill.py"))
+            if not candidates:
+                return
+            # Pick the most likely active version (stable > latest > first found)
+            skill_path = candidates[0]
+            for c in candidates:
+                if "stable" in str(c):
+                    skill_path = c
+                    break
+                if "latest" in str(c):
+                    skill_path = c
+            report = self.evaluate(skill_path, skill_name=event.skill_name)
+            record_operation(
+                operation="quality_recheck",
+                duration_ms=0,
+                success=report.ok,
+                details={"skill": event.skill_name, "score": report.score,
+                         "trigger": "repair_completed"},
+            )
+        except Exception:
+            pass  # Non-critical — don't break event chain
+
     # ── Individual checks ─────────────────────────────────────────────
 
     def _check_preflight(self, skill_path: Path,

@@ -376,7 +376,7 @@
                     React.createElement('div', { style: { display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: 8 } },
                       React.createElement('div', null,
                         React.createElement('div', { style: { fontSize: 14, fontWeight: 600, marginBottom: 4 } }, skill.name),
-                        <Badge color={skill.demand.includes("🔥🔥🔥") ? "green" : skill.demand.includes("🔥🔥") ? "yellow" : "red"}>{skill.demand}</Badge>
+                        React.createElement('Badge', { color: skill.demand.includes("🔥🔥🔥") ? "green" : skill.demand.includes("🔥🔥") ? "yellow" : "red" }, skill.demand)
                       ),
                       React.createElement('div', { style: { fontSize: 16, color: "#22c55e", fontWeight: 600 } }, skill.price)
                     ),
@@ -402,7 +402,7 @@
                   },
                     React.createElement('div', { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 } },
                       React.createElement('div', { style: { fontSize: 16, fontWeight: 700 } }, ch.ch),
-                      <Badge color={ch.reach === "Natychmiast" ? "green" : "yellow"}>{ch.reach}</Badge>
+                      React.createElement('Badge', { color: ch.reach === "Natychmiast" ? "green" : "yellow" }, ch.reach)
                     ),
                     React.createElement('div', { style: { fontSize: 14, color: "#22c55e", fontWeight: 600, marginBottom: 4 } }, ch.cost),
                     React.createElement('div', { style: { fontSize: 13, color: "#d4d4d8", lineHeight: 1.6 } }, ch.desc)

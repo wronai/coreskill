@@ -2,10 +2,8 @@
 """Build script: generates cores/v1/core.py for evo-engine"""
 import os
 import textwrap
-from pathlib import Path
 
-# Use relative path based on script location
-CORE_PATH = Path(__file__).parent / "cores" / "v1" / "core.py"
+CORE_PATH = "/home/claude/evo/cores/v1/core.py"
 
 code = textwrap.dedent(r'''
 #!/usr/bin/env python3

@@ -335,6 +335,185 @@ class MetricsCollector:
             slowest_skills=[{"skill": s, "avg_ms": round(d, 2)} for s, d in slowest]
         )
     
+    # ── Event Bus Handlers ────────────────────────────────────────────────
+
+    def on_skill_failed(self, sender, **kwargs):
+        """EventBus handler: record a skill failure from SkillFailedEvent."""
+        event = kwargs.get("event")
+        if not event:
+            return
+        self.record_skill_execution(
+            skill_name=event.skill_name,
+            version="?",
+            duration_ms=0,
+            success=False,
+            error=event.error or event.goal,
+        )
+
+    def on_repair_completed(self, sender, **kwargs):
+        """EventBus handler: record repair outcome from RepairCompletedEvent."""
+        event = kwargs.get("event")
+        if not event:
+            return
+        self.record_operation(
+            operation="repair",
+            duration_ms=0,
+            success=event.success,
+            details={"skill": event.skill_name, "strategy": event.strategy},
+            error=event.message if not event.success else None,
+        )
+
+    # ── Anomaly Detection ─────────────────────────────────────────────────
+
+    def get_anomalies(self, window_minutes: int = 60) -> list:
+        """Detect anomalies in the last time window.
+
+        Returns list of dicts with keys: skill_name, type, severity, description, value, baseline.
+        Types: success_rate_drop, latency_spike, error_storm.
+        """
+        anomalies = []
+        now = time.time()
+        cutoff = now - (window_minutes * 60)
+
+        tracked = self._list_tracked_skills()
+        for skill_name in tracked:
+            metrics = self._get_metrics_since(skill_name, cutoff)
+            if not metrics:
+                continue
+
+            total = len(metrics)
+
+            # 1. Success rate drop (>20% below baseline)
+            recent_rate = sum(1 for m in metrics if m.success) / total
+            baseline = self._get_baseline_rate(skill_name)
+            if baseline is not None and baseline > 0 and recent_rate < baseline - 0.20:
+                anomalies.append({
+                    "skill_name": skill_name,
+                    "type": "success_rate_drop",
+                    "severity": "high",
+                    "description": (
+                        f"{skill_name}: success rate {recent_rate:.0%} "
+                        f"(baseline {baseline:.0%}, drop >{20}%)"
+                    ),
+                    "value": recent_rate,
+                    "baseline": baseline,
+                })
+
+            # 2. Latency spike (p95 > 2x baseline)
+            latencies = [m.duration_ms for m in metrics if m.duration_ms]
+            if len(latencies) >= 5:
+                p95 = sorted(latencies)[int(len(latencies) * 0.95)]
+                baseline_p95 = self._get_baseline_p95(skill_name)
+                if baseline_p95 and baseline_p95 > 0 and p95 > baseline_p95 * 2:
+                    anomalies.append({
+                        "skill_name": skill_name,
+                        "type": "latency_spike",
+                        "severity": "medium",
+                        "description": f"{skill_name}: p95={p95:.0f}ms (baseline {baseline_p95:.0f}ms)",
+                        "value": p95,
+                        "baseline": baseline_p95,
+                    })
+
+            # 3. Error storm (>=5 errors in window)
+            errors = [m for m in metrics if not m.success]
+            if len(errors) >= 5:
+                anomalies.append({
+                    "skill_name": skill_name,
+                    "type": "error_storm",
+                    "severity": "critical",
+                    "description": f"{skill_name}: {len(errors)} errors in {window_minutes}min",
+                    "value": len(errors),
+                    "baseline": None,
+                })
+
+        return anomalies
+
+    def _list_tracked_skills(self) -> list:
+        """Return skill names that have recorded metrics."""
+        names = set()
+        if not SKILL_METRICS_FILE.exists():
+            return []
+        with open(SKILL_METRICS_FILE) as f:
+            for line in f:
+                try:
+                    data = json.loads(line)
+                    name = data.get("skill_name")
+                    if name:
+                        names.add(name)
+                except (json.JSONDecodeError, TypeError):
+                    continue
+        return sorted(names)
+
+    def _get_metrics_since(self, skill_name: str, cutoff_ts: float) -> list:
+        """Get metrics for a skill since a timestamp."""
+        results = []
+        if not SKILL_METRICS_FILE.exists():
+            return results
+        with open(SKILL_METRICS_FILE) as f:
+            for line in f:
+                try:
+                    data = json.loads(line)
+                    if data.get("skill_name") != skill_name:
+                        continue
+                    ts = datetime.fromisoformat(
+                        data["timestamp"].replace("Z", "+00:00"))
+                    if ts.timestamp() >= cutoff_ts:
+                        results.append(SkillMetric(**data))
+                except (json.JSONDecodeError, ValueError, KeyError, TypeError):
+                    continue
+        return results
+
+    def _get_baseline_rate(self, skill_name: str) -> Optional[float]:
+        """Get baseline success rate from older metrics (before last hour)."""
+        now = time.time()
+        old_cutoff = now - 24 * 3600  # 24h window
+        recent_cutoff = now - 3600     # exclude last hour
+        metrics = []
+        if not SKILL_METRICS_FILE.exists():
+            return None
+        with open(SKILL_METRICS_FILE) as f:
+            for line in f:
+                try:
+                    data = json.loads(line)
+                    if data.get("skill_name") != skill_name:
+                        continue
+                    ts = datetime.fromisoformat(
+                        data["timestamp"].replace("Z", "+00:00"))
+                    t = ts.timestamp()
+                    if old_cutoff <= t < recent_cutoff:
+                        metrics.append(data.get("success", False))
+                except (json.JSONDecodeError, ValueError, KeyError, TypeError):
+                    continue
+        if len(metrics) < 3:
+            return None
+        return sum(1 for s in metrics if s) / len(metrics)
+
+    def _get_baseline_p95(self, skill_name: str) -> Optional[float]:
+        """Get baseline p95 latency from older metrics."""
+        now = time.time()
+        old_cutoff = now - 24 * 3600
+        recent_cutoff = now - 3600
+        latencies = []
+        if not SKILL_METRICS_FILE.exists():
+            return None
+        with open(SKILL_METRICS_FILE) as f:
+            for line in f:
+                try:
+                    data = json.loads(line)
+                    if data.get("skill_name") != skill_name:
+                        continue
+                    ts = datetime.fromisoformat(
+                        data["timestamp"].replace("Z", "+00:00"))
+                    t = ts.timestamp()
+                    d = data.get("duration_ms", 0)
+                    if old_cutoff <= t < recent_cutoff and d:
+                        latencies.append(d)
+                except (json.JSONDecodeError, ValueError, KeyError, TypeError):
+                    continue
+        if len(latencies) < 5:
+            return None
+        return sorted(latencies)[int(len(latencies) * 0.95)]
+
     # ── Query Interface ───────────────────────────────────────────────────
     
     def get_summary(self) -> dict:

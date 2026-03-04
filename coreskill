@@ -211,6 +211,11 @@ Examples:
   coreskill calculator_advanced calculate '{"expression": "sin(45)"}' --output=raw
   coreskill prompt "find all PDF files in /tmp"
   echo '{"host": "google.com"}' | coreskill network_tools ping
+
+OpenRouter Commands:
+  coreskill openrouter get-api-key    # Get API key from Firefox session and save to .env
+  coreskill openrouter check-key      # Check if saved API key is valid
+  coreskill openrouter save-to-env    # Save existing key to .env file
         """
     )
 
@@ -254,10 +259,37 @@ Examples:
         print(format_output(result, args.output, action))
         sys.exit(0 if result.get("success") else 1)
 
-    # Handle direct skill execution
-    if not args.skill:
-        parser.print_help()
-        sys.exit(1)
+    # Handle special commands
+    if args.skill == "openrouter":
+        if args.action == "get-api-key":
+            # Run the helper script
+            import subprocess
+            result = subprocess.run([sys.executable, "scripts/get_openrouter_key.py"])
+            sys.exit(result.returncode)
+        elif args.action == "check-key":
+            # Check validity of saved key
+            skill_name = "openrouter_automation"
+            action = "check_key_validity"
+            params = {}
+            result = run_skill(skill_name, action, params)
+            print(format_output(result, args.output, action))
+            sys.exit(0 if result.get("success") else 1)
+        elif args.action == "save-to-env":
+            # Save existing key to .env
+            skill_name = "openrouter_automation"
+            action = "load_key"
+            load_result = run_skill(skill_name, action, {})
+            if load_result.get("success") and load_result.get("api_key"):
+                api_key = load_result.get("api_key")
+                save_result = run_skill(skill_name, "save_key_to_env", {
+                    "api_key": api_key,
+                    "env_path": ".env"
+                })
+                print(format_output(save_result, args.output, "save_key_to_env"))
+                sys.exit(0 if save_result.get("success") else 1)
+            else:
+                print("Error: No API key found. Run 'coreskill openrouter get-api-key' first.", file=sys.stderr)
+                sys.exit(1)
 
     skill_name = args.skill
     action = args.action or "execute"

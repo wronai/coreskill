@@ -330,6 +330,18 @@ def _run_voice_loop(sm, evo, llm, intent, logger, conv, identity, memory=None):
     cpr(C.CYAN, "\n🎤 Tryb głosowy aktywny. Mów teraz! "
                 "(Ctrl+C: tryb tekstowy | Ctrl+\\: wyjście | 'wyłącz tryb głosowy': zakończ)")
     while True:
+        # Allow switching to text mode with Ctrl+T without killing the app.
+        # This is best-effort: only works reliably on TTY.
+        try:
+            if sys.stdin.isatty():
+                import select as _select
+                if _select.select([sys.stdin], [], [], 0)[0]:
+                    ch = sys.stdin.read(1)
+                    if ch == "\x14":  # Ctrl+T
+                        cpr(C.DIM, "[VOICE] Ctrl+T — przechodzę do trybu tekstowego.")
+                        break
+        except Exception:
+            pass
         cpr(C.CYAN, f"\n🎤 Słucham... (5s)")
         try:
             status, text = _run_stt_cycle(sm, evo, llm, intent, logger, conv, identity, memory=memory)

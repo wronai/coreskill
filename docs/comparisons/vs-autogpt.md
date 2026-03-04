@@ -6,7 +6,7 @@
 |---|-----------|---------|
 | **Twórca** | WronAI | Significant Gravitas |
 | **Architektura** | Ewolucyjna (text2pipeline) | Autonomiczna pętla + visual builder |
-| **Licencja** | Apache 2.0 | MIT |
+| **Licencja** | MIT | MIT |
 | **Cena** | Darmowy | Darmowy + cloud beta |
 | **GitHub Stars** | Nowy projekt | ~182K (najwyżej w kategorii) |
 | **Historia** | 2024+ | Marzec 2023 (pionier autonomicznych agentów) |
@@ -119,6 +119,6 @@ AutoGPT poszedł w stronę **demokratyzacji** (każdy może budować agenta), Co
 
 ---
 
-*Porównanie oparte na stanie z marca 2026*
+*Porównanie oparte na stanie z marca 2025*
 
 [← Powrót do przeglądu](README.md)

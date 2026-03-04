@@ -6,7 +6,7 @@
 |---|-----------|------|
 | **Twórca** | WronAI | Rasa Technologies |
 | **Architektura** | Ewolucyjna (text2pipeline) | NLU pipeline + dialog management |
-| **Licencja** | Apache 2.0 | Dual (OSS Apache 2.0 + commercial CALM) |
+| **Licencja** | MIT | Dual (OSS Apache 2.0 + commercial CALM) |
 | **Cena** | Darmowy | Od $35K/rok (Growth) |
 | **Klienci** | Early adopters | Banki, telekomy, healthcare |
 | **Nisza** | Autonomiczna automatyzacja | Konwersacyjna AI (regulowane branże) |
@@ -44,7 +44,7 @@ CoreSkill łączy klasyfikację intencji z **ewolucyjnym silnikiem skillów** �
 | **Wielojęzyczność** | ✅ PL/EN natywnie | ✅ Wielojęzyczny (z konfiguracją) |
 | **LLM fallback** | ✅ Wbudowany (tier 2/3) | ✅ CALM (komercyjny) |
 
-**Werdykt:** Rasa ma bardziej dojrzały i konfigurowlany NLU pipeline. CoreSkill ma unikalną cechę **self-training** — uczy się z korekt bez re-deploymentu.
+**Werdykt:** Rasa ma bardziej dojrzały i konfigurowalny NLU pipeline. CoreSkill ma unikalną cechę **self-training** — uczy się z korekt bez re-deploymentu.
 
 ### 2. Dialog management
 
@@ -133,6 +133,6 @@ Rasa to **specjalista od konwersacji** w regulowanych branżach. CoreSkill to **
 
 ---
 
-*Porównanie oparte na stanie z marca 2026*
+*Porównanie oparte na stanie z marca 2025*
 
 [← Powrót do przeglądu](README.md)

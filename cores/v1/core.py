@@ -44,6 +44,8 @@ try:
     from .adaptive_monitor import AdaptiveResourceMonitor
     from .proactive_scheduler import ProactiveScheduler, setup_default_tasks
     from .bandit_selector import UCB1BanditSelector
+    from .metrics_collector import MetricsCollector
+    from .drift_detector import DriftDetector
 except ImportError:
     # Fallback for standalone file loading
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
@@ -79,6 +81,8 @@ except ImportError:
     from adaptive_monitor import AdaptiveResourceMonitor
     from proactive_scheduler import ProactiveScheduler, setup_default_tasks
     from bandit_selector import UCB1BanditSelector
+    from metrics_collector import MetricsCollector
+    from drift_detector import DriftDetector
 
 
 # ─── Docker Compose Generator ────────────────────────────────────────
@@ -108,6 +112,11 @@ def gen_compose(skills, state):
 
 # ─── Help ────────────────────────────────────────────────────────────
 HELP = """
+  Skróty klawiaturowe:
+  Ctrl+A            Tryb audio (voice)
+  Ctrl+T            Tryb tekstowy
+  Ctrl+\\            Wyjście z programu
+
   /skills            List skills         /create <n>     Create skill
   /run <n> [v]       Run skill           /evolve <n>     Improve skill
   /test <n>          Test skill           /rollback <n>   Rollback skill
@@ -134,6 +143,20 @@ HELP = """
   builds+tests skills, and validates goals. Learns from your corrections.
   
   Configuration via chat: say "używaj lepszego TTS", "przełącz na gemini", etc.
+"""
+
+
+QUICK_HELP = """
+  Najważniejsze skróty:
+  Ctrl+A  audio (voice) | Ctrl+T  tekst | Ctrl+\\  wyjście
+
+  Najważniejsze komendy:
+  /voice        tryb głosowy (on/off)
+  /help         wszystkie komendy
+  /providers    status providerów (TTS/STT)
+  /health       zdrowie skill-i
+  /models       modele LLM
+  /memories     pamięć użytkownika
 """
 
 
@@ -1438,20 +1461,74 @@ def _boot():
     reflection = SelfReflection(llm, sm, logger, state)
     evo.set_reflection(reflection)
 
-    # Event bus: decouple AutoRepair ↔ EvoEngine ↔ SelfReflection
+    # Metrics collector (persistent skill/operation metrics + anomaly detection)
+    metrics = MetricsCollector()
+
+    # Event bus: decouple AutoRepair ↔ EvoEngine ↔ SelfReflection ↔ Metrics ↔ QualityGate
     bus = EventBus()
-    bus.wire(reflection=reflection, repairer=repairer, evo=evo, logger=logger)
-    cpr(C.DIM, f"SelfReflection: aktywny | EventBus: {'wired' if bus.is_active else 'fallback'}")
+    bus.wire(
+        reflection=reflection,
+        repairer=repairer,
+        evo=evo,
+        metrics=metrics,
+        quality_gate=sm.quality_gate,
+        logger=logger,
+    )
+    cpr(C.DIM, f"SelfReflection: aktywny | EventBus: {bus.subscriber_count} subscribers ({'active' if bus.is_active else 'fallback'})")
 
     # Adaptive resource monitor (EWMA trend detection)
     adaptive_mon = AdaptiveResourceMonitor()
     adaptive_mon.start(interval=5.0)
 
-    # Proactive scheduler (periodic GC, health checks, resource alerts)
+    # Drift detector (manifest vs runtime state)
+    drift = DriftDetector()
+
+    # Proactive scheduler (periodic GC, health checks, resource alerts, drift, quality)
     scheduler = ProactiveScheduler()
     gc = EvolutionGarbageCollector()
     setup_default_tasks(scheduler, adaptive_monitor=adaptive_mon, gc=gc,
                         skill_manager=sm, logger=logger)
+
+    # Additional autonomy tasks
+    def _drift_scan():
+        """Periodic drift detection across all capabilities."""
+        try:
+            caps = [d.name for d in SKILLS_DIR.iterdir()
+                    if d.is_dir() and not d.name.startswith(".")]
+            drifted = []
+            for cap in caps:
+                report = drift.detect(cap)
+                if report.drift_detected:
+                    drifted.append(cap)
+            if drifted:
+                cpr(C.YELLOW, f"[DRIFT] Wykryto drift w: {', '.join(drifted)}")
+                if logger:
+                    logger.core("scheduled_drift", {"drifted": drifted})
+        except Exception:
+            pass
+
+    def _quality_regression_check():
+        """Periodic quality regression scan on all skills."""
+        try:
+            regressions = []
+            for name in list(sm.list_skills().keys()):
+                p = sm.skill_path(name)
+                if not p or not p.exists():
+                    continue
+                meta_file = p.parent / "meta.json"
+                if meta_file.exists():
+                    meta = json.loads(meta_file.read_text())
+                    if meta.get("is_regression"):
+                        regressions.append(name)
+            if regressions:
+                cpr(C.YELLOW, f"[QUALITY] Regresje: {', '.join(regressions)}")
+                if logger:
+                    logger.core("scheduled_quality_regression", {"skills": regressions})
+        except Exception:
+            pass
+
+    scheduler.register("drift_scan", _drift_scan, interval_s=600)
+    scheduler.register("quality_regression", _quality_regression_check, interval_s=1800)
     scheduler.start()
     cpr(C.DIM, f"AdaptiveMonitor: aktywny | Scheduler: {len(scheduler.status())} zadań")
 
@@ -1461,6 +1538,8 @@ def _boot():
         cpr(C.GREEN, f"Skills: {', '.join(sk.keys())}")
     else:
         cpr(C.YELLOW, "No skills yet. Chat or /create <n>")
+
+    cpr(C.DIM, QUICK_HELP.strip("\n"))
 
     caps_with_providers = [c for c in provider_sel.list_capabilities()
                            if len(provider_sel.list_providers(c)) > 1]
@@ -1605,9 +1684,78 @@ def _flush_stdin():
         pass
 
 
+def _read_line_with_shortcuts(prompt: str) -> str:
+    """Read a line from stdin with Ctrl+A / Ctrl+T shortcuts (TTY only).
+
+    Ctrl+A: switch to voice mode (returns "__SWITCH_TO_VOICE__")
+    Ctrl+T: switch to text mode / cancel current line (returns "__SWITCH_TO_TEXT__")
+    """
+    import sys
+    if not sys.stdin.isatty():
+        print(prompt, end='', flush=True)
+        return sys.stdin.readline().rstrip("\n")
+
+    import termios
+    import tty
+
+    fd = sys.stdin.fileno()
+    old = termios.tcgetattr(fd)
+    buf = []
+    try:
+        print(prompt, end='', flush=True)
+        tty.setcbreak(fd)
+        while True:
+            ch = sys.stdin.read(1)
+            if ch == "":
+                raise EOFError
+
+            # Ctrl+A
+            if ch == "\x01":
+                print("\n", end='', flush=True)
+                return "__SWITCH_TO_VOICE__"
+
+            # Ctrl+T
+            if ch == "\x14":
+                print("\n", end='', flush=True)
+                return "__SWITCH_TO_TEXT__"
+
+            # Enter
+            if ch in ("\n", "\r"):
+                print("\n", end='', flush=True)
+                return "".join(buf).strip()
+
+            # Backspace
+            if ch in ("\x7f", "\b"):
+                if buf:
+                    buf.pop()
+                    # erase last char on terminal
+                    print("\b \b", end='', flush=True)
+                continue
+
+            # Ctrl+D (EOF)
+            if ch == "\x04":
+                if not buf:
+                    raise EOFError
+                continue
+
+            # Ctrl+C
+            if ch == "\x03":
+                raise KeyboardInterrupt
+
+            # Regular characters
+            if ch.isprintable():
+                buf.append(ch)
+                print(ch, end='', flush=True)
+    finally:
+        try:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old)
+        except Exception:
+            pass
+
+
 # ─── Main ────────────────────────────────────────────────────────────
-def main():
-    # Setup signal handlers for graceful shutdown
+def _setup_signal_handlers():
+    """Setup signal handlers for graceful shutdown."""
     import signal
     _shutdown_requested = False
     
@@ -1616,7 +1764,6 @@ def main():
         if not _shutdown_requested:
             _shutdown_requested = True
             cpr(C.DIM, f"\n[SIGNAL] Received {signal.Signals(signum).name}, shutting down gracefully...")
-            # Save any pending state
             try:
                 if 'intent' in dir():
                     intent.save()
@@ -1626,88 +1773,150 @@ def main():
                 pass
         raise SystemExit(0)
     
-    # SIGINT (Ctrl+C): leave default handler so we can use KeyboardInterrupt for control-flow.
-    # SIGTERM: graceful exit (system shutdown / docker stop)
-    # SIGQUIT (Ctrl+\): explicit hard exit from user
     signal.signal(signal.SIGTERM, _signal_handler)
     signal.signal(signal.SIGQUIT, _signal_handler)
+
+
+def _try_auto_voice_mode(memory, cmd_ctx) -> bool:
+    """Auto-enter voice mode if persistent preference is saved.
+    
+    Returns True if voice mode was entered and completed, False otherwise.
+    """
+    if not memory or not memory.voice_mode or os.environ.get("EVO_TEXT_ONLY"):
+        return False
+    
+    sm = cmd_ctx["sm"]
+    evo = cmd_ctx["evo"]
+    llm = cmd_ctx["llm"]
+    intent = cmd_ctx["intent"]
+    logger = cmd_ctx["logger"]
+    conv = cmd_ctx["conv"]
+    identity = cmd_ctx["identity"]
+    
+    cpr(C.CYAN, "🔊 Tryb głosowy aktywny (zapamiętana preferencja). Wyłącz: /voice off")
+    try:
+        _run_voice_loop(sm, evo, llm, intent, logger, conv, identity, memory=memory)
+    except KeyboardInterrupt:
+        cpr(C.DIM, "\n[VOICE] Ctrl+C — przechodzę do trybu tekstowego (aplikacja działa dalej).")
+    _flush_stdin()
+    cpr(C.CYAN, "📝 Przechodzę do trybu tekstowego. Wpisz /voice aby wrócić do głosowego.")
+    return True
+
+
+def _dispatch_command(ui: str, cmd_ctx: dict) -> bool:
+    """Dispatch slash command via fuzzy router.
+    
+    Returns True if QUIT command was issued, False otherwise.
+    """
+    p = ui.split(maxsplit=2)
+    act = p[0].lower()
+    a1 = p[1] if len(p) > 1 else ""
+    a2 = p[2] if len(p) > 2 else ""
+    
+    handler, _ = cmd_ctx["router"].resolve(act)
+    if handler:
+        return handler(a1=a1, a2=a2, **cmd_ctx) == "QUIT"
+    else:
+        cpr(C.YELLOW, f"Unknown: {act}. /help")
+    return False
+
+
+def _process_chat_input(ui: str, cmd_ctx: dict) -> None:
+    """Process chat input through IntentEngine and EvoEngine."""
+    conv = cmd_ctx["conv"]
+    logger = cmd_ctx["logger"]
+    sm = cmd_ctx["sm"]
+    intent = cmd_ctx["intent"]
+    session_cfg = cmd_ctx["session_config"]
+    state = cmd_ctx["state"]
+    llm = cmd_ctx["llm"]
+    evo = cmd_ctx["evo"]
+    identity = cmd_ctx["identity"]
+    memory = cmd_ctx.get("memory")
+    
+    conv.append({"role": "user", "content": ui})
+    logger.core("user_msg", {"msg": ui[:200]})
+
+    sk = sm.list_skills()
+    analysis = intent.analyze(ui, sk, conv)
+    logger.core("intent_result", {
+        "action": analysis.get("action"), "skill": analysis.get("skill", ""),
+        "goal": analysis.get("goal", "")})
+
+    if _handle_configure_intent(analysis, session_cfg, conv, state, llm, sm, intent):
+        return
+
+    if _handle_voice_intent(analysis, sm, evo, llm, intent, logger, conv, identity, memory):
+        return
+
+    # Show feedback before single-shot STT execution
+    if analysis.get("action") == "use" and analysis.get("skill") == "stt":
+        cpr(C.CYAN, "\n🎤 Nagrywam... (mów teraz)")
+
+    outcome = evo.handle_request(ui, sk, analysis=analysis)
+
+    _auto_save_preference(ui, memory)
+
+    if not _handle_stt_outcome(outcome, ui, sk, analysis, evo, intent, llm, sm,
+                                logger, conv, identity, memory):
+        if not _handle_outcome(outcome, intent, conv, identity=identity):
+            _handle_chat(llm, sm, logger, conv, identity=identity, memory=memory)
+
+    _check_proactive_learning(intent)
+    intent.save()
+
+
+def main():
+    _setup_signal_handlers()
     
     cmd_ctx, conv, memory = _boot()
-    sm, llm, evo, intent, logger = (
-        cmd_ctx["sm"], cmd_ctx["llm"], cmd_ctx["evo"],
-        cmd_ctx["intent"], cmd_ctx["logger"])
-    state = cmd_ctx["state"]
-    identity = cmd_ctx["identity"]
-    session_cfg = cmd_ctx["session_config"]
+    cmd_ctx["conv"] = conv
+    if memory:
+        cmd_ctx["memory"] = memory
 
-    # Auto-enter voice mode if persistent preference is saved (but not in text-only mode)
-    if memory and memory.voice_mode and not os.environ.get("EVO_TEXT_ONLY"):
-        cpr(C.CYAN, "🔊 Tryb głosowy aktywny (zapamiętana preferencja). "
-                    "Wyłącz: /voice off")
-        try:
-            _run_voice_loop(sm, evo, llm, intent, logger, conv, identity, memory=memory)
-        except KeyboardInterrupt:
-            cpr(C.DIM, "\n[VOICE] Ctrl+C — przechodzę do trybu tekstowego (aplikacja działa dalej).")
-        # Flush any stray input that may have been generated by terminal after voice loop exit
-        _flush_stdin()
-        cpr(C.CYAN, "📝 Przechodzę do trybu tekstowego. Wpisz /voice aby wrócić do głosowego.")
+    # Auto-enter voice mode if persistent preference is saved
+    _try_auto_voice_mode(memory, cmd_ctx)
 
     while True:
         try:
-            # Explicitly print and flush prompt for non-tty stdout (pipes)
-            print(f"{C.GREEN}you> {C.R}", end='', flush=True)
-            ui = input().strip()
+            ui = _read_line_with_shortcuts(f"{C.GREEN}you> {C.R}")
         except (EOFError, KeyboardInterrupt):
             cpr(C.DIM, "\nBye!")
             break
+
+        if ui == "__SWITCH_TO_TEXT__":
+            _flush_stdin()
+            continue
+
+        if ui == "__SWITCH_TO_VOICE__":
+            if os.environ.get("EVO_TEXT_ONLY"):
+                cpr(C.YELLOW, "Tryb tekstowy wymuszony przez EVO_TEXT_ONLY.")
+                continue
+            # Enter voice mode for this session (does not modify persistent preference)
+            sm = cmd_ctx["sm"]
+            evo = cmd_ctx["evo"]
+            llm = cmd_ctx["llm"]
+            intent = cmd_ctx["intent"]
+            logger = cmd_ctx["logger"]
+            identity = cmd_ctx.get("identity")
+            try:
+                _run_voice_loop(sm, evo, llm, intent, logger, conv, identity, memory=memory)
+            except KeyboardInterrupt:
+                cpr(C.DIM, "\n[VOICE] Ctrl+C — przechodzę do trybu tekstowego (aplikacja działa dalej).")
+            _flush_stdin()
+            continue
+
         if not ui:
             continue
 
-        # ── Commands via fuzzy dispatch table ──
+        # Commands via fuzzy dispatch table
         if ui.startswith("/"):
-            p = ui.split(maxsplit=2)
-            act = p[0].lower()
-            a1 = p[1] if len(p) > 1 else ""
-            a2 = p[2] if len(p) > 2 else ""
-            handler, _ = cmd_ctx["router"].resolve(act)
-            if handler:
-                if handler(a1=a1, a2=a2, **cmd_ctx) == "QUIT":
-                    break
-            else:
-                cpr(C.YELLOW, f"Unknown: {act}. /help")
+            if _dispatch_command(ui, cmd_ctx):
+                break
             continue
 
-        # ── Chat with context-aware IntentEngine ──
-        conv.append({"role": "user", "content": ui})
-        logger.core("user_msg", {"msg": ui[:200]})
-
-        sk = sm.list_skills()
-        analysis = intent.analyze(ui, sk, conv)
-        logger.core("intent_result", {
-            "action": analysis.get("action"), "skill": analysis.get("skill",""),
-            "goal": analysis.get("goal","")})
-
-        if _handle_configure_intent(analysis, session_cfg, conv, state, llm, sm, intent):
-            continue
-
-        if _handle_voice_intent(analysis, sm, evo, llm, intent, logger, conv, identity, memory):
-            continue
-
-        # Show feedback before single-shot STT execution
-        if analysis.get("action") == "use" and analysis.get("skill") == "stt":
-            cpr(C.CYAN, "\n🎤 Nagrywam... (mów teraz)")
-
-        outcome = evo.handle_request(ui, sk, analysis=analysis)
-
-        _auto_save_preference(ui, memory)
-
-        if not _handle_stt_outcome(outcome, ui, sk, analysis, evo, intent, llm, sm,
-                                    logger, conv, identity, memory):
-            if not _handle_outcome(outcome, intent, conv, identity=identity):
-                _handle_chat(llm, sm, logger, conv, identity=identity, memory=memory)
-
-        _check_proactive_learning(intent)
-        intent.save()
+        # Chat with context-aware IntentEngine
+        _process_chat_input(ui, cmd_ctx)
 
 
 if __name__ == "__main__":

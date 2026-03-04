@@ -42,6 +42,15 @@ python3 main.py --verbose
 - **⚡ Tiered LLM** - Automatyczny fallback między modelami (free → local → paid)
 - **🧪 Testowanie API** - Automatyczna weryfikacja kluczy API
 
+## ⌨️ Skróty klawiaturowe (w interaktywnej powłoce)
+
+- **Ctrl+A**
+  Przejdź do trybu audio (voice)
+- **Ctrl+T**
+  Przejdź do trybu tekstowego
+- **Ctrl+\\**
+  Wyjście z programu
+
 ## 📚 Komendy CLI
 
 ```bash
@@ -58,6 +67,7 @@ coreskill cache reset       # Wyczyść cache
 | `/help` | Lista wszystkich komend |
 | `/apikey <key>` | Ustaw klucz OpenRouter (z auto-weryfikacją) |
 | `/voice on/off` | Włącz/wyłącz tryb głosowy |
+| `/providers` | Status providerów (TTS/STT) |
 | `/models` | Pokaż dostępne modele LLM |
 | `/autotune` | Automatyczny wybór najlepszego modelu |
 | `/skills` | Lista zainstalowanych skillów |
@@ -142,7 +152,7 @@ Zobacz [TODO.md](TODO.md) i [CHANGELOG.md](CHANGELOG.md)
 
 ## 📄 Licencja
 
-Apache License 2.0 - zobacz [LICENSE](LICENSE)
+MIT License - zobacz [LICENSE](LICENSE)
 
 ## 🤝 Wkład w projekt
 

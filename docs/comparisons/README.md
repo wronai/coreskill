@@ -4,22 +4,22 @@ Szczegółowe porównanie CoreSkill (evo-engine) z wiodącymi frameworkami i pla
 
 ## Zbiorcza tabela porównawcza
 
-| Cecha | CoreSkill | LangGraph | CrewAI | MS Agent Framework | Haystack | AutoGPT | Rasa | Botpress |
+| Cecha | CoreSkill | LangGraph | CrewAI | MS Agent | Haystack | AutoGPT | Rasa | Botpress | LlamaIndex | DSPy | PydanticAI | Agno | ControlFlow |
 |-------|-----------|-----------|--------|--------------------|----------|---------|------|----------|
-| **Architektura** | Ewolucyjna (text2pipeline) | Graf stanów | Role-based multi-agent | Multi-agent konwersacje | Pipeline RAG | Autonomiczna pętla | NLU pipeline | LLMz engine |
-| **Samo-ewolucja skillów** | ✅ Pełna (mutacja + walidacja + rollback) | ❌ | ❌ | ❌ | ❌ | ⚠️ Marketplace | ❌ | ❌ |
-| **Samo-naprawa** | ✅ 5-fazowa (diagnoza → plan → fix → weryfikacja → refleksja) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ⚠️ Ograniczona |
-| **Proaktywny monitoring** | ✅ Scheduler + health checks + drift detection | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Klasyfikacja intencji** | ✅ 3-tier ML (embedding → local LLM → remote LLM) | ❌ Ręczna | ❌ Ręczna | ❌ Ręczna | ❌ Ręczna | ⚠️ LLM-only | ✅ NLU pipeline | ⚠️ LLM-only |
-| **Tiered LLM routing** | ✅ Free → Local → Paid + UCB1 bandit | ⚠️ Przez LiteLLM | ⚠️ Konfiguracja | ⚠️ Azure-centric | ⚠️ Konfiguracja | ⚠️ Single model | ❌ Własny NLU | ⚠️ Pass-through |
-| **Tryb głosowy (STT/TTS)** | ✅ Natywny (vosk/espeak) | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ Kanały głosowe | ✅ Integracje |
-| **Local-first** | ✅ Ollama + offline | ❌ Cloud-first | ❌ Cloud-first | ⚠️ Azure-first | ⚠️ Cloud-first | ⚠️ Wymaga API | ✅ On-premise | ❌ Cloud |
-| **Quality gates** | ✅ 5-check pipeline | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Provider chain + fallback** | ✅ Auto-degradacja + UCB1 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Licencja** | Apache 2.0 | MIT | MIT | MIT | Apache 2.0 | MIT | Dual (OSS + commercial) | Proprietary |
-| **Cena** | Darmowy | Darmowy + $39/seat | $99–$120K/rok | Darmowy | Custom enterprise | Darmowy + cloud | Od $35K/rok | Od $89/mies. |
-| **GitHub Stars** | Nowy projekt | ~15K | ~40K | ~55K | ~24K | ~182K | ~19K | ~13K |
-| **Dojrzałość** | Wczesna faza | Produkcja (1.0) | Produkcja | Przejściowa | Produkcja | Aktywny | Produkcja | Produkcja |
+| **Architektura** | Ewolucyjna (text2pipeline) | Graf stanów | Role-based multi-agent | Multi-agent konwersacje | Pipeline RAG | Autonomiczna pętla | NLU pipeline | LLMz engine | Data framework | LLM programming | Type-safe agents | Agent UI | Workflow orchestration |
+| **Samo-ewolucja skillów** | ✅ Pełna | ❌ | ❌ | ❌ | ❌ | ⚠️ Marketplace | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Samo-naprawa** | ✅ 5-fazowa | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ⚠️ Ograniczona | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Proaktywny monitoring** | ✅ Scheduler + drift | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Klasyfikacja intencji** | ✅ 3-tier ML | ❌ Ręczna | ❌ Ręczna | ❌ Ręczna | ❌ Ręczna | ⚠️ LLM-only | ✅ NLU | ⚠️ LLM-only | ❌ | ❌ | ❌ | ⚠️ LLM | ❌ |
+| **Tiered LLM routing** | ✅ Free→Local→Paid | ⚠️ LiteLLM | ⚠️ Config | ⚠️ Azure | ⚠️ Config | ⚠️ Single | ❌ Własny NLU | ⚠️ Pass-through | ⚠️ Config | ⚠️ Config | ⚠️ Config | ⚠️ Config | ⚠️ Config |
+| **Tryb głosowy STT/TTS** | ✅ Natywny | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ Kanały | ✅ Integracje | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Local-first** | ✅ Ollama offline | ❌ Cloud | ❌ Cloud | ⚠️ Azure | ⚠️ Cloud | ⚠️ Wymaga API | ✅ On-prem | ❌ Cloud | ⚠️ Cloud | ✅ Local | ✅ Local | ⚠️ Cloud | ✅ Local |
+| **Quality gates** | ✅ 5-check | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ⚠️ Pydantic | ❌ | ⚠️ Task valid |
+| **Provider chain** | ✅ Auto-degradacja | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Licencja** | MIT | MIT | MIT | MIT | Apache 2.0 | MIT | Dual | Proprietary | MIT | MIT | MIT | MIT | Apache 2.0 |
+| **Cena** | Darmowy | Darmowy + $39 | $99-120K/rok | Darmowy | Custom | Darmowy | Od $35K/rok | Od $89/mies | Od $15/mies | Darmowy | Darmowy | Darmowy + cloud | Darmowy |
+| **GitHub Stars** | Nowy | ~15K | ~40K | ~55K | ~24K | ~182K | ~19K | ~13K | ~40K | ~20K | ~5K | ~5K | ~2K |
+| **Dojrzałość** | Wczesna | Produkcja | Produkcja | Przejściowa | Produkcja | Aktywny | Produkcja | Produkcja | Produkcja | Szybki rozwój | Nowy | Szybki rozwój | Wczesna |
 
 ## Unikalne cechy CoreSkill
 
@@ -50,6 +50,11 @@ Adaptacyjny wybór providerów oparty na algorytmie UCB1 multi-armed bandit — 
 | Rasa | Platforma komercyjna | [CoreSkill vs Rasa](vs-rasa.md) |
 | Botpress | Platforma komercyjna | [CoreSkill vs Botpress](vs-botpress.md) |
 | Beam AI | Platforma komercyjna | [CoreSkill vs Beam AI](vs-beam-ai.md) |
+| LlamaIndex | Framework OSS (RAG) | [CoreSkill vs LlamaIndex](vs-llamaindex.md) |
+| DSPy | Framework OSS (LLM programming) | [CoreSkill vs DSPy](vs-dspy.md) |
+| PydanticAI | Framework OSS (type-safe) | [CoreSkill vs PydanticAI](vs-pydantic-ai.md) |
+| Agno | Framework OSS (Agent UI) | [CoreSkill vs Agno](vs-agno.md) |
+| ControlFlow | Framework OSS (workflow) | [CoreSkill vs ControlFlow](vs-controlflow.md) |
 
 ## Podsumowanie pozycjonowania
 
@@ -59,20 +64,29 @@ Adaptacyjny wybór providerów oparty na algorytmie UCB1 multi-armed bandit — 
                          │
               LangGraph  │  MS Agent Framework
                     ●    │    ●
+           ControlFlow ●  │    ● DSPy
                          │
    Prostota ◄────────────┼────────────► Autonomia
                          │
               CrewAI ●   │        ● CoreSkill
                          │
-              Haystack ● │  AutoGPT ●
-                         │
+        PydanticAI ●     │   ● AutoGPT
+              Agno ●    │
+              Haystack ● │
+           LlamaIndex ●  │
                          ▼
                     Automatyzacja
 ```
 
 **CoreSkill** zajmuje unikalną pozycję w kwadrancie **wysoka autonomia + wysoka automatyzacja** — tam, gdzie żaden z obecnych liderów rynku nie jest silny. LangGraph sprzedaje kontrolę, CrewAI prostotę, Microsoft integrację z ekosystemem — nikt nie posiada narracji **"autonomous reliability"**.
 
+**Grupy frameworków:**
+- **Kontrola/Workflow:** LangGraph, ControlFlow, MS Agent Framework, DSPy
+- **Prostota:** CrewAI, PydanticAI, Agno
+- **Automatyzacja danych:** Haystack, LlamaIndex
+- **Autonomia:** CoreSkill, AutoGPT
+
 ---
 
-*Ostatnia aktualizacja: marzec 2026*
+*Ostatnia aktualizacja: marzec 2025*
 *Źródło danych rynkowych: Compass Competitive Landscape Report*

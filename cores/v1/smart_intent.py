@@ -34,11 +34,20 @@ from typing import Optional, List, Dict, Tuple
 try:
     from .config import ROOT, get_config_value
     from .prompts import prompt_manager
+    from .i18n import (
+        ALL_TTS_KEYWORDS, ALL_STT_KEYWORDS, ALL_VOICE_MODE_KEYWORDS,
+        ALL_SEARCH_KEYWORDS, ALL_SHELL_KEYWORDS, ALL_CREATE_KEYWORDS,
+        ALL_EVOLVE_KEYWORDS, match_any_keyword,
+    )
 except ImportError:
     # Fallback for standalone usage
     ROOT = Path(__file__).resolve().parent.parent.parent
     def get_config_value(k, d=None): return d
     prompt_manager = None
+    ALL_TTS_KEYWORDS = ALL_STT_KEYWORDS = ALL_VOICE_MODE_KEYWORDS = frozenset()
+    ALL_SEARCH_KEYWORDS = ALL_SHELL_KEYWORDS = frozenset()
+    ALL_CREATE_KEYWORDS = ALL_EVOLVE_KEYWORDS = frozenset()
+    def match_any_keyword(text, kw): return any(k in text for k in kw)
 
 
 # Load intent configuration from system.json
@@ -305,75 +314,75 @@ class SmartIntentClassifier:
 
     # ── Classification ────────────────────────────────────────────────
 
+    def _keyword_prefilter(self, user_msg: str) -> Optional[IntentResult]:
+        """Stage 0: Fast keyword prefilter (high-confidence only).
+
+        Uses i18n multilingual keywords for ~30 European languages.
+        Returns IntentResult if matched, None otherwise.
+        """
+        ul = user_msg.lower()
+
+        # TTS keywords - speak/read aloud (all languages)
+        if match_any_keyword(ul, ALL_TTS_KEYWORDS):
+            return IntentResult(action="use", skill="tts", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
+
+        # Voice/STT keywords - listen/record/transcribe (all languages)
+        if match_any_keyword(ul, ALL_STT_KEYWORDS):
+            return IntentResult(action="use", skill="stt", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
+
+        # Voice mode (all languages)
+        if match_any_keyword(ul, ALL_VOICE_MODE_KEYWORDS):
+            return IntentResult(action="use", skill="stt", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
+
+        # Web search (all languages)
+        if match_any_keyword(ul, ALL_SEARCH_KEYWORDS):
+            return IntentResult(action="use", skill="web_search", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
+
+        # Shell (all languages)
+        if match_any_keyword(ul, ALL_SHELL_KEYWORDS):
+            return IntentResult(action="use", skill="shell", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
+
+        # Create/evolve (all languages)
+        if match_any_keyword(ul, ALL_CREATE_KEYWORDS):
+            return IntentResult(action="create", skill="", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
+        if match_any_keyword(ul, ALL_EVOLVE_KEYWORDS):
+            return IntentResult(action="evolve", skill="", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
+
+        return None
+
+    def _embedding_fallback(self, result: Optional[IntentResult], threshold: float) -> Optional[IntentResult]:
+        """Use best embedding result even if low confidence (fallback)."""
+        if not result or result.action == "chat":
+            return None
+
+        low_threshold = max(
+            threshold * _INTENT_CONFIG["low_threshold_factor"],
+            _INTENT_CONFIG["min_threshold"]
+        )
+        if result.confidence >= low_threshold:
+            result.tier = "embedding_low"
+            return result
+        return None
+
     def classify(self, user_msg: str, skills: dict = None,
                  context: str = "", conv: list = None) -> IntentResult:
         """
         Classify user intent through tiered system.
-        
+
         Args:
             user_msg: The message to classify
             skills: Dict of skills with metadata {name: {description, providers, ...}}
             context: Conversation context string
             conv: Full conversation history
-        
+
         Returns IntentResult with action, skill, confidence, tier.
         """
         self._stats["total"] += 1
 
-        # Stage 0: Fast keyword prefilter (high-confidence only)
-        ul = user_msg.lower()
-        words = set(ul.split())
-        
-        # TTS keywords - speak/read aloud
-        tts_keywords = {"powiedz", "wypowiedz", "przeczytaj", "mów", "odczytaj", "czytaj", "speak", "say", "read", "aloud"}
-        if words & tts_keywords:
-            return IntentResult(action="use", skill="tts", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
-        
-        # Voice/STT keywords - listen/record/transcribe (check BEFORE TTS to avoid "mów" matching "mówię")
-        stt_keywords = {"słuchaj", "posłuchaj", "nagrywaj", "nagraj", "transkrybuj", "zapisz", "rozpoznaj", "listen", "record", "transcribe"}
-        stt_phrases = ["zapisz co mówię", "rozpoznaj mowę", "transkrybuj co", "posłuchaj co mówię", "posluchaj co mowie",
-                       "włącz mikrofon", "wlacz mikrofon", "nagraj dźwięk", "nagraj dzwiek", "z mikrofonu"]
-        if any(phrase in ul for phrase in stt_phrases) or words & stt_keywords:
-            return IntentResult(action="use", skill="stt", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
-        
-        # Voice mode
-        voice_phrases = [
-            "porozmawiajmy głosowo",
-            "pogadajmy głosem",
-            "włącz tryb głosowy",
-            "voice mode",
-            "let's talk",
-            "voice conversation",
-            "mówmy głosowo",
-            "mowmy glosowo",
-        ]
-        if any(phrase in ul for phrase in voice_phrases):
-            return IntentResult(action="use", skill="stt", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
-        
-        # Web search
-        web_keywords = {"wyszukaj", "szukaj", "google", "search", "find", "look", "duckduckgo"}
-        web_phrases = ["znajdź w internecie", "przeszukaj web", "daj mi linki", "znajdź online"]
-        if any(phrase in ul for phrase in web_phrases) or words & web_keywords:
-            return IntentResult(action="use", skill="web_search", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
-        
-        # Shell
-        shell_keywords = {"uruchom", "wykonaj", "bash", "terminal", "command", "execute", "shell"}
-        shell_phrases = ["run command", "execute script", "bash script"]
-        if any(phrase in ul for phrase in shell_phrases) or words & shell_keywords:
-            return IntentResult(action="use", skill="shell", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
-        
-        # Create/evolve
-        create_phrases = ["stwórz skill", "nowy skill", "create skill", "new skill", "build skill",
-                         "napisz program", "zbuduj aplikację", "stwórz program", "zbuduj system", "utwórz aplikację",
-                         "napisz kod", "zbuduj kod", "stwórz kod",
-                         "deploy aplikację", "deploy aplikacje", "deploy app", "deploy application"]
-        evolve_phrases = ["napraw", "popraw", "ulepsz", "fix", "repair", "improve", "evolve"]
-        if any(phrase in ul for phrase in create_phrases) or (
-            ("stwórz" in ul or "stworz" in ul or "create" in ul or "build" in ul) and "skill" in ul
-        ):
-            return IntentResult(action="create", skill="", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
-        if any(phrase in ul for phrase in evolve_phrases):
-            return IntentResult(action="evolve", skill="", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
+        # Stage 0: Fast keyword prefilter
+        result = self._keyword_prefilter(user_msg)
+        if result:
+            return result
 
         # Tier 1: Embedding similarity
         result = self._tier1_embedding(user_msg)
@@ -398,11 +407,9 @@ class SmartIntentClassifier:
                 return result_remote
 
         # Fallback: use best embedding result even if low confidence
-        low_threshold = max(threshold * _INTENT_CONFIG["low_threshold_factor"], 
-                           _INTENT_CONFIG["min_threshold"])
-        if result and result.action != "chat" and result.confidence >= low_threshold:
-            result.tier = "embedding_low"
-            return result
+        fallback = self._embedding_fallback(result, threshold)
+        if fallback:
+            return fallback
 
         return IntentResult(action="chat", confidence=0.5, tier="fallback")
 

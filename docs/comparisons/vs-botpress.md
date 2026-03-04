@@ -6,7 +6,7 @@
 |---|-----------|----------|
 | **Twórca** | WronAI | Botpress Inc. |
 | **Architektura** | Ewolucyjna (text2pipeline) | AI-native agent platform (LLMz) |
-| **Licencja** | Apache 2.0 | Proprietary (cloud) |
+| **Licencja** | MIT | Proprietary (cloud) |
 | **Cena** | Darmowy | Darmowy start ($5 AI credit) → $89/mies. (Plus) → $495/mies. (Team) |
 | **Finansowanie** | — | $25M Series B |
 | **Przychody** | — | >$10M ARR (2025), podwajane co kwartał |
@@ -133,6 +133,6 @@ Botpress to **platforma do budowania konwersacji**, CoreSkill to **framework do 
 
 ---
 
-*Porównanie oparte na stanie z marca 2026*
+*Porównanie oparte na stanie z marca 2025*
 
 [← Powrót do przeglądu](README.md)

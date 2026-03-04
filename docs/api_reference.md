@@ -624,6 +624,280 @@ TIER_PAID = "paid"
 
 COOLDOWN_RATE_LIMIT = 60  # seconds
 MAX_EVO_ITERATIONS = 5
+INTENT_MODEL_MAX_PARAMS = 3.0  # max params for local intent classification
+```
+
+## QualityGate API
+
+### Inicjalizacja
+
+```python
+from cores.v1.quality_gate import SkillQualityGate, QualityReport
+
+qg = SkillQualityGate(preflight_checker)
+```
+
+### Metody
+
+#### `evaluate(skill_path, name) -> QualityReport`
+
+5-etapowa ocena jakości skillu.
+
+```python
+report = qg.evaluate(
+    skill_path=Path("skills/tts/providers/piper/v1"),
+    name="tts"
+)
+
+# QualityReport fields:
+# - score: 0.0-1.0 (weighted sum of checks)
+# - passed: list of passed check names
+# - failed: list of failed check names
+# - warnings: list of warnings
+# - details: dict with per-check results
+
+print(f"Quality score: {report.score:.2f}")
+print(f"Passed: {report.passed}")
+print(f"Failed: {report.failed}")
+```
+
+**Wagi oceny:**
+| Check | Weight |
+|-------|--------|
+| preflight | 0.30 |
+| health_check | 0.15 |
+| test_exec | 0.30 |
+| output_valid | 0.15 |
+| code_quality | 0.10 |
+
+## RepairJournal API
+
+### Inicjalizacja
+
+```python
+from cores.v1.repair_journal import RepairJournal
+
+journal = RepairJournal()
+```
+
+### Metody
+
+#### `record_attempt(skill, error, fix_type, fix_command, success)`
+
+Rejestruje próbę naprawy i uczy się z wyniku.
+
+```python
+journal.record_attempt(
+    skill="tts",
+    error="ModuleNotFoundError: No module named 'piper'",
+    fix_type="pip_install",
+    fix_command="pip install piper-tts",
+    success=True
+)
+```
+
+#### `get_known_fix(error) -> Optional[KnownFix]`
+
+Znajduje najlepszą znaną naprawę dla błędu.
+
+```python
+fix = journal.get_known_fix("ImportError: No module named 'requests'")
+if fix:
+    print(f"Known fix: {fix.fix_type} (confidence: {fix.confidence:.2f})")
+    # Returns fix with highest success/total ratio
+```
+
+#### `ask_llm_and_try(skill, error) -> bool`
+
+Pełny cykl: zapytaj LLM → spróbuj naprawy → zapisz wynik.
+
+```python
+success = journal.ask_llm_and_try("tts", "SyntaxError: invalid syntax")
+```
+
+## StableSnapshot API
+
+### Inicjalizacja
+
+```python
+from cores.v1.stable_snapshot import StableSnapshot
+
+snapshot = StableSnapshot(skills_dir=Path("skills"))
+```
+
+### Metody
+
+#### `save_as_stable(skill, provider="piper")`
+
+Promuje wersję `latest` do `stable` (archiwizuje starą stable).
+
+```python
+snapshot.save_as_stable("tts", provider="piper")
+# skills/tts/providers/piper/latest/ → skills/tts/providers/piper/stable/
+```
+
+#### `create_branch(skill, branch_type, provider="piper")`
+
+Tworzy branch od stable (bugfix_YYYYMMDD_HHMMSS lub feature_...).
+
+```python
+snapshot.create_branch("tts", "bugfix", provider="piper")
+# Creates: skills/tts/providers/piper/branches/bugfix_20260304_161500/
+```
+
+#### `restore_stable(skill, provider="piper")`
+
+Przywraca stable jako latest (rollback).
+
+```python
+snapshot.restore_stable("tts", provider="piper")
+```
+
+## SelfReflection API
+
+### Inicjalizacja
+
+```python
+from cores.v1.self_reflection import SelfReflection
+
+reflection = SelfReflection(llm_client, skill_manager, repair_journal)
+```
+
+### Metody
+
+#### `record_skill_outcome(skill, success, partial, error)`
+
+Rejestruje wynik i triggeruje diagnostykę po 3 porażkach.
+
+```python
+reflection.record_skill_outcome(
+    skill="tts",
+    success=False,
+    partial=False,
+    error="Connection timeout"
+)
+# Auto-triggers run_diagnostic() + attempt_auto_fix() after 3 failures
+```
+
+#### `run_diagnostic(skill_name, error) -> DiagnosisReport`
+
+Pełna diagnostyka systemu (7 checks + LLM analysis).
+
+```python
+report = reflection.run_diagnostic("tts", "Audio playback failed")
+
+# DiagnosisReport fields:
+# - findings: list of detected issues
+# - auto_fixable: bool - czy można auto-naprawić
+# - requires_user: bool - czy wymaga interwencji użytkownika
+# - recommendations: list of suggested actions
+```
+
+## UCB1BanditSelector API
+
+### Inicjalizacja
+
+```python
+from cores.v1.bandit_selector import UCB1BanditSelector
+
+bandit = UCB1BanditSelector()
+```
+
+### Metody
+
+#### `select(capability, providers, base_scores) -> str`
+
+Wybiera providera używając algorytmu UCB1.
+
+```python
+selected = bandit.select(
+    capability="tts",
+    providers=["piper", "pyttsx3"],
+    base_scores={"piper": 0.9, "pyttsx3": 0.5}
+)
+# UCB1 = mean_reward * 0.6 + exploration * 0.3 + base_score * 0.1
+```
+
+#### `record(capability, provider, reward, success)`
+
+Rejestruje wynik dla uczenia bandita.
+
+```python
+bandit.record("tts", "piper", reward=1.0, success=True)
+```
+
+## AdaptiveResourceMonitor API
+
+### Inicjalizacja
+
+```python
+from cores.v1.adaptive_monitor import AdaptiveResourceMonitor
+
+monitor = AdaptiveResourceMonitor()
+```
+
+### Metody
+
+#### `start(interval_s=5.0)` / `stop()`
+
+Uruchamia/zatrzymuje monitoring w tle.
+
+```python
+monitor.start(interval_s=5.0)  # próbkowanie co 5s
+# ... działa w tle ...
+monitor.stop()
+```
+
+#### `pressure_score() -> float`
+
+Zwraca obciążenie systemu 0.0-1.0.
+
+```python
+score = monitor.pressure_score()
+# 0.0 = idle, 1.0 = critical
+# Weighted: CPU 0.3 + RAM 0.5 + disk 0.2
+```
+
+#### `trend() -> str`
+
+Wykrywa trend: "rising" | "falling" | "stable".
+
+```python
+trend = monitor.trend()  # "rising" = rosnące obciążenie
+```
+
+## ProactiveScheduler API
+
+### Inicjalizacja
+
+```python
+from cores.v1.proactive_scheduler import ProactiveScheduler, setup_default_tasks
+
+scheduler = ProactiveScheduler()
+setup_default_tasks(scheduler, monitor, gc, sm)
+```
+
+### Metody
+
+#### `register(name, callback, interval_s)`
+
+Rejestruje zadanie periodyczne.
+
+```python
+def my_task():
+    print("Running periodic task")
+
+scheduler.register("my_task", my_task, interval_s=60)
+```
+
+#### `start()` / `stop()`
+
+Uruchamia/zatrzymuje scheduler (tick loop 1s).
+
+```python
+scheduler.start()  # startuje w tle
+# ...
+scheduler.stop()
 ```
 
 ## Utils

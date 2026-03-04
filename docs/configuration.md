@@ -71,6 +71,15 @@ Konfiguracja modeli LLM.
 | `EVO_DEFAULT_MODEL` | `model-name` | Domyślny model przy starcie |
 | `OLLAMA_HOST` | `http://localhost:11434` | Host Ollama |
 
+## Skróty klawiaturowe (interaktywna powłoka)
+
+- **Ctrl+A**
+  Przejście do trybu audio (voice)
+- **Ctrl+T**
+  Przejście do trybu tekstowego
+- **Ctrl+\\**
+  Wyjście z programu
+
 **Przykład użycia:**
 
 ```bash
@@ -173,6 +182,11 @@ export TTS_SPEED=150         # Słowa na minutę
 /voice on    # Włącz voice mode
 /voice off   # Wyłącz voice mode
 ```
+
+**Uwaga:**
+- `Ctrl+A` przełącza na tryb audio dla bieżącej sesji.
+- `Ctrl+T` w trybie audio wraca do trybu tekstowego.
+- `Ctrl+\\` kończy aplikację.
 
 ### STT (Speech-to-Text)
 

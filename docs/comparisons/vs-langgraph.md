@@ -6,7 +6,7 @@
 |---|-----------|-----------|
 | **Twórca** | WronAI | LangChain Inc. |
 | **Architektura** | Ewolucyjna (text2pipeline) | Graf stanów (state machine) |
-| **Licencja** | Apache 2.0 | MIT |
+| **Licencja** | MIT | MIT |
 | **Cena** | Darmowy | Darmowy + LangSmith $39/seat/mies. |
 | **GitHub Stars** | Nowy projekt | ~15K |
 | **Wycena firmy** | — | $1.25B (po rundzie $125M, X 2025) |
@@ -125,6 +125,6 @@ CoreSkill i LangGraph nie muszą się wykluczać. Możliwa integracja:
 
 ---
 
-*Porównanie oparte na stanie z marca 2026*
+*Porównanie oparte na stanie z marca 2025*
 
 [← Powrót do przeglądu](README.md)

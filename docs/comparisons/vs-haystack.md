@@ -6,7 +6,7 @@
 |---|-----------|----------|
 | **Twórca** | WronAI | deepset |
 | **Architektura** | Ewolucyjna (text2pipeline) | Pipeline RAG-first |
-| **Licencja** | Apache 2.0 | Apache 2.0 |
+| **Licencja** | MIT | Apache 2.0 |
 | **Cena** | Darmowy | Custom enterprise (deepset Cloud) |
 | **GitHub Stars** | Nowy projekt | ~24K |
 | **Klienci** | Early adopters | Airbus, The Economist, Netflix |
@@ -118,6 +118,6 @@ Możliwa integracja: CoreSkill skill wrappujący Haystack pipeline dla zadań RA
 
 ---
 
-*Porównanie oparte na stanie z marca 2026*
+*Porównanie oparte na stanie z marca 2025*
 
 [← Powrót do przeglądu](README.md)

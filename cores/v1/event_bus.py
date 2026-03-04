@@ -93,28 +93,59 @@ class EventBus:
 
     Usage:
         bus = EventBus()
-        bus.wire(reflection=reflection, repairer=repairer, evo=evo, logger=logger)
+        bus.wire(reflection=reflection, repairer=repairer, evo=evo,
+                 metrics=metrics, quality_gate=quality_gate, logger=logger)
     """
 
     def __init__(self):
         self._wired = False
+        self._subscriber_count = 0
 
-    def wire(self, reflection=None, repairer=None, evo=None, logger=None):
+    def wire(self, reflection=None, repairer=None, evo=None,
+             metrics=None, quality_gate=None, logger=None):
         """Connect handlers to signals. Safe to call multiple times (idempotent)."""
         if self._wired:
             return
         self._wired = True
 
-        if reflection:
-            # When reflection is needed → run diagnostic + auto-fix
+        # ── skill_failed ────────────────────────────────────────────────
+        # Emitted by EvoEngine on skill execution failure.
+        if repairer and hasattr(repairer, 'on_repair_requested'):
+            skill_failed.connect(repairer.on_repair_requested, weak=False)
+            self._subscriber_count += 1
+
+        if metrics and hasattr(metrics, 'on_skill_failed'):
+            skill_failed.connect(metrics.on_skill_failed, weak=False)
+            self._subscriber_count += 1
+
+        # ── reflection_needed ───────────────────────────────────────────
+        # Emitted by EvoEngine when consecutive failures reach threshold.
+        if reflection and hasattr(reflection, 'on_reflection_needed'):
             reflection_needed.connect(reflection.on_reflection_needed, weak=False)
+            self._subscriber_count += 1
 
-        if repairer:
-            # When repair is requested → execute repair
+        # ── repair_requested ────────────────────────────────────────────
+        # Emitted by SelfReflection when a specific skill needs repair.
+        if repairer and hasattr(repairer, 'on_repair_requested'):
             repair_requested.connect(repairer.on_repair_requested, weak=False)
+            self._subscriber_count += 1
 
+        # ── repair_completed ────────────────────────────────────────────
+        # Emitted by AutoRepair after a repair attempt finishes.
+        if metrics and hasattr(metrics, 'on_repair_completed'):
+            repair_completed.connect(metrics.on_repair_completed, weak=False)
+            self._subscriber_count += 1
+
+        if quality_gate and hasattr(quality_gate, 'on_skill_changed'):
+            repair_completed.connect(quality_gate.on_skill_changed, weak=False)
+            self._subscriber_count += 1
+
+        # ── diagnosis_ready ─────────────────────────────────────────────
+        # Emitted by SelfReflection after diagnostic completes.
+        # (Currently logged; future: feed to AutonomyLoop)
+
+        # ── Logging (all events) ────────────────────────────────────────
         if logger:
-            # Log all events
             skill_failed.connect(lambda sender, **kw: logger.core(
                 "event.skill_failed",
                 {"skill": kw.get("event", SkillFailedEvent("?")).skill_name}
@@ -124,6 +155,11 @@ class EventBus:
                 {"skill": kw.get("event", RepairCompletedEvent("?")).skill_name,
                  "success": kw.get("event", RepairCompletedEvent("?")).success}
             ), weak=False)
+            self._subscriber_count += 2
+
+    @property
+    def subscriber_count(self):
+        return self._subscriber_count
 
     @property
     def is_active(self):

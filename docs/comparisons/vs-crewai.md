@@ -6,7 +6,7 @@
 |---|-----------|--------|
 | **Twórca** | WronAI | CrewAI Inc. |
 | **Architektura** | Ewolucyjna (text2pipeline) | Role-based multi-agent |
-| **Licencja** | Apache 2.0 | MIT |
+| **Licencja** | MIT | MIT |
 | **Cena** | Darmowy | $99–$120K/rok |
 | **GitHub Stars** | Nowy projekt | ~40K |
 | **Finansowanie** | — | $18M Series A |
@@ -132,6 +132,6 @@ Zapytanie użytkownika → Intent → Skill (lub auto-create) → Execute → Va
 
 ---
 
-*Porównanie oparte na stanie z marca 2026*
+*Porównanie oparte na stanie z marca 2025*
 
 [← Powrót do przeglądu](README.md)

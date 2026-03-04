@@ -518,27 +518,16 @@ class SkillManager:
             self.log.skill(name, "exec_error", {"error": str(e), "version": version})
             return {"success": False, "error": str(e), "tb": traceback.format_exc()}
 
-    def smart_evolve(self, name, feedback, user_msg=""):
-        """Evolve skill using devops diagnosis + deps alternatives."""
-        cv = self.latest_v(name)
-        if not cv: return False, "Not found"
-        p = self.skill_path(name, cv)
-        old = p.read_text()
-
-        # Quality gate: evaluate old version for regression comparison
-        old_qr = self.quality_gate.evaluate(p, name)
-
-        # Get diagnosis from devops
-        diag = self.diagnose_skill(name, cv)
-        phase = diag.get("phase", "unknown")
-
+    def _build_evolve_prompt(self, name: str, feedback: str, old_code: str,
+                               diag: dict, user_msg: str = "") -> str:
+        """Build evolution prompt with context from diagnosis, system, and learning."""
         # Build smart prompt using devops.generate_fix_prompt
         if self._devops:
-            prompt = self._devops.generate_fix_prompt(str(p), diag)
+            prompt = self._devops.generate_fix_prompt(str(self.skill_path(name, self.latest_v(name))), diag)
             if isinstance(prompt, dict):
                 prompt = prompt.get("prompt", "")
         else:
-            prompt = (f"Fix this Python skill:\n```python\n{old}\n```\n"
+            prompt = (f"Fix this Python skill:\n```python\n{old_code}\n```\n"
                       f"Error: {feedback}\n")
 
         # Add system capabilities context
@@ -574,14 +563,10 @@ class SkillManager:
                                "\nNEVER require specific param names — always parse from params.get('text','').")
         prompt += evolution_suffix
 
-        code = clean_code(self.llm.gen_code(prompt))
-        if not code or "[ERROR]" in code:
-            return False, "LLM failed to generate fix"
+        return prompt
 
-        # Pre-flight new code before saving
-        code = self.preflight.auto_fix_imports(code)
-
-        # Determine target directory — use latest/ for new code
+    def _determine_target_dir(self, name: str, cv: str) -> tuple[Path, str]:
+        """Determine target directory for evolved skill. Returns (new_dir, new_version)."""
         provider = self._active_provider(name)
         if provider:
             prov_dir = SKILLS_DIR / name / "providers" / provider
@@ -600,15 +585,32 @@ class SkillManager:
             nd = prov_dir / nv
             nd.mkdir(parents=True, exist_ok=True)
 
+        return nd, nv
+
+    def _save_evolved_skill(self, nd: Path, code: str, old_dir: Path,
+                            name: str, nv: str, cv: str, phase: str) -> dict:
+        """Save evolved skill code, copy Dockerfile, return base meta dict."""
         (nd / "skill.py").write_text(code)
         # Copy Dockerfile from previous version
-        old_dir = p.parent
         odf = old_dir / "Dockerfile"
-        if odf.exists(): shutil.copy2(str(odf), str(nd / "Dockerfile"))
-        meta = {"name": name, "version": nv, "parent": cv, "phase": phase,
-                "created_at": datetime.now(timezone.utc).isoformat()}
+        if odf.exists():
+            shutil.copy2(str(odf), str(nd / "Dockerfile"))
 
-        # Quality gate: evaluate new version and check for regression
+        meta = {
+            "name": name,
+            "version": nv,
+            "parent": cv,
+            "phase": phase,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        return meta
+
+    def _evaluate_and_log(self, nd: Path, name: str, nv: str, old_qr,
+                          meta: dict) -> tuple[bool, str]:
+        """Evaluate new version quality, check for regression, log results.
+
+        Returns (is_regression, message).
+        """
         new_qr = self.quality_gate.evaluate(nd / "skill.py", name)
         meta["quality_score"] = new_qr.score
         is_regression = not self.quality_gate.compare(old_qr, new_qr)
@@ -626,10 +628,47 @@ class SkillManager:
             cpr(C.DIM, f"[QG] ✓ '{name}' quality: "
                        f"{old_qr.score:.2f} → {new_qr.score:.2f}")
 
+        return is_regression, f"'{name}' evolved: {meta.get('parent', '?')} -> {nv} (quality: {new_qr.score:.2f})"
+
+    def smart_evolve(self, name, feedback, user_msg=""):
+        """Evolve skill using devops diagnosis + deps alternatives."""
+        cv = self.latest_v(name)
+        if not cv:
+            return False, "Not found"
+        p = self.skill_path(name, cv)
+        old = p.read_text()
+
+        # Quality gate: evaluate old version for regression comparison
+        old_qr = self.quality_gate.evaluate(p, name)
+
+        # Get diagnosis from devops
+        diag = self.diagnose_skill(name, cv)
+        phase = diag.get("phase", "unknown")
+
+        # Build smart prompt
+        prompt = self._build_evolve_prompt(name, feedback, old, diag, user_msg)
+
+        code = clean_code(self.llm.gen_code(prompt))
+        if not code or "[ERROR]" in code:
+            return False, "LLM failed to generate fix"
+
+        # Pre-flight new code before saving
+        code = self.preflight.auto_fix_imports(code)
+
+        # Determine target directory
+        nd, nv = self._determine_target_dir(name, cv)
+
+        # Save evolved skill
+        old_dir = p.parent
+        meta = self._save_evolved_skill(nd, code, old_dir, name, nv, cv, phase)
+
+        # Evaluate quality and check for regression
+        is_regression, msg = self._evaluate_and_log(nd, name, nv, old_qr, meta)
+
         if self._git:
             self._git.commit_skill_version(name, nv, str(nd))
 
-        return True, f"'{name}' evolved: {cv} -> {nv} (quality: {new_qr.score:.2f})"
+        return True, msg
 
     def evolve(self, name, feedback):
         """Backward-compatible evolve - delegates to smart_evolve."""

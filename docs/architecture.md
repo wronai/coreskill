@@ -157,7 +157,154 @@ build_chain() → select_with_fallback() → record_failure/success()
 - 2 successes → recovery
 - Cooldown: 300s
 
-## Struktura skillów
+### 8. SmartIntentClassifier (`cores/v1/smart_intent.py`)
+
+**3-tier ML classification:**
+```
+Stage 1: EmbeddingEngine (sbert/TF-IDF/BOW) → confidence ≥ 0.70?
+Stage 2: Local LLM (ollama, ≤3B params) → fallback
+Stage 3: Remote LLM (tiered) → final fallback
+```
+
+**Features:**
+- ~100+ Polish/English intent examples (DEFAULT_TRAINING)
+- Learnable: `learn_from_correction()`, `learn_from_success()`
+- Persisted to `intent_training.json`
+
+### 9. QualityGate (`cores/v1/quality_gate.py`)
+
+**5-check quality evaluation:**
+| Check | Weight | Description |
+|-------|--------|-------------|
+| preflight | 0.30 | Syntax + imports + interface |
+| health_check | 0.15 | Runtime health validation |
+| test_exec | 0.30 | Isolated subprocess execution |
+| output_valid | 0.15 | Output schema validation |
+| code_quality | 0.10 | Lines, functions, docstrings |
+
+**MIN_QUALITY = 0.5** threshold for registration
+
+### 10. SkillForge (`cores/v1/skill_forge.py`)
+
+**Semantic deduplication + gated creation:**
+```
+user_query → should_create(query, skills) → decision
+```
+
+**Decisions:**
+- `"reuse:<skill>"` - embedding similarity > 0.85
+- `"chat"` - conversational, LLM handles directly
+- `"budget_exceeded"` - max 10 creation errors/hour
+- `"new_skill_needed"` - create new skill
+
+### 11. RepairJournal (`cores/v1/repair_journal.py`)
+
+**Persistent trial database:**
+- **RepairAttempt** - skill, error_signature, fix_type, result
+- **KnownFix** - proven patterns with confidence ratio
+- Storage: `logs/repair/repair_journal.jsonl`
+
+**Methods:**
+- `get_known_fix(error)` - find best fix by pattern
+- `ask_llm_and_try(skill, error)` - full repair cycle
+- `record_attempt()` - learns from successes/failures
+
+### 12. StableSnapshot (`cores/v1/stable_snapshot.py`)
+
+**Version management:**
+```
+stable/     - SACRED known-good version
+latest/     - current working
+branches/   - bugfix_*, feature_*
+archive/    - old versions (max 2)
+```
+
+**Operations:**
+- `save_as_stable()` - promote current → stable
+- `create_branch()` - branch from stable
+- `promote_branch()` - branch → stable
+- `restore_stable()` - rollback latest to stable
+
+### 13. SelfReflection (`cores/v1/self_reflection.py`)
+
+**Auto-diagnostic triggers:**
+- Skill failure or timeout (>30s)
+- 3 consecutive failures (any skill)
+- Manual `/reflect` command
+
+**Checks:**
+- LLM availability, system commands, microphone, TTS
+- Disk space, vosk model, skills health
+- LLM analysis + `attempt_auto_fix()`
+
+### 14. AdaptiveResourceMonitor (`cores/v1/adaptive_monitor.py`)
+
+**EWMATracker (alpha=0.3, 60-sample window):**
+- CPU/RAM/disk sampling (5s interval)
+- `pressure_score()` 0.0-1.0
+- Trend detection: rising/falling/stable
+- Alert thresholds with hysteresis
+
+### 15. ProactiveScheduler (`cores/v1/proactive_scheduler.py`)
+
+**Default tasks:**
+- `resource_alerts` - every 30s
+- `periodic_gc` - every 3600s
+- `health_check` - every 300s
+
+### 16. UCB1BanditSelector (`cores/v1/bandit_selector.py`)
+
+**Provider selection:**
+```
+UCB1 = mean_reward * 0.6 + exploration * 0.3 + base_score * 0.1
+C = 1.41 (sqrt(2)), MIN_PULLS = 2
+```
+
+### 17. Resilience (`cores/v1/resilience.py`)
+
+**Retry decorators:**
+- `retry_llm` - 3 attempts, exp backoff 1-8s
+- `retry_skill` - 2 attempts, 0.5s
+- `retry_io` - 3 attempts, 0.5-2s
+
+**Structured logging:**
+- `configure_structlog()` with ISO timestamps
+- `get_struct_logger(name)` - structlog or stdlib fallback
+
+### 18. I18n (`cores/v1/i18n.py`)
+
+**Multilingual support (~35 European languages):**
+- Keyword database: TTS, STT, voice, search, shell, create, evolve, greetings, etc.
+- `normalize_diacritics()` - Unicode NFD + special cases (ł, đ, ð, þ, ß, æ, œ, ø, ı)
+- `detect_language()` - heuristic detection
+- `match_any_keyword()` - smart matching with word-boundary for short keywords
+
+**Used by:**
+- SkillForge (conversational detection)
+- IntentEngine (keyword prefilter)
+- SmartIntentClassifier (multilingual embeddings)
+
+### 19. SkillLogger (`cores/v1/skill_logger.py`)
+
+**NFO logging for all skills:**
+- `init_nfo()` - configures SQLite + JSONL sinks
+- `inject_logging()` - auto-wraps skill functions
+- `query_skill_errors()` - query recent errors
+- `query_slow_calls()` - find performance anomalies
+
+### 20. VoiceLoop (`cores/v1/voice_loop.py`)
+
+**Voice mode handling:**
+- STT/TTS bidirectional conversation
+- 3-consecutive-silence auto-diagnosis
+- Integration with STTAutotest pipeline
+
+### 21. FuzzyRouter (`cores/v1/fuzzy_router.py`)
+
+**Fuzzy command routing:**
+- Approximate matching for user commands
+- Typo tolerance
+- Similarity-based skill suggestion
 
 ### Hierarchia folderów
 ```

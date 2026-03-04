@@ -8,11 +8,13 @@ Flow options:
 2. Copy existing browser session → Navigate to OpenRouter → Get API key (no login needed)
 3. Use saved storage_state → Get API key
 
-Uses Playwright with storage_state to persist and reuse browser sessions.
+Auto-installs Playwright if missing.
 """
 import json
 import re
 import os
+import subprocess
+import sys
 from pathlib import Path
 from datetime import datetime
 
@@ -96,6 +98,32 @@ class OpenRouterAutomationSkill:
         
         home = Path.home()
         
+        # Standard Firefox profiles
+        firefox_base = home / ".mozilla" / "firefox"
+        if firefox_base.exists():
+            profiles_ini = firefox_base / "profiles.ini"
+            if profiles_ini.exists():
+                with open(profiles_ini, 'r') as f:
+                    content = f.read()
+                    for match in re.finditer(r'Path=(.+)', content):
+                        profile_path = firefox_base / match.group(1)
+                        if profile_path.exists():
+                            profiles["firefox"].append(str(profile_path))
+        
+        # Snap Firefox profiles (Ubuntu snap install)
+        snap_firefox_base = home / "snap" / "firefox" / "common" / ".mozilla" / "firefox"
+        if snap_firefox_base.exists():
+            for profile_dir in snap_firefox_base.iterdir():
+                if profile_dir.is_dir() and (profile_dir / "cookies.sqlite").exists():
+                    profiles["firefox"].append(str(profile_dir))
+        
+        # Flatpak Firefox profiles
+        flatpak_firefox_base = home / ".var" / "app" / "org.mozilla.firefox" / ".mozilla" / "firefox"
+        if flatpak_firefox_base.exists():
+            for profile_dir in flatpak_firefox_base.iterdir():
+                if profile_dir.is_dir() and (profile_dir / "cookies.sqlite").exists():
+                    profiles["firefox"].append(str(profile_dir))
+        
         # Chrome profiles
         chrome_base = home / ".config" / "google-chrome"
         if chrome_base.exists():
@@ -109,18 +137,6 @@ class OpenRouterAutomationSkill:
             for profile in chromium_base.glob("*/"):
                 if (profile / "Cookies").exists():
                     profiles["chromium"].append(str(profile))
-        
-        # Firefox profiles
-        firefox_base = home / ".mozilla" / "firefox"
-        if firefox_base.exists():
-            profiles_ini = firefox_base / "profiles.ini"
-            if profiles_ini.exists():
-                with open(profiles_ini, 'r') as f:
-                    content = f.read()
-                    for match in re.finditer(r'Path=(.+)', content):
-                        profile_path = firefox_base / match.group(1)
-                        if profile_path.exists():
-                            profiles["firefox"].append(str(profile_path))
         
         # Edge profiles
         edge_base = home / ".config" / "microsoft-edge"
@@ -137,6 +153,94 @@ class OpenRouterAutomationSkill:
                     profiles["brave"].append(str(profile))
         
         return profiles
+
+    def _is_firefox_running(self):
+        """Check if Firefox is currently running (including snap)."""
+        try:
+            # Check for regular firefox
+            result = subprocess.run(
+                ["pgrep", "-f", "firefox"],
+                capture_output=True, text=True
+            )
+            if result.returncode == 0:
+                return True
+            
+            # Check for snap firefox
+            result2 = subprocess.run(
+                ["ps", "aux"],
+                capture_output=True, text=True
+            )
+            if "snap" in result2.stdout and "firefox" in result2.stdout:
+                return True
+                
+            return False
+        except:
+            return False
+
+    def _prepare_playwright_profile(self, source_profile):
+        """Copy Firefox profile files for Playwright use (from nlp2cmd firefox_sessions)."""
+        target_dir = self.config_dir / "firefox_playwright_profile"
+        target_dir.mkdir(parents=True, exist_ok=True)
+        
+        source = Path(source_profile)
+        
+        # Files to copy (matching nlp2cmd firefox_sessions._SESSION_FILES)
+        session_files = [
+            "cookies.sqlite", "cookies.sqlite-wal", "cookies.sqlite-shm",
+            "webappsstore.sqlite", "webappsstore.sqlite-wal", "webappsstore.sqlite-shm",
+            "permissions.sqlite", "content-prefs.sqlite", "formhistory.sqlite",
+            "cert9.db", "key4.db", "logins.json",
+            "sessionstore.jsonlz4", "sessionCheckpoints.json",
+            "storage.sqlite", "favicons.sqlite",
+        ]
+        
+        # Directories with per-site storage
+        session_dirs = ["storage", "sessionstore-backups"]
+        
+        copied = []
+        for fname in session_files:
+            src = source / fname
+            dst = target_dir / fname
+            if src.exists():
+                try:
+                    shutil.copy2(str(src), str(dst))
+                    copied.append(fname)
+                except Exception as e:
+                    pass
+        
+        for dname in session_dirs:
+            src = source / dname
+            dst = target_dir / dname
+            if src.exists():
+                try:
+                    if dst.exists():
+                        shutil.rmtree(str(dst))
+                    shutil.copytree(str(src), str(dst))
+                    copied.append(dname + "/")
+                except Exception as e:
+                    pass
+        
+        return str(target_dir), copied
+
+    def _get_default_firefox_profile(self):
+        """Get Firefox profile path (snap priority, from nlp2cmd pattern)."""
+        home = Path.home()
+        
+        # Snap Firefox (priority)
+        snap_firefox_base = home / "snap" / "firefox" / "common" / ".mozilla" / "firefox"
+        if snap_firefox_base.exists():
+            for profile_dir in snap_firefox_base.iterdir():
+                if profile_dir.is_dir() and (profile_dir / "cookies.sqlite").exists():
+                    return str(profile_dir)
+        
+        # Standard Firefox
+        firefox_dir = home / ".mozilla" / "firefox"
+        if firefox_dir.exists():
+            for profile_dir in firefox_dir.iterdir():
+                if profile_dir.is_dir() and (profile_dir / "cookies.sqlite").exists():
+                    return str(profile_dir)
+        
+        return None
 
     def list_available_browsers(self):
         """List browsers with saved sessions available for copying."""
@@ -262,16 +366,44 @@ class OpenRouterAutomationSkill:
         except Exception as e:
             return {"success": False, "error": str(e), "step": "browser_error"}
 
-    def get_api_key_from_session(self, browser_type="chromium", profile_path=None, headless=True):
-        """Copy API key from existing browser session (user already logged in)."""
+    def get_api_key_from_session(self, browser_type=None, profile_path=None, headless=True):
+        """Copy API key from existing browser session (user already logged in).
+        
+        Uses nlp2cmd pattern: copy Firefox profile files before using with Playwright.
+        Auto-installs Playwright if missing.
+        """
+        # Ensure Playwright is installed
+        ensure_result = self._ensure_playwright()
+        if not ensure_result.get("success"):
+            return ensure_result
+        
         try:
             from playwright.sync_api import sync_playwright
+            
+            # Auto-detect browser with active session
+            if browser_type is None:
+                if self._is_firefox_running() and self._get_default_firefox_profile():
+                    browser_type = "firefox"
+                    print("[INFO] Firefox detected as active, using Firefox profile")
+                else:
+                    browser_type = "chromium"
+                    print("[INFO] Using Chromium profile")
             
             with sync_playwright() as p:
                 # Determine browser type and launch options
                 if browser_type == "firefox":
                     browser_class = p.firefox
-                    user_data_dir = profile_path or self._get_default_firefox_profile()
+                    # For Firefox, use nlp2cmd pattern: copy profile files first
+                    source_profile = profile_path or self._get_default_firefox_profile()
+                    if source_profile:
+                        print(f"[INFO] Preparing Firefox profile copy from: {source_profile}")
+                        user_data_dir, copied = self._prepare_playwright_profile(source_profile)
+                        print(f"[INFO] Copied {len(copied)} files/directories")
+                    else:
+                        user_data_dir = None
+                elif browser_type == "webkit":
+                    browser_class = p.webkit
+                    user_data_dir = None
                 else:  # chromium, chrome, edge, brave
                     browser_class = p.chromium
                     user_data_dir = profile_path or self._get_default_chromium_profile()
@@ -287,6 +419,7 @@ class OpenRouterAutomationSkill:
                         )
                         page = context.new_page()
                     except Exception as e:
+                        print(f"[WARN] Could not launch with persistent context: {e}")
                         # Fall back to regular launch
                         browser = browser_class.launch(headless=headless)
                         context = browser.new_context()
@@ -602,6 +735,58 @@ class OpenRouterAutomationSkill:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
+    def save_key_to_env(self, api_key, env_path=".env"):
+        """Save API key to .env file."""
+        try:
+            env_file = Path(env_path)
+            
+            # Read existing content
+            if env_file.exists():
+                content = env_file.read_text()
+            else:
+                content = ""
+            
+            # Replace or add OPENROUTER_API_KEY
+            lines = content.split('\n')
+            new_lines = []
+            key_found = False
+            
+            for line in lines:
+                if line.startswith('OPENROUTER_API_KEY='):
+                    new_lines.append(f'OPENROUTER_API_KEY={api_key}')
+                    key_found = True
+                else:
+                    new_lines.append(line)
+            
+            if not key_found:
+                new_lines.append(f'OPENROUTER_API_KEY={api_key}')
+            
+            # Write back
+            env_file.write_text('\n'.join(new_lines))
+            
+            return {"success": True, "message": f"API key saved to {env_path}"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def _ensure_playwright(self):
+        """Ensure Playwright is installed. Auto-install if missing."""
+        try:
+            from playwright.sync_api import sync_playwright
+            return {"success": True, "installed": True}
+        except ImportError:
+            print("[INFO] Playwright not found. Installing...")
+            try:
+                # Install playwright
+                subprocess.run([sys.executable, "-m", "pip", "install", "playwright"], 
+                           check=True, capture_output=True)
+                # Install firefox browser
+                subprocess.run([sys.executable, "-m", "playwright", "install", "firefox"],
+                           check=True, capture_output=True)
+                print("[INFO] Playwright installed successfully!")
+                return {"success": True, "installed": True, "fresh_install": True}
+            except Exception as e:
+                return {"success": False, "error": str(e)}
+
     def load_key(self):
         """Load saved API key."""
         try:
@@ -679,6 +864,11 @@ class OpenRouterAutomationSkill:
             )
         elif action == "save_key":
             return self.save_key(input_data.get("api_key", ""))
+        elif action == "save_key_to_env":
+            return self.save_key_to_env(
+                input_data.get("api_key", ""),
+                input_data.get("env_path", ".env")
+            )
         elif action == "load_key":
             return self.load_key()
         elif action == "check_key_validity":

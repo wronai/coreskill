@@ -6,7 +6,7 @@
 |---|-----------|---------|
 | **Twórca** | WronAI | Beam AI |
 | **Architektura** | Ewolucyjna (text2pipeline) | Self-learning agents (back-office) |
-| **Licencja** | Apache 2.0 (open-source) | Proprietary (SaaS) |
+| **Licencja** | MIT (open-source) | Proprietary (SaaS) |
 | **Cena** | Darmowy | Enterprise (custom pricing) |
 | **Focus** | Developer framework (generalny) | Back-office process automation |
 | **Status** | Wczesna faza | Komercyjna platforma |
@@ -81,6 +81,8 @@ Beam AI **dostosowuje parametry** istniejących procesów — bezpieczniejsze, a
 | **Koszt** | Darmowy | Enterprise pricing |
 | **Customization** | ✅ Pełna (kod źródłowy) | ⚠️ Przez konfigurację |
 
+**Werdykt:** CoreSkill ma ogromną przewagę w kontroli i niezależności — open-source, self-hosted, działa offline. Beam AI wymaga zaufania do ich SaaS i połączenia internetowego.
+
 ### 3. Use cases
 
 | Aspekt | CoreSkill | Beam AI |
@@ -91,6 +93,8 @@ Beam AI **dostosowuje parametry** istniejących procesów — bezpieczniejsze, a
 | **HR/Finance** | ❌ | ✅ |
 | **Customer support** | ⚠️ | ⚠️ |
 | **Voice** | ✅ STT/TTS natywne | ❌ |
+
+**Werdykt:** To komplementarne nisze — CoreSkill dla DevOps/SRE/IT automation, Beam AI dla back-office (HR, finanse, operacje).
 
 ### 4. Transparentność
 
@@ -137,6 +141,6 @@ Beam AI waliduje **rynkową potrzebę** na self-learning agents, co jest pozytyw
 
 ---
 
-*Porównanie oparte na stanie z marca 2026*
+*Porównanie oparte na stanie z marca 2025*
 
 [← Powrót do przeglądu](README.md)
