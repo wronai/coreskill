@@ -1,0 +1,9 @@
+{
+  "name": "kalkulator",
+  "version": "v51",
+  "parent": "v50",
+  "phase": "runtime",
+  "created_at": "2026-03-04T19:09:16.426408+00:00",
+  "quality_score": 0.91,
+  "is_regression": false
+}
