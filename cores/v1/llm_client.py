@@ -285,8 +285,22 @@ class LLMClient:
             return r.choices[0].message.content
         except Exception as e:
             err = str(e)
+            # Categorize timeout errors specifically
+            if "timeout" in err.lower() or "timed out" in err.lower():
+                err_type = "timeout"
+                # Longer timeout for local models on timeout error
+                if is_local and kw.get("timeout", 0) < 60:
+                    kw["timeout"] = 60
+                    try:
+                        r = litellm.completion(**kw)
+                        self._report_ok(model)
+                        return r.choices[0].message.content
+                    except Exception as retry_e:
+                        err = str(retry_e)
+            else:
+                err_type = "other"
             if self.logger:
-                self.logger.core("llm_error", {"model": model, "error": err[:200]})
+                self.logger.core("llm_error", {"model": model, "error": err[:200], "type": err_type})
             self._report_fail(model, err)
             return None
 

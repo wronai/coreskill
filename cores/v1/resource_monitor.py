@@ -166,6 +166,12 @@ class ResourceMonitor:
             if not self.has_command(cmd):
                 return False, f"System command '{cmd}' not found"
 
+        # System commands (any-of)
+        sys_any = requirements.get("system_packages_any", [])
+        if sys_any:
+            if not any(self.has_command(cmd) for cmd in sys_any):
+                return False, f"Need one of system commands: {', '.join(sys_any)}"
+
         # Env vars
         for key in requirements.get("env_vars", []):
             val = os.environ.get(key, "").strip()

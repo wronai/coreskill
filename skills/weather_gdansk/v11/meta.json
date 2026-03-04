@@ -1,9 +1,0 @@
-{
-  "name": "weather_gdansk",
-  "version": "v11",
-  "parent": "v10",
-  "phase": "runtime",
-  "created_at": "2026-03-04T15:42:36.172029+00:00",
-  "quality_score": 0.815,
-  "is_regression": false
-}

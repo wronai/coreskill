@@ -79,3 +79,19 @@ from .metrics_collector import (
     get_system_health_summary,
     compute_and_save_system_health,
 )
+from .reflection_engine import (
+    ReflectionRuleEngine,
+    ProactiveReflection,
+    SystemState,
+    RuleMatch,
+    get_rule_engine,
+    evaluate_reflection_rules,
+    run_reflection_cycle,
+)
+from .drift_detector import (
+    DriftDetector,
+    DriftReport,
+    detect_drift,
+    detect_all_drift,
+    get_drift_summary,
+)

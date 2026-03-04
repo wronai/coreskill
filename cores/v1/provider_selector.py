@@ -162,9 +162,24 @@ class ProviderSelector:
                 scored.append((pname, score, info))
 
         if not scored:
-            # Nothing can run — try default or first available
+            # Nothing can run — only return manifest default if it is runnable.
+            # Otherwise pick the first runnable provider (if any), else return a
+            # deterministic fallback.
             manifest = self.load_manifest(capability)
-            return manifest.get("default_provider", providers[0])
+            default_provider = manifest.get("default_provider")
+            if default_provider and default_provider in providers:
+                info = self.get_provider_info(capability, default_provider)
+                can_run, _ = self._check_runnable(info)
+                if can_run:
+                    return default_provider
+
+            for pname in providers:
+                info = self.get_provider_info(capability, pname)
+                can_run, _ = self._check_runnable(info)
+                if can_run:
+                    return pname
+
+            return default_provider or providers[0]
 
         # Sort by score descending
         scored.sort(key=lambda x: x[1], reverse=True)

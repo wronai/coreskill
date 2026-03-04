@@ -1,6 +1,6 @@
-# coreskill | 129f 35055L | python:132
+# coreskill | 127f 34784L | python:133
 # Keys: M=modules, D=details, i=imports, c=classes, f=functions, m=methods
-M[129]:
+M[127]:
   __init__.py,19
   build_core.py,525
   cli.py,248
@@ -13,30 +13,28 @@ M[129]:
   cores/v1/config_generator.py,221
   cores/v1/core.py,1276
   cores/v1/event_bus.py,94
-  cores/v1/evo_engine.py,638
+  cores/v1/evo_engine.py,686
   cores/v1/evo_journal.py,350
   cores/v1/fuzzy_router.py,57
   cores/v1/garbage_collector.py,277
-  cores/v1/intent/__init__.py,394
-  cores/v1/intent/embedding.py,117
+  cores/v1/intent/__init__.py,373
   cores/v1/intent/ensemble.py,80
   cores/v1/intent/knn_classifier.py,97
-  cores/v1/intent/local_llm.py,96
   cores/v1/intent/training.py,121
   cores/v1/intent_engine.py,433
   cores/v1/learned_repair.py,160
-  cores/v1/llm_client.py,335
+  cores/v1/llm_client.py,347
   cores/v1/logger.py,121
   cores/v1/metrics_collector.py,307
   cores/v1/pipeline_manager.py,39
   cores/v1/preflight.py,324
   cores/v1/proactive_scheduler.py,195
   cores/v1/prompts/__init__.py,130
-  cores/v1/provider_selector.py,352
-  cores/v1/quality_gate.py,267
+  cores/v1/provider_selector.py,363
+  cores/v1/quality_gate.py,277
   cores/v1/repair_journal.py,356
   cores/v1/resilience.py,147
-  cores/v1/resource_monitor.py,151
+  cores/v1/resource_monitor.py,155
   cores/v1/self_healing/__init__.py,294
   cores/v1/self_reflection.py,509
   cores/v1/session_config.py,394
@@ -67,12 +65,12 @@ M[129]:
   skills/auto/v1/skill.py,254
   skills/benchmark/v1/skill.py,1077
   skills/chat/v1/skill.py,101
-  skills/content_search/v2/skill.py,157
   skills/content_search/v3/skill.py,157
   skills/deps/v2/skill.py,84
   skills/deps/v3/skill.py,67
   skills/devops/v1/skill.py,213
   skills/diagnostic_runner/v1/skill.py,114
+  skills/echo/v10/skill.py,67
   skills/echo/v8/skill.py,67
   skills/echo/v9/skill.py,67
   skills/first_installment/v1/skill.py,55
@@ -129,7 +127,7 @@ M[129]:
   skills/zarz_dzania/v8/skill.py,107
   tests/__init__.py,0
   tests/test_auto_create_e2e.py,202
-  tests/test_e2e.py,1977
+  tests/test_e2e.py,1985
 D:
   cli.py:
     i: argparse,os,sys,shutil,json,cores.v1.config.{LOGS_DIR,ROOT,STATE_FILE,load_state},pathlib.Path
@@ -207,7 +205,7 @@ D:
     RepairCompletedEvent: 
     DiagnosisReadyEvent: 
   cores/v1/evo_engine.py:
-    i: sys,nfo,time,config.{C,MAX_EVO_ITERATIONS,cpr},evo_journal.EvolutionJournal,preflight.EvolutionGuard,self_reflection.SelfReflection,skill_validator.SkillValidator
+    i: sys,nfo,time,config.{C,MAX_EVO_ITERATIONS,cpr},evo_journal.EvolutionJournal,preflight.EvolutionGuard,self_reflection.SelfReflection
     e: FailureTracker,EvoEngine
     FailureTracker: __init__(0),record_failure(3),record_unhandled(2),record_success(0),should_reflect(0)  # Tracks consecutive failures and unhan...
     EvoEngine: __init__(5),set_reflection(1),handle_request(3),_run_auto_reflection(1),_execute_with_validation(4)  # Generic evolutionary algorithm:
@@ -226,14 +224,9 @@ D:
     EvolutionGarbageCollector: __init__(1),is_stub(1),is_broken(1),scan_versions(1),cleanup_provider(2)  # Cleans up failed evolution stubs, pro...
   cores/v1/intent/__init__.py:
     i: json,os,dataclasses.{dataclass,field},pathlib.Path,typing.{Any,Dict,List,Optional,Tuple}
-    e: _INTENT_CONFIG,IntentResult,SmartIntentClassifier,create_smart_classifier
-    IntentResult: to_analysis(0)  # Result of intent classification.
+    e: _INTENT_CONFIG,SmartIntentClassifier,create_smart_classifier
     SmartIntentClassifier: __init__(2),_load_training(0),_rebuild_skill_vectors(0),classify(4),_embedding_classify(1)  # 3-tier ML intent classifier:
     create_smart_classifier(state_dir:Path=None;llm_client=None)->SmartIntentClassifier
-  cores/v1/intent/embedding.py:
-    i: config.get_config_value,pathlib.Path
-    e: _INTENT_CONFIG,EmbeddingEngine
-    EmbeddingEngine: __init__(1),available(0),_try_init(0),encode(1),similarity(2)  # Sentence-transformers based embedding...
   cores/v1/intent/ensemble.py:
     i: collections.defaultdict,dataclasses.{dataclass,field},typing.{Any,Dict,List,Optional,Tuple}
     e: Vote,EnsembleResult,DEFAULT_WEIGHTS,EnsembleIntentClassifier
@@ -244,10 +237,6 @@ D:
     i: numpy,sklearn.neighbors.KNeighborsClassifier,sklearn.preprocessing.LabelEncoder,typing.{Any,Dict,List,Optional,Tuple}
     e: EmbeddingKNNClassifier
     EmbeddingKNNClassifier: __init__(0),available(0),fit(2),predict(1),predict_with_distances(1)  # KNN classifier over embedding vectors...
-  cores/v1/intent/local_llm.py:
-    i: json,os,subprocess,config.get_config_value,typing.{Dict,List,Optional,Tuple}
-    e: _INTENT_CONFIG,LocalLLMClassifier
-    LocalLLMClassifier: __init__(0),available(0),_detect(0),classify(3)  # Uses local ollama model (Qwen 3B) for...
   cores/v1/intent_engine.py:
     i: json,re,datetime,config.{SKILLS_DIR,get_config_value,save_state},datetime.timezone,smart_intent.SmartIntentClassifier,utils.clean_json
     e: _TOPIC_MAP,IntentEngine
@@ -558,14 +547,6 @@ D:
     get_info()->dict
     health_check()->dict
     execute(params:dict)->dict
-  skills/content_search/v2/skill.py:
-    i: subprocess,json,re,html.parser.HTMLParser,urllib.{error,parse,request}
-    e: ContentSearchSkill,DuckDuckGoParser,get_info,health_check,execute
-    ContentSearchSkill: __init__(0),execute(1),_search_duckduckgo(1)
-    DuckDuckGoParser: __init__(0),handle_starttag(2),handle_endtag(1),handle_data(1)
-    get_info()->dict
-    health_check()->dict
-    execute(params:dict)->dict
   skills/content_search/v3/skill.py:
     i: subprocess,json,re,html.parser.HTMLParser,urllib.{error,parse,request}
     e: ContentSearchSkill,DuckDuckGoParser,get_info,health_check,execute
@@ -599,6 +580,13 @@ D:
     get_info()
     health_check()
     execute(input_data:dict)->dict
+  skills/echo/v10/skill.py:
+    i: subprocess,json,datetime,re,time,datetime.timezone
+    e: get_info,health_check,EchoSkill,execute
+    EchoSkill: execute(1)
+    get_info()
+    health_check()
+    execute(params:dict)->dict
   skills/echo/v8/skill.py:
     i: subprocess,json,datetime,re,time,datetime.timezone
     e: get_info,health_check,EchoSkill,execute

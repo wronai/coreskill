@@ -16,8 +16,7 @@ import time
 
 from ..config import get_config_value
 from .training import DEFAULT_TRAINING
-from .embedding import EmbeddingEngine
-from .local_llm import LocalLLMClassifier
+from ..smart_intent import EmbeddingEngine, LocalLLMClassifier, IntentResult
 from .knn_classifier import EmbeddingKNNClassifier
 from .ensemble import EnsembleIntentClassifier, Vote
 
@@ -35,35 +34,15 @@ _INTENT_CONFIG = {
 }
 
 
-@dataclass
-class IntentResult:
-    """Result of intent classification."""
-    action: str  # use, create, evolve, chat, configure
-    skill: str = ""  # skill name for 'use' action
-    confidence: float = 0.0
-    tier: str = "unknown"  # embedding, local_llm, remote_llm, fallback
-    goal: str = ""  # human-readable intent description
-    input: Dict[str, Any] = field(default_factory=dict)  # skill params
-    all_scores: Dict[str, float] = field(default_factory=dict)  # all skill scores
-    category: str = ""  # for configure: llm, tts, stt, voice
-    target: str = ""  # for configure: model name, provider name, etc.
-
-    def to_analysis(self) -> dict:
-        """Convert to IntentEngine-compatible analysis dict."""
-        d = {"action": self.action}
-        if self.skill:
-            d["skill"] = self.skill
-        if self.input:
-            d["input"] = self.input
-        if self.goal:
-            d["goal"] = self.goal
-        if self.category:
-            d["category"] = self.category
-        if self.target:
-            d["target"] = self.target
-        d["_conf"] = self.confidence
-        d["_tier"] = self.tier
-        return d
+# Backward compatibility: re-export from old location
+__all__ = [
+    "SmartIntentClassifier",
+    "IntentResult",
+    "create_smart_classifier",
+    "EmbeddingEngine",
+    "LocalLLMClassifier",
+    "DEFAULT_TRAINING",
+]
 
 
 class SmartIntentClassifier:

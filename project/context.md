@@ -4,9 +4,9 @@
 
 - **Project**: .
 - **Analysis Mode**: static
-- **Total Functions**: 1075
-- **Total Classes**: 148
-- **Modules**: 115
+- **Total Functions**: 1064
+- **Total Classes**: 145
+- **Modules**: 113
 - **Entry Points**: 0
 
 ## Architecture by Module
@@ -85,11 +85,6 @@
 - **Classes**: 3
 - **File**: `preflight.py`
 
-### cores.v1.intent
-- **Functions**: 17
-- **Classes**: 2
-- **File**: `__init__.py`
-
 ### cores.v1.self_healing
 - **Functions**: 17
 - **Classes**: 6
@@ -109,6 +104,11 @@
 - **Functions**: 16
 - **Classes**: 3
 - **File**: `skill_schema.py`
+
+### cores.v1.intent
+- **Functions**: 16
+- **Classes**: 1
+- **File**: `__init__.py`
 
 ## Key Entry Points
 
@@ -333,8 +333,8 @@ Returns: {"matches": bool, "diff_lines": int, "he
 
 ### cores.v1.evo_engine.EvoEngine._validate_result
 > Validate whether the skill result actually achieved the goal.
-Delegates to SkillValidator plugin reg
-- **Output to**: self.skill_validator.validate
+Returns {verdict: success|partial|fail
+- **Output to**: result.get, result.get, isinstance, inner.get, inner.get
 
 ### cores.v1.session_config.SessionConfig.format_change_feedback
 > Format configuration change for user feedback.
@@ -348,14 +348,13 @@ Delegates to SkillValidator plugin reg
 > Human-readable status summary.
 - **Output to**: self.status, None.join, lines.append, len
 
-### cores.v1.intent.embedding.EmbeddingEngine.encode
-> Encode texts to vectors.
-- **Output to**: self._try_init, self._model.encode, None.toarray, TfidfVectorizer, None.toarray
-
 ### skills.kalkulator.v47.skill.Kalkulator._validate_expression
 - **Output to**: ast.walk, ast.parse, isinstance, ValueError, isinstance
 
 ### skills.gbp_to_jpy_converter.v5.skill.parse_amount_from_text
+- **Output to**: text.lower, replacements.items, re.findall, text_lower.replace, float
+
+### skills.gbp_to_jpy_converter.v4.skill.parse_amount_from_text
 - **Output to**: text.lower, replacements.items, re.findall, text_lower.replace, float
 
 ## Public API Surface
@@ -376,11 +375,11 @@ Functions exposed as public API (no underscore prefix):
 - `cores.v1.metrics_collector.MetricsCollector.compute_system_health` - 41 calls
 - `cores.v1.llm_client.LLMClient.chat` - 37 calls
 - `cli.cmd_cache_reset` - 36 calls
+- `cores.v1.resource_monitor.ResourceMonitor.can_run` - 36 calls
 - `scripts.generate_manifests.main` - 34 calls
 - `main.bootstrap` - 33 calls
 - `skills.shell.v2.skill.ShellSkill.execute` - 33 calls
 - `examples.skills.01_create.main` - 33 calls
-- `cores.v1.resource_monitor.ResourceMonitor.can_run` - 32 calls
 - `cores.v1.evo_engine.EvoEngine.evolve_skill` - 32 calls
 - `examples.advanced.01_pipeline.main` - 32 calls
 - `cores.v1.system_identity.SystemIdentity.build_system_prompt` - 31 calls

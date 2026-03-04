@@ -307,20 +307,33 @@ class TestProviderSelector(unittest.TestCase):
 
     def test_tts_selects_espeak_on_basic_system(self):
         """On a system without GPU/pyttsx3, espeak should be selected"""
-        selected = self.ps.select("tts")
-        self.assertEqual(selected, "espeak")
+        # Make deterministic: pretend only espeak binary is present and no optional
+        # python packages are installed.
+        with patch.object(self.rm, "has_command") as has_cmd:
+            has_cmd.side_effect = lambda cmd: cmd == "espeak"
+            with patch.object(self.rm, "has_python_package") as has_pkg:
+                has_pkg.return_value = False
+                selected = self.ps.select("tts")
+                self.assertEqual(selected, "espeak")
 
     def test_tts_selects_piper_when_available(self):
         """If piper is installed and configured, it should win on quality."""
         with patch.dict(os.environ, {"PIPER_MODEL": "/tmp/fake_piper.onnx"}, clear=False):
             with patch.object(self.rm, "has_command") as has_cmd:
+                # Match piper meta.json requirements: ffmpeg must exist too.
                 def _fake_has_command(cmd: str) -> bool:
-                    return cmd in ("piper", "espeak")
+                    return cmd in ("piper", "espeak", "ffmpeg")
                 has_cmd.side_effect = _fake_has_command
 
-                with patch("pathlib.Path.exists", return_value=True):
-                    selected = self.ps.select("tts")
-                    self.assertEqual(selected, "piper")
+                with patch.object(self.rm, "has_python_package") as has_pkg:
+                    def _fake_has_pkg(name: str) -> bool:
+                        # Match piper meta.json: python package piper-tts
+                        return name in ("piper-tts", "piper_tts")
+                    has_pkg.side_effect = _fake_has_pkg
+
+                    with patch("pathlib.Path.exists", return_value=True):
+                        selected = self.ps.select("tts")
+                        self.assertEqual(selected, "piper")
 
     def test_force_provider(self):
         """Force should override selection"""
