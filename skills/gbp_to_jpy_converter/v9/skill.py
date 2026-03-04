@@ -4,6 +4,24 @@ import json
 import urllib.request
 import urllib.error
 
+def get_info() -> dict:
+    return {
+        'name': 'gbp_to_jpy_converter',
+        'version': 'v1',
+        'description': 'Converts GBP to JPY (Japanese Yen) using real-time exchange rates'
+    }
+
+def health_check() -> dict:
+    try:
+        url = "https://api.exchangerate-api.com/v4/latest/GBP"
+        with urllib.request.urlopen(url, timeout=5) as response:
+            if response.status == 200:
+                return {'status': 'ok'}
+            else:
+                return {'status': 'error', 'message': f'API returned status {response.status}'}
+    except Exception as e:
+        return {'status': 'error', 'message': str(e)}
+
 class GBPToJPYConverter:
     def execute(self, params: dict) -> dict:
         try:
@@ -34,9 +52,8 @@ class GBPToJPYConverter:
             
             amount = None
             
-            # Check for number words first (longest matches first)
-            sorted_words = sorted(number_words.items(), key=lambda x: len(x[0]), reverse=True)
-            for word, value in sorted_words:
+            # Check for number words first
+            for word, value in number_words.items():
                 if word in text:
                     amount = value
                     break
@@ -88,7 +105,7 @@ class GBPToJPYConverter:
                 'amount_jpy': int(jpy_amount),
                 'rate': rate,
                 'result': result_text,
-                'text_response': result_text,
+                'text_response': spoken_text,
                 'spoken': spoken_text
             }
         
@@ -104,34 +121,15 @@ class GBPToJPYConverter:
             return {
                 'success': False,
                 'error': str(e),
-                'text_response': "Przepraszam, nie udało się przeliczyć walut.",
+                'text_response': spoken_text,
                 'spoken': spoken_text
             }
-
-def get_info() -> dict:
-    return {
-        'name': 'gbp_to_jpy_converter',
-        'version': 'v1',
-        'description': 'Converts GBP to JPY (Japanese Yen) using real-time exchange rates'
-    }
-
-def health_check() -> dict:
-    try:
-        url = "https://api.exchangerate-api.com/v4/latest/GBP"
-        with urllib.request.urlopen(url, timeout=5) as response:
-            if response.status == 200:
-                return {'status': 'ok'}
-            else:
-                return {'status': 'error', 'message': f'API returned status {response.status}'}
-    except Exception as e:
-        return {'status': 'error', 'message': str(e)}
 
 def execute(params: dict) -> dict:
     converter = GBPToJPYConverter()
     return converter.execute(params)
 
 if __name__ == '__main__':
-    # Test the skill
     test_params = {'text': 'przelicz tysiąc funtów szterlingów na jeny japońskie'}
     result = execute(test_params)
     print(json.dumps(result, indent=2, ensure_ascii=False))
