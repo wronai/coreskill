@@ -3,6 +3,7 @@ import json
 import urllib.request
 import urllib.error
 import re
+import os
 
 def get_info() -> dict:
     return {
@@ -37,16 +38,19 @@ def execute(params: dict) -> dict:
         # In a real deployment, you would replace this with actual API call
         # For now, we'll use a mock response if no API key is provided
         
-        # Try to extract API key from environment or params (not recommended for production)
-        api_key = params.get('api_key', '')
-        
+        # Try to extract API key from params or environment.
+        # This skill uses Moonshot; OpenRouter keys are NOT compatible with the Moonshot endpoint.
+        api_key = params.get('api_key', '') or os.environ.get('MOONSHOT_API_KEY', '')
+        openrouter_key_present = bool(os.environ.get('OPENROUTER_API_KEY', ''))
+
         if not api_key:
-            # Simulate response for demonstration
+            hint = ""
+            if openrouter_key_present:
+                hint = " Wykryłem OPENROUTER_API_KEY, ale ten skill wymaga MOONSHOT_API_KEY (to inny provider)."
             return {
-                'success': True,
-                'model': 'moonshotai/kimi-k2.5',
-                'response': f"Mock response: You said '{user_text}'. (API key not provided - using mock response)",
-                'note': 'This skill requires a valid Moonshot AI API key to function with real LLM responses.'
+                'success': False,
+                'error': "Brak MOONSHOT_API_KEY — nie mogę wykonać realnego zapytania do Moonshot API." + hint,
+                'note': "Ustaw zmienną środowiskową MOONSHOT_API_KEY albo podaj params['api_key']. Jeśli chcesz tylko przełączyć model evo-engine, użyj komendy /config llm model <nazwa_modelu>."
             }
         
         # Prepare request to Moonshot AI API (assuming endpoint structure)

@@ -99,7 +99,11 @@ class SystemIdentity:
 
     def build_system_prompt(self):
         """Build dynamic system prompt with capability awareness."""
+        now = datetime.now()
+        date_str = now.strftime("%Y-%m-%d %H:%M:%S (%A)")
         identity = (
+            f"AKTUALNY CZAS SYSTEMOWY: {date_str}\n"
+            f"NIGDY nie wymyślaj daty/godziny — używaj WYŁĄCZNIE powyższego czasu systemowego.\n\n"
             "Jesteś RDZENIEM (brain) systemu evo-engine — ewolucyjnego systemu AI. "
             "NIE jesteś zwykłym chatbotem. Jesteś połączony z systemem który MA zdolności "
             "(skills) takie jak mówienie głosem (TTS), słuchanie (STT), przeszukiwanie internetu, "

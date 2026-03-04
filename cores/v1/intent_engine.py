@@ -161,6 +161,21 @@ class IntentEngine:
                 and words[0].lower().rstrip("?!.,") in self._TRIVIAL):
             return {"action": "chat"}
 
+        # Stage 0b: Deterministic configuration patterns (avoid ML mistakes)
+        # Example: "ustaw LLM qwen/qwen3.5-flash-02-23" should configure LLM,
+        # not call a skill named "llm".
+        ul = user_msg.lower()
+        _cfg_verbs = ("ustaw", "przełącz", "przelacz", "zmień", "zmien", "używaj", "uzywaj", "switch", "set", "change", "use")
+        if any(v in ul for v in _cfg_verbs) and any(k in ul for k in (" llm", "model", "mózg", "mozg")):
+            return {
+                "action": "configure",
+                "category": "llm",
+                "target": self._extract_config_target(user_msg, "llm"),
+                "original_msg": user_msg,
+                "_conf": 0.95,
+                "_tier": "rule_config_llm",
+            }
+
         # Stage 1: ML classification
         # Build skills dict with metadata for rich schema
         if isinstance(skills, dict):
@@ -469,6 +484,13 @@ class IntentEngine:
         
         # Specific model/provider names (extract from message)
         # LLM models
+        if category == "llm":
+            # Prefer explicit vendor/model patterns e.g. "qwen/qwen3.5-flash-02-23"
+            # Allow optional openrouter prefix.
+            m = re.search(r'(?:openrouter/)?([a-z0-9_.-]+/[a-z0-9_.:-]+)', ul)
+            if m:
+                return m.group(1)
+
         patterns = [
             r'(gemini[-]?[a-z0-9.]*)',
             r'(gpt[-]?[0-9.]*)',

@@ -17,20 +17,33 @@ def _extract_stt_text(outcome: dict) -> str:
     """
     if not outcome:
         return ""
-    
+
+    # EvoEngine typically returns: outcome = {type, skill, result: {success, result: {...}}}
+    # Some skills may return different nesting, so we normalize defensively.
     result = outcome.get("result", {})
-    
-    # Try various possible keys
-    for key in ["spoken", "text", "transcript", "recognized", "value"]:
-        if key in result and result[key]:
-            return result[key]
-    
+    inner = result.get("result", {}) if isinstance(result, dict) else {}
+    if not isinstance(inner, dict):
+        inner = {}
+
+    # Try various possible keys (prefer inner first)
+    for obj in (inner, result, outcome):
+        if not isinstance(obj, dict):
+            continue
+        for key in ["spoken", "text", "transcript", "recognized", "value"]:
+            val = obj.get(key)
+            if isinstance(val, str) and val.strip():
+                return val.strip()
+
     # Check nested structure
-    if "output" in result:
-        output = result["output"]
-        for key in ["spoken", "text", "transcript"]:
-            if key in output and output[key]:
-                return output[key]
+    for obj in (inner, result):
+        if not isinstance(obj, dict):
+            continue
+        output = obj.get("output")
+        if isinstance(output, dict):
+            for key in ["spoken", "text", "transcript"]:
+                val = output.get(key)
+                if isinstance(val, str) and val.strip():
+                    return val.strip()
     
     return ""
 

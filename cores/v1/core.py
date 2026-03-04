@@ -461,7 +461,9 @@ def _resolve_model(state):
     models = get_models_from_config(state)
     mdl = os.environ.get("EVO_MODEL") or state.get("model") or (models[0] if models else DEFAULT_MODEL)
     mdl_lower = str(mdl).lower()
-    if (not mdl) or "stepfun" in mdl_lower or any(c in mdl_lower for c in _CODE_ONLY):
+    # NOTE: 'llm' is an internal placeholder used in logs/UI; it is NOT a real LiteLLM model.
+    # If it gets persisted in state, LiteLLM will throw: "LLM Provider NOT provided".
+    if (not mdl) or mdl_lower in ("llm", "auto") or "stepfun" in mdl_lower or any(c in mdl_lower for c in _CODE_ONLY):
         old = mdl
         mdl = models[0] if models else DEFAULT_MODEL
         state["model"] = mdl
@@ -558,7 +560,11 @@ def _handle_chat(llm, sm, logger, conv, identity=None, memory=None):
     if identity:
         sp = identity.build_system_prompt()
     else:
-        sp = ("Jesteś evo-engine, ewolucyjny asystent AI. "
+        from datetime import datetime as _dt
+        _now = _dt.now().strftime("%Y-%m-%d %H:%M:%S (%A)")
+        sp = (f"AKTUALNY CZAS SYSTEMOWY: {_now}\n"
+              "NIGDY nie wymyślaj daty/godziny — używaj WYŁĄCZNIE powyższego czasu.\n\n"
+              "Jesteś evo-engine, ewolucyjny asystent AI. "
               f"Masz umiejętności (skills): {json.dumps(list(sm.list_skills().keys()))}.")
     if memory:
         mem_ctx = memory.build_system_context()
@@ -1346,7 +1352,9 @@ def main():
 
     while True:
         try:
-            ui = input(f"{C.GREEN}you> {C.R}").strip()
+            # Explicitly print and flush prompt for non-tty stdout (pipes)
+            print(f"{C.GREEN}you> {C.R}", end='', flush=True)
+            ui = input().strip()
         except (EOFError, KeyboardInterrupt):
             cpr(C.DIM, "\nBye!")
             break
