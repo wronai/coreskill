@@ -318,26 +318,56 @@ class LocalLLMClassifier:
         except (FileNotFoundError, subprocess.TimeoutExpired):
             self._available = False
 
-    def classify(self, user_msg: str, skills: list,
+    def _build_skill_schema(self, skills: dict) -> str:
+        """Build rich schema from skills dict with descriptions and providers."""
+        if not skills:
+            return "- tts: synteza mowy (głos)\n- stt: rozpoznawanie mowy (słuchanie)"
+        
+        lines = []
+        for name, meta in skills.items():
+            if isinstance(meta, dict):
+                desc = meta.get("description", meta.get("desc", ""))
+                providers = meta.get("providers", meta.get("available_providers", []))
+                active = meta.get("active_provider", "")
+                if providers:
+                    prov_str = ", ".join(str(p) for p in providers[:3])
+                    if active:
+                        lines.append(f"- {name}: {desc[:60] if desc else 'skill'} (providers: {prov_str}, aktywny: {active})")
+                    else:
+                        lines.append(f"- {name}: {desc[:60] if desc else 'skill'} (providers: {prov_str})")
+                else:
+                    lines.append(f"- {name}: {desc[:60] if desc else 'skill'}")
+            else:
+                lines.append(f"- {name}: skill")
+        return "\n".join(lines)
+
+    def classify(self, user_msg: str, skills: dict = None,
                  context: str = "") -> Optional[IntentResult]:
-        """Classify intent using local LLM."""
+        """Classify intent using local LLM with full skill schema."""
         if not self.available or not self._model:
             return None
 
-        skills_str = ", ".join(skills) if skills else "tts, stt, web_search, git_ops, shell"
+        # Build rich skill schema from skills dict
+        schema = self._build_skill_schema(skills or {})
 
         prompt = (
-            f"Klasyfikuj intencję użytkownika. Dostępne skills: [{skills_str}]\n"
-            f"Możliwe akcje: use (użyj skill), create (stwórz), evolve (ulepsz), "
-            f"configure (zmień ustawienia), chat (rozmowa)\n"
-            f"Kontekst: {context[:200]}\n\n"
-            f"Wiadomość: \"{user_msg}\"\n\n"
+            f"Klasyfikuj intencję użytkownika.\n\n"
+            f"=== DOSTĘPNE NARZĘDZIA ===\n{schema}\n\n"
+            f"=== MOŻLIWE AKCJE ===\n"
+            f"- use [skill] (użyj istniejącego narzędzia)\n"
+            f"- create [skill] (stwórz nowy skill/program)\n"
+            f"- evolve [skill] (napraw/ulepsz istniejący skill)\n"
+            f"- configure [llm|tts|stt|voice] (zmień ustawienia)\n"
+            f"- chat (zwykła rozmowa)\n\n"
+            f"=== ZASADY PRIORYTETOW ===\n"
+            f"1. \"lepszy/gorszy GŁOS\" w kontekście voice → configure tts\n"
+            f"2. \"lepszy/gorszy MODEL\" → configure llm\n"
+            f"3. \"napraw skill X\" gdy X istnieje → evolve X\n"
+            f"4. \"napraw skill X\" gdy X nie istnieje → create X\n\n"
+            f"=== KONTEKST ===\n{context[:300] or 'Brak'}\n\n"
+            f"=== WIADOMOŚĆ ===\n\"{user_msg}\"\n\n"
             f"Odpowiedz TYLKO JSON:\n"
-            f'{{"action":"use|create|evolve|configure|chat","skill":"nazwa","goal":"cel"}}\n'
-            f"Jeśli user chce rozmawiać głosowo → skill=stt.\n"
-            f"Jeśli user chce żeby system mówił → skill=tts.\n"
-            f"Jeśli user chce zmienić model/ustawienia → action=configure, skill=llm/tts/stt.\n"
-            f"Priorytet: LLM > TTS > STT przy niejasności (chyba że wskazane jawnie)."
+            f'{{"action":"use|create|evolve|configure|chat","skill":"nazwa","goal":"cel","reasoning":"krótkie uzasadnienie"}}'
         )
 
         try:
@@ -368,13 +398,14 @@ class LocalLLMClassifier:
             action = d.get("action", "chat")
             skill = d.get("skill", "")
             goal = d.get("goal", "")
+            # reasoning = d.get("reasoning", "")  # Could log this for debugging
 
-            if action not in ("use", "create", "evolve", "chat"):
+            if action not in ("use", "create", "evolve", "configure", "chat"):
                 action = "chat"
 
             return IntentResult(
-                action=action, skill=skill, confidence=0.80,
-                tier="local_llm", goal=goal,
+                action=action, skill=skill, confidence=0.85,
+                tier="local_llm_schema", goal=goal,
                 input={"text": user_msg} if skill else {},
             )
         except Exception:
@@ -551,10 +582,16 @@ class SmartIntentClassifier:
 
     # ── Classification ────────────────────────────────────────────────
 
-    def classify(self, user_msg: str, skills: list = None,
+    def classify(self, user_msg: str, skills: dict = None,
                  context: str = "", conv: list = None) -> IntentResult:
         """
         Classify user intent through tiered system.
+        
+        Args:
+            user_msg: The message to classify
+            skills: Dict of skills with metadata {name: {description, providers, ...}}
+            context: Conversation context string
+            conv: Full conversation history
         
         Returns IntentResult with action, skill, confidence, tier.
         """
@@ -565,36 +602,41 @@ class SmartIntentClassifier:
         words = set(ul.split())
         
         # TTS keywords - speak/read aloud
-        tts_keywords = {"powiedz", "wypowiedz", "przeczytaj", "mów", "odczytaj", "speak", "say", "read", "aloud"}
-        if any(w in ul for w in ("czytaj", "przeczytaj")) or words & tts_keywords:
+        tts_keywords = {"powiedz", "wypowiedz", "przeczytaj", "mów", "odczytaj", "czytaj", "speak", "say", "read", "aloud"}
+        if words & tts_keywords:
             return IntentResult(action="use", skill="tts", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
         
         # Voice/STT keywords - listen/record/transcribe (check BEFORE TTS to avoid "mów" matching "mówię")
-        stt_keywords = {"słuchaj", "nagrywaj", "transkrybuj", "listen", "record", "transcribe"}
-        if any(w in ul for w in ("zapisz co mówię", "rozpoznaj mowę")) or words & stt_keywords:
+        stt_keywords = {"słuchaj", "nagrywaj", "transkrybuj", "zapisz", "rozpoznaj", "listen", "record", "transcribe"}
+        stt_phrases = ["zapisz co mówię", "rozpoznaj mowę", "transkrybuj co"]
+        if any(phrase in ul for phrase in stt_phrases) or words & stt_keywords:
             return IntentResult(action="use", skill="stt", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
         
         # Voice mode
-        if any(w in ul for w in ("porozmawiajmy głosowo", "pogadajmy głosem", "włącz tryb głosowy", "voice mode", "let's talk")):
+        voice_phrases = ["porozmawiajmy głosowo", "pogadajmy głosem", "włącz tryb głosowy", "voice mode", "let's talk", "voice conversation"]
+        if any(phrase in ul for phrase in voice_phrases):
             return IntentResult(action="use", skill="stt", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
         
         # Web search
-        web_keywords = {"wyszukaj", "szukaj", "google", "search", "find", "look"}
-        if any(w in ul for w in ("znajdź w internecie", "przeszukaj web", "daj mi linki")) or words & web_keywords:
+        web_keywords = {"wyszukaj", "szukaj", "google", "search", "find", "look", "duckduckgo"}
+        web_phrases = ["znajdź w internecie", "przeszukaj web", "daj mi linki", "znajdź online"]
+        if any(phrase in ul for phrase in web_phrases) or words & web_keywords:
             return IntentResult(action="use", skill="web_search", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
         
         # Shell
-        shell_phrases = ("uruchom", "wykonaj", "bash", "terminal", "run command", "execute")
-        shell_words = {"bash", "terminal", "command", "execute", "uruchom", "wykonaj"}
-        if any(w in ul for w in shell_phrases) or words & shell_words:
+        shell_keywords = {"uruchom", "wykonaj", "bash", "terminal", "command", "execute", "shell"}
+        shell_phrases = ["run command", "execute script", "bash script"]
+        if any(phrase in ul for phrase in shell_phrases) or words & shell_keywords:
             return IntentResult(action="use", skill="shell", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
         
         # Create/evolve
-        if any(w in ul for w in ("stwórz skill", "nowy skill", "create skill", "new skill", "build skill")):
+        create_phrases = ["stwórz skill", "nowy skill", "create skill", "new skill", "build skill",
+                         "napisz program", "zbuduj aplikację", "stwórz program", "zbuduj system", "utwórz aplikację",
+                         "napisz kod", "zbuduj kod", "stwórz kod"]
+        evolve_phrases = ["napraw", "popraw", "ulepsz", "fix", "repair", "improve", "evolve"]
+        if any(phrase in ul for phrase in create_phrases):
             return IntentResult(action="create", skill="", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
-        if any(w in ul for w in ("napisz program", "zbuduj aplikację", "stwórz program", "zbuduj system", "utwórz aplikację")):
-            return IntentResult(action="create", skill="", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
-        if any(w in ul for w in ("napraw", "popraw", "ulepsz", "fix", "repair", "improve")):
+        if any(phrase in ul for phrase in evolve_phrases):
             return IntentResult(action="evolve", skill="", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
 
         # Tier 1: Embedding similarity
@@ -704,30 +746,42 @@ class SmartIntentClassifier:
         except Exception as e:
             return None
 
-    def _tier2_local_llm(self, user_msg: str, skills: list = None,
+    def _tier2_local_llm(self, user_msg: str, skills: dict = None,
                           context: str = "") -> Optional[IntentResult]:
-        """Tier 2: Local LLM classification."""
+        """Tier 2: Local LLM classification with full skill schema."""
         return self._local_llm.classify(
             user_msg,
-            skills=skills or [],
+            skills=skills,  # Pass full dict with metadata
             context=context,
         )
 
-    def _tier3_remote_llm(self, user_msg: str, skills: list = None,
+    def _tier3_remote_llm(self, user_msg: str, skills: dict = None,
                            context: str = "") -> Optional[IntentResult]:
-        """Tier 3: Remote LLM classification (via existing LLMClient)."""
+        """Tier 3: Remote LLM classification with full skill schema."""
         if not self._llm:
             return None
 
-        skills_str = ", ".join(skills) if skills else "tts, stt, web_search, shell, git_ops"
+        # Build rich schema (reuse local LLM's schema builder)
+        schema = self._local_llm._build_skill_schema(skills or {})
+        
         prompt = (
-            f"Classify intent. Skills: [{skills_str}]\n"
-            f"Actions: use (execute), create (build), evolve (improve), "
-            f"configure (change settings), chat (conversation)\n"
-            f"Priority: LLM > TTS > STT when ambiguous\n"
-            f"Message: \"{user_msg}\"\n"
-            f"Return ONLY JSON: "
-            f'{{"action":"use|create|evolve|configure|chat","skill":"name","goal":"..."}}'
+            f"Classify user intent.\n\n"
+            f"=== AVAILABLE TOOLS ===\n{schema}\n\n"
+            f"=== ACTIONS ===\n"
+            f"- use [skill] (execute existing tool)\n"
+            f"- create [skill] (build new skill/program)\n"
+            f"- evolve [skill] (fix/improve existing skill)\n"
+            f"- configure [llm|tts|stt|voice] (change settings)\n"
+            f"- chat (normal conversation)\n\n"
+            f"=== PRIORITY RULES ===\n"
+            f'1. "better/worse VOICE\" in voice context → configure tts\n'
+            f'2. "better/worse MODEL\" → configure llm\n'
+            f'3. "fix skill X\" when X exists → evolve X\n'
+            f'4. "fix skill X\" when X not exists → create X\n\n'
+            f"=== CONTEXT ===\n{context[:300] or 'None'}\n\n"
+            f"=== MESSAGE ===\n\"{user_msg}\"\n\n"
+            f"Return ONLY JSON:\n"
+            f'{{"action":"use|create|evolve|configure|chat","skill":"name","goal":"...","reasoning":"brief"}}'
         )
         try:
             raw = self._llm.chat(
@@ -743,8 +797,8 @@ class SmartIntentClassifier:
             return IntentResult(
                 action=d.get("action", "chat"),
                 skill=d.get("skill", ""),
-                confidence=0.75,
-                tier="remote_llm",
+                confidence=0.80,
+                tier="remote_llm_schema",
                 goal=d.get("goal", ""),
             )
         except Exception:

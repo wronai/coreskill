@@ -161,12 +161,18 @@ class IntentEngine:
             return {"action": "chat"}
 
         # Stage 1: ML classification
-        skills_list = list(skills.keys()) if isinstance(skills, dict) else list(skills)
+        # Build skills dict with metadata for rich schema
+        if isinstance(skills, dict):
+            skills_dict = skills
+            skills_list = list(skills.keys())
+        else:
+            skills_list = list(skills)
+            skills_dict = {name: {} for name in skills_list}  # Minimal metadata
         context = self._build_context(conv)
 
         result = self._classifier.classify(
             user_msg,
-            skills=skills_list,
+            skills=skills_dict,  # Pass full dict with metadata for schema
             context=context,
             conv=conv,
         )
@@ -219,6 +225,16 @@ class IntentEngine:
                     analysis["skill"] = target
 
             return analysis
+
+        # Stage 1b: Skill name matching — catch references to existing skills
+        # when ML classifier returns low confidence (common for dynamically created skills)
+        matched = self._match_existing_skill(user_msg, skills_list)
+        if matched:
+            self.log.core("intent_skill_match", {
+                "skill": matched, "msg": user_msg[:60]})
+            return {"action": "use", "skill": matched,
+                    "input": {"text": user_msg}, "goal": user_msg,
+                    "_conf": 0.70, "_tier": "skill_name_match"}
 
         # Stage 2: Context inference
         topic = self._recent_topic()
@@ -344,6 +360,53 @@ class IntentEngine:
             if clean and clean not in _skip and len(clean) > 2:
                 # Return first meaningful word as skill name
                 return re.sub(r'[^a-z0-9_]', '_', clean)
+        return None
+
+    def _match_existing_skill(self, msg, skills):
+        """Match user message to an existing skill by name or keyword hints.
+        Returns skill name or None. Used as fallback when ML classifier is uncertain."""
+        if not skills:
+            return None
+        ul = msg.lower()
+
+        # 1. Direct skill name match (e.g., "kalkulator", "echo", "shell")
+        for sk in skills:
+            # Skip very short names to avoid false positives
+            if len(sk) < 3:
+                continue
+            # Exact or substring match of skill name in message
+            sk_lower = sk.lower().replace("_", " ")
+            if sk_lower in ul or sk.lower() in ul:
+                return sk
+
+        # 2. Action-keyword hints → skill mapping
+        # These map common Polish/English action words to likely skills
+        _HINTS = {
+            "kalkulator": ("policz", "oblicz", "kalkulat", "ile wynosi", "calculate", "math"),
+            "password_generator": ("hasło", "haslo", "password", "wygeneruj has"),
+            "text_processor": ("policz słow", "policz slow", "zlicz", "word count",
+                               "count word", "ile słów", "ile slow"),
+            "echo": ("echo ",),
+            "shell": ("uruchom", "wykonaj", "odpal", "run ", "exec "),
+            "time": ("godzina", "czas", "time", "data", "zegar"),
+            "weather": ("pogoda", "weather", "temperatura"),
+            "network_info": ("sieć", "siec", "network", "ip ", "ping"),
+            "system_info": ("system", "info o system", "cpu", "ram", "dysk"),
+            "web_search": ("szukaj", "wyszukaj", "search", "google", "znajdź", "znajdz"),
+            "json_validator": ("json", "waliduj", "validate"),
+        }
+        for sk_name, keywords in _HINTS.items():
+            if sk_name in skills and any(kw in ul for kw in keywords):
+                return sk_name
+
+        # 3. Match by text_processor_ variant (trailing underscore in name)
+        for sk in skills:
+            base = sk.rstrip("_")
+            if base != sk and len(base) >= 4:
+                hints = _HINTS.get(base, ())
+                if hints and any(kw in ul for kw in hints):
+                    return sk
+
         return None
 
     def _detect_evolve_target(self, msg, skills):

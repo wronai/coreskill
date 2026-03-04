@@ -455,25 +455,43 @@ def _run_voice_loop(sm, evo, llm, intent, logger, conv, identity, memory=None):
             now = time.time()
             if silence_count >= REFLECT_THRESHOLD and (now - last_reflect_time) > REFLECT_COOLDOWN:
                 last_reflect_time = now
-                cpr(C.YELLOW, f"[VOICE] {silence_count} ciszych z rzędu — uruchamiam autotest STT...")
+                cpr(C.YELLOW, f"[VOICE] {silence_count} ciszych z rzędu — uruchamiam autotest + autonaprawę STT...")
                 diag = _run_stt_autotest(sm, logger)
+                fixes = diag.get("fixes_applied", [])
                 
-                # If hardware problem found, exit voice mode gracefully
+                # If hardware problem found — only truly unfixable = no mic at all
                 if not diag.get("microphone", {}).get("ok"):
-                    cpr(C.RED, "[VOICE] Mikrofon niedostępny — kończę tryb głosowy.")
-                    _speak_tts(sm, evo, "Mikrofon nie działa. Sprawdź podłączenie.")
+                    cpr(C.RED, "[VOICE] Brak mikrofonu — jedyny problem którego nie mogę naprawić.")
+                    _speak_tts(sm, evo, "Brak mikrofonu. Podłącz mikrofon i spróbuj ponownie.")
                     break
                 
-                # If audio level issue, inform and continue (user might fix it)
-                if not diag.get("audio_level", {}).get("ok"):
-                    _speak_tts(sm, evo, "Mikrofon nagrywa ciszę. Sprawdź ustawienia alsamixer.")
-                    # Reset counter — give user time to fix
-                    silence_count = 0
+                # Check what was fixed vs what still fails
+                mic_ok = diag.get("microphone", {}).get("ok", False)
+                audio_ok = diag.get("audio_level", {}).get("ok", False)
+                vosk_ok = diag.get("transcription", {}).get("ok", False)
                 
-                # If all ok, it's just environmental silence — keep listening
-                if all(d.get("ok") for d in diag.values()):
-                    cpr(C.DIM, "[VOICE] Sprzęt OK — kontynuuję nasłuchiwanie.")
+                if fixes and (audio_ok or vosk_ok):
+                    # Something was fixed! Inform and keep going
+                    fix_msg = f"Naprawiłem {len(fixes)} problem(ów). Kontynuuję nasłuchiwanie."
+                    cpr(C.GREEN, f"[VOICE] {fix_msg}")
+                    _speak_tts(sm, evo, fix_msg)
                     silence_count = 0
+                elif audio_ok and vosk_ok:
+                    # All OK — environmental silence, keep listening
+                    cpr(C.DIM, "[VOICE] Sprzęt OK — cisza w otoczeniu. Kontynuuję.")
+                    _speak_tts(sm, evo, "Sprzęt działa poprawnie. Czekam na Twoją wypowiedź.")
+                    silence_count = 0
+                else:
+                    # Fixes attempted but still not working — DON'T exit, keep trying
+                    if not audio_ok:
+                        cpr(C.YELLOW, "[VOICE] Audio nadal cichy po naprawach — "
+                                      "kontynuuję nasłuchiwanie (może pomóc głośniejsze mówienie)")
+                        _speak_tts(sm, evo, 
+                            "Próbowałem naprawić mikrofon. Mów głośniej, a spróbuję ponownie.")
+                    if not vosk_ok:
+                        cpr(C.YELLOW, "[VOICE] Vosk nadal ma problemy — "
+                                      "kontynuuję, spróbuję przy następnym cyklu")
+                    silence_count = 0  # Reset — always continue
             
             continue
         else:
