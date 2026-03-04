@@ -2,12 +2,12 @@
 
 ## Overview
 
-- **Project**: /home/tom/github/wronai/coreskill/evo-engine
+- **Project**: /home/tom/github/wronai/coreskill
 - **Analysis Mode**: static
-- **Total Functions**: 471
-- **Total Classes**: 62
-- **Modules**: 55
-- **Entry Points**: 441
+- **Total Functions**: 549
+- **Total Classes**: 76
+- **Modules**: 63
+- **Entry Points**: 502
 
 ## Architecture by Module
 
@@ -19,6 +19,16 @@
 - **Functions**: 29
 - **Classes**: 5
 - **File**: `smart_intent.py`
+
+### core
+- **Functions**: 29
+- **Classes**: 6
+- **File**: `core.py`
+
+### seeds.core_v1
+- **Functions**: 27
+- **Classes**: 5
+- **File**: `core_v1.py`
 
 ### cores.v1.provider_selector
 - **Functions**: 26
@@ -100,22 +110,15 @@
 - **Classes**: 1
 - **File**: `skill.py`
 
-### skills.deps.v2.skill
-- **Functions**: 9
-- **Classes**: 1
-- **File**: `skill.py`
-
-### cores.v1.logger
-- **Functions**: 8
-- **Classes**: 1
-- **File**: `logger.py`
-
 ## Key Entry Points
 
 Main execution flows into the system:
 
-### cores.v1.core.main
-- **Calls**: cores.v1.skill_logger.init_nfo, cores.v1.config.load_state, cores.v1.core._check_restart_loop, Logger, Supervisor, cores.v1.config.cpr, cores.v1.config.cpr, cores.v1.config.cpr
+### core.main
+- **Calls**: core.load_state, Supervisor, core.cpr, core.cpr, core.cpr, core.cpr, core.save_state, state.get
+
+### seeds.core_v1.main
+- **Calls**: seeds.core_v1.load_state, Supervisor, seeds.core_v1.cpr, seeds.core_v1.cpr, seeds.core_v1.cpr, seeds.core_v1.cpr, seeds.core_v1.save_state, state.get
 
 ### cores.v1.evo_engine.EvoEngine._execute_with_validation
 > Pipeline: preflight → execute → validate result → reflect → retry if needed.
@@ -132,6 +135,10 @@ Returns (fixed, message, new_result).
 ### cores.v1.skill_manager.SkillManager.smart_evolve
 > Evolve skill using devops diagnosis + deps alternatives.
 - **Calls**: self.latest_v, self.skill_path, p.read_text, self.diagnose_skill, diag.get, self.get_health_context, self.log.learn_summary, cores.v1.utils.clean_code
+
+### cores.v1.core._cmd_apikey
+> Set or show OpenRouter API key: /apikey [key]
+- **Calls**: ctx.get, None.strip, cores.v1.config.cpr, main.save_state, cores.v1.config.cpr, cores.v1.config.cpr, cores.v1.config.cpr, state.get
 
 ### main.bootstrap
 - **Calls**: main.log, main.load_state, state.get, state.get, main.log, str, str, d.mkdir
@@ -164,6 +171,13 @@ Flow:
 ### skills.shell.v1.skill.ShellSkill.execute
 - **Calls**: None.strip, None.strip, min, input_data.get, print, int, os.path.expanduser, self._is_interactive
 
+### seeds.core_v1.SkillManager.exec_skill
+- **Calls**: mp.exists, self.latest_v, json.loads, m.get, p.exists, importlib.util.spec_from_file_location, importlib.util.module_from_spec, spec.loader.exec_module
+
+### cli.main_cli
+> Main CLI entry point.
+- **Calls**: argparse.ArgumentParser, parser.add_subparsers, subparsers.add_parser, logs_parser.add_subparsers, logs_sub.add_parser, subparsers.add_parser, cache_parser.add_subparsers, cache_sub.add_parser
+
 ### cores.v1.core._cmd_models
 - **Calls**: cores.v1.config.cpr, cores.v1.llm_client.discover_models, cores.v1.llm_client._detect_ollama_models, cores.v1.config.cpr, cores.v1.config.cpr, cores.v1.config.cpr, cores.v1.config.cpr, None.join
 
@@ -173,9 +187,6 @@ Flow:
 ### skills.git_ops.v1.skill.GitOpsSkill.execute
 > evo-engine interface.
 - **Calls**: input_data.get, input_data.get, dispatch.get, fn, self.init, self.status, self.add, self.commit
-
-### skills.stt.providers.vosk.stable.skill.STTSkill.execute
-- **Calls**: int, params.get, params.get, int, params.get, params.get, self._transcribe_vosk, isinstance
 
 ### skills.stt.providers.vosk.archive.v6.skill.STTSkill.execute
 - **Calls**: int, params.get, params.get, int, params.get, params.get, self._transcribe_vosk, isinstance
@@ -205,30 +216,17 @@ Real skills with subprocess/os/urlli
 
 ### cores.v1.core._cmd_autotune
 > Auto-tune: benchmark models and select optimal one: /autotune [goal]
-- **Calls**: cores.v1.config.cpr, benchmark_execute, result.get, cores.v1.config.cpr, cores.v1.config.cpr, cores.v1.config.cpr, cores.v1.config.save_state, logger.core
+- **Calls**: cores.v1.config.cpr, benchmark_execute, result.get, cores.v1.config.cpr, cores.v1.config.cpr, cores.v1.config.cpr, main.save_state, logger.core
 
 ### cores.v1.skill_manager.SkillManager.latest_v
 - **Calls**: self._active_provider, d.iterdir, vs.sort, d.exists, prov_dir.is_dir, None.exists, None.exists, prov_dir.iterdir
 
+### skills.stt.providers.vosk.stable.skill.STTSkill.execute
+- **Calls**: int, params.get, params.get, int, params.get, params.get, self._transcribe_vosk, None.strip
+
 ### skills.stt.providers.vosk.archive.v7.skill.check_readiness
 > Multi-level readiness check: deps, hardware, resources.
 - **Calls**: vosk_cache.is_dir, sorted, issues.append, issues.append, issues.append, issues.append, bool, shutil.which
-
-### cores.v1.core._cmd_health
-> Show skill readiness/health status: /health [skill_name]
-- **Calls**: sorted, sm.readiness_check, r.get, r.get, r.get, r.get, r.get, cores.v1.config.cpr
-
-### cores.v1.intent_engine.IntentEngine._extract_shell_command
-> Extract actual shell command from message or context.
-- **Calls**: msg.lower, any, ul.split, msg.strip, reversed, None.strip, ul.split, m.get
-
-### cores.v1.evo_engine.EvoEngine.evolve_skill
-> Create + evolutionary test loop for new skills.
-- **Calls**: cores.v1.config.cpr, self.log.core, cores.v1.config.cpr, self.sm.create_skill, cores.v1.config.cpr, range, self.log.core, self.sm.rollback
-
-### cores.v1.skill_manager.SkillManager._load_and_run
-> Load skill module and execute. Returns result dict.
-- **Calls**: importlib.util.spec_from_file_location, importlib.util.module_from_spec, spec.loader.exec_module, cores.v1.skill_logger.inject_logging, dir, hasattr, str, hasattr
 
 ## Process Flows
 
@@ -236,12 +234,9 @@ Key execution flows identified:
 
 ### Flow 1: main
 ```
-main [cores.v1.core]
-  └─> _check_restart_loop
-      └─ →> cpr
-      └─ →> cpr
-  └─ →> init_nfo
-  └─ →> load_state
+main [core]
+  └─> load_state
+  └─> cpr
 ```
 
 ### Flow 2: _execute_with_validation
@@ -267,34 +262,37 @@ chat [cores.v1.llm_client.LLMClient]
 smart_evolve [cores.v1.skill_manager.SkillManager]
 ```
 
-### Flow 6: bootstrap
+### Flow 6: _cmd_apikey
+```
+_cmd_apikey [cores.v1.core]
+  └─ →> cpr
+  └─ →> cpr
+  └─ →> save_state
+```
+
+### Flow 7: bootstrap
 ```
 bootstrap [main]
   └─> log
   └─> load_state
 ```
 
-### Flow 7: handle_request
+### Flow 8: handle_request
 ```
 handle_request [cores.v1.evo_engine.EvoEngine]
   └─ →> cpr
 ```
 
-### Flow 8: _try_fallback_providers
+### Flow 9: _try_fallback_providers
 ```
 _try_fallback_providers [cores.v1.evo_engine.EvoEngine]
   └─ →> cpr
   └─ →> cpr
 ```
 
-### Flow 9: check_imports
+### Flow 10: check_imports
 ```
 check_imports [cores.v1.preflight.SkillPreflight]
-```
-
-### Flow 10: analyze
-```
-analyze [cores.v1.intent_engine.IntentEngine]
 ```
 
 ## Key Classes
@@ -335,17 +333,17 @@ Tracks failures per provider and automatical
 - **Methods**: 13
 - **Key Methods**: skills.git_ops.v1.skill.GitOpsSkill.__init__, skills.git_ops.v1.skill.GitOpsSkill._run, skills.git_ops.v1.skill.GitOpsSkill.init, skills.git_ops.v1.skill.GitOpsSkill.status, skills.git_ops.v1.skill.GitOpsSkill.add, skills.git_ops.v1.skill.GitOpsSkill.commit, skills.git_ops.v1.skill.GitOpsSkill.log, skills.git_ops.v1.skill.GitOpsSkill.diff, skills.git_ops.v1.skill.GitOpsSkill.tag, skills.git_ops.v1.skill.GitOpsSkill.checkout
 
+### cores.v1.resource_monitor.ResourceMonitor
+> Detects CPU, RAM, GPU, disk, installed packages.
+- **Methods**: 12
+- **Key Methods**: cores.v1.resource_monitor.ResourceMonitor.__init__, cores.v1.resource_monitor.ResourceMonitor.snapshot, cores.v1.resource_monitor.ResourceMonitor._cpu_count, cores.v1.resource_monitor.ResourceMonitor._ram_total, cores.v1.resource_monitor.ResourceMonitor._ram_available, cores.v1.resource_monitor.ResourceMonitor._ram_from_proc, cores.v1.resource_monitor.ResourceMonitor._disk_free, cores.v1.resource_monitor.ResourceMonitor._detect_gpu, cores.v1.resource_monitor.ResourceMonitor._installed_packages, cores.v1.resource_monitor.ResourceMonitor.has_command
+
 ### cores.v1.user_memory.UserMemory
 > Persistent long-term memory for user preferences and directives.
 
 Directives are short text notes th
 - **Methods**: 12
 - **Key Methods**: cores.v1.user_memory.UserMemory.__init__, cores.v1.user_memory.UserMemory.directives, cores.v1.user_memory.UserMemory.add, cores.v1.user_memory.UserMemory.remove, cores.v1.user_memory.UserMemory.clear_all, cores.v1.user_memory.UserMemory.voice_mode, cores.v1.user_memory.UserMemory.set_voice_mode, cores.v1.user_memory.UserMemory.has_directive, cores.v1.user_memory.UserMemory.build_system_context, cores.v1.user_memory.UserMemory.looks_like_preference
-
-### cores.v1.resource_monitor.ResourceMonitor
-> Detects CPU, RAM, GPU, disk, installed packages.
-- **Methods**: 12
-- **Key Methods**: cores.v1.resource_monitor.ResourceMonitor.__init__, cores.v1.resource_monitor.ResourceMonitor.snapshot, cores.v1.resource_monitor.ResourceMonitor._cpu_count, cores.v1.resource_monitor.ResourceMonitor._ram_total, cores.v1.resource_monitor.ResourceMonitor._ram_available, cores.v1.resource_monitor.ResourceMonitor._ram_from_proc, cores.v1.resource_monitor.ResourceMonitor._disk_free, cores.v1.resource_monitor.ResourceMonitor._detect_gpu, cores.v1.resource_monitor.ResourceMonitor._installed_packages, cores.v1.resource_monitor.ResourceMonitor.has_command
 
 ### cores.v1.provider_selector.ProviderSelector
 > Selects the best available provider for a capability.
@@ -434,46 +432,46 @@ Returns {verdict: success|partial|fail
 
 Functions exposed as public API (no underscore prefix):
 
+- `core.main` - 147 calls
+- `seeds.core_v1.main` - 108 calls
 - `cores.v1.core.main` - 104 calls
 - `cores.v1.llm_client.LLMClient.chat` - 37 calls
+- `cli.cmd_cache_reset` - 36 calls
 - `cores.v1.skill_manager.SkillManager.smart_evolve` - 36 calls
 - `main.bootstrap` - 33 calls
+- `cli.cmd_status` - 30 calls
 - `cores.v1.evo_engine.EvoEngine.handle_request` - 30 calls
+- `cli.cmd_logs_reset` - 29 calls
 - `cores.v1.preflight.SkillPreflight.check_imports` - 27 calls
 - `cores.v1.intent_engine.IntentEngine.analyze` - 26 calls
 - `cores.v1.preflight.SkillPreflight.auto_fix_imports` - 26 calls
 - `skills.shell.v1.skill.ShellSkill.execute` - 26 calls
+- `seeds.core_v1.SkillManager.exec_skill` - 26 calls
+- `cli.main_cli` - 23 calls
 - `cores.v1.skill_manager.SkillManager.create_skill` - 23 calls
 - `skills.git_ops.v1.skill.GitOpsSkill.execute` - 23 calls
-- `skills.stt.providers.vosk.stable.skill.STTSkill.execute` - 23 calls
 - `skills.stt.providers.vosk.archive.v6.skill.STTSkill.execute` - 23 calls
 - `skills.stt.providers.vosk.archive.v3.skill.STTSkill.execute` - 23 calls
 - `skills.stt.providers.vosk.archive.v7.skill.STTSkill.execute` - 23 calls
 - `skills.stt.providers.vosk.archive.v1.skill.STTSkill.execute` - 23 calls
 - `cores.v1.preflight.EvolutionGuard.is_stub_skill` - 22 calls
 - `cores.v1.skill_manager.SkillManager.latest_v` - 21 calls
+- `skills.stt.providers.vosk.stable.skill.STTSkill.execute` - 21 calls
 - `skills.stt.providers.vosk.archive.v7.skill.check_readiness` - 21 calls
+- `core.PipelineEngine.execute_pipeline` - 20 calls
 - `cores.v1.evo_engine.EvoEngine.evolve_skill` - 19 calls
 - `cores.v1.resource_monitor.ResourceMonitor.can_run` - 17 calls
 - `cores.v1.garbage_collector.EvolutionGarbageCollector.cleanup_legacy` - 17 calls
 - `cores.v1.llm_client.LLMClient.analyze_need` - 17 calls
 - `cores.v1.pipeline_manager.PipelineManager.run_p` - 17 calls
 - `cores.v1.skill_manager.SkillManager.get_health_context` - 17 calls
+- `seeds.core_v1.PipelineManager.run_p` - 17 calls
 - `cores.v1.garbage_collector.EvolutionGarbageCollector.cleanup_provider` - 16 calls
 - `cores.v1.garbage_collector.EvolutionGarbageCollector.migrate_to_stable_latest` - 16 calls
+- `seeds.core_v1.SkillManager.evolve` - 16 calls
 - `cores.v1.preflight.SkillPreflight.check_interface` - 15 calls
 - `cores.v1.logger.Logger.learn_summary` - 15 calls
 - `cores.v1.skill_manager.SkillManager.list_skills` - 15 calls
-- `cores.v1.garbage_collector.EvolutionGarbageCollector.cleanup_all` - 14 calls
-- `cores.v1.garbage_collector.EvolutionGarbageCollector.summary` - 14 calls
-- `cores.v1.provider_selector.ProviderSelector.load_meta` - 14 calls
-- `cores.v1.skill_logger.skill_health_summary` - 13 calls
-- `cores.v1.garbage_collector.EvolutionGarbageCollector.scan_versions` - 13 calls
-- `cores.v1.smart_intent.LocalLLMClassifier.classify` - 13 calls
-- `cores.v1.skill_manager.SkillManager.rollback` - 13 calls
-- `skills.web_search.providers.duckduckgo.v1.skill.WebSearchSkill.search_duckduckgo` - 13 calls
-- `skills.tts.providers.espeak.stable.skill.check_readiness` - 13 calls
-- `skills.devops.v1.skill.DevOpsSkill.detect_imports` - 13 calls
 
 ## System Interactions
 
@@ -481,11 +479,9 @@ How components interact:
 
 ```mermaid
 graph TD
-    main --> init_nfo
     main --> load_state
-    main --> _check_restart_loop
-    main --> Logger
     main --> Supervisor
+    main --> cpr
     _execute_with_valida --> set
     _execute_with_valida --> latest_v
     _execute_with_valida --> range
@@ -503,14 +499,16 @@ graph TD
     smart_evolve --> read_text
     smart_evolve --> diagnose_skill
     smart_evolve --> get
+    _cmd_apikey --> get
+    _cmd_apikey --> strip
+    _cmd_apikey --> cpr
+    _cmd_apikey --> save_state
     bootstrap --> log
     bootstrap --> load_state
     bootstrap --> get
     handle_request --> get
     handle_request --> cpr
     _try_fallback_provid --> select_with_fallback
-    _try_fallback_provid --> _active_provider
-    _try_fallback_provid --> cpr
 ```
 
 ## Reverse Engineering Guidelines

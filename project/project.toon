@@ -1,69 +1,211 @@
-# evo-engine | 62f 11798L | python:62
+# coreskill | 71f 13394L | python:71
 # Keys: M=modules, D=details, i=imports, c=classes, f=functions, m=methods
-M[62]:
+M[71]:
+  __init__.py,19
   build_core.py,525
-  main.py,89
-  tests/__init__.py,0
-  tests/test_e2e.py,1412
-  skills/llm_router/v1/skill.py,109
-  skills/tts/providers/espeak/archive/v63/skill.py,17
-  skills/tts/providers/espeak/archive/v72/skill.py,22
-  skills/tts/providers/espeak/archive/v1/test_enhanced.py,65
-  skills/tts/providers/espeak/archive/v1/skill.py,53
-  skills/tts/providers/espeak/archive/v1/test.py,41
-  skills/tts/providers/espeak/latest/skill.py,4
-  skills/tts/providers/espeak/stable/skill.py,53
-  skills/devops/v1/skill.py,210
-  skills/stt/providers/vosk/archive/v6/skill.py,131
-  skills/stt/providers/vosk/archive/v3/skill.py,131
-  skills/stt/providers/vosk/archive/v7/skill.py,173
-  skills/stt/providers/vosk/archive/v1/skill.py,131
-  skills/stt/providers/vosk/latest/skill.py,139
-  skills/stt/providers/vosk/stable/skill.py,141
-  skills/benchmark/v1/skill.py,444
-  skills/shell/v6/skill.py,4
-  skills/shell/v2/skill.py,4
-  skills/shell/v3/skill.py,4
-  skills/shell/v7/skill.py,4
-  skills/shell/v5/skill.py,4
-  skills/shell/v1/skill.py,108
-  skills/shell/v4/skill.py,4
-  skills/deps/v2/skill.py,84
-  skills/deps/v3/skill.py,67
-  skills/deps/v1/skill.py,146
-  skills/kalkulator/v9/skill.py,4
-  skills/kalkulator/v6/skill.py,4
-  skills/kalkulator/v2/skill.py,4
-  skills/kalkulator/v3/skill.py,4
-  skills/kalkulator/v7/skill.py,4
-  skills/kalkulator/v5/skill.py,4
-  skills/kalkulator/v8/skill.py,4
-  skills/kalkulator/v1/skill.py,4
-  skills/kalkulator/v4/skill.py,4
-  skills/web_search/providers/duckduckgo/v1/skill.py,131
-  skills/echo/v1/skill.py,22
-  skills/openrouter/v1/skill.py,214
-  skills/git_ops/v1/skill.py,116
-  cores/v1/config.py,105
-  cores/v1/resource_monitor.py,129
-  cores/v1/user_memory.py,148
-  cores/v1/skill_logger.py,123
-  cores/v1/intent_engine.py,239
-  cores/v1/system_identity.py,157
-  cores/v1/garbage_collector.py,248
-  cores/v1/supervisor.py,69
-  cores/v1/smart_intent.py,673
+  cli.py,248
+  core.py,515
   cores/v1/__init__.py,28
-  cores/v1/provider_selector.py,338
-  cores/v1/llm_client.py,307
+  cores/v1/config.py,105
+  cores/v1/core.py,932
   cores/v1/evo_engine.py,339
-  cores/v1/utils.py,100
-  cores/v1/core.py,899
+  cores/v1/garbage_collector.py,248
+  cores/v1/intent_engine.py,239
+  cores/v1/llm_client.py,307
+  cores/v1/logger.py,48
   cores/v1/pipeline_manager.py,39
   cores/v1/preflight.py,324
-  cores/v1/logger.py,48
+  cores/v1/provider_selector.py,338
+  cores/v1/resource_monitor.py,129
+  cores/v1/skill_logger.py,123
   cores/v1/skill_manager.py,442
+  cores/v1/smart_intent.py,673
+  cores/v1/supervisor.py,69
+  cores/v1/system_identity.py,157
+  cores/v1/user_memory.py,148
+  cores/v1/utils.py,100
+  main.py,89
+  seeds/core_v1.py,313
+  seeds/echo_skill_v1.py,19
+  setup.py,40
+  skill.py,78
+  skills/benchmark/v1/skill.py,444
+  skills/deps/v1/skill.py,146
+  skills/deps/v2/skill.py,84
+  skills/deps/v3/skill.py,67
+  skills/devops/v1/skill.py,210
+  skills/echo/v1/skill.py,22
+  skills/git_ops/v1/skill.py,116
+  skills/kalkulator/v1/skill.py,4
+  skills/kalkulator/v10/skill.py,4
+  skills/kalkulator/v2/skill.py,4
+  skills/kalkulator/v3/skill.py,4
+  skills/kalkulator/v4/skill.py,4
+  skills/kalkulator/v5/skill.py,4
+  skills/kalkulator/v6/skill.py,4
+  skills/kalkulator/v7/skill.py,4
+  skills/kalkulator/v8/skill.py,4
+  skills/kalkulator/v9/skill.py,4
+  skills/llm_router/v1/skill.py,109
+  skills/openrouter/v1/skill.py,214
+  skills/openrouter_api_test/v1/skill.py,177
+  skills/shell/v1/skill.py,108
+  skills/shell/v2/skill.py,4
+  skills/shell/v3/skill.py,4
+  skills/shell/v4/skill.py,4
+  skills/shell/v5/skill.py,4
+  skills/shell/v6/skill.py,4
+  skills/shell/v7/skill.py,4
+  skills/stt/providers/vosk/archive/v1/skill.py,131
+  skills/stt/providers/vosk/archive/v3/skill.py,131
+  skills/stt/providers/vosk/archive/v6/skill.py,131
+  skills/stt/providers/vosk/archive/v7/skill.py,173
+  skills/stt/providers/vosk/latest/skill.py,16
+  skills/stt/providers/vosk/stable/skill.py,138
+  skills/tts/providers/espeak/archive/v1/skill.py,53
+  skills/tts/providers/espeak/archive/v1/test.py,41
+  skills/tts/providers/espeak/archive/v1/test_enhanced.py,65
+  skills/tts/providers/espeak/archive/v63/skill.py,17
+  skills/tts/providers/espeak/archive/v72/skill.py,22
+  skills/tts/providers/espeak/latest/skill.py,4
+  skills/tts/providers/espeak/stable/skill.py,53
+  skills/web_search/providers/duckduckgo/v1/skill.py,131
+  tests/__init__.py,0
+  tests/test_e2e.py,1412
 D:
+  cli.py:
+    i: argparse,os,sys,shutil,json,cores.v1.config.{LOGS_DIR,ROOT,STATE_FILE,load_state},pathlib.Path
+    e: print_color,cmd_logs_reset,cmd_cache_reset,cmd_state_reset,cmd_status,cmd_shell,main_cli
+    print_color(color;message)
+    cmd_logs_reset(args)
+    cmd_cache_reset(args)
+    cmd_state_reset(args)
+    cmd_status(args)
+    cmd_shell(args)
+    main_cli()
+  core.py:
+    i: os,sys,json,subprocess,hashlib,traceback,shutil,re,importlib.util,pathlib.Path
+    e: ROOT,SKILLS_DIR,PIPELINES_DIR,LOGS_DIR,REGISTRY_DIR,STATE_FILE,C,cpr
+    C: 
+    LLM: __init__(2),chat(3),gen_code(1),_clean(1)
+    SkillLoader: list_skills(0),latest_v(1),load_module(2),run(3),get_registry(0)  # Load and execute skills dynamically.
+    SkillCreator: __init__(1),create(2),evolve(2),rollback(1)
+    PipelineEngine: __init__(1),build_from_text(1),execute_pipeline(2),save_pipeline(2),list_pipelines(0)  # text2pipeline: natural language -> sk...
+    cpr(c;m)
+    load_state()
+    save_state(s)
+    log_ev(event;data=None)
+    gen_compose(skills;state)
+    main()
+  cores/v1/config.py:
+    i: os,json,datetime,datetime.timezone,pathlib.Path
+    e: ROOT,SKILLS_DIR,PIPELINES_DIR,LOGS_DIR,STATE_FILE,CONFIG_FILE,MAX_EVO_ITERATIONS,_MODEL_CONFIG
+    C: 
+    _load_model_config()
+    get_models_from_tier(tier_name;enabled_only=True)
+    cpr(c;m)
+    load_state()
+    save_state(s)
+    _parse_models_override(raw)
+    get_models_from_config(state)
+  cores/v1/core.py:
+    i: os,sys,json,time,datetime,config.{C,ROOT,SKILLS_DIR},datetime.{timedelta,timezone}
+    e: gen_compose,HELP,COMMANDS,main
+    gen_compose(skills;state)
+    _cmd_help()
+    _cmd_quit()
+    _cmd_skills()
+    _cmd_create(a1;a2)
+    _cmd_test(a1)
+    _cmd_run(a1;a2)
+    _cmd_evolve(a1)
+  cores/v1/evo_engine.py:
+    i: nfo,config.{C,MAX_EVO_ITERATIONS,cpr},preflight.EvolutionGuard
+    e: EvoEngine
+    EvoEngine: __init__(4),handle_request(3),_execute_with_validation(4),_try_fallback_providers(4),_validate_result(4)  # Generic evolutionary algorithm:
+  cores/v1/garbage_collector.py:
+    i: json,shutil,datetime,config.{C,SKILLS_DIR,cpr},datetime.timezone,pathlib.Path
+    e: EvolutionGarbageCollector
+    EvolutionGarbageCollector: __init__(1),is_stub(1),is_broken(1),scan_versions(1),cleanup_provider(2)  # Cleans up failed evolution stubs, pro...
+  cores/v1/intent_engine.py:
+    i: json,re,datetime,config.{SKILLS_DIR,save_state},datetime.timezone,smart_intent.SmartIntentClassifier,utils.clean_json
+    e: IntentEngine
+    IntentEngine: __init__(3),classifier(0),save(0),_update_topics_from_result(1),_recent_topic(1)  # Context-aware intent detection with M...
+  cores/v1/llm_client.py:
+    i: os,json,subprocess,time,re,config.{FREE_MODELS,LOCAL_PREFERRED,TIER_FREE,TIER_LOCAL,TIER_PAID}
+    e: discover_models,LLMClient
+    LLMClient: __init__(4),tier_info(0),_is_available(1),_report_ok(1),_report_fail(2)  # Tiered LLM routing: free remote → loc...
+    _detect_ollama_models()
+    discover_models()
+  cores/v1/logger.py:
+    i: json,datetime,config.LOGS_DIR,datetime.timezone
+    e: Logger
+    Logger: __init__(1),_write(2),_entry(2),core(2),skill(3)  # Per-skill, per-core structured loggin...
+  cores/v1/pipeline_manager.py:
+    i: json,datetime,config.{C,PIPELINES_DIR,cpr},datetime.timezone,utils.{clean_code,clean_json}
+    e: PipelineManager
+    PipelineManager: __init__(3),list_p(0),create_p(2),run_p(2)
+  cores/v1/preflight.py:
+    i: ast,hashlib,re,subprocess,sys,pathlib.Path
+    e: PreflightResult,STDLIB_MODULES,SkillPreflight,EvolutionGuard
+    PreflightResult: __init__(4),__repr__(0),to_dict(0)  # Result of pre-flight validation.
+    SkillPreflight: check_all(1),check_syntax(1),check_imports(2),check_interface(1),auto_fix_imports(1)  # Pre-flight validation for skill files.
+    EvolutionGuard: __init__(0),fingerprint(1),record_error(3),is_repeating(2),get_error_summary(1)  # Prevents evolution loops where the sa...
+  cores/v1/provider_selector.py:
+    i: json,time,config.SKILLS_DIR,pathlib.Path,typing.Optional
+    e: TIER_ORDER,FAILURE_THRESHOLD,DEMOTION_COOLDOWN,SUCCESS_RECOVERY,ProviderInfo,ProviderSelector,ProviderChain
+    ProviderInfo: __init__(2)  # Parsed provider metadata.
+    ProviderSelector: __init__(2),list_capabilities(0),list_providers(1),load_manifest(1),load_meta(2)  # Selects the best available provider f...
+    ProviderChain: __init__(1),_key(2),_get_stats(2),build_chain(3),_reorder_by_fallback(2)  # Ordered provider fallback chain with...
+  cores/v1/resource_monitor.py:
+    i: os,shutil,subprocess,pathlib.Path
+    e: ResourceMonitor
+    ResourceMonitor: __init__(0),snapshot(0),_cpu_count(0),_ram_total(0),_ram_available(0)  # Detects CPU, RAM, GPU, disk, installe...
+  cores/v1/skill_logger.py:
+    i: nfo,config.LOGS_DIR,pathlib.Path
+    e: _NFO_DIR,_SQLITE_PATH,_JSON_PATH,init_nfo,inject_logging,get_skill_logger,query_skill_errors,query_slow_calls
+    init_nfo()
+    inject_logging(mod;skill_name=None)
+    get_skill_logger(skill_name)
+    query_skill_errors(skill_name=None;last_n=20)
+    query_slow_calls(threshold_ms=2000;last_n=10)
+    skill_health_summary(skill_name)
+  cores/v1/skill_manager.py:
+    i: json,hashlib,shutil,subprocess,sys,traceback,datetime,datetime.timezone,importlib.util,pathlib.Path
+    e: SkillManager
+    SkillManager: __init__(3),_collect_versions(1),list_skills(0),_is_rolled_back(1),latest_v(1)
+    _load_bootstrap_skill(name)
+    _load_skill_from_path(p;mod_name='skill')
+  cores/v1/smart_intent.py:
+    i: json,hashlib,time,os,subprocess,sys,dataclasses.{asdict,dataclass,field},pathlib.Path
+    e: IntentResult,TrainingExample,DEFAULT_TRAINING,EmbeddingEngine,LocalLLMClassifier,SmartIntentClassifier,create_smart_classifier
+    IntentResult: to_analysis(0)  # Result of intent classification.
+    TrainingExample: to_dict(0),from_dict(1)  # Single training example: phrase → int...
+    EmbeddingEngine: __init__(1),available(0),_try_init(0),encode(1),similarity(2)  # Sentence-transformers based embedding...
+    LocalLLMClassifier: __init__(0),available(0),_detect(0),classify(3)  # Uses local ollama model (Qwen 3B) for...
+    SmartIntentClassifier: __init__(2),_training_path(0),_load_training_data(0),_save_training_data(0),add_example(4)  # ML-based intent classifier for evo-en...
+    create_smart_classifier(state_dir:Path=None;llm_client=None)->SmartIntentClassifier
+  cores/v1/supervisor.py:
+    i: json,shutil,datetime,config.{ROOT,save_state},datetime.timezone
+    e: Supervisor
+    Supervisor: __init__(2),active(0),active_version(0),list_cores(0),switch(0)  # Manages core versions: can create cor...
+  cores/v1/system_identity.py:
+    i: json,datetime,config.SKILLS_DIR,datetime.timezone
+    e: SkillStatus,SystemIdentity
+    SkillStatus: __init__(5),to_dict(0)  # Runtime status of a single capability.
+    SystemIdentity: __init__(2),refresh_statuses(0),get_status(1),build_system_prompt(0),build_fallback_message(3)  # Builds dynamic system prompt that sep...
+  cores/v1/user_memory.py:
+    i: json,re,datetime,config.{C,cpr,save_state},datetime.timezone,typing.Optional
+    e: _PREF_PATTERNS,_COMPILED,UserMemory
+    UserMemory: __init__(1),directives(0),add(2),remove(1),clear_all(0)  # Persistent long-term memory for user...
+  cores/v1/utils.py:
+    i: os,sys,subprocess,warnings,builtins,logging,rich.console.Console,rich.markdown.RichMarkdown,rich.theme.Theme
+    e: _SPAM,setup_litellm,clean_code,clean_json
+    _quiet_print()
+    _quiet_warning(msg;cat)
+    setup_litellm()
+    clean_code(code)
+    clean_json(text)
   main.py:
     i: os,sys,json,subprocess,datetime,datetime.timezone,importlib.util,pathlib.Path
     e: ROOT,CORES,SKILLS,LOGS,STATE,DEFAULT,log,load_state
@@ -72,107 +214,39 @@ D:
     save_state(s)
     check(version=1)
     bootstrap()
-  tests/test_e2e.py:
-    i: json,os,sys,tempfile,shutil,unittest,cores.v1.config.load_state,pathlib.Path,unittest.mock.{MagicMock,patch}
-    e: ROOT,MockLLM,_SHARED_MOCK_LLM,_SHARED_INTENT,TestIntentEngineKeywords,TestIntentEngineTopics,TestProviderSelector,TestProviderChain
-    MockLLM: __init__(0),set_response(2),chat(3),gen_code(3),gen_pipeline(2)  # Mock LLM that returns predictable res...
-    TestIntentEngineKeywords: setUpClass(0),test_speak_command_pl(0),test_greet_command_pl(0),test_say_command_en(0),test_speak_command_en(0)  # Test that IntentEngine correctly clas...
-    TestIntentEngineTopics: setUp(0),test_topic_from_stt_result(0),test_topic_from_web_result(0),test_topic_from_git_result(0),test_topic_from_shell_result(0)
-    TestProviderSelector: setUp(0),test_list_capabilities(0),test_tts_has_multiple_providers(0),test_stt_has_providers(0),test_espeak_is_lite_tier(0)
-    TestProviderChain: setUp(0),test_build_chain_returns_list(0),test_chain_includes_espeak(0),test_chain_espeak_first_for_quality(0),test_select_best_returns_string(0)
-  skills/llm_router/v1/skill.py:
-    i: subprocess,json,shutil,time,nfo,urllib.request
-    e: LLMRouterSkill,get_info,health_check
-    LLMRouterSkill: execute(1),_discover_local(0),_discover_remote(0),_health_check(2),_full_status(1)  # Model discovery & health checking ski...
+  seeds/core_v1.py:
+    i: os,sys,json,subprocess,hashlib,traceback,shutil,datetime,importlib.util,pathlib.Path
+    e: ROOT,SKILLS_DIR,PIPELINES_DIR,LOGS_DIR,STATE_FILE,C,cpr,load_state
+    C: 
+    LLMClient: __init__(2),chat(3),gen_code(2),gen_pipeline(2)
+    SkillManager: __init__(1),list_skills(0),latest_v(1),create_skill(2),exec_skill(3)
+    PipelineManager: __init__(2),list_p(0),create_p(2),run_p(2)
+    Supervisor: __init__(1),active(0),switch(0),health(1),recover(0)
+    cpr(c;m)
+    load_state()
+    save_state(s)
+    log_ev(event;data=None)
+    _clean(code)
+    gen_compose(skills;state)
+    main()
+  seeds/echo_skill_v1.py:
+    i: json,datetime,datetime.timezone
+    e: get_info,health_check,EchoSkill,execute
+    EchoSkill: execute(1)
     get_info()
     health_check()
-  skills/tts/providers/espeak/archive/v63/skill.py:
-    i: subprocess
-    e: TestSkill,get_info,health_check
-    TestSkill: execute(1)
+    execute(input_data)
+  skill.py:
+    i: subprocess,sys,json,os,tempfile
+    e: get_info,health_check,TTSSkill,execute
+    TTSSkill: execute(1)
     get_info()
     health_check()
-  skills/tts/providers/espeak/archive/v72/skill.py:
-    i: sys,subprocess,urllib.request
-    e: TestSkill,get_info,health_check
-    TestSkill: execute(1)
-    get_info()
-    health_check()
-  skills/tts/providers/espeak/archive/v1/test_enhanced.py:
-    i: sys,os,subprocess,pathlib.Path,skills.tts.v1.skill.TTSSkill
-    e: ROOT,test_tts,get_info,health_check,execute
-    test_tts()
-    get_info()
-    health_check()
-    execute(input_data=None)
-  skills/tts/providers/espeak/archive/v1/skill.py:
-    i: subprocess,shutil
-    e: TTSSkill,get_info,health_check,check_readiness
-    TTSSkill: __init__(0),execute(1)  # Text-to-Speech using espeak (stdlib +...
-    get_info()
-    health_check()
-    check_readiness()
-  skills/tts/providers/espeak/archive/v1/test.py:
-    i: sys,os,pathlib.Path,skills.tts.v1.skill.TTSSkill
-    e: ROOT,test_tts,get_info,health_check,execute
-    test_tts()
-    get_info()
-    health_check()
-    execute(input_data=None)
-  skills/tts/providers/espeak/latest/skill.py:
-    e: TestSkill,get_info,health_check
-    TestSkill: execute(1)
-    get_info()
-    health_check()
-  skills/tts/providers/espeak/stable/skill.py:
-    i: subprocess,shutil
-    e: TTSSkill,get_info,health_check,check_readiness
-    TTSSkill: __init__(0),execute(1)  # Text-to-Speech using espeak (stdlib +...
-    get_info()
-    health_check()
-    check_readiness()
-  skills/devops/v1/skill.py:
-    i: subprocess,sys,os,json,ast,nfo,importlib.util,pathlib.Path
-    e: DevOpsSkill,get_info,health_check
-    DevOpsSkill: check_syntax(1),detect_imports(1),check_deps(1),find_system_alternatives(1),test_skill(2)  # Test, validate and deploy skills in i...
-    get_info()
-    health_check()
-  skills/stt/providers/vosk/archive/v6/skill.py:
-    i: json,os,shutil,subprocess,tempfile,sys,pathlib.Path
-    e: get_info,health_check,STTSkill,execute
-    STTSkill: __init__(0),_record_wav(2),_ensure_wav(2),_transcribe_vosk(2),execute(1)
-    get_info()
-    health_check()
-    execute(input_data:dict)->dict
-  skills/stt/providers/vosk/archive/v3/skill.py:
-    i: json,os,shutil,subprocess,tempfile,sys,pathlib.Path
-    e: get_info,health_check,STTSkill,execute
-    STTSkill: __init__(0),_record_wav(2),_ensure_wav(2),_transcribe_vosk(2),execute(1)
-    get_info()
-    health_check()
-    execute(input_data:dict)->dict
-  skills/stt/providers/vosk/archive/v7/skill.py:
-    i: json,os,shutil,subprocess,tempfile,sys,pathlib.Path
-    e: get_info,health_check,check_readiness,STTSkill,execute
-    STTSkill: __init__(0),_record_wav(2),_ensure_wav(2),_find_model_path(1),_transcribe_vosk(2)
-    get_info()
-    health_check()
-    check_readiness()
-    execute(input_data:dict)->dict
-  skills/stt/providers/vosk/archive/v1/skill.py:
-    i: json,os,shutil,subprocess,sys,tempfile,pathlib.Path
-    e: get_info,health_check,STTSkill,execute
-    STTSkill: __init__(0),_record_wav(2),_ensure_wav(2),_transcribe_vosk(2),execute(1)
-    get_info()
-    health_check()
-    execute(input_data:dict)->dict
-  skills/stt/providers/vosk/stable/skill.py:
-    i: json,os,shutil,subprocess,sys,tempfile,pathlib.Path
-    e: get_info,health_check,STTSkill,execute
-    STTSkill: __init__(0),_record_wav(2),_ensure_wav(2),_transcribe_vosk(3),execute(1)
-    get_info()
-    health_check()
-    execute(input_data:dict)->dict
+    _pip(pkg)
+    _speak_pyttsx3(text;lang='pl')
+    _speak_gtts(text;lang='pl')
+    _speak_espeak(text;lang='pl')
+    execute(input_data)
   skills/benchmark/v1/skill.py:
     i: json,time,os,dataclasses.{asdict,dataclass},pathlib.Path,typing.{Any,Dict,List,Optional}
     e: GoalType,ModelScore,BenchmarkSkill,execute
@@ -180,41 +254,10 @@ D:
     ModelScore: 
     BenchmarkSkill: __init__(0),_load_config(0),_get_models_from_tier(2),execute(1),_recommend_models(2)  # Analyzes and benchmarks LLM models fo...
     execute(params:Dict[str;Any])->Dict[str, Any]
-  skills/shell/v6/skill.py:
-    e: TestSkill,get_info,health_check
-    TestSkill: execute(1)
-    get_info()
-    health_check()
-  skills/shell/v2/skill.py:
-    e: TestSkill,get_info,health_check
-    TestSkill: execute(1)
-    get_info()
-    health_check()
-  skills/shell/v3/skill.py:
-    e: TestSkill,get_info,health_check
-    TestSkill: execute(1)
-    get_info()
-    health_check()
-  skills/shell/v7/skill.py:
-    e: TestSkill,get_info,health_check
-    TestSkill: execute(1)
-    get_info()
-    health_check()
-  skills/shell/v5/skill.py:
-    e: TestSkill,get_info,health_check
-    TestSkill: execute(1)
-    get_info()
-    health_check()
-  skills/shell/v1/skill.py:
-    i: json,os,shutil,subprocess,shlex,sys,nfo
-    e: DANGEROUS_PREFIXES,BLOCKED_COMMANDS,MAX_OUTPUT_LINES,MAX_TIMEOUT,get_info,health_check,ShellSkill,execute
-    ShellSkill: _is_interactive(1),execute(1)
-    get_info()
-    health_check()
-    execute(input_data:dict)->dict
-  skills/shell/v4/skill.py:
-    e: TestSkill,get_info,health_check
-    TestSkill: execute(1)
+  skills/deps/v1/skill.py:
+    i: subprocess,sys,os,json,nfo,importlib.util
+    e: DepsSkill,get_info,health_check
+    DepsSkill: check_python_module(1),check_system_command(1),pip_install(2),scan_system(0),suggest_alternatives(1)  # Detect, install and manage Python and...
     get_info()
     health_check()
   skills/deps/v2/skill.py:
@@ -229,18 +272,31 @@ D:
     DepsSkill: __init__(0),check_system(1),execute(1),get_info(0),health_check(0)
     get_info()
     health_check()
-  skills/deps/v1/skill.py:
-    i: subprocess,sys,os,json,nfo,importlib.util
-    e: DepsSkill,get_info,health_check
-    DepsSkill: check_python_module(1),check_system_command(1),pip_install(2),scan_system(0),suggest_alternatives(1)  # Detect, install and manage Python and...
+  skills/devops/v1/skill.py:
+    i: subprocess,sys,os,json,ast,nfo,importlib.util,pathlib.Path
+    e: DevOpsSkill,get_info,health_check
+    DevOpsSkill: check_syntax(1),detect_imports(1),check_deps(1),find_system_alternatives(1),test_skill(2)  # Test, validate and deploy skills in i...
     get_info()
     health_check()
-  skills/kalkulator/v9/skill.py:
+  skills/echo/v1/skill.py:
+    i: json,datetime,nfo,datetime.timezone
+    e: get_info,health_check,EchoSkill,execute
+    EchoSkill: execute(1)
+    get_info()
+    health_check()
+    execute(input_data)
+  skills/git_ops/v1/skill.py:
+    i: subprocess,os,json,nfo,pathlib.Path
+    e: GitOpsSkill,get_info,health_check
+    GitOpsSkill: __init__(1),_run(2),init(1),status(1),add(2)  # Manage local git repos for skill deve...
+    get_info()
+    health_check()
+  skills/kalkulator/v1/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill: execute(1)
     get_info()
     health_check()
-  skills/kalkulator/v6/skill.py:
+  skills/kalkulator/v10/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill: execute(1)
     get_info()
@@ -255,7 +311,7 @@ D:
     TestSkill: execute(1)
     get_info()
     health_check()
-  skills/kalkulator/v7/skill.py:
+  skills/kalkulator/v4/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill: execute(1)
     get_info()
@@ -265,21 +321,161 @@ D:
     TestSkill: execute(1)
     get_info()
     health_check()
+  skills/kalkulator/v6/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/kalkulator/v7/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
   skills/kalkulator/v8/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill: execute(1)
     get_info()
     health_check()
-  skills/kalkulator/v1/skill.py:
+  skills/kalkulator/v9/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill: execute(1)
     get_info()
     health_check()
-  skills/kalkulator/v4/skill.py:
+  skills/llm_router/v1/skill.py:
+    i: subprocess,json,shutil,time,nfo,urllib.request
+    e: LLMRouterSkill,get_info,health_check
+    LLMRouterSkill: execute(1),_discover_local(0),_discover_remote(0),_health_check(2),_full_status(1)  # Model discovery & health checking ski...
+    get_info()
+    health_check()
+  skills/openrouter/v1/skill.py:
+    i: json,typing.{Any,Dict,List,Optional},urllib.{error,request}
+    e: OpenRouterSkill,execute
+    OpenRouterSkill: __init__(0),execute(1),_fetch_models(0),_score_model(2),_discover_free(1)  # OpenRouter API client for discovering...
+    execute(params:Dict[str;Any])->Dict[str, Any]
+  skills/openrouter_api_test/v1/skill.py:
+    i: json,os,subprocess,sys,time
+    e: OpenRouterAPITestSkill,execute,get_info
+    OpenRouterAPITestSkill: __init__(0),get_info(0),execute(1),_test_api(2),_validate_key(1)  # Test OpenRouter API connectivity and...
+    execute(params:dict)->dict
+    get_info()
+  skills/shell/v1/skill.py:
+    i: json,os,shutil,subprocess,shlex,sys,nfo
+    e: DANGEROUS_PREFIXES,BLOCKED_COMMANDS,MAX_OUTPUT_LINES,MAX_TIMEOUT,get_info,health_check,ShellSkill,execute
+    ShellSkill: _is_interactive(1),execute(1)
+    get_info()
+    health_check()
+    execute(input_data:dict)->dict
+  skills/shell/v2/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill: execute(1)
     get_info()
     health_check()
+  skills/shell/v3/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/shell/v4/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/shell/v5/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/shell/v6/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/shell/v7/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/stt/providers/vosk/archive/v1/skill.py:
+    i: json,os,shutil,subprocess,sys,tempfile,pathlib.Path
+    e: get_info,health_check,STTSkill,execute
+    STTSkill: __init__(0),_record_wav(2),_ensure_wav(2),_transcribe_vosk(2),execute(1)
+    get_info()
+    health_check()
+    execute(input_data:dict)->dict
+  skills/stt/providers/vosk/archive/v3/skill.py:
+    i: json,os,shutil,subprocess,tempfile,sys,pathlib.Path
+    e: get_info,health_check,STTSkill,execute
+    STTSkill: __init__(0),_record_wav(2),_ensure_wav(2),_transcribe_vosk(2),execute(1)
+    get_info()
+    health_check()
+    execute(input_data:dict)->dict
+  skills/stt/providers/vosk/archive/v6/skill.py:
+    i: json,os,shutil,subprocess,tempfile,sys,pathlib.Path
+    e: get_info,health_check,STTSkill,execute
+    STTSkill: __init__(0),_record_wav(2),_ensure_wav(2),_transcribe_vosk(2),execute(1)
+    get_info()
+    health_check()
+    execute(input_data:dict)->dict
+  skills/stt/providers/vosk/archive/v7/skill.py:
+    i: json,os,shutil,subprocess,tempfile,sys,pathlib.Path
+    e: get_info,health_check,check_readiness,STTSkill,execute
+    STTSkill: __init__(0),_record_wav(2),_ensure_wav(2),_find_model_path(1),_transcribe_vosk(2)
+    get_info()
+    health_check()
+    check_readiness()
+    execute(input_data:dict)->dict
+  skills/stt/providers/vosk/stable/skill.py:
+    i: json,os,shutil,subprocess,sys,tempfile,pathlib.Path
+    e: get_info,health_check,STTSkill,execute
+    STTSkill: __init__(0),_record_wav(2),_ensure_wav(2),_transcribe_vosk(3),execute(1)
+    get_info()
+    health_check()
+    execute(input_data:dict)->dict
+  skills/tts/providers/espeak/archive/v1/skill.py:
+    i: subprocess,shutil
+    e: TTSSkill,get_info,health_check,check_readiness
+    TTSSkill: __init__(0),execute(1)  # Text-to-Speech using espeak (stdlib +...
+    get_info()
+    health_check()
+    check_readiness()
+  skills/tts/providers/espeak/archive/v1/test.py:
+    i: sys,os,pathlib.Path,skills.tts.v1.skill.TTSSkill
+    e: ROOT,test_tts,get_info,health_check,execute
+    test_tts()
+    get_info()
+    health_check()
+    execute(input_data=None)
+  skills/tts/providers/espeak/archive/v1/test_enhanced.py:
+    i: sys,os,subprocess,pathlib.Path,skills.tts.v1.skill.TTSSkill
+    e: ROOT,test_tts,get_info,health_check,execute
+    test_tts()
+    get_info()
+    health_check()
+    execute(input_data=None)
+  skills/tts/providers/espeak/archive/v63/skill.py:
+    i: subprocess
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/archive/v72/skill.py:
+    i: sys,subprocess,urllib.request
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/latest/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/stable/skill.py:
+    i: subprocess,shutil
+    e: TTSSkill,get_info,health_check,check_readiness
+    TTSSkill: __init__(0),execute(1)  # Text-to-Speech using espeak (stdlib +...
+    get_info()
+    health_check()
+    check_readiness()
   skills/web_search/providers/duckduckgo/v1/skill.py:
     i: subprocess,json,re,html.parser,urllib.{parse,request}
     e: SimpleHTMLTextExtractor,WebSearchSkill,get_info,health_check
@@ -287,130 +483,11 @@ D:
     WebSearchSkill: _fetch_url(2),search_duckduckgo(2),fetch_page_text(2),search_and_summarize(2),execute(1)  # Search the web and fetch page content...
     get_info()
     health_check()
-  skills/echo/v1/skill.py:
-    i: json,datetime,nfo,datetime.timezone
-    e: get_info,health_check,EchoSkill,execute
-    EchoSkill: execute(1)
-    get_info()
-    health_check()
-    execute(input_data)
-  skills/openrouter/v1/skill.py:
-    i: json,typing.{Any,Dict,List,Optional},urllib.{error,request}
-    e: OpenRouterSkill,execute
-    OpenRouterSkill: __init__(0),execute(1),_fetch_models(0),_score_model(2),_discover_free(1)  # OpenRouter API client for discovering...
-    execute(params:Dict[str;Any])->Dict[str, Any]
-  skills/git_ops/v1/skill.py:
-    i: subprocess,os,json,nfo,pathlib.Path
-    e: GitOpsSkill,get_info,health_check
-    GitOpsSkill: __init__(1),_run(2),init(1),status(1),add(2)  # Manage local git repos for skill deve...
-    get_info()
-    health_check()
-  cores/v1/config.py:
-    i: os,json,datetime,datetime.timezone,pathlib.Path
-    e: ROOT,SKILLS_DIR,PIPELINES_DIR,LOGS_DIR,STATE_FILE,CONFIG_FILE,MAX_EVO_ITERATIONS,_MODEL_CONFIG
-    C: 
-    _load_model_config()
-    get_models_from_tier(tier_name;enabled_only=True)
-    cpr(c;m)
-    load_state()
-    save_state(s)
-    _parse_models_override(raw)
-    get_models_from_config(state)
-  cores/v1/resource_monitor.py:
-    i: os,shutil,subprocess,pathlib.Path
-    e: ResourceMonitor
-    ResourceMonitor: __init__(0),snapshot(0),_cpu_count(0),_ram_total(0),_ram_available(0)  # Detects CPU, RAM, GPU, disk, installe...
-  cores/v1/user_memory.py:
-    i: json,re,datetime,config.{C,cpr,save_state},datetime.timezone,typing.Optional
-    e: _PREF_PATTERNS,_COMPILED,UserMemory
-    UserMemory: __init__(1),directives(0),add(2),remove(1),clear_all(0)  # Persistent long-term memory for user...
-  cores/v1/skill_logger.py:
-    i: nfo,config.LOGS_DIR,pathlib.Path
-    e: _NFO_DIR,_SQLITE_PATH,_JSON_PATH,init_nfo,inject_logging,get_skill_logger,query_skill_errors,query_slow_calls
-    init_nfo()
-    inject_logging(mod;skill_name=None)
-    get_skill_logger(skill_name)
-    query_skill_errors(skill_name=None;last_n=20)
-    query_slow_calls(threshold_ms=2000;last_n=10)
-    skill_health_summary(skill_name)
-  cores/v1/intent_engine.py:
-    i: json,re,datetime,config.{SKILLS_DIR,save_state},datetime.timezone,smart_intent.SmartIntentClassifier,utils.clean_json
-    e: IntentEngine
-    IntentEngine: __init__(3),classifier(0),save(0),_update_topics_from_result(1),_recent_topic(1)  # Context-aware intent detection with M...
-  cores/v1/system_identity.py:
-    i: json,datetime,config.SKILLS_DIR,datetime.timezone
-    e: SkillStatus,SystemIdentity
-    SkillStatus: __init__(5),to_dict(0)  # Runtime status of a single capability.
-    SystemIdentity: __init__(2),refresh_statuses(0),get_status(1),build_system_prompt(0),build_fallback_message(3)  # Builds dynamic system prompt that sep...
-  cores/v1/garbage_collector.py:
-    i: json,shutil,datetime,config.{C,SKILLS_DIR,cpr},datetime.timezone,pathlib.Path
-    e: EvolutionGarbageCollector
-    EvolutionGarbageCollector: __init__(1),is_stub(1),is_broken(1),scan_versions(1),cleanup_provider(2)  # Cleans up failed evolution stubs, pro...
-  cores/v1/supervisor.py:
-    i: json,shutil,datetime,config.{ROOT,save_state},datetime.timezone
-    e: Supervisor
-    Supervisor: __init__(2),active(0),active_version(0),list_cores(0),switch(0)  # Manages core versions: can create cor...
-  cores/v1/smart_intent.py:
-    i: json,hashlib,time,os,subprocess,sys,dataclasses.{asdict,dataclass,field},pathlib.Path
-    e: IntentResult,TrainingExample,DEFAULT_TRAINING,EmbeddingEngine,LocalLLMClassifier,SmartIntentClassifier,create_smart_classifier
-    IntentResult: to_analysis(0)  # Result of intent classification.
-    TrainingExample: to_dict(0),from_dict(1)  # Single training example: phrase → int...
-    EmbeddingEngine: __init__(1),available(0),_try_init(0),encode(1),similarity(2)  # Sentence-transformers based embedding...
-    LocalLLMClassifier: __init__(0),available(0),_detect(0),classify(3)  # Uses local ollama model (Qwen 3B) for...
-    SmartIntentClassifier: __init__(2),_training_path(0),_load_training_data(0),_save_training_data(0),add_example(4)  # ML-based intent classifier for evo-en...
-    create_smart_classifier(state_dir:Path=None;llm_client=None)->SmartIntentClassifier
-  cores/v1/provider_selector.py:
-    i: json,time,config.SKILLS_DIR,pathlib.Path,typing.Optional
-    e: TIER_ORDER,FAILURE_THRESHOLD,DEMOTION_COOLDOWN,SUCCESS_RECOVERY,ProviderInfo,ProviderSelector,ProviderChain
-    ProviderInfo: __init__(2)  # Parsed provider metadata.
-    ProviderSelector: __init__(2),list_capabilities(0),list_providers(1),load_manifest(1),load_meta(2)  # Selects the best available provider f...
-    ProviderChain: __init__(1),_key(2),_get_stats(2),build_chain(3),_reorder_by_fallback(2)  # Ordered provider fallback chain with...
-  cores/v1/llm_client.py:
-    i: os,json,subprocess,time,re,config.{FREE_MODELS,LOCAL_PREFERRED,TIER_FREE,TIER_LOCAL,TIER_PAID}
-    e: discover_models,LLMClient
-    LLMClient: __init__(4),tier_info(0),_is_available(1),_report_ok(1),_report_fail(2)  # Tiered LLM routing: free remote → loc...
-    _detect_ollama_models()
-    discover_models()
-  cores/v1/evo_engine.py:
-    i: nfo,config.{C,MAX_EVO_ITERATIONS,cpr},preflight.EvolutionGuard
-    e: EvoEngine
-    EvoEngine: __init__(4),handle_request(3),_execute_with_validation(4),_try_fallback_providers(4),_validate_result(4)  # Generic evolutionary algorithm:
-  cores/v1/utils.py:
-    i: os,sys,subprocess,warnings,builtins,logging,rich.console.Console,rich.markdown.RichMarkdown,rich.theme.Theme
-    e: _SPAM,setup_litellm,clean_code,clean_json
-    _quiet_print()
-    _quiet_warning(msg;cat)
-    setup_litellm()
-    clean_code(code)
-    clean_json(text)
-  cores/v1/core.py:
-    i: os,sys,json,time,datetime,config.{C,ROOT,SKILLS_DIR},datetime.{timedelta,timezone}
-    e: gen_compose,HELP,COMMANDS,main
-    gen_compose(skills;state)
-    _cmd_help()
-    _cmd_quit()
-    _cmd_skills()
-    _cmd_create(a1;a2)
-    _cmd_test(a1)
-    _cmd_run(a1;a2)
-    _cmd_evolve(a1)
-  cores/v1/pipeline_manager.py:
-    i: json,datetime,config.{C,PIPELINES_DIR,cpr},datetime.timezone,utils.{clean_code,clean_json}
-    e: PipelineManager
-    PipelineManager: __init__(3),list_p(0),create_p(2),run_p(2)
-  cores/v1/preflight.py:
-    i: ast,hashlib,re,subprocess,sys,pathlib.Path
-    e: PreflightResult,STDLIB_MODULES,SkillPreflight,EvolutionGuard
-    PreflightResult: __init__(4),__repr__(0),to_dict(0)  # Result of pre-flight validation.
-    SkillPreflight: check_all(1),check_syntax(1),check_imports(2),check_interface(1),auto_fix_imports(1)  # Pre-flight validation for skill files.
-    EvolutionGuard: __init__(0),fingerprint(1),record_error(3),is_repeating(2),get_error_summary(1)  # Prevents evolution loops where the sa...
-  cores/v1/logger.py:
-    i: json,datetime,config.LOGS_DIR,datetime.timezone
-    e: Logger
-    Logger: __init__(1),_write(2),_entry(2),core(2),skill(3)  # Per-skill, per-core structured loggin...
-  cores/v1/skill_manager.py:
-    i: json,hashlib,shutil,subprocess,sys,traceback,datetime,datetime.timezone,importlib.util,pathlib.Path
-    e: SkillManager
-    SkillManager: __init__(3),_collect_versions(1),list_skills(0),_is_rolled_back(1),latest_v(1)
-    _load_bootstrap_skill(name)
-    _load_skill_from_path(p;mod_name='skill')
+  tests/test_e2e.py:
+    i: json,os,sys,tempfile,shutil,unittest,cores.v1.config.load_state,pathlib.Path,unittest.mock.{MagicMock,patch}
+    e: ROOT,MockLLM,_SHARED_MOCK_LLM,_SHARED_INTENT,TestIntentEngineKeywords,TestIntentEngineTopics,TestProviderSelector,TestProviderChain
+    MockLLM: __init__(0),set_response(2),chat(3),gen_code(3),gen_pipeline(2)  # Mock LLM that returns predictable res...
+    TestIntentEngineKeywords: setUpClass(0),test_speak_command_pl(0),test_greet_command_pl(0),test_say_command_en(0),test_speak_command_en(0)  # Test that IntentEngine correctly clas...
+    TestIntentEngineTopics: setUp(0),test_topic_from_stt_result(0),test_topic_from_web_result(0),test_topic_from_git_result(0),test_topic_from_shell_result(0)
+    TestProviderSelector: setUp(0),test_list_capabilities(0),test_tts_has_multiple_providers(0),test_stt_has_providers(0),test_espeak_is_lite_tier(0)
+    TestProviderChain: setUp(0),test_build_chain_returns_list(0),test_chain_includes_espeak(0),test_chain_espeak_first_for_quality(0),test_select_best_returns_string(0)
