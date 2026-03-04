@@ -45,9 +45,10 @@ class WeatherSkill:
         """Główna funkcja wykonawcza skilla pogodowego."""
         try:
             location = ""
-            # Parse location from free text (e.g. "jaka jest pogoda w Warszawie")
+            # Always parse location from 'text' key as required
             text = params.get("text", "")
             location = _extract_location(text)
+            
             # wttr.in auto-detects from IP when location is empty
             data = _fetch_weather(location)
             
