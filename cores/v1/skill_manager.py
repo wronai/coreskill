@@ -17,6 +17,7 @@ from .config import SKILLS_DIR, save_state, cpr, C
 from .utils import clean_code
 from .preflight import SkillPreflight
 from .skill_logger import inject_logging
+from .prompts import prompt_manager
 
 
 def _load_bootstrap_skill(name):
@@ -185,16 +186,25 @@ class SkillManager:
             sys_ctx = f"\nSystem capabilities: {json.dumps(caps)}"
 
         learning = self.log.learn_summary(name)
-        prompt = (f"Create Python skill '{name}'. {desc}\n"
-                  f"Requirements:\n"
-                  f"- class with execute(input_data:dict)->dict\n"
-                  f"- execute() MUST return dict with 'success':True/False key\n"
-                  f"- get_info()->dict function\n"
-                  f"- health_check()->bool function\n"
-                  f"- if __name__=='__main__' test block\n"
-                  f"- Use ONLY stdlib + available system commands. NO pip packages.\n"
-                  f"- Version: {nv}"
-                  f"{sys_ctx}")
+        # Use prompt template from external configuration
+        prompt = prompt_manager.render("skill_creation", {
+            "name": name,
+            "description": desc,
+            "version": nv,
+            "system_context": sys_ctx
+        }, "template")
+        # Fallback if prompt file is missing
+        if not prompt:
+            prompt = (f"Create Python skill '{name}'. {desc}\n"
+                      f"Requirements:\n"
+                      f"- class with execute(input_data:dict)->dict\n"
+                      f"- execute() MUST return dict with 'success':True/False key\n"
+                      f"- get_info()->dict function\n"
+                      f"- health_check()->bool function\n"
+                      f"- if __name__=='__main__' test block\n"
+                      f"- Use ONLY stdlib + available system commands. NO pip packages.\n"
+                      f"- Version: {nv}"
+                      f"{sys_ctx}")
         code = clean_code(self.llm.gen_code(prompt, learning=learning))
         if not code or "[ERROR]" in code:
             self.log.skill(name, "create_failed", {"error": "LLM returned no code"})
@@ -463,15 +473,20 @@ class SkillManager:
         if user_msg:
             prompt += f"\nUser wanted: {user_msg}"
 
-        prompt += ("\nReturn ONLY the complete fixed Python code."
-                   "\nMUST use only stdlib + available system commands."
-                   "\nexecute() MUST return dict with 'success' key."
-                   "\nMUST include module-level functions: get_info() -> dict, health_check() -> dict."
-                   "\nget_info() returns {'name': '...', 'version': 'v1', 'description': '...'}."
-                   "\nhealth_check() returns {'status': 'ok'}."
-                   "\nMUST include module-level execute(params) that creates class instance and calls .execute(params)."
-                   "\nparams dict ALWAYS has 'text' key with user's raw message. Extract what you need from it."
-                   "\nNEVER require specific param names — always parse from params.get('text','').")
+        # Use prompt template from external configuration
+        evolution_suffix = prompt_manager.render("evolution", {}, "template")
+        # Fallback if prompt file is missing
+        if not evolution_suffix:
+            evolution_suffix = ("\nReturn ONLY the complete fixed Python code."
+                               "\nMUST use only stdlib + available system commands."
+                               "\nexecute() MUST return dict with 'success' key."
+                               "\nMUST include module-level functions: get_info() -> dict, health_check() -> dict."
+                               "\nget_info() returns {'name': '...', 'version': 'v1', 'description': '...'}."
+                               "\nhealth_check() returns {'status': 'ok'}."
+                               "\nMUST include module-level execute(params) that creates class instance and calls .execute(params)."
+                               "\nparams dict ALWAYS has 'text' key with user's raw message. Extract what you need from it."
+                               "\nNEVER require specific param names — always parse from params.get('text','').")
+        prompt += evolution_suffix
 
         code = clean_code(self.llm.gen_code(prompt))
         if not code or "[ERROR]" in code:

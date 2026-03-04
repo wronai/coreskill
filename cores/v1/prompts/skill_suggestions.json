@@ -1,0 +1,13 @@
+{
+  "version": "1.0.0",
+  "description": "Prompt for suggesting new skills based on unhandled user messages",
+  "prompt_type": "user",
+  "template": "User messages that no skill handled:\n{messages}\n\nSuggest 1-3 Python skills. Return JSON: [{\"name\":\"snake_case\",\"description\":\"what it does\"}]",
+  "metadata": {
+    "model": "auto",
+    "temperature": 0.3,
+    "max_tokens": 500,
+    "variables": ["messages"]
+  },
+  "system_context": "Suggest skills. Return ONLY JSON array."
+}

@@ -263,8 +263,12 @@ class EvoEngine:
                     except Exception as e:
                         cpr(C.DIM, f"[PIPE] pip install {pkg} error: {e}")
 
-            # Include avoid-patterns in evolve prompt
+            # Include avoid-patterns and actual input in evolve prompt
             evolve_ctx = error_info
+            evolve_ctx += f"\nActual input passed to execute(): {str(effective_inp)[:200]}"
+            evolve_ctx += ("\nIMPORTANT: params always has 'text' key with user's raw message. "
+                           "Extract what you need from it using regex/parsing. "
+                           "Do NOT require specific param names like 'expression'.")
             if avoid:
                 evolve_ctx += f"\nWAŻNE: unikaj tych błędów z poprzednich iteracji: {'; '.join(avoid[:3])}"
 

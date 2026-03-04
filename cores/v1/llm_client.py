@@ -16,6 +16,7 @@ from .config import (
     DISABLE_LOCAL_MODELS,
 )
 from .utils import litellm, clean_code, clean_json
+from .prompts import prompt_manager
 
 
 def _detect_ollama_models():
@@ -288,31 +289,31 @@ class LLMClient:
         return "not in tier lists"
 
     def gen_code(self, prompt, ctx="", learning=""):
-        s = ("You are an expert Python developer generating skills for evo-engine.\n"
-             "STRICT RULES:\n"
-             "1. Return ONLY valid Python code. No markdown fences (```), no explanations.\n"
-             "2. Use ONLY stdlib + subprocess for system commands. NO pip packages.\n"
-             "3. Must have a class with execute(self, params: dict) -> dict method.\n"
-             "4. execute() MUST return {'success': True/False, ...} with result data.\n"
-             "5. Include proper error handling with try/except.\n"
-             "6. For TTS: use subprocess.run(['espeak', ...]) not pyttsx3/gtts.\n"
-             "7. For HTTP: use urllib.request, not requests.\n"
-             "8. Start IMMEDIATELY with imports, no comments before code.\n"
-             "9. MUST include module-level functions: get_info() -> dict and health_check() -> dict.\n"
-             "   get_info() returns {'name': '...', 'version': 'v1', 'description': '...'}.\n"
-             "   health_check() returns {'status': 'ok'} or {'status': 'error', 'message': '...'}.\n"
-             "10. MUST include module-level execute(params) function that creates class instance and calls .execute(params).\n"
-             "11. params dict ALWAYS has 'text' key with the user's raw message. Extract what you need from it.\n"
-             "    Example: for calculator, extract math expression from params.get('text','') using regex.\n"
-             "    NEVER require specific param names like 'expression' — always parse from 'text'.")
+        # Load system prompt from external configuration
+        s = prompt_manager.get("skill_generation", "content")
+        if not s:
+            # Fallback if prompt file is missing
+            s = ("You are an expert Python developer generating skills for evo-engine.\n"
+                 "STRICT RULES:\n"
+                 "1. Return ONLY valid Python code. No markdown fences (```), no explanations.\n"
+                 "2. Use ONLY stdlib + subprocess for system commands. NO pip packages.\n"
+                 "3. Must have a class with execute(self, params: dict) -> dict method.\n"
+                 "4. execute() MUST return {'success': True/False, ...} with result data.\n"
+                 "5. Include proper error handling with try/except.\n"
+                 "6. Start IMMEDIATELY with imports, no comments before code.\n"
+                 "7. MUST include module-level functions: get_info() and health_check().")
         if ctx: s += f"\nContext:\n{ctx}"
         if learning: s += f"\nLearnings from past attempts:\n{learning}"
         return self.chat([{"role":"system","content":s},
                           {"role":"user","content":prompt}], 0.3)
 
     def gen_pipeline(self, prompt, skills):
-        s = ('Return ONLY JSON: {"name":"...","steps":[{"skill":"...","version":"v1",'
-             '"input":{},"output_key":"step_1"}]}\nSkills: ' + json.dumps(skills))
+        # Load system prompt from external configuration
+        s = prompt_manager.render("pipeline_generation", {"skills": json.dumps(skills)}, "content")
+        if not s:
+            # Fallback if prompt file is missing
+            s = ('Return ONLY JSON: {"name":"...","steps":[{"skill":"...","version":"v1",'
+                 '"input":{},"output_key":"step_1"}]}\nSkills: ' + json.dumps(skills))
         return self.chat([{"role":"system","content":s},
                           {"role":"user","content":prompt}], 0.2)
 

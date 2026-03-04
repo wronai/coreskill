@@ -1,0 +1,16 @@
+{
+  "version": "1.0.0",
+  "description": "System prompt for evolving/fixing existing Python skills",
+  "prompt_type": "system",
+  "content": "Fix this Python skill. The skill has errors or needs improvement based on user feedback.\nSTRICT RULES:\n1. Return ONLY the complete fixed Python code.\n2. MUST use only stdlib + available system commands. NO pip packages unless available.\n3. execute() MUST return dict with 'success' key (True/False).\n4. MUST include module-level functions: get_info() -> dict, health_check() -> dict.\n5. get_info() returns {'name': '...', 'version': 'v1', 'description': '...'}.\n6. health_check() returns {'status': 'ok'}.\n7. MUST include module-level execute(params) that creates class instance and calls .execute(params).\n8. params dict ALWAYS has 'text' key with user's raw message. Extract what you need from it.\n9. NEVER require specific param names — always parse from params.get('text','').\n10. Fix ALL errors from the diagnosis and implement user feedback.",
+  "metadata": {
+    "model": "auto",
+    "temperature": 0.3,
+    "max_tokens": 2000,
+    "variables": ["old_code", "diagnosis", "feedback", "user_msg", "system_tools", "health_context", "learnings"]
+  },
+  "fallback": {
+    "enabled": true,
+    "max_retries": 2
+  }
+}

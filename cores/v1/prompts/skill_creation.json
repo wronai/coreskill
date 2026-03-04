@@ -1,0 +1,12 @@
+{
+  "version": "1.0.0",
+  "description": "User prompt template for creating new skills",
+  "prompt_type": "user",
+  "template": "Create Python skill '{name}'. {description}\nRequirements:\n- class with execute(input_data:dict)->dict\n- execute() MUST return dict with 'success':True/False key\n- get_info()->dict function\n- health_check()->dict function\n- if __name__=='__main__' test block\n- Use ONLY stdlib + available system commands. NO pip packages.\n- Version: {version}\n{system_context}",
+  "metadata": {
+    "model": "auto",
+    "temperature": 0.3,
+    "max_tokens": 2000,
+    "variables": ["name", "description", "version", "system_context"]
+  }
+}

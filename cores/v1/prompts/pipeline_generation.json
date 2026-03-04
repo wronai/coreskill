@@ -1,0 +1,12 @@
+{
+  "version": "1.0.0",
+  "description": "Prompt for generating pipeline JSON from user request",
+  "prompt_type": "system",
+  "content": "Return ONLY JSON: {\"name\":\"...\",\"steps\":[{\"skill\":\"...\",\"version\":\"v1\",\"input\":{},\"output_key\":\"step_1\"}]}\nSkills: {skills}",
+  "metadata": {
+    "model": "auto",
+    "temperature": 0.2,
+    "max_tokens": 500,
+    "variables": ["skills"]
+  }
+}

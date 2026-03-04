@@ -1,0 +1,13 @@
+{
+  "version": "1.0.0",
+  "description": "Prompt for intent classification in SmartIntentClassifier tier 3",
+  "prompt_type": "system",
+  "content": "Intent classifier. Return ONLY JSON.",
+  "user_template": "Classify intent. Skills: [{skills}]\nMessage: \"{user_msg}\"\nReturn ONLY JSON: {{\"action\":\"use|create|evolve|chat\",\"skill\":\"name\",\"goal\":\"...\"}}",
+  "metadata": {
+    "model": "auto",
+    "temperature": 0.1,
+    "max_tokens": 100,
+    "variables": ["skills", "user_msg"]
+  }
+}
