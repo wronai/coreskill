@@ -3,7 +3,6 @@ import re
 import sys
 import ast
 import operator
-import urllib.request
 
 def get_info():
     return {
@@ -23,18 +22,11 @@ class SafeExpressionEvaluator:
             ast.Mult: operator.mul,
             ast.Div: operator.truediv,
             ast.USub: operator.neg,
-            ast.Pow: operator.pow,
-            ast.Mod: operator.mod,
-            ast.FloorDiv: operator.floordiv,
-        }
-        self.allowed_node_types = {
-            ast.Expression, ast.BinOp, ast.UnaryOp, ast.Constant, ast.Load,
-            ast.Add, ast.Sub, ast.Mult, ast.Div, ast.USub, ast.Pow, ast.Mod, ast.FloorDiv,
-            ast.Call, ast.Name
+            ast.UAdd: operator.pos # Added for unary plus
         }
 
     def _eval(self, node):
-        if isinstance(node, ast.Constant):
+        if isinstance(node, ast.Constant): # Changed from ast.Num to ast.Constant for Python 3.8+
             return node.value
         elif isinstance(node, ast.BinOp):
             left = self._eval(node.left)
@@ -45,8 +37,6 @@ class SafeExpressionEvaluator:
                 raise TypeError(f"Unsupported binary operator: {op_type.__name__}")
             if op == operator.truediv and right == 0:
                 raise ZeroDivisionError("division by zero")
-            if op == operator.floordiv and right == 0:
-                raise ZeroDivisionError("division by zero")
             return op(left, right)
         elif isinstance(node, ast.UnaryOp):
             operand = self._eval(node.operand)
@@ -55,30 +45,23 @@ class SafeExpressionEvaluator:
             if op is None:
                 raise TypeError(f"Unsupported unary operator: {op_type.__name__}")
             return op(operand)
-        elif isinstance(node, ast.Call):
-            if isinstance(node.func, ast.Name) and node.func.id == 'abs':
-                if len(node.args) == 1 and not node.keywords:
-                    return abs(self._eval(node.args[0]))
-            raise TypeError(f"Unsupported function call: {getattr(node.func, 'id', 'unknown')}")
-        elif isinstance(node, ast.Name):
-            # Allow specific names if needed, e.g., math constants
-            if node.id == 'pi':
-                return 3.141592653589793
-            elif node.id == 'e':
-                return 2.718281828459045
-            raise NameError(f"Unsupported name: {node.id}")
         else:
             raise TypeError(f"Unsupported AST node type: {type(node).__name__}")
 
     def evaluate(self, expression):
         try:
             tree = ast.parse(expression, mode='eval')
+            # Ensure only allowed nodes are present
+            allowed_nodes = (
+                ast.Expression, ast.BinOp, ast.UnaryOp, ast.Constant, # Changed ast.Num to ast.Constant
+                ast.Load, ast.Add, ast.Sub, ast.Mult, ast.Div, ast.USub, ast.UAdd
+            )
             for node in ast.walk(tree):
-                if type(node) not in self.allowed_node_types:
-                    raise ValueError(f"Disallowed node type: {type(node).__name__}")
+                if not isinstance(node, allowed_nodes):
+                    raise ValueError(f"Disallowed node type in expression: {type(node).__name__}")
 
             return self._eval(tree.body)
-        except (SyntaxError, ValueError, TypeError, ZeroDivisionError, NameError) as e:
+        except (SyntaxError, ValueError, TypeError, ZeroDivisionError) as e:
             raise e
         except Exception as e:
             raise RuntimeError(f"Unexpected error during evaluation: {e}")
@@ -89,32 +72,36 @@ class Kalkulator:
         try:
             text = params.get('text', '').strip()
             if not text:
-                return {'success': False, 'error': 'Brak wyrażenia do obliczenia.', 'spoken': 'Proszę podać wyrażenie do obliczenia.'}
+                return {'success': False, 'error': 'Brak wyrażenia do obliczenia.'}
 
-            # Remove potential TTS commands or other noise
-            text = re.sub(r'^(policz mi|oblicz|ile to jest)\s*', '', text, flags=re.IGNORECASE).strip()
+            # Use regex to extract potential mathematical expression, allowing numbers, operators, parentheses, and spaces
+            # This is a more robust way to extract the expression from the user's text
+            match = re.search(r'([\d\s\+\-\*\/\(\)\.eE]+)', text)
+            if not match:
+                return {'success': False, 'error': 'Nie można znaleźć wyrażenia matematycznego w tekście.'}
 
-            if not text:
-                return {'success': False, 'error': 'Brak wyrażenia do obliczenia po usunięciu komendy.', 'spoken': 'Nie udało się rozpoznać wyrażenia. Proszę podać je ponownie.'}
+            expression_part = match.group(1)
 
-            # Basic sanitization: remove whitespace
-            expression = text.replace(" ", "")
+            # Remove all whitespace for cleaner parsing by ast
+            expression = expression_part.replace(" ", "")
+
+            if not expression:
+                return {'success': False, 'error': 'Wyrażenie matematyczne jest puste po usunięciu spacji.'}
 
             # More robust sanitization using ast
             evaluator = SafeExpressionEvaluator()
             result = evaluator.evaluate(expression)
 
-            spoken_result = f"Wynik to {result}"
-            return {'success': True, 'result': str(result), 'spoken': spoken_result}
+            return {'success': True, 'result': str(result)}
 
         except SyntaxError:
-            return {'success': False, 'error': 'Błąd składni w wyrażeniu.', 'spoken': 'Wystąpił błąd składni w podanym wyrażeniu.'}
+            return {'success': False, 'error': 'Błąd składni w wyrażeniu.'}
         except ZeroDivisionError:
-            return {'success': False, 'error': 'Dzielenie przez zero jest niedozwolone.', 'spoken': 'Nie można dzielić przez zero.'}
-        except (ValueError, TypeError, NameError) as e:
-            return {'success': False, 'error': str(e), 'spoken': f'Nieprawidłowe wyrażenie: {str(e)}'}
+            return {'success': False, 'error': 'Dzielenie przez zero jest niedozwolone.'}
+        except (ValueError, TypeError) as e:
+            return {'success': False, 'error': str(e)}
         except Exception as e:
-            return {'success': False, 'error': f'Wystąpił nieoczekiwany błąd: {str(e)}', 'spoken': 'Wystąpił nieoczekiwany błąd podczas obliczeń.'}
+            return {'success': False, 'error': f'Wystąpił nieoczekiwany błąd: {str(e)}'}
 
 def execute(params: dict) -> dict:
     kalkulator_skill = Kalkulator()
@@ -145,157 +132,15 @@ if __name__ == '__main__':
         "()", # Empty parentheses
         "5 * (3 + 2) / 5",
         "100 / (2 * (5 - 5))", # Division by zero within nested parentheses
-        "1 + 2 * 3",
-        "policz mi 5 + 5",
-        "oblicz 100 / 2",
-        "ile to jest 7 * 8",
-        "abs(-5)",
-        "2 ** 3", # Power operator
-        "10 % 3", # Modulo operator
-        "10 // 3", # Floor division operator
-        "pi * 2",
-        "e + 1",
-        "2 + abs(-3)",
-        "10 / (2 * (3 - 3))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
-        "2 + (3 * 4) - 1",
-        "100 / (2 * (5 - 5))",
+        "1 + 2 * 3", # Example from user prompt
+        "a ile to 100 / 7?", # User's example
+        "oblicz 2 * (3 + 4)" # Another example
+    ]
+
+    for expr in test_expressions:
+        params = {'text': expr}
+        result = execute(params)
+        print(f"Input: '{expr}' -> Result: {result}")
+
+    print("\nInfo:", get_info())
+    print("Health Check:", health_check())
