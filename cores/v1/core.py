@@ -557,15 +557,78 @@ def _handle_outcome(outcome, intent, conv, identity=None):
 
 def _handle_chat(llm, sm, logger, conv, identity=None, memory=None):
     """Generate LLM response. Returns response text (or None on error)."""
+    import os as _os
+    
+    # Build enhanced system context with env vars and skills
+    _env_ctx = []
+    _key_env = ['HOME', 'USER', 'PATH', 'PWD', 'SHELL', 'TERM', 'EVO_TEXT_ONLY',
+                'OPENROUTER_API_KEY', 'OLLAMA_HOST', 'DISPLAY', 'XDG_SESSION_TYPE',
+                'XDG_CURRENT_DESKTOP', 'LANG', 'LC_ALL']
+    for _k in _key_env:
+        _v = _os.environ.get(_k)
+        if _v:
+            if 'KEY' in _k or 'TOKEN' in _k or 'SECRET' in _k:
+                _v = _v[:8] + "..." if len(_v) > 12 else "***"
+            _env_ctx.append(f"  {_k}={_v}")
+    
+    # Get skills with descriptions
+    _skills_info = []
+    for _name, _skill in sm.list_skills().items():
+        try:
+            if hasattr(_skill, 'get_info'):
+                _info = _skill.get_info()
+                _desc = _info.get('description', 'brak opisu')
+                _caps = _info.get('capabilities', [])
+                _caps_str = ', '.join(_caps[:3]) if _caps else ''
+                _skills_info.append(f"  {_name}: {_desc[:60]}{'...' if len(_desc) > 60 else ''}" + (f" [{_caps_str}]" if _caps_str else ""))
+            else:
+                _skills_info.append(f"  {_name}: (skill bez opisu)")
+        except Exception:
+            _skills_info.append(f"  {_name}: (błąd odczytu info)")
+    
     if identity:
         sp = identity.build_system_prompt()
     else:
         from datetime import datetime as _dt
         _now = _dt.now().strftime("%Y-%m-%d %H:%M:%S (%A)")
-        sp = (f"AKTUALNY CZAS SYSTEMOWY: {_now}\n"
-              "NIGDY nie wymyślaj daty/godziny — używaj WYŁĄCZNIE powyższego czasu.\n\n"
-              "Jesteś evo-engine, ewolucyjny asystent AI. "
-              f"Masz umiejętności (skills): {json.dumps(list(sm.list_skills().keys()))}.")
+        # Fallback prompt must still tell the LLM what integrations/skills are available.
+        # IMPORTANT: never include secret VALUES, only names + whether present.
+        _skills = list(sm.list_skills().keys())
+        _env_candidates = [
+            "OPENROUTER_API_KEY",
+            "OPENAI_API_KEY",
+            "ANTHROPIC_API_KEY",
+            "GOOGLE_API_KEY",
+            "MOONSHOT_API_KEY",
+            "OLLAMA_HOST",
+            "EVO_MODEL",
+            "EVO_TEXT_ONLY",
+        ]
+        _env_lines = []
+        for k in _env_candidates:
+            _env_lines.append(f"- {k}: {'SET' if os.environ.get(k) else 'UNSET'}")
+
+        sp = (
+            f"AKTUALNY CZAS SYSTEMOWY: {_now}\n"
+            "NIGDY nie wymyślaj daty/godziny — używaj WYŁĄCZNIE powyższego czasu.\n\n"
+            "Jesteś evo-engine, ewolucyjny asystent AI połączony z systemem skills.\n"
+            "Nigdy nie mów, że nie umiesz — używaj skill-i.\n\n"
+            f"DOSTĘPNE SKILLS: {json.dumps(_skills, ensure_ascii=False)}\n\n"
+            "DOSTĘPNE ZMIENNE ŚRODOWISKOWE (tylko nazwy, bez wartości):\n"
+            + "\n".join(_env_lines)
+        )
+
+    # Always provide the LLM with a concise, safe snapshot of env+skills.
+    # Values are masked; this is informational so the LLM knows what it can use.
+    if _env_ctx:
+        sp += "\n\nZMIENNE ŚRODOWISKOWE (maskowane):\n" + "\n".join(_env_ctx[:20])
+        if len(_env_ctx) > 20:
+            sp += f"\n  ... i {len(_env_ctx) - 20} innych"
+    if _skills_info:
+        sp += "\n\nSKILLS (skrót):\n" + "\n".join(_skills_info[:20])
+        if len(_skills_info) > 20:
+            sp += f"\n  ... i {len(_skills_info) - 20} innych"
+    
     if memory:
         mem_ctx = memory.build_system_context()
         if mem_ctx:

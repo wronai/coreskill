@@ -124,6 +124,69 @@ class SystemIdentity:
 
         capabilities = "TWOJE ZDOLNOŚCI (skills systemu evo-engine):\n" + "\n".join(cap_lines) + "\n"
 
+        # Provide environment-variable context (names only, no values) so the LLM knows
+        # what providers/integrations can be used.
+        env_candidates = [
+            "OPENROUTER_API_KEY",
+            "OPENAI_API_KEY",
+            "ANTHROPIC_API_KEY",
+            "GOOGLE_API_KEY",
+            "MOONSHOT_API_KEY",
+            "OLLAMA_HOST",
+            "EVO_MODEL",
+            "EVO_TEXT_ONLY",
+        ]
+        env_lines = []
+        for k in env_candidates:
+            present = bool(os.environ.get(k, ""))
+            env_lines.append(f"  - {k}: {'SET' if present else 'UNSET'}")
+
+        # Also include any EVO_* flags (names only) for debugging/behavior shaping.
+        for k in sorted(os.environ.keys()):
+            if k.startswith("EVO_") and k not in env_candidates:
+                present = bool(os.environ.get(k, ""))
+                env_lines.append(f"  - {k}: {'SET' if present else 'UNSET'}")
+
+        env_ctx = (
+            "\nKONTEKST ŚRODOWISKA (zmienne środowiskowe; TYLKO nazwy, BEZ wartości/sekretów):\n"
+            + "\n".join(env_lines)
+            + "\n"
+        )
+
+        # Detailed skills inventory (not just descriptions). This tells the LLM what it can invoke.
+        inv_lines = []
+        if self.sm:
+            for skill_name in sorted(self.sm.list_skills().keys()):
+                st = self._skill_statuses.get(skill_name)
+                provider = getattr(st, "provider", None) if st else None
+                version = getattr(st, "version", None) if st else None
+                health = "OK" if (st and st.healthy) else ("BROKEN" if st else "UNKNOWN")
+                pv = ""
+                if provider:
+                    pv += f" provider={provider}"
+                if version:
+                    pv += f" version={version}"
+                # Try to get description from skill's get_info()
+                desc = ""
+                try:
+                    skill_obj = self.sm.list_skills().get(skill_name)
+                    if skill_obj and hasattr(skill_obj, 'get_info'):
+                        info = skill_obj.get_info()
+                        if info:
+                            desc = info.get('description', '')[:50]
+                except Exception:
+                    pass
+                if desc:
+                    inv_lines.append(f"  - {skill_name}: {health}{pv} | {desc}...")
+                else:
+                    inv_lines.append(f"  - {skill_name}: {health}{pv}")
+
+        inventory = (
+            "\nINWENTARZ SKILLS (możesz je REALNIE wywołać przez system, a nie przez import):\n"
+            + ("\n".join(inv_lines) if inv_lines else "  - (brak danych)")
+            + "\n"
+        )
+
         rules = (
             "\nZASADY ODPOWIEDZI:\n"
             "1. Odpowiadaj po polsku jeśli user mówi po polsku.\n"
@@ -139,7 +202,7 @@ class SystemIdentity:
             "10. Przy tworzeniu czegokolwiek - kalkuluj: co najtańsze, najszybsze.\n"
         )
 
-        return identity + capabilities + rules
+        return identity + capabilities + env_ctx + inventory + rules
 
     def build_fallback_message(self, failed_skill, error=None, attempts=0):
         """Generate appropriate failure message (NOT 'I can't')."""
