@@ -13,11 +13,11 @@
     }
   },
   "providers": [
+    "pyttsx3",
     "piper",
     "espeak",
-    "pyttsx3",
     "coqui"
   ],
-  "default_provider": "espeak",
+  "default_provider": "pyttsx3",
   "selection_strategy": "best_available"
 }

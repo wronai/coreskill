@@ -13,9 +13,9 @@
     }
   },
   "providers": [
-    "vosk",
-    "whisper"
+    "whisper",
+    "vosk"
   ],
-  "default_provider": "vosk",
+  "default_provider": "whisper",
   "selection_strategy": "best_available"
 }
