@@ -1492,6 +1492,28 @@ def _auto_save_preference(ui, memory):
 
 # ─── Main ────────────────────────────────────────────────────────────
 def main():
+    # Setup signal handlers for graceful shutdown
+    import signal
+    _shutdown_requested = False
+    
+    def _signal_handler(signum, frame):
+        nonlocal _shutdown_requested
+        if not _shutdown_requested:
+            _shutdown_requested = True
+            cpr(C.DIM, f"\n[SIGNAL] Received {signal.Signals(signum).name}, shutting down gracefully...")
+            # Save any pending state
+            try:
+                if 'intent' in dir():
+                    intent.save()
+                if 'logger' in dir():
+                    logger.core("shutdown", {"reason": "signal", "signum": signum})
+            except Exception:
+                pass
+        raise SystemExit(0)
+    
+    signal.signal(signal.SIGTERM, _signal_handler)
+    signal.signal(signal.SIGINT, _signal_handler)
+    
     cmd_ctx, conv, memory = _boot()
     sm, llm, evo, intent, logger = (
         cmd_ctx["sm"], cmd_ctx["llm"], cmd_ctx["evo"],

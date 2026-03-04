@@ -21,6 +21,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .preflight import SkillPreflight, PreflightResult
+from .skill_schema import SkillSchemaValidator, ValidationResult
+from .metrics_collector import record_operation
 
 
 # ─── Quality Report ──────────────────────────────────────────────────
@@ -60,15 +62,17 @@ class SkillQualityGate:
 
     # Check weights (must sum to 1.0)
     WEIGHTS = {
-        "preflight": 0.30,
+        "preflight": 0.25,
+        "manifest_valid": 0.10,   # NEW: schema validation
         "health_check": 0.15,
-        "test_exec": 0.30,
+        "test_exec": 0.25,
         "output_valid": 0.15,
         "code_quality": 0.10,
     }
 
     def __init__(self, preflight: SkillPreflight = None):
         self.preflight = preflight or SkillPreflight()
+        self.schema_validator = SkillSchemaValidator()
 
     def evaluate(self, skill_path: Path, skill_name: str = "",
                  test_input: dict = None) -> QualityReport:
@@ -79,6 +83,9 @@ class SkillQualityGate:
 
         # 1. Preflight
         scores["preflight"] = self._check_preflight(skill_path, report)
+
+        # 1.5. Manifest schema validation (NEW)
+        scores["manifest_valid"] = self._check_manifest_schema(skill_path, report)
 
         # 2-4 require loadable module — skip if preflight failed
         if scores["preflight"] > 0:
@@ -98,6 +105,19 @@ class SkillQualityGate:
         total = sum(scores[k] * self.WEIGHTS[k] for k in self.WEIGHTS)
         report.score = round(total, 3)
         report.details["scores"] = scores
+        
+        # Record metrics
+        record_operation(
+            operation="quality_gate",
+            duration_ms=sum(scores.values()) * 10,  # Approximate
+            success=report.ok,
+            details={
+                "skill": name,
+                "score": report.score,
+                "checks": {k: scores[k] for k in scores}
+            }
+        )
+        
         return report
 
     def should_register(self, report: QualityReport) -> bool:
@@ -120,6 +140,41 @@ class SkillQualityGate:
             return 1.0
         report.failed.append(f"preflight:{pf.stage}")
         report.details["preflight_error"] = pf.error
+        return 0.0
+
+    def _check_manifest_schema(self, skill_path: Path,
+                                  report: QualityReport) -> float:
+        """Check 1.5: Validate manifest.json against schema."""
+        # Look for manifest in skill parent directory
+        skill_dir = skill_path.parent
+        # Walk up to find the skill root (where manifest.json should be)
+        manifest = None
+        current = skill_dir
+        for _ in range(3):  # Try up to 3 levels up
+            m = current / "manifest.json"
+            if m.exists():
+                manifest = m
+                break
+            if current.name == "skills" or current == current.parent:
+                break
+            current = current.parent
+        
+        if not manifest:
+            # No manifest — not a failure but warning
+            report.warnings.append("manifest_valid:missing")
+            report.details["manifest_path"] = None
+            return 0.5  # Partial credit
+        
+        # Validate the manifest
+        result = self.schema_validator.validate_file(manifest)
+        if result.is_ok():
+            report.passed.append("manifest_valid")
+            report.details["manifest_path"] = str(manifest)
+            return 1.0
+        
+        report.failed.append(f"manifest_valid:{len(result.errors)}_errors")
+        report.details["manifest_errors"] = result.errors[:5]  # First 5 errors
+        report.details["manifest_path"] = str(manifest)
         return 0.0
 
     def _check_health(self, skill_path: Path,

@@ -1,17 +1,17 @@
-# coreskill | 130f 33970L | python:130
+# coreskill | 129f 35055L | python:132
 # Keys: M=modules, D=details, i=imports, c=classes, f=functions, m=methods
-M[130]:
+M[129]:
   __init__.py,19
   build_core.py,525
   cli.py,248
   core.py,515
-  cores/v1/__init__.py,55
+  cores/v1/__init__.py,78
   cores/v1/adaptive_monitor.py,188
   cores/v1/auto_repair.py,473
   cores/v1/bandit_selector.py,136
-  cores/v1/config.py,193
+  cores/v1/config.py,196
   cores/v1/config_generator.py,221
-  cores/v1/core.py,1259
+  cores/v1/core.py,1276
   cores/v1/event_bus.py,94
   cores/v1/evo_engine.py,638
   cores/v1/evo_journal.py,350
@@ -27,12 +27,13 @@ M[130]:
   cores/v1/learned_repair.py,160
   cores/v1/llm_client.py,335
   cores/v1/logger.py,121
+  cores/v1/metrics_collector.py,307
   cores/v1/pipeline_manager.py,39
   cores/v1/preflight.py,324
   cores/v1/proactive_scheduler.py,195
   cores/v1/prompts/__init__.py,130
   cores/v1/provider_selector.py,352
-  cores/v1/quality_gate.py,235
+  cores/v1/quality_gate.py,267
   cores/v1/repair_journal.py,356
   cores/v1/resilience.py,147
   cores/v1/resource_monitor.py,151
@@ -40,7 +41,8 @@ M[130]:
   cores/v1/self_reflection.py,509
   cores/v1/session_config.py,394
   cores/v1/skill_logger.py,245
-  cores/v1/skill_manager.py,487
+  cores/v1/skill_manager.py,497
+  cores/v1/skill_schema.py,386
   cores/v1/skill_validator.py,132
   cores/v1/smart_intent.py,722
   cores/v1/stable_snapshot.py,318
@@ -55,6 +57,8 @@ M[130]:
   examples/basic/02_memory.py,32
   examples/skills/01_create.py,106
   main.py,89
+  scripts/benchmark_system.py,259
+  scripts/generate_manifests.py,152
   scripts/simulate.py,446
   seeds/core_v1.py,313
   seeds/echo_skill_v1.py,19
@@ -69,12 +73,11 @@ M[130]:
   skills/deps/v3/skill.py,67
   skills/devops/v1/skill.py,213
   skills/diagnostic_runner/v1/skill.py,114
-  skills/echo/v10/skill.py,67
   skills/echo/v8/skill.py,67
   skills/echo/v9/skill.py,67
   skills/first_installment/v1/skill.py,55
-  skills/gbp_to_jpy_converter/v2/skill.py,94
-  skills/gbp_to_jpy_converter/v3/skill.py,94
+  skills/gbp_to_jpy_converter/v4/skill.py,99
+  skills/gbp_to_jpy_converter/v5/skill.py,104
   skills/git_ops/v1/skill.py,120
   skills/hw_test/v2/skill.py,439
   skills/hw_test/v3/skill.py,1367
@@ -92,8 +95,6 @@ M[130]:
   skills/openrouter_api_test/v1/skill.py,179
   skills/password_generator/v5/skill.py,70
   skills/password_generator/v6/skill.py,66
-  skills/pound_to_yen_converter/v1/skill.py,78
-  skills/pound_to_yen_converter/v2/skill.py,76
   skills/pound_to_yen_converter/v3/skill.py,80
   skills/pound_to_yen_converter/v4/skill.py,88
   skills/shell/v1/skill.py,128
@@ -105,7 +106,6 @@ M[130]:
   skills/stt/providers/whisper/latest/skill.py,248
   skills/system_info/v3/skill.py,64
   skills/system_info/v4/skill.py,72
-  skills/test_supervisor_probe/v10/skill.py,38
   skills/test_supervisor_probe/v8/skill.py,39
   skills/test_supervisor_probe/v9/skill.py,43
   skills/text_processor_/v6/skill.py,47
@@ -120,11 +120,10 @@ M[130]:
   skills/tts/providers/pyttsx3/latest/skill.py,4
   skills/tts/providers/pyttsx3/stable/skill.py,70
   skills/weather/v1/skill.py,68
-  skills/weather_gdansk/v10/skill.py,119
   skills/weather_gdansk/v8/skill.py,166
   skills/weather_gdansk/v9/skill.py,151
   skills/web_search/providers/duckduckgo/archive/v1/skill.py,131
-  skills/web_search/providers/duckduckgo/latest/skill.py,170
+  skills/web_search/providers/duckduckgo/latest/skill.py,208
   skills/web_search/providers/duckduckgo/stable/skill.py,135
   skills/zarz_dzania/v7/skill.py,105
   skills/zarz_dzania/v8/skill.py,107
@@ -268,6 +267,19 @@ D:
     i: json,datetime,config.LOGS_DIR,datetime.timezone,pathlib.Path
     e: Logger
     Logger: __init__(1),_write(2),_write_markdown(2),_format_markdown(1),_entry(2)  # Per-skill, per-core structured loggin...
+  cores/v1/metrics_collector.py:
+    i: json,time,datetime,dataclasses.{asdict,dataclass,field},datetime.timezone,pathlib.Path,typing.{Any,Optional}
+    e: METRICS_DIR,SKILL_METRICS_FILE,SYSTEM_METRICS_FILE,OPERATIONS_FILE,SkillMetric,OperationMetric,SystemHealthSnapshot,MetricsCollector
+    SkillMetric: to_json(0)  # Metrics for a single skill execution.
+    OperationMetric: to_json(0)  # Metrics for internal operations (evol...
+    SystemHealthSnapshot:   # System-wide health snapshot.
+    MetricsCollector: __init__(1),_ensure_dirs(0),record_skill_execution(7),get_skill_metrics(2),get_skill_health(1)  # Collect and persist performance metrics.
+    get_collector()->MetricsCollector
+    record_skill_execution()->None
+    record_operation()->None
+    get_skill_health(skill_name:str)->dict
+    get_system_health_summary()->dict
+    compute_and_save_system_health(skills_dir:Path)->SystemHealthSnapshot
   cores/v1/pipeline_manager.py:
     i: json,datetime,config.{C,PIPELINES_DIR,cpr},datetime.timezone,utils.{clean_code,clean_json}
     e: PipelineManager
@@ -360,6 +372,15 @@ D:
     SkillManager: __init__(3),_collect_versions(1),list_skills(0),_is_rolled_back(1),latest_v(1)
     _load_bootstrap_skill(name)
     _load_skill_from_path(p;mod_name='skill')
+  cores/v1/skill_schema.py:
+    i: json,dataclasses.{dataclass,field},pathlib.Path,typing.{Any,Optional}
+    e: SKILL_MANIFEST_SCHEMA,SKILL_OUTPUT_SCHEMA,SKILL_INTERFACE_SCHEMA,ValidationResult,SkillSchemaValidator,BlueprintRegistry,validate_manifest_file,generate_skill_manifest
+    ValidationResult: is_ok(0),summary(0)  # Result of schema validation.
+    SkillSchemaValidator: __init__(0),validate_manifest(1),validate_output(1),validate_file(1),_validate_against_schema(2)  # Validate skill manifests and outputs...
+    BlueprintRegistry: __init__(0),get_blueprint(1),list_blueprints(0),register_blueprint(2),suggest_blueprint(1)  # Registry of skill blueprints for auto...
+    validate_manifest_file(path:Path)->ValidationResult
+    generate_skill_manifest(skill_name:str;query:str)->dict
+    get_schema_validation_stats(skills_dir:Path)->dict
   cores/v1/skill_validator.py:
     i: typing.{Callable,Dict,Optional}
     e: ValidationResult,_LOCAL_NET_KEYWORDS,SkillValidator
@@ -455,6 +476,26 @@ D:
     save_state(s)
     check(version=1)
     bootstrap()
+  scripts/benchmark_system.py:
+    i: argparse,json,os,subprocess,sys,time,datetime,dataclasses.{asdict,dataclass,field}
+    e: BenchmarkResult,SystemMetrics,run_benchmark,measure_import,count_lines_in_file,get_version,count_skills_and_versions,validate_manifest_schemas
+    BenchmarkResult:   # Single benchmark measurement.
+    SystemMetrics:   # Collected system metrics.
+    run_benchmark(name:str;func)->BenchmarkResult
+    measure_import(module_name:str)->float
+    count_lines_in_file(path:Path)->int
+    get_version()->str
+    count_skills_and_versions(skills_dir:Path)->tuple[int, int]
+    validate_manifest_schemas(skills_dir:Path)->dict
+    run_all_benchmarks()->SystemMetrics
+    main()
+  scripts/generate_manifests.py:
+    i: argparse,json,sys,cores.v1.config.SKILLS_DIR,cores.v1.skill_schema.{BlueprintRegistry,get_schema_validation_stats},pathlib.Path
+    e: infer_interface_from_skill,infer_constraints_from_skill,generate_manifest_for_skill,main
+    infer_interface_from_skill(skill_path:Path)->dict
+    infer_constraints_from_skill(skill_path:Path)->dict
+    generate_manifest_for_skill(skill_dir:Path;registry:BlueprintRegistry)->dict
+    main()
   scripts/simulate.py:
     i: os,sys,json,time,argparse,datetime,datetime.timezone,pathlib.Path
     e: ROOT,SCENARIOS,SimulationResult,Simulator,main
@@ -558,13 +599,6 @@ D:
     get_info()
     health_check()
     execute(input_data:dict)->dict
-  skills/echo/v10/skill.py:
-    i: subprocess,json,datetime,re,time,datetime.timezone
-    e: get_info,health_check,EchoSkill,execute
-    EchoSkill: execute(1)
-    get_info()
-    health_check()
-    execute(params:dict)->dict
   skills/echo/v8/skill.py:
     i: subprocess,json,datetime,re,time,datetime.timezone
     e: get_info,health_check,EchoSkill,execute
@@ -586,23 +620,23 @@ D:
     health_check()->dict
     execute(params:dict)->dict
     execute_module(params:dict)->dict
-  skills/gbp_to_jpy_converter/v2/skill.py:
-    i: re,subprocess,json,urllib.request
-    e: get_info,health_check,extract_amount,convert_gbp_to_jpy,GBPToJPYConverter,execute
+  skills/gbp_to_jpy_converter/v4/skill.py:
+    i: subprocess,re,json,urllib.request
+    e: get_info,health_check,fetch_exchange_rate,parse_amount_from_text,GBPToJPYConverter,execute
     GBPToJPYConverter: execute(1)
     get_info()->dict
     health_check()->dict
-    extract_amount(text:str)->float
-    convert_gbp_to_jpy(amount_gbp:float)->float
+    fetch_exchange_rate()
+    parse_amount_from_text(text)
     execute(params:dict)->dict
-  skills/gbp_to_jpy_converter/v3/skill.py:
-    i: re,subprocess,json,urllib.request
-    e: get_info,health_check,extract_amount,convert_gbp_to_jpy,GBPToJPYConverter,execute
+  skills/gbp_to_jpy_converter/v5/skill.py:
+    i: subprocess,re,json,urllib.request
+    e: get_info,health_check,fetch_exchange_rate,parse_amount_from_text,GBPToJPYConverter,execute
     GBPToJPYConverter: execute(1)
     get_info()->dict
     health_check()->dict
-    extract_amount(text:str)->float
-    convert_gbp_to_jpy(amount_gbp:float)->float
+    fetch_exchange_rate()
+    parse_amount_from_text(text)
     execute(params:dict)->dict
   skills/git_ops/v1/skill.py:
     i: subprocess,os,json,nfo,pathlib.Path
@@ -724,20 +758,6 @@ D:
     get_info()
     health_check()
     execute(params:dict)->dict
-  skills/pound_to_yen_converter/v1/skill.py:
-    i: subprocess,re,json,urllib.request
-    e: get_info,health_check,execute,execute_module
-    get_info()->dict
-    health_check()->dict
-    execute(params:dict)->dict
-    execute_module(params:dict)->dict
-  skills/pound_to_yen_converter/v2/skill.py:
-    i: subprocess,re,json,urllib.request
-    e: get_info,health_check,execute,execute_module
-    get_info()->dict
-    health_check()->dict
-    execute(params:dict)->dict
-    execute_module(params:dict)->dict
   skills/pound_to_yen_converter/v3/skill.py:
     i: subprocess,re,json,urllib.request
     e: get_info,health_check,Converter,execute
@@ -813,13 +833,6 @@ D:
     i: subprocess,platform,os,re
     e: get_info,health_check,SystemInfoSkill,execute
     SystemInfoSkill: execute(1)
-    get_info()->dict
-    health_check()->dict
-    execute(params:dict)->dict
-  skills/test_supervisor_probe/v10/skill.py:
-    i: subprocess,sys,json
-    e: get_info,health_check,TestSupervisorProbe,execute
-    TestSupervisorProbe: execute(1)
     get_info()->dict
     health_check()->dict
     execute(params:dict)->dict
@@ -919,13 +932,6 @@ D:
     execute(input_data:Dict[str;Any])->Dict[str, Any]
     health_check()->Dict[str, Any]
     get_info()
-  skills/weather_gdansk/v10/skill.py:
-    i: subprocess,re,json,html.parser.HTMLParser,urllib.request
-    e: WeatherGdanskSkill,get_info,health_check,execute
-    WeatherGdanskSkill: __init__(0),execute(1)
-    get_info()->dict
-    health_check()->dict
-    execute(params:dict)->dict
   skills/weather_gdansk/v8/skill.py:
     i: subprocess,re,html.parser.HTMLParser,urllib.{error,request}
     e: WeatherGdanskParser,get_weather_gdansk,speak_weather,WeatherGdanskSkill,get_info,health_check,execute
@@ -953,10 +959,10 @@ D:
     get_info()
     health_check()
   skills/web_search/providers/duckduckgo/latest/skill.py:
-    i: subprocess,json,re,socket,threading,queue,time,html.parser,urllib.{parse,request}
+    i: subprocess,json,re,socket,threading,time,html.parser,urllib.{parse,request}
     e: SimpleHTMLTextExtractor,WebSearchSkill,get_info,health_check,execute
     SimpleHTMLTextExtractor: __init__(0),handle_starttag(2),handle_endtag(1),handle_data(1),get_text(0)  # Extract visible text from HTML.
-    WebSearchSkill: _fetch_url(2),search_duckduckgo(2),fetch_page_text(2),search_and_summarize(2),execute(1)  # Search the web and fetch page content...
+    WebSearchSkill: _fetch_url(2),search_duckduckgo(2),fetch_page_text(2),search_and_summarize(2),scan_local_rtsp(3)  # Search the web and fetch page content...
     get_info()
     health_check()
     execute(params:dict)->dict

@@ -4,8 +4,8 @@
 
 - **Project**: .
 - **Analysis Mode**: static
-- **Total Functions**: 1044
-- **Total Classes**: 141
+- **Total Functions**: 1075
+- **Total Classes**: 148
 - **Modules**: 115
 - **Entry Points**: 0
 
@@ -70,6 +70,11 @@
 - **Classes**: 3
 - **File**: `self_reflection.py`
 
+### cores.v1.metrics_collector
+- **Functions**: 19
+- **Classes**: 4
+- **File**: `metrics_collector.py`
+
 ### cores.v1.evo_engine
 - **Functions**: 17
 - **Classes**: 2
@@ -100,15 +105,10 @@
 - **Classes**: 1
 - **File**: `intent_engine.py`
 
-### cores.v1.config
-- **Functions**: 15
-- **Classes**: 1
-- **File**: `config.py`
-
-### skills.git_ops.v1.skill
-- **Functions**: 15
-- **Classes**: 1
-- **File**: `skill.py`
+### cores.v1.skill_schema
+- **Functions**: 16
+- **Classes**: 3
+- **File**: `skill_schema.py`
 
 ## Key Entry Points
 
@@ -215,6 +215,12 @@ Usage:
 - **Methods**: 13
 - **Key Methods**: skills.git_ops.v1.skill.GitOpsSkill.__init__, skills.git_ops.v1.skill.GitOpsSkill._run, skills.git_ops.v1.skill.GitOpsSkill.init, skills.git_ops.v1.skill.GitOpsSkill.status, skills.git_ops.v1.skill.GitOpsSkill.add, skills.git_ops.v1.skill.GitOpsSkill.commit, skills.git_ops.v1.skill.GitOpsSkill.log, skills.git_ops.v1.skill.GitOpsSkill.diff, skills.git_ops.v1.skill.GitOpsSkill.tag, skills.git_ops.v1.skill.GitOpsSkill.checkout
 
+### cores.v1.quality_gate.SkillQualityGate
+> Validates skill quality before registration.
+Each check contributes a weight to the final score.
+- **Methods**: 12
+- **Key Methods**: cores.v1.quality_gate.SkillQualityGate.__init__, cores.v1.quality_gate.SkillQualityGate.evaluate, cores.v1.quality_gate.SkillQualityGate.should_register, cores.v1.quality_gate.SkillQualityGate.compare, cores.v1.quality_gate.SkillQualityGate._check_preflight, cores.v1.quality_gate.SkillQualityGate._check_manifest_schema, cores.v1.quality_gate.SkillQualityGate._check_health, cores.v1.quality_gate.SkillQualityGate._check_test_exec, cores.v1.quality_gate.SkillQualityGate._check_output, cores.v1.quality_gate.SkillQualityGate._check_code_quality
+
 ### cores.v1.resource_monitor.ResourceMonitor
 > Detects CPU, RAM, GPU, disk, installed packages.
 - **Methods**: 12
@@ -238,12 +244,6 @@ Directives are short text notes th
 - **Methods**: 12
 - **Key Methods**: cores.v1.llm_client.LLMClient.__init__, cores.v1.llm_client.LLMClient.tier_info, cores.v1.llm_client.LLMClient._is_available, cores.v1.llm_client.LLMClient._report_ok, cores.v1.llm_client.LLMClient._report_fail, cores.v1.llm_client.LLMClient.chat, cores.v1.llm_client.LLMClient._build_error_msg, cores.v1.llm_client.LLMClient._try_model, cores.v1.llm_client.LLMClient._get_unavailable_reason, cores.v1.llm_client.LLMClient.gen_code
 
-### cores.v1.quality_gate.SkillQualityGate
-> Validates skill quality before registration.
-Each check contributes a weight to the final score.
-- **Methods**: 11
-- **Key Methods**: cores.v1.quality_gate.SkillQualityGate.__init__, cores.v1.quality_gate.SkillQualityGate.evaluate, cores.v1.quality_gate.SkillQualityGate.should_register, cores.v1.quality_gate.SkillQualityGate.compare, cores.v1.quality_gate.SkillQualityGate._check_preflight, cores.v1.quality_gate.SkillQualityGate._check_health, cores.v1.quality_gate.SkillQualityGate._check_test_exec, cores.v1.quality_gate.SkillQualityGate._check_output, cores.v1.quality_gate.SkillQualityGate._check_code_quality, cores.v1.quality_gate.SkillQualityGate._load_module
-
 ### cores.v1.garbage_collector.EvolutionGarbageCollector
 > Cleans up failed evolution stubs, promotes stable versions.
 - **Methods**: 11
@@ -252,6 +252,10 @@ Each check contributes a weight to the final score.
 ## Data Transformation Functions
 
 Key functions that process and transform data:
+
+### scripts.benchmark_system.validate_manifest_schemas
+> Check which manifests are valid JSON.
+- **Output to**: skills_dir.iterdir, skills_dir.exists, skill_dir.name.startswith, manifest.exists, json.loads
 
 ### cores.v1.config._parse_models_override
 - **Output to**: isinstance, isinstance, None.strip, x.strip, None.strip
@@ -297,6 +301,26 @@ Returns (valid: bool, reason: str).
 3. Run s
 - **Output to**: result.get, ValidationResult, result.get, ValidationResult, isinstance
 
+### cores.v1.skill_schema.SkillSchemaValidator.validate_manifest
+> Validate a skill manifest against schema.
+- **Output to**: self._validate_against_schema
+
+### cores.v1.skill_schema.SkillSchemaValidator.validate_output
+> Validate skill execute() output.
+- **Output to**: self._validate_against_schema
+
+### cores.v1.skill_schema.SkillSchemaValidator.validate_file
+> Validate a manifest.json file.
+- **Output to**: path.exists, ValidationResult, json.loads, self.validate_manifest, path.read_text
+
+### cores.v1.skill_schema.SkillSchemaValidator._validate_against_schema
+> Internal validation using simple schema checking.
+- **Output to**: self._schemas.get, schema.get, ValidationResult, None.items, None.items
+
+### cores.v1.skill_schema.validate_manifest_file
+> Quick validation of a manifest.json file.
+- **Output to**: SkillSchemaValidator, validator.validate_file
+
 ### cores.v1.smart_intent.EmbeddingEngine.encode
 > Encode texts to vectors.
 - **Output to**: self._try_init, self._model.encode, None.toarray, TfidfVectorizer, None.toarray
@@ -331,11 +355,8 @@ Delegates to SkillValidator plugin reg
 ### skills.kalkulator.v47.skill.Kalkulator._validate_expression
 - **Output to**: ast.walk, ast.parse, isinstance, ValueError, isinstance
 
-### skills.gbp_to_jpy_converter.v2.skill.convert_gbp_to_jpy
-- **Output to**: urllib.request.Request, urllib.request.urlopen, json.loads, None.decode, response.read
-
-### skills.gbp_to_jpy_converter.v3.skill.convert_gbp_to_jpy
-- **Output to**: urllib.request.Request, urllib.request.urlopen, json.loads, None.decode, response.read
+### skills.gbp_to_jpy_converter.v5.skill.parse_amount_from_text
+- **Output to**: text.lower, replacements.items, re.findall, text_lower.replace, float
 
 ## Public API Surface
 
@@ -343,16 +364,19 @@ Functions exposed as public API (no underscore prefix):
 
 - `core.main` - 147 calls
 - `seeds.core_v1.main` - 108 calls
+- `scripts.benchmark_system.run_all_benchmarks` - 63 calls
 - `cores.v1.self_reflection.SelfReflection.run_diagnostic` - 53 calls
 - `cores.v1.intent_engine.IntentEngine.analyze` - 48 calls
 - `scripts.simulate.Simulator.run_scenario` - 47 calls
+- `cores.v1.core.main` - 45 calls
 - `cores.v1.skill_logger.get_markdown_logs` - 44 calls
 - `cores.v1.skill_manager.SkillManager.smart_evolve` - 43 calls
 - `cores.v1.intent.SmartIntentClassifier.classify` - 43 calls
 - `cores.v1.evo_engine.EvoEngine.handle_request` - 42 calls
+- `cores.v1.metrics_collector.MetricsCollector.compute_system_health` - 41 calls
 - `cores.v1.llm_client.LLMClient.chat` - 37 calls
 - `cli.cmd_cache_reset` - 36 calls
-- `cores.v1.core.main` - 36 calls
+- `scripts.generate_manifests.main` - 34 calls
 - `main.bootstrap` - 33 calls
 - `skills.shell.v2.skill.ShellSkill.execute` - 33 calls
 - `examples.skills.01_create.main` - 33 calls
@@ -370,17 +394,14 @@ Functions exposed as public API (no underscore prefix):
 - `skills.benchmark.v1.skill.BenchmarkSkill.execute` - 27 calls
 - `cores.v1.preflight.SkillPreflight.auto_fix_imports` - 26 calls
 - `seeds.core_v1.SkillManager.exec_skill` - 26 calls
+- `scripts.generate_manifests.generate_manifest_for_skill` - 25 calls
 - `cores.v1.skill_logger.get_health_markdown` - 25 calls
 - `skills.local_computer_discovery.v3.skill.LocalComputerDiscovery.execute` - 24 calls
 - `cli.main_cli` - 23 calls
+- `scripts.benchmark_system.main` - 23 calls
 - `skills.git_ops.v1.skill.GitOpsSkill.execute` - 23 calls
 - `skills.stt.providers.vosk.archive.v6.skill.STTSkill.execute` - 23 calls
 - `skills.stt.providers.vosk.archive.v7.skill.STTSkill.execute` - 23 calls
-- `cores.v1.auto_repair.AutoRepair.run_boot_repair` - 22 calls
-- `cores.v1.smart_intent.SmartIntentClassifier.classify` - 22 calls
-- `cores.v1.stable_snapshot.StableSnapshot.validate_against_stable` - 22 calls
-- `cores.v1.preflight.EvolutionGuard.is_stub_skill` - 22 calls
-- `skills.stt.providers.vosk.stable.skill.STTSkill.execute` - 22 calls
 
 ## System Interactions
 

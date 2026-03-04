@@ -12,6 +12,7 @@ import traceback
 import importlib.util
 from pathlib import Path
 from datetime import datetime, timezone
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 
 from .config import SKILLS_DIR, save_state, cpr, C
 from .utils import clean_code
@@ -310,7 +311,7 @@ class SkillManager:
                     p = parent_dir / vs[-1] / "skill.py"
         return p
 
-    def _load_and_run(self, name, version, p, inp):
+    def _load_and_run(self, name, version, p, inp, timeout=30):
         """Load skill module and execute. Returns result dict."""
         spec = importlib.util.spec_from_file_location(
             f"sk_{name}_{version}_{id(self)}", str(p))
@@ -321,17 +322,30 @@ class SkillManager:
         if isinstance(inp, str):
             inp = {"text": inp, "command": inp}
         inp_data = inp or {}
-        for a in dir(mod):
-            o = getattr(mod, a)
-            if isinstance(o, type) and hasattr(o, "execute"):
-                result = o().execute(inp_data)
-                self.log.skill(name, "exec_success", {"version": version})
-                return {"success": True, "result": result, "info": info}
-        if hasattr(mod, "execute"):
-            result = mod.execute(inp_data)
+        
+        # Helper to execute skill with timeout
+        def _execute_skill():
+            for a in dir(mod):
+                o = getattr(mod, a)
+                if isinstance(o, type) and hasattr(o, "execute"):
+                    return o().execute(inp_data)
+            if hasattr(mod, "execute"):
+                return mod.execute(inp_data)
+            return info
+        
+        try:
+            # Use ThreadPoolExecutor to enforce timeout
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(_execute_skill)
+                result = future.result(timeout=timeout)
             self.log.skill(name, "exec_success", {"version": version})
             return {"success": True, "result": result, "info": info}
-        return {"success": True, "result": info}
+        except FutureTimeoutError:
+            self.log.skill(name, "exec_timeout", {"version": version, "timeout": timeout})
+            return {"success": False, "error": f"Skill execution timed out after {timeout}s", "info": info}
+        except Exception as e:
+            self.log.skill(name, "exec_error", {"error": str(e), "version": version})
+            return {"success": False, "error": str(e), "tb": traceback.format_exc(), "info": info}
 
     def check_health(self, name):
         """Check if a skill passes preflight and health_check()."""

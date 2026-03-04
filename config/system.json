@@ -130,6 +130,31 @@
     "standard": 1,
     "premium": 2
   },
+  "reflection_rules": [
+    {"trigger": "consecutive_failures >= 3", "action": "run_diagnostic", "priority": "high"},
+    {"trigger": "quality_score < 0.5", "action": "reject_and_retry", "priority": "high"},
+    {"trigger": "cc > 15", "action": "extract_method", "priority": "medium"},
+    {"trigger": "skill_versions > 5", "action": "gc_trim", "priority": "low"},
+    {"trigger": "import_error", "action": "auto_fix_imports", "priority": "high"},
+    {"trigger": "syntax_error", "action": "rewrite_from_backup", "priority": "high"},
+    {"trigger": "timeout > 30s", "action": "reduce_complexity", "priority": "medium"}
+  ],
+  "autonomy": {
+    "auto_create_skills": true,
+    "auto_evolve_on_failure": true,
+    "auto_promote_threshold": 0.8,
+    "max_auto_skills_per_hour": 10,
+    "enable_blueprint_suggestions": true,
+    "enable_drift_detection": true,
+    "enable_metrics_collection": true,
+    "schema_validation": {
+      "validate_on_create": true,
+      "validate_on_evolve": true,
+      "validate_on_load": false,
+      "reject_invalid": false,
+      "warn_invalid": true
+    }
+  },
   "topic_map": {
     "stt": "voice",
     "tts": "voice",

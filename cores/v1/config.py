@@ -158,8 +158,11 @@ COOLDOWN_SERVER_ERR = 20
 # ─── State ───────────────────────────────────────────────────────────
 def load_state():
     if STATE_FILE.exists():
-        try: return json.loads(STATE_FILE.read_text())
-        except: pass
+        try:
+            return json.loads(STATE_FILE.read_text())
+        except (json.JSONDecodeError, IOError) as e:
+            print(f"[Config] Warning: Could not load state, using empty: {e}")
+            return {}
     return {}
 
 def save_state(s):

@@ -16,7 +16,6 @@ from .config import MAX_EVO_ITERATIONS, cpr, C
 from .preflight import EvolutionGuard
 from .evo_journal import EvolutionJournal
 from .self_reflection import SelfReflection
-from .skill_validator import SkillValidator
 
 
 # ─── Failure Tracker ─────────────────────────────────────────────────
@@ -94,7 +93,6 @@ class EvoEngine:
         self.journal = EvolutionJournal()
         self.reflection = None  # Injected via set_reflection()
         self.failure_tracker = FailureTracker()
-        self.skill_validator = SkillValidator()
 
     def set_reflection(self, reflection: SelfReflection):
         """Inject SelfReflection instance for stall/timeout detection."""
@@ -611,10 +609,78 @@ class EvoEngine:
 
     def _validate_result(self, skill_name, result, goal, user_msg):
         """Validate whether the skill result actually achieved the goal.
-        Delegates to SkillValidator plugin registry.
         Returns {verdict: success|partial|fail, reason: str}."""
-        vr = self.skill_validator.validate(skill_name, result, goal, user_msg)
-        return {"verdict": vr.verdict, "reason": vr.reason}
+        if not result.get("success"):
+            return {"verdict": "fail",
+                    "reason": result.get("error", "skill returned success=False")}
+
+        inner = result.get("result", {})
+        if not isinstance(inner, dict):
+            return {"verdict": "success", "reason": "non-dict result, trusting skill"}
+
+        # Inner explicitly failed
+        if inner.get("success") is False:
+            return {"verdict": "fail",
+                    "reason": inner.get("error", "inner result success=False")}
+
+        # Skill-specific validation
+        if skill_name == "stt":
+            spoken = inner.get("spoken") or inner.get("text") or ""
+            
+            # STT v2: hardware check failed
+            if inner.get("hardware_ok") is False:
+                error_msg = inner.get("error", "Unknown hardware error")
+                return {"verdict": "fail",
+                        "reason": f"STT hardware error: {error_msg}"}
+            
+            # STT v2: no sound detected
+            if inner.get("has_sound") is False:
+                db_level = inner.get("audio_level_db", -999)
+                warning = inner.get("warning", "No sound detected")
+                return {"verdict": "partial",
+                        "reason": f"STT silence detected ({db_level:.1f}dB). Check microphone and speak louder."}
+            
+            # Legacy: empty transcription (should not happen with v2, but keep for compatibility)
+            if not spoken.strip():
+                return {"verdict": "partial",
+                        "reason": "STT returned empty transcription (silence or mic issue)"}
+
+        if skill_name == "shell":
+            exit_code = inner.get("exit_code", 0)
+            if exit_code != 0:
+                stderr = inner.get("stderr", "")[:200]
+                return {"verdict": "partial",
+                        "reason": f"exit_code={exit_code}: {stderr}"}
+
+        if skill_name == "tts":
+            if inner.get("error"):
+                return {"verdict": "fail", "reason": inner["error"]}
+
+        # web_search: empty results for local network queries should trigger new skill suggestion
+        if skill_name == "web_search":
+            results = inner.get("results", [])
+            query = inner.get("query", "").lower()
+            # Check if query is about local network (cameras, devices, scanning)
+            _local_net_keywords = (
+                "kamer", "camera", "rtsp", "onvif", "sieć lokal", "local network",
+                "lan ", "lan:", "skanuj", "scan", "urządzenia w sieci", "devices in network",
+                "ip w sieci", "ip in network", "drukark", "printer", "router",
+            )
+            is_local_net_query = any(kw in query for kw in _local_net_keywords)
+            if is_local_net_query and (not results or len(results) == 0):
+                return {
+                    "verdict": "partial",
+                    "reason": f"web_search: no results for local network query '{query[:50]}'. "
+                              f"Requires dedicated network scanner skill."
+                }
+            # Generic empty results - still partial but less urgent
+            if not results or len(results) == 0:
+                return {
+                    "verdict": "partial",
+                    "reason": f"web_search: empty results for '{query[:50]}'"
+                }
+
+        return {"verdict": "success", "reason": "skill reports success"}
 
     def _autonomous_stt_repair(self, skill_name, result, user_msg):
         """Autonomous diagnosis and repair for STT empty transcription.
