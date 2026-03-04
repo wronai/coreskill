@@ -10,15 +10,10 @@ def get_info() -> dict:
 
 def health_check() -> dict:
     try:
-        # Check if python3 and json module are available
         subprocess.run(['python3', '-c', 'import json'], check=True, capture_output=True)
         return {"status": "ok"}
-    except FileNotFoundError:
-        return {"status": "error", "message": "python3 command not found."}
-    except subprocess.CalledProcessError as e:
-        return {"status": "error", "message": f"Error checking python3: {e.stderr.decode()}"}
     except Exception as e:
-        return {"status": "error", "message": f"An unexpected error occurred during health check: {str(e)}"}
+        return {"status": "error", "message": str(e)}
 
 class JsonValidator:
     def execute(self, params: dict) -> dict:
