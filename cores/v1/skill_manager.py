@@ -190,6 +190,12 @@ class SkillManager:
             sys_ctx = f"\nSystem capabilities: {json.dumps(caps)}"
 
         learning = self.log.learn_summary(name)
+
+        # Build scaffold from BaseSkill for the prompt
+        scaffold_manifest = SkillManifest(
+            name=name, version=nv, description=desc)
+        scaffold_code = generate_scaffold(scaffold_manifest)
+
         # Use prompt template from external configuration
         prompt = prompt_manager.render("skill_creation", {
             "name": name,
@@ -201,14 +207,14 @@ class SkillManager:
         if not prompt:
             prompt = (f"Create Python skill '{name}'. {desc}\n"
                       f"Requirements:\n"
-                      f"- class with execute(input_data:dict)->dict\n"
+                      f"- Subclass BaseSkill and override execute(params:dict)->dict\n"
                       f"- execute() MUST return dict with 'success':True/False key\n"
-                      f"- get_info()->dict function\n"
-                      f"- health_check()->bool function\n"
-                      f"- if __name__=='__main__' test block\n"
                       f"- Use ONLY stdlib + available system commands. NO pip packages.\n"
+                      f"- Parse user input from params.get('text', '') when no specific param\n"
                       f"- Version: {nv}"
-                      f"{sys_ctx}")
+                      f"{sys_ctx}\n\n"
+                      f"SCAFFOLD (extend this, replace TODO with real logic):\n"
+                      f"```python\n{scaffold_code}\n```")
         code = clean_code(self.llm.gen_code(prompt, learning=learning))
         if not code or "[ERROR]" in code:
             self.log.skill(name, "create_failed", {"error": "LLM returned no code"})
