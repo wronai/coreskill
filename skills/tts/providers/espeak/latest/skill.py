@@ -24,13 +24,7 @@ class TTSSkill:
                 [self._backend, "-v", "pl", "--", text],
                 check=True, capture_output=True, timeout=30
             )
-            return {
-                "success": True,
-                "spoken": True,
-                "text": text,
-                "backend": self._backend,
-                "stderr": result.stderr.decode().strip() if result.stderr else ""
-            }
+            return {"success": True, "spoken": True, "text": text, "backend": self._backend}
         except subprocess.TimeoutExpired:
             return {"success": False, "error": "TTS timeout"}
         except Exception as e:
@@ -42,8 +36,7 @@ def get_info():
 
 
 def health_check():
-    espeak_available = shutil.which("espeak-ng") is not None or shutil.which("espeak") is not None
-    return {"status": "ok" if espeak_available else "error", "message": "espeak not found" if not espeak_available else ""}
+    return {"status": "ok" if (shutil.which("espeak-ng") is not None or shutil.which("espeak") is not None) else "error"}
 
 
 def execute(params: dict) -> dict:
@@ -52,7 +45,7 @@ def execute(params: dict) -> dict:
 
 
 if __name__ == "__main__":
-    # Test block
-    test_params = {"text": "Witaj w Evo-Engine. Rozmiar instalacji: ~150–300 MB."}
-    result = execute(test_params)
+    # Simple test
+    skill = TTSSkill()
+    result = skill.execute({"text": "Test TTS"})
     print(result)
