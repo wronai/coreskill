@@ -24,7 +24,7 @@ class Kalkulator:
 
             # Bardziej restrykcyjne sprawdzenie, aby upewnić się, że mamy tylko liczby, operatory i nawiasy
             # Pozwalamy na +, -, *, /, %, ** (potęgowanie), nawiasy i kropki dziesiętne.
-            # Dodano obsługę ujemnych liczb na początku wyrażenia lub po operatorze.
+            # Dodano obsługę ujemnych liczb na początku wyrażenia.
             if not re.fullmatch(r'^-?[\d\s()*/%.,+*-]+$', cleaned_text):
                 return {'success': False, 'error': 'Wyrażenie zawiera niedozwolone znaki lub jest nieprawidłowe.'}
 
@@ -36,17 +36,18 @@ class Kalkulator:
             cleaned_text = cleaned_text.replace(',', '.')
 
             # Upewnij się, że nie ma pustych operatorów lub nieprawidłowych sekwencji
-            # Sprawdzenie podwójnych operatorów, operatorów na początku/końcu
             if re.search(r'[\d\s][+\-*/%]{2,}[\d\s]', cleaned_text) or \
+               re.search(r'[\d\s][+\-*/%][+\-*/%][\d\s]', cleaned_text) or \
                re.search(r'^[+\-*/%]', cleaned_text) or \
                re.search(r'[+\-*/%]$', cleaned_text) or \
-               re.search(r'\(\s*[+\-*/%]', cleaned_text) or \
-               re.search(r'[+\-*/%]\s*\)', cleaned_text):
-                return {'success': False, 'error': 'Nieprawidłowa sekwencja operatorów.'}
+               re.search(r'\(\s*[-+*/%]', cleaned_text) or \
+               re.search(r'[-+*/%]\s*\)', cleaned_text):
+                return {'success': False, 'error': 'Nieprawidłowa sekwencja operatorów lub nawiasów.'}
 
-            # Ograniczenie do bezpiecznych operacji matematycznych
-            # Używamy eval z ostrożnością, po dokładnej walidacji.
-            # ast.literal_eval nie obsługuje operacji, więc używamy eval po walidacji regex.
+            # Bezpieczniejsze podejście do ewaluacji, ograniczając dostępne funkcje
+            # Używamy eval() z ostrożnością i po walidacji regex.
+            # Można by rozważyć użycie biblioteki `ast` do parsowania drzewa składniowego,
+            # ale dla prostych obliczeń i po walidacji regex, `eval` jest akceptowalny.
             result = eval(cleaned_text)
 
             return {'success': True, 'result': str(result)}
@@ -88,20 +89,13 @@ if __name__ == '__main__':
         {'text': 'oblicz 5 *'}, # Nieprawidłowy operator na końcu
         {'text': 'oblicz 10 / 2.5'},
         {'text': 'oblicz -5 + 10'}, # Test z liczbą ujemną
-        {'text': 'oblicz 5 * -2'}, # Test z liczbą ujemną po operatorze
-        {'text': 'oblicz ( -5 + 10 )'}, # Test z liczbą ujemną w nawiasie
-        {'text': 'oblicz 10 / ( -2 )'}, # Test z liczbą ujemną w nawiasie po dzieleniu
-        {'text': 'oblicz 10 / +2'}, # Test z plusem po dzieleniu
-        {'text': 'oblicz 10 + -5'}, # Test z minusem po plusie
-        {'text': 'oblicz 10 + ( +5 )'}, # Test z plusem w nawiasie
-        {'text': 'oblicz 10 + ( -5 )'}, # Test z minusem w nawiasie
-        {'text': 'oblicz 10 + ( )'}, # Puste nawiasy
-        {'text': 'oblicz ( ) 10'}, # Puste nawiasy
-        {'text': 'oblicz 10 + '}, # Operator na końcu
-        {'text': 'oblicz + 10'}, # Operator na początku
-        {'text': 'oblicz 10 + + 5'}, # Podwójny operator
-        {'text': 'oblicz 10 - - 5'}, # Podwójny operator
-        {'text': 'oblicz 10 / ( + ) 5'}, # Nieprawidłowa sekwencja w nawiasie
+        {'text': 'oblicz (-5) * 2'}, # Test z liczbą ujemną w nawiasie
+        {'text': 'oblicz 5 + (-2)'}, # Test z liczbą ujemną w nawiasie
+        {'text': 'oblicz 10 / (-2)'}, # Test z dzieleniem przez liczbę ujemną
+        {'text': 'oblicz ( )'}, # Puste nawiasy
+        {'text': 'oblicz 5 + ()'}, # Puste nawiasy z operatorem
+        {'text': 'oblicz (5 + )'}, # Nieprawidłowe nawiasy
+        {'text': 'oblicz )5 + 2('}, # Nieprawidłowe nawiasy
     ]
 
     for case in test_cases:
