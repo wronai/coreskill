@@ -1,20 +1,20 @@
-# coreskill | 130f 35604L | python:130
+# coreskill | 146f 39016L | python:156
 # Keys: M=modules, D=details, i=imports, c=classes, f=functions, m=methods
-M[130]:
+M[146]:
   __init__.py,19
   build_core.py,525
   cli.py,248
   core.py,515
   cores/v1/__init__.py,94
   cores/v1/adaptive_monitor.py,188
-  cores/v1/auto_repair.py,473
+  cores/v1/auto_repair.py,499
   cores/v1/bandit_selector.py,136
   cores/v1/config.py,196
   cores/v1/config_generator.py,221
-  cores/v1/core.py,1276
+  cores/v1/core.py,1299
   cores/v1/drift_detector.py,259
   cores/v1/event_bus.py,94
-  cores/v1/evo_engine.py,686
+  cores/v1/evo_engine.py,731
   cores/v1/evo_journal.py,350
   cores/v1/fuzzy_router.py,57
   cores/v1/garbage_collector.py,277
@@ -27,8 +27,8 @@ M[130]:
   cores/v1/llm_client.py,347
   cores/v1/logger.py,121
   cores/v1/metrics_collector.py,307
-  cores/v1/pipeline_manager.py,39
-  cores/v1/preflight.py,324
+  cores/v1/pipeline_manager.py,86
+  cores/v1/preflight.py,339
   cores/v1/proactive_scheduler.py,195
   cores/v1/prompts/__init__.py,130
   cores/v1/provider_selector.py,363
@@ -41,7 +41,7 @@ M[130]:
   cores/v1/self_reflection.py,509
   cores/v1/session_config.py,394
   cores/v1/skill_logger.py,245
-  cores/v1/skill_manager.py,497
+  cores/v1/skill_manager.py,530
   cores/v1/skill_schema.py,386
   cores/v1/skill_validator.py,132
   cores/v1/smart_intent.py,722
@@ -51,7 +51,7 @@ M[130]:
   cores/v1/system_identity.py,237
   cores/v1/user_memory.py,148
   cores/v1/utils.py,100
-  cores/v1/voice_loop.py,342
+  cores/v1/voice_loop.py,356
   examples/advanced/01_pipeline.py,48
   examples/basic/01_hello.py,33
   examples/basic/02_memory.py,32
@@ -64,67 +64,83 @@ M[130]:
   seeds/echo_skill_v1.py,19
   setup.py,40
   skill.py,78
+  skills/_health_/v1/skill.py,376
   skills/auto/v1/skill.py,254
-  skills/benchmark/v1/skill.py,1077
+  skills/auto/v2/skill.py,254
+  skills/benchmark/v2/skill.py,372
+  skills/benchmark/v3/skill.py,384
   skills/chat/v1/skill.py,101
+  skills/clipboard/v1/skill.py,197
   skills/content_search/v3/skill.py,157
+  skills/converter/v1/skill.py,320
+  skills/core_loader/v1/skill.py,68
   skills/deps/v2/skill.py,84
-  skills/deps/v3/skill.py,67
-  skills/devops/v1/skill.py,213
+  skills/deps/v3/skill.py,164
+  skills/devops/v3/skill.py,211
+  skills/devops/v4/skill.py,211
   skills/diagnostic_runner/v1/skill.py,114
-  skills/echo/v10/skill.py,67
+  skills/document_reader/v1/skill.py,375
   skills/echo/v8/skill.py,67
   skills/echo/v9/skill.py,67
+  skills/evo_engine_bootstrap/v1/skill.py,55
+  skills/evo_engine_bootstrap/v2/skill.py,62
+  skills/file_manager/v1/skill.py,251
   skills/first_installment/v1/skill.py,55
-  skills/gbp_to_jpy_converter/v4/skill.py,99
-  skills/gbp_to_jpy_converter/v5/skill.py,104
+  skills/first_installment/v2/skill.py,59
+  skills/gbp_to_jpy_converter/v6/skill.py,98
+  skills/gbp_to_jpy_converter/v7/skill.py,101
   skills/git_ops/v1/skill.py,120
-  skills/hw_test/v2/skill.py,439
-  skills/hw_test/v3/skill.py,1367
+  skills/hw_test/v4/skill.py,514
+  skills/hw_test/v5/skill.py,514
   skills/interior_inspection/v1/skill.py,78
+  skills/interior_inspection/v2/skill.py,85
   skills/invalid_input_handler/v1/skill.py,88
   skills/json_validator/v8/skill.py,115
   skills/json_validator/v9/skill.py,114
-  skills/kalkulator/v46/skill.py,103
   skills/kalkulator/v47/skill.py,106
+  skills/kalkulator/v48/skill.py,105
   skills/llm/v1/skill.py,100
+  skills/llm/v2/skill.py,102
   skills/llm_router/v1/skill.py,113
   skills/local_computer_discovery/v2/skill.py,243
   skills/local_computer_discovery/v3/skill.py,254
   skills/network_info/v1/skill.py,58
+  skills/notes/v1/skill.py,263
   skills/openrouter/v1/skill.py,224
   skills/openrouter_api_test/v1/skill.py,179
   skills/password_generator/v5/skill.py,70
   skills/password_generator/v6/skill.py,66
   skills/pound_to_yen_converter/v3/skill.py,80
   skills/pound_to_yen_converter/v4/skill.py,88
-  skills/shell/v1/skill.py,128
+  skills/process_manager/v1/skill.py,218
+  skills/qr_generator/v1/skill.py,151
+  skills/separator_line/v1/skill.py,39
   skills/shell/v2/skill.py,155
+  skills/shell/v3/skill.py,162
   skills/stt/providers/vosk/archive/v6/skill.py,131
   skills/stt/providers/vosk/archive/v7/skill.py,173
   skills/stt/providers/vosk/latest/skill.py,4
-  skills/stt/providers/vosk/stable/skill.py,234
+  skills/stt/providers/vosk/stable/skill.py,252
   skills/stt/providers/whisper/latest/skill.py,248
   skills/system_info/v3/skill.py,64
   skills/system_info/v4/skill.py,72
+  skills/task_manager/v1/skill.py,386
   skills/test_supervisor_probe/v8/skill.py,39
   skills/test_supervisor_probe/v9/skill.py,43
   skills/text_processor_/v6/skill.py,47
   skills/text_processor_/v7/skill.py,46
   skills/time/v1/skill.py,93
-  skills/tts/providers/espeak/archive/v63/skill.py,17
-  skills/tts/providers/espeak/archive/v72/skill.py,22
-  skills/tts/providers/espeak/latest/skill.py,4
-  skills/tts/providers/espeak/stable/skill.py,80
-  skills/tts/providers/piper/latest/skill.py,185
-  skills/tts/providers/piper/stable/skill.py,88
+  skills/tts/providers/piper/latest/skill.py,204
+  skills/tts/providers/piper/stable/skill.py,204
   skills/tts/providers/pyttsx3/latest/skill.py,4
   skills/tts/providers/pyttsx3/stable/skill.py,70
-  skills/weather/v1/skill.py,68
+  skills/url_codec/v1/skill.py,158
+  skills/weather/v2/skill.py,91
+  skills/weather/v3/skill.py,90
   skills/weather_gdansk/v8/skill.py,166
-  skills/weather_gdansk/v9/skill.py,151
+  skills/weather_gdansk/v9/skill.py,99
   skills/web_search/providers/duckduckgo/archive/v1/skill.py,131
-  skills/web_search/providers/duckduckgo/latest/skill.py,208
+  skills/web_search/providers/duckduckgo/latest/skill.py,151
   skills/web_search/providers/duckduckgo/stable/skill.py,135
   skills/zarz_dzania/v7/skill.py,105
   skills/zarz_dzania/v8/skill.py,107
@@ -219,7 +235,7 @@ D:
     i: sys,nfo,time,config.{C,MAX_EVO_ITERATIONS,cpr},evo_journal.EvolutionJournal,preflight.EvolutionGuard,self_reflection.SelfReflection
     e: FailureTracker,EvoEngine
     FailureTracker: __init__(0),record_failure(3),record_unhandled(2),record_success(0),should_reflect(0)  # Tracks consecutive failures and unhan...
-    EvoEngine: __init__(5),set_reflection(1),handle_request(3),_run_auto_reflection(1),_execute_with_validation(4)  # Generic evolutionary algorithm:
+    EvoEngine: __init__(5),set_reflection(1),handle_request(3),_run_auto_reflection(1),_execute_with_validation(5)  # Generic evolutionary algorithm:
   cores/v1/evo_journal.py:
     i: json,time,datetime,config.{LOGS_DIR,cpr},datetime.timezone,pathlib.Path,typing.{Dict,List,Optional}
     e: EvolutionEntry,EvolutionJournal
@@ -281,9 +297,9 @@ D:
     get_system_health_summary()->dict
     compute_and_save_system_health(skills_dir:Path)->SystemHealthSnapshot
   cores/v1/pipeline_manager.py:
-    i: json,datetime,config.{C,PIPELINES_DIR,cpr},datetime.timezone,utils.{clean_code,clean_json}
+    i: json,re,datetime,config.{C,PIPELINES_DIR,cpr},datetime.timezone,utils.{clean_code,clean_json}
     e: PipelineManager
-    PipelineManager: __init__(3),list_p(0),create_p(2),run_p(2)
+    PipelineManager: __init__(3),list_p(0),create_p(2),_get_nested_value(2),_substitute_vars(2)
   cores/v1/preflight.py:
     i: ast,hashlib,re,subprocess,sys,pathlib.Path
     e: PreflightResult,STDLIB_MODULES,SkillPreflight,EvolutionGuard
@@ -545,6 +561,13 @@ D:
     _speak_gtts(text;lang='pl')
     _speak_espeak(text;lang='pl')
     execute(input_data)
+  skills/_health_/v1/skill.py:
+    i: subprocess,sys,platform,os,re,urllib.error.{HTTPError,URLError},urllib.request.{Request,urlopen}
+    e: get_info,health_check,HealthSkill,execute
+    HealthSkill: execute(1),_get_full_health_report(0),_get_cpu_usage(0),_get_memory_usage(0),_get_disk_usage(0)
+    get_info()->dict
+    health_check()->dict
+    execute(params:dict)->dict
   skills/auto/v1/skill.py:
     i: subprocess,re,json,os,pathlib.Path,urllib.{error,request}
     e: get_info,health_check,AutoSkillBuilder,execute
@@ -552,15 +575,27 @@ D:
     get_info()->dict
     health_check()->dict
     execute(params:dict)->dict
-  skills/benchmark/v1/skill.py:
-    i: json,time,os,dataclasses.{asdict,dataclass},pathlib.Path,typing.{Any,Dict,List,Optional}
-    e: BENCHMARK_TESTS,GoalType,ModelScore,BenchmarkSkill,execute,get_info,health_check
-    GoalType: 
-    ModelScore: 
-    BenchmarkSkill: __init__(0),_load_config(0),_get_models_from_tier(2),_get_api_key(0),_load_benchmark_results(0)  # Analyzes and benchmarks LLM models fo...
+  skills/auto/v2/skill.py:
+    i: subprocess,re,json,os,typing.{Any,Dict},urllib.{error,request}
+    e: get_info,health_check,AutoSkillBuilder,execute
+    AutoSkillBuilder: execute(1),_parse_command(1),_execute_command(2),_get_weather(1),_get_time(0)
+    get_info()->dict
+    health_check()->dict
+    execute(params:dict)->dict
+  skills/benchmark/v2/skill.py:
+    i: json,time,os,re,subprocess,pathlib.Path,typing.{Any,Dict,List,Optional}
+    e: BenchmarkSkill,execute,get_info,health_check
+    BenchmarkSkill: __init__(0),_load_config(0),_get_models_from_tier(2),_get_api_key(0),_get_cached_recommendations(2)  # Analyzes and benchmarks LLM models fo...
     execute(params:Dict[str;Any])->Dict[str, Any]
-    get_info()
-    health_check()
+    get_info()->dict
+    health_check()->dict
+  skills/benchmark/v3/skill.py:
+    i: json,time,os,re,subprocess,pathlib.Path,typing.{Any,Dict,List,Optional}
+    e: BenchmarkSkill,execute,get_info,health_check
+    BenchmarkSkill: __init__(0),_load_config(0),_get_models_from_tier(2),_get_api_key(0),_get_cached_recommendations(2)  # Analyzes and benchmarks LLM models fo...
+    execute(params:Dict[str;Any])->Dict[str, Any]
+    get_info()->dict
+    health_check()->dict
   skills/chat/v1/skill.py:
     i: subprocess,sys,re,os
     e: get_info,health_check,ChatSkill,execute
@@ -568,11 +603,32 @@ D:
     get_info()->dict
     health_check()->dict
     execute(params:dict)->dict
+  skills/clipboard/v1/skill.py:
+    i: subprocess,json,shutil,os
+    e: get_info,health_check,ClipboardSkill,execute
+    ClipboardSkill: _detect_backend(0),copy(1),paste(0),clear(0),execute(1)  # Clipboard operations with multiple ba...
+    get_info()
+    health_check()
+    execute(input_data:dict)->dict
   skills/content_search/v3/skill.py:
     i: subprocess,json,re,html.parser.HTMLParser,urllib.{error,parse,request}
     e: ContentSearchSkill,DuckDuckGoParser,get_info,health_check,execute
     ContentSearchSkill: __init__(0),execute(1),_search_duckduckgo(1)
     DuckDuckGoParser: __init__(0),handle_starttag(2),handle_endtag(1),handle_data(1)
+    get_info()->dict
+    health_check()->dict
+    execute(params:dict)->dict
+  skills/converter/v1/skill.py:
+    i: json,re,datetime,datetime.{timedelta,timezone},decimal.{Decimal,ROUND_HALF_UP}
+    e: get_info,health_check,ConverterSkill,execute
+    ConverterSkill: convert_unit(3),convert_temperature(3),convert_currency(3),convert_time(3),list_units(1)  # Unit, time zone, and currency convers...
+    get_info()
+    health_check()
+    execute(input_data:dict)->dict
+  skills/core_loader/v1/skill.py:
+    i: re,subprocess,sys,datetime
+    e: get_info,health_check,CoreLoaderSkill,execute
+    CoreLoaderSkill: execute(1)
     get_info()->dict
     health_check()->dict
     execute(params:dict)->dict
@@ -583,17 +639,26 @@ D:
     get_info()
     health_check()
   skills/deps/v3/skill.py:
-    i: subprocess,importlib,json
-    e: DepsSkill,get_info,health_check
-    DepsSkill: __init__(0),check_system(1),execute(1),get_info(0),health_check(0)
+    i: subprocess,sys,os,json,importlib.util
+    e: DepsSkill,get_info,health_check,execute
+    DepsSkill: __init__(0),check_system(1),check_python_module(1),pip_install(2),execute(1)
     get_info()
     health_check()
-  skills/devops/v1/skill.py:
-    i: subprocess,sys,os,json,ast,nfo,importlib.util,pathlib.Path
-    e: DevOpsSkill,get_info,health_check
+    execute(params:dict)->dict
+  skills/devops/v3/skill.py:
+    i: subprocess,sys,os,json,ast,importlib.util,pathlib.Path
+    e: DevOpsSkill,get_info,health_check,execute
     DevOpsSkill: check_syntax(1),detect_imports(1),check_deps(1),find_system_alternatives(1),test_skill(2)  # Test, validate and deploy skills in i...
     get_info()
     health_check()
+    execute(params:dict)->dict
+  skills/devops/v4/skill.py:
+    i: subprocess,sys,os,json,ast,importlib.util,pathlib.Path
+    e: DevOpsSkill,get_info,health_check,execute
+    DevOpsSkill: check_syntax(1),detect_imports(1),check_deps(1),find_system_alternatives(1),test_skill(2)  # Test, validate and deploy skills in i...
+    get_info()
+    health_check()
+    execute(params:dict)->dict
   skills/diagnostic_runner/v1/skill.py:
     i: json,shutil,subprocess,pathlib.Path
     e: get_info,health_check,DiagnosticRunner,execute
@@ -601,13 +666,13 @@ D:
     get_info()
     health_check()
     execute(input_data:dict)->dict
-  skills/echo/v10/skill.py:
-    i: subprocess,json,datetime,re,time,datetime.timezone
-    e: get_info,health_check,EchoSkill,execute
-    EchoSkill: execute(1)
+  skills/document_reader/v1/skill.py:
+    i: subprocess,json,shutil,re,pathlib.Path
+    e: get_info,health_check,DocumentReaderSkill,execute
+    DocumentReaderSkill: _detect_file_type(1),_read_text_file(3),_read_pdf(2),_read_pdf_basic(2),_read_docx(1)  # Extract text from various document fo...
     get_info()
     health_check()
-    execute(params:dict)->dict
+    execute(input_data:dict)->dict
   skills/echo/v8/skill.py:
     i: subprocess,json,datetime,re,time,datetime.timezone
     e: get_info,health_check,EchoSkill,execute
@@ -622,6 +687,27 @@ D:
     get_info()
     health_check()
     execute(params:dict)->dict
+  skills/evo_engine_bootstrap/v1/skill.py:
+    i: subprocess,re,datetime
+    e: get_info,health_check,EvoEngineBootstrapSkill,execute
+    EvoEngineBootstrapSkill: execute(1)
+    get_info()->dict
+    health_check()->dict
+    execute(params:dict)->dict
+  skills/evo_engine_bootstrap/v2/skill.py:
+    i: subprocess,re,datetime,time
+    e: get_info,health_check,EvoEngineBootstrapSkill,execute
+    EvoEngineBootstrapSkill: execute(1)
+    get_info()->dict
+    health_check()->dict
+    execute(params:dict)->dict
+  skills/file_manager/v1/skill.py:
+    i: os,shutil,json,datetime,datetime.timezone,pathlib.Path
+    e: get_info,health_check,FileManagerSkill,execute
+    FileManagerSkill: _safe_path(2),list_dir(3),copy(3),move(2),delete(2)  # File operations using stdlib only.
+    get_info()
+    health_check()
+    execute(input_data:dict)->dict
   skills/first_installment/v1/skill.py:
     i: subprocess,re,json,urllib.request
     e: get_info,health_check,execute,execute_module
@@ -629,23 +715,32 @@ D:
     health_check()->dict
     execute(params:dict)->dict
     execute_module(params:dict)->dict
-  skills/gbp_to_jpy_converter/v4/skill.py:
+  skills/first_installment/v2/skill.py:
     i: subprocess,re,json,urllib.request
-    e: get_info,health_check,fetch_exchange_rate,parse_amount_from_text,GBPToJPYConverter,execute
-    GBPToJPYConverter: execute(1)
+    e: get_info,health_check,FirstInstallmentSkill,execute
+    FirstInstallmentSkill: execute(1)
     get_info()->dict
     health_check()->dict
-    fetch_exchange_rate()
-    parse_amount_from_text(text)
     execute(params:dict)->dict
-  skills/gbp_to_jpy_converter/v5/skill.py:
-    i: subprocess,re,json,urllib.request
-    e: get_info,health_check,fetch_exchange_rate,parse_amount_from_text,GBPToJPYConverter,execute
+  skills/gbp_to_jpy_converter/v6/skill.py:
+    i: re,subprocess,json,urllib.{error,request}
+    e: get_info,health_check,parse_amount,fetch_exchange_rate,speak_result,GBPToJPYConverter,execute
     GBPToJPYConverter: execute(1)
     get_info()->dict
     health_check()->dict
-    fetch_exchange_rate()
-    parse_amount_from_text(text)
+    parse_amount(text:str)->float
+    fetch_exchange_rate()->float
+    speak_result(amount_gbp:float;amount_jpy:float;rate:float)
+    execute(params:dict)->dict
+  skills/gbp_to_jpy_converter/v7/skill.py:
+    i: re,subprocess,json,urllib.{error,request}
+    e: get_info,health_check,parse_amount,fetch_exchange_rate,speak_result,GBPToJPYConverter,execute
+    GBPToJPYConverter: execute(1)
+    get_info()->dict
+    health_check()->dict
+    parse_amount(text:str)->float
+    fetch_exchange_rate()->float
+    speak_result(amount_gbp:float;amount_jpy:float;rate:float)
     execute(params:dict)->dict
   skills/git_ops/v1/skill.py:
     i: subprocess,os,json,nfo,pathlib.Path
@@ -653,26 +748,33 @@ D:
     GitOpsSkill: __init__(1),_run(2),init(1),status(1),add(2)  # Manage local git repos for skill deve...
     get_info()
     health_check()
-  skills/hw_test/v2/skill.py:
+  skills/hw_test/v4/skill.py:
     i: json,os,platform,shutil,subprocess,sys,tempfile,time,wave,struct
     e: _SYSTEM,_IS_LINUX,_IS_MAC,_IS_WIN,get_info,health_check,AudioInputTester,AudioOutputTester
     AudioInputTester: run(1),_list_capture_devices(0),_alsa_capture_devices(0),_pulse_sources(0),_macos_audio_inputs(0)
     AudioOutputTester: run(1),_list_playback_devices(0),_get_default_sink(0),_play_test_tone(1)
+    HwTestSkill: execute(1)
     get_info()
     health_check()
-  skills/hw_test/v3/skill.py:
-    i: json,math,os,platform,shutil,struct,subprocess,sys,tempfile,time
+    execute(params:dict)->dict
+  skills/hw_test/v5/skill.py:
+    i: json,os,platform,shutil,subprocess,sys,tempfile,time,wave,struct
     e: _SYSTEM,_IS_LINUX,_IS_MAC,_IS_WIN,get_info,health_check,AudioInputTester,AudioOutputTester
-    AudioInputTester: run(1),_list_capture_devices(0),_alsa_capture_devices(0),_pulse_sources(0),_macos_audio_inputs(0)  # Test microphone / capture hardware at...
-    AudioOutputTester: run(1),_list_playback_devices(0),_get_default_sink(0),_play_test_tone(1)  # Test speaker / playback hardware.
-    AudioLoopbackTester: run(2),_check_frequency(3)  # Test full audio chain: generate tone...
-    DriverTester: run(0),_detect_audio_subsystem(0),_check_kernel_modules(0),_check_driver_status(0),_macos_audio_status(0)  # Check audio-related kernel modules an...
-    USBTester: run(0),_linux_usb(0),_macos_usb(0),_extract_usb_items(2),_windows_usb(0)  # Enumerate USB devices, focusing on au...
+    AudioInputTester: run(1),_list_capture_devices(0),_alsa_capture_devices(0),_pulse_sources(0),_macos_audio_inputs(0)
+    AudioOutputTester: run(1),_list_playback_devices(0),_get_default_sink(0),_play_test_tone(1)
+    HwTestSkill: execute(1)
     get_info()
     health_check()
-    execute(input_data:dict)->dict
+    execute(params:dict)->dict
   skills/interior_inspection/v1/skill.py:
     i: subprocess,re,json,html.parser.HTMLParser,urllib.request
+    e: InteriorInspectionSkill,get_info,health_check,execute
+    InteriorInspectionSkill: __init__(0),execute(1),_extract_content(1)
+    get_info()->dict
+    health_check()->dict
+    execute(params:dict)->dict
+  skills/interior_inspection/v2/skill.py:
+    i: subprocess,re,html.parser.HTMLParser,urllib.request
     e: InteriorInspectionSkill,get_info,health_check,execute
     InteriorInspectionSkill: __init__(0),execute(1),_extract_content(1)
     get_info()->dict
@@ -699,14 +801,14 @@ D:
     get_info()->dict
     health_check()->dict
     execute(params:dict)->dict
-  skills/kalkulator/v46/skill.py:
-    i: re,subprocess,ast
+  skills/kalkulator/v47/skill.py:
+    i: re,subprocess,ast,sys
     e: get_info,health_check,Kalkulator,execute
     Kalkulator: execute(1),_extract_expression(1),_validate_expression(1),_calculate(1)
     get_info()
     health_check()
     execute(params:dict)->dict
-  skills/kalkulator/v47/skill.py:
+  skills/kalkulator/v48/skill.py:
     i: re,subprocess,ast,sys
     e: get_info,health_check,Kalkulator,execute
     Kalkulator: execute(1),_extract_expression(1),_validate_expression(1),_calculate(1)
@@ -720,6 +822,13 @@ D:
     health_check()->dict
     execute(params:dict)->dict
     execute_wrapper(params:dict)->dict
+  skills/llm/v2/skill.py:
+    i: subprocess,json,re,os,urllib.{error,request}
+    e: LLM,get_info,health_check,execute
+    LLM: execute(1)
+    get_info()->dict
+    health_check()->dict
+    execute(params:dict)->dict
   skills/llm_router/v1/skill.py:
     i: subprocess,json,shutil,time,nfo,urllib.request
     e: LLMRouterSkill,get_info,health_check
@@ -746,6 +855,13 @@ D:
     get_info()
     execute(params:dict)->dict
     health_check()
+  skills/notes/v1/skill.py:
+    i: json,os,re,datetime,uuid,datetime.timezone,pathlib.Path
+    e: get_info,health_check,NotesSkill,execute
+    NotesSkill: __init__(0),_ensure_storage(0),_load_notes(0),_save_notes(1),add(3)  # Personal note management with tags an...
+    get_info()
+    health_check()
+    execute(input_data:dict)->dict
   skills/openrouter/v1/skill.py:
     i: json,typing.{Any,Dict,List,Optional},urllib.{error,request}
     e: OpenRouterSkill,get_info,execute,health_check
@@ -788,16 +904,37 @@ D:
     get_info()->dict
     health_check()->dict
     execute(params:dict)->dict
-  skills/shell/v1/skill.py:
-    i: json,os,shutil,subprocess,shlex,sys,nfo,pathlib.Path
+  skills/process_manager/v1/skill.py:
+    i: os,subprocess,json,signal,datetime,datetime.timezone,pathlib.Path
+    e: get_info,health_check,ProcessManagerSkill,execute
+    ProcessManagerSkill: _parse_proc_stat(1),_get_proc_info(1),list_processes(1),find_process(2),kill_process(2)  # Process management using stdlib and p...
+    get_info()
+    health_check()
+    execute(input_data:dict)->dict
+  skills/qr_generator/v1/skill.py:
+    i: subprocess,json,shutil,base64,tempfile,pathlib.Path
+    e: get_info,health_check,QRGeneratorSkill,execute
+    QRGeneratorSkill: _generate_with_qrencode(2),_generate_with_python(2),_generate_minimal(1),generate(3),generate_base64(2)  # Generate QR codes with multiple backe...
+    get_info()
+    health_check()
+    execute(input_data:dict)->dict
+  skills/separator_line/v1/skill.py:
+    i: subprocess,sys,re,json,urllib.request
+    e: get_info,health_check,SeparatorLineSkill,execute
+    SeparatorLineSkill: execute(1)
+    get_info()->dict
+    health_check()->dict
+    execute(params:dict)->dict
+  skills/shell/v2/skill.py:
+    i: json,os,shutil,subprocess,sys,pathlib.Path
     e: DANGEROUS_PREFIXES,BLOCKED_COMMANDS,MAX_OUTPUT_LINES,MAX_TIMEOUT,get_info,health_check,ShellSkill,execute
     ShellSkill: _is_interactive(1),execute(1)
     _load_blocked_commands()
     get_info()
     health_check()
-    execute(input_data:dict)->dict
-  skills/shell/v2/skill.py:
-    i: json,os,shutil,subprocess,sys,pathlib.Path
+    execute(params:dict)->dict
+  skills/shell/v3/skill.py:
+    i: json,os,shutil,subprocess,sys,re,pathlib.Path
     e: DANGEROUS_PREFIXES,BLOCKED_COMMANDS,MAX_OUTPUT_LINES,MAX_TIMEOUT,get_info,health_check,ShellSkill,execute
     ShellSkill: _is_interactive(1),execute(1)
     _load_blocked_commands()
@@ -825,7 +962,7 @@ D:
     get_info()
     health_check()
   skills/stt/providers/vosk/stable/skill.py:
-    i: json,os,shutil,subprocess,sys,tempfile,pathlib.Path
+    i: json,os,shutil,signal,subprocess,sys,tempfile,pathlib.Path
     e: get_info,health_check,STTSkill,execute
     STTSkill: __init__(0),_find_vosk_model(1),_check_audio_level(2),_record_wav(2),_ensure_wav(2)
     get_info()
@@ -852,6 +989,13 @@ D:
     get_info()->dict
     health_check()->dict
     execute(params:dict)->dict
+  skills/task_manager/v1/skill.py:
+    i: json,os,re,datetime,uuid,datetime.{timedelta,timezone},pathlib.Path
+    e: get_info,health_check,TaskManagerSkill,execute
+    TaskManagerSkill: __init__(0),_ensure_storage(0),_load_tasks(0),_save_tasks(1),_parse_due_date(1)  # Task and reminder management.
+    get_info()
+    health_check()
+    execute(input_data:dict)->dict
   skills/test_supervisor_probe/v8/skill.py:
     i: subprocess,sys,json
     e: get_info,health_check,TestSupervisorProbe,execute
@@ -886,30 +1030,6 @@ D:
     get_info()->Dict[str, Any]
     execute(params:Dict[str;Any])->Dict[str, Any]
     health_check()->Dict[str, Any]
-  skills/tts/providers/espeak/archive/v63/skill.py:
-    i: subprocess
-    e: TestSkill,get_info,health_check
-    TestSkill: execute(1)
-    get_info()
-    health_check()
-  skills/tts/providers/espeak/archive/v72/skill.py:
-    i: sys,subprocess,urllib.request
-    e: TestSkill,get_info,health_check
-    TestSkill: execute(1)
-    get_info()
-    health_check()
-  skills/tts/providers/espeak/latest/skill.py:
-    e: TestSkill,get_info,health_check
-    TestSkill: execute(1)
-    get_info()
-    health_check()
-  skills/tts/providers/espeak/stable/skill.py:
-    i: subprocess,shutil,re
-    e: TTSSkill,get_info,health_check,check_readiness
-    TTSSkill: __init__(0),_clean_for_tts(1),execute(1)  # Text-to-Speech using espeak (stdlib +...
-    get_info()
-    health_check()
-    check_readiness()
   skills/tts/providers/piper/latest/skill.py:
     i: json,os,shutil,subprocess,sys,tempfile,pathlib.Path,urllib.request
     e: DEFAULT_MODELS,get_info,health_check,PiperTTSSkill,execute
@@ -922,11 +1042,15 @@ D:
     _ensure_model(lang:str='pl')->Path
     execute(params:dict)->dict
   skills/tts/providers/piper/stable/skill.py:
-    i: os,shutil,subprocess,tempfile,pathlib.Path,urllib.request
-    e: DEFAULT_MODEL_URL,DEFAULT_MODEL_JSON,PiperTTSSkill,get_info,health_check,execute
-    PiperTTSSkill: __init__(0),_get_model(0),execute(1)
+    i: json,os,shutil,subprocess,sys,tempfile,pathlib.Path,urllib.request
+    e: DEFAULT_MODELS,get_info,health_check,PiperTTSSkill,execute
+    PiperTTSSkill: __init__(0),_clean_for_tts(1),execute(1)  # Piper TTS with auto-model download an...
     get_info()
     health_check()
+    _get_cache_dir()->Path
+    _get_model_path(lang:str='pl')->Path | None
+    _download_file(url:str;dest:Path;timeout:int=120)->bool
+    _ensure_model(lang:str='pl')->Path
     execute(params:dict)->dict
   skills/tts/providers/pyttsx3/latest/skill.py:
     e: TestSkill,get_info,health_check
@@ -940,14 +1064,31 @@ D:
     get_info()
     health_check()
     execute(params:dict)->dict
-  skills/weather/v1/skill.py:
+  skills/url_codec/v1/skill.py:
+    i: json,base64,html,urllib.parse
+    e: get_info,health_check,URLCodecSkill,execute
+    URLCodecSkill: urlencode(2),urldecode(1),base64encode(2),base64decode(3),htmlencode(1)  # Encoding and decoding using stdlib only.
+    get_info()
+    health_check()
+    execute(input_data:dict)->dict
+  skills/weather/v2/skill.py:
     i: json,re,ssl,typing.{Any,Dict},urllib.{error,request}
-    e: execute,health_check,get_info
+    e: WeatherSkill,execute,health_check,get_info
+    WeatherSkill: execute(1)
     _extract_location(text:str)->str
     _fetch_weather(location:str)->Dict
-    execute(input_data:Dict[str;Any])->Dict[str, Any]
-    health_check()->Dict[str, Any]
-    get_info()
+    execute(params:dict)->dict
+    health_check()->dict
+    get_info()->dict
+  skills/weather/v3/skill.py:
+    i: json,re,ssl,typing.{Any,Dict},urllib.{error,request}
+    e: WeatherSkill,execute,health_check,get_info
+    WeatherSkill: execute(1)
+    _extract_location(text:str)->str
+    _fetch_weather(location:str)->Dict
+    execute(params:dict)->dict
+    health_check()->dict
+    get_info()->dict
   skills/weather_gdansk/v8/skill.py:
     i: subprocess,re,html.parser.HTMLParser,urllib.{error,request}
     e: WeatherGdanskParser,get_weather_gdansk,speak_weather,WeatherGdanskSkill,get_info,health_check,execute
@@ -959,11 +1100,9 @@ D:
     health_check()->dict
     execute(params:dict)->dict
   skills/weather_gdansk/v9/skill.py:
-    i: subprocess,re,html.parser.HTMLParser,urllib.{error,request}
-    e: WeatherGdanskParser,get_weather_gdansk,WeatherGdanskSkill,get_info,health_check,execute
-    WeatherGdanskParser: __init__(0),handle_starttag(2),handle_endtag(1),handle_data(1)
-    WeatherGdanskSkill: execute(1)
-    get_weather_gdansk()
+    i: subprocess,re,html,html.parser.HTMLParser,urllib.request
+    e: WeatherGdanskSkill,get_info,health_check,execute
+    WeatherGdanskSkill: __init__(0),execute(1),get_info(0),health_check(0)
     get_info()->dict
     health_check()->dict
     execute(params:dict)->dict
@@ -975,10 +1114,10 @@ D:
     get_info()
     health_check()
   skills/web_search/providers/duckduckgo/latest/skill.py:
-    i: subprocess,json,re,socket,threading,time,html.parser,urllib.{parse,request}
+    i: subprocess,json,re,html.parser,urllib.{parse,request}
     e: SimpleHTMLTextExtractor,WebSearchSkill,get_info,health_check,execute
     SimpleHTMLTextExtractor: __init__(0),handle_starttag(2),handle_endtag(1),handle_data(1),get_text(0)  # Extract visible text from HTML.
-    WebSearchSkill: _fetch_url(2),search_duckduckgo(2),fetch_page_text(2),search_and_summarize(2),scan_local_rtsp(3)  # Search the web and fetch page content...
+    WebSearchSkill: _fetch_url(2),search_duckduckgo(2),fetch_page_text(2),search_and_summarize(2),execute(1)  # Search the web and fetch page content...
     get_info()
     health_check()
     execute(params:dict)->dict

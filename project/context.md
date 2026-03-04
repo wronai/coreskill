@@ -4,21 +4,16 @@
 
 - **Project**: .
 - **Analysis Mode**: static
-- **Total Functions**: 1105
-- **Total Classes**: 151
-- **Modules**: 116
+- **Total Functions**: 1312
+- **Total Classes**: 168
+- **Modules**: 135
 - **Entry Points**: 0
 
 ## Architecture by Module
 
 ### cores.v1.core
-- **Functions**: 58
+- **Functions**: 59
 - **File**: `core.py`
-
-### skills.benchmark.v1.skill
-- **Functions**: 32
-- **Classes**: 3
-- **File**: `skill.py`
 
 ### cores.v1.smart_intent
 - **Functions**: 31
@@ -60,6 +55,11 @@
 - **Classes**: 1
 - **File**: `skill_manager.py`
 
+### cores.v1.evo_engine
+- **Functions**: 23
+- **Classes**: 2
+- **File**: `evo_engine.py`
+
 ### cores.v1.session_config
 - **Functions**: 23
 - **Classes**: 2
@@ -80,10 +80,15 @@
 - **Classes**: 4
 - **File**: `metrics_collector.py`
 
-### cores.v1.evo_engine
-- **Functions**: 17
-- **Classes**: 2
-- **File**: `evo_engine.py`
+### skills.task_manager.v1.skill
+- **Functions**: 18
+- **Classes**: 1
+- **File**: `skill.py`
+
+### skills.benchmark.v2.skill
+- **Functions**: 18
+- **Classes**: 1
+- **File**: `skill.py`
 
 ### cores.v1.preflight
 - **Functions**: 17
@@ -95,20 +100,15 @@
 - **Classes**: 6
 - **File**: `__init__.py`
 
-### cores.v1.repair_journal
-- **Functions**: 16
-- **Classes**: 3
-- **File**: `repair_journal.py`
-
-### cores.v1.intent_engine
-- **Functions**: 16
+### skills.auto.v2.skill
+- **Functions**: 17
 - **Classes**: 1
-- **File**: `intent_engine.py`
+- **File**: `skill.py`
 
-### cores.v1.skill_schema
-- **Functions**: 16
-- **Classes**: 3
-- **File**: `skill_schema.py`
+### skills.benchmark.v3.skill
+- **Functions**: 17
+- **Classes**: 1
+- **File**: `skill.py`
 
 ## Key Entry Points
 
@@ -119,11 +119,6 @@ Main execution flows into the system:
 Key execution flows identified:
 
 ## Key Classes
-
-### skills.benchmark.v1.skill.BenchmarkSkill
-> Analyzes and benchmarks LLM models for goal-based recommendations.
-- **Methods**: 29
-- **Key Methods**: skills.benchmark.v1.skill.BenchmarkSkill.__init__, skills.benchmark.v1.skill.BenchmarkSkill._load_config, skills.benchmark.v1.skill.BenchmarkSkill._get_models_from_tier, skills.benchmark.v1.skill.BenchmarkSkill._get_api_key, skills.benchmark.v1.skill.BenchmarkSkill._load_benchmark_results, skills.benchmark.v1.skill.BenchmarkSkill._save_benchmark_results, skills.benchmark.v1.skill.BenchmarkSkill._update_benchmark_results, skills.benchmark.v1.skill.BenchmarkSkill._get_cached_recommendations, skills.benchmark.v1.skill.BenchmarkSkill.execute, skills.benchmark.v1.skill.BenchmarkSkill._recommend_models
 
 ### cores.v1.session_config.SessionConfig
 > User-facing configuration manager.
@@ -177,6 +172,13 @@ Stores JSONL at logs/repair/re
 - **Methods**: 16
 - **Key Methods**: cores.v1.repair_journal.RepairJournal.__init__, cores.v1.repair_journal.RepairJournal.record_attempt, cores.v1.repair_journal.RepairJournal.record_success, cores.v1.repair_journal.RepairJournal.get_known_fix, cores.v1.repair_journal.RepairJournal.get_failed_fixes, cores.v1.repair_journal.RepairJournal.get_history, cores.v1.repair_journal.RepairJournal.get_stats, cores.v1.repair_journal.RepairJournal.ask_llm_diagnosis, cores.v1.repair_journal.RepairJournal.ask_llm_and_try, cores.v1.repair_journal.RepairJournal._error_signature
 
+### cores.v1.evo_engine.EvoEngine
+> Generic evolutionary algorithm:
+1. Detect need → 2. Execute skill → 3. Validate goal → 4. If fail:
+ 
+- **Methods**: 16
+- **Key Methods**: cores.v1.evo_engine.EvoEngine.__init__, cores.v1.evo_engine.EvoEngine.set_reflection, cores.v1.evo_engine.EvoEngine.handle_request, cores.v1.evo_engine.EvoEngine._run_auto_reflection, cores.v1.evo_engine.EvoEngine._execute_with_validation, cores.v1.evo_engine.EvoEngine._exec_prepare, cores.v1.evo_engine.EvoEngine._exec_attempt, cores.v1.evo_engine.EvoEngine._exec_handle_success, cores.v1.evo_engine.EvoEngine._exec_handle_partial, cores.v1.evo_engine.EvoEngine._exec_handle_failure
+
 ### cores.v1.smart_intent.SmartIntentClassifier
 > ML-based intent classifier for evo-engine.
 
@@ -191,6 +193,16 @@ Replaces all hardcoded _KW_* tuples with learnable embed
 - **Methods**: 15
 - **Key Methods**: cores.v1.intent.SmartIntentClassifier.__init__, cores.v1.intent.SmartIntentClassifier._load_training, cores.v1.intent.SmartIntentClassifier._rebuild_skill_vectors, cores.v1.intent.SmartIntentClassifier.classify, cores.v1.intent.SmartIntentClassifier._embedding_classify, cores.v1.intent.SmartIntentClassifier._cosine_classify, cores.v1.intent.SmartIntentClassifier._extract_model_target, cores.v1.intent.SmartIntentClassifier._llm_classify, cores.v1.intent.SmartIntentClassifier._record_use, cores.v1.intent.SmartIntentClassifier.learn_from_correction
 
+### skills.task_manager.v1.skill.TaskManagerSkill
+> Task and reminder management.
+- **Methods**: 15
+- **Key Methods**: skills.task_manager.v1.skill.TaskManagerSkill.__init__, skills.task_manager.v1.skill.TaskManagerSkill._ensure_storage, skills.task_manager.v1.skill.TaskManagerSkill._load_tasks, skills.task_manager.v1.skill.TaskManagerSkill._save_tasks, skills.task_manager.v1.skill.TaskManagerSkill._parse_due_date, skills.task_manager.v1.skill.TaskManagerSkill.add, skills.task_manager.v1.skill.TaskManagerSkill.list_tasks, skills.task_manager.v1.skill.TaskManagerSkill.complete, skills.task_manager.v1.skill.TaskManagerSkill.delete, skills.task_manager.v1.skill.TaskManagerSkill.update
+
+### skills.benchmark.v2.skill.BenchmarkSkill
+> Analyzes and benchmarks LLM models for goal-based recommendations.
+- **Methods**: 15
+- **Key Methods**: skills.benchmark.v2.skill.BenchmarkSkill.__init__, skills.benchmark.v2.skill.BenchmarkSkill._load_config, skills.benchmark.v2.skill.BenchmarkSkill._get_models_from_tier, skills.benchmark.v2.skill.BenchmarkSkill._get_api_key, skills.benchmark.v2.skill.BenchmarkSkill._get_cached_recommendations, skills.benchmark.v2.skill.BenchmarkSkill.execute, skills.benchmark.v2.skill.BenchmarkSkill._recommend_models_live, skills.benchmark.v2.skill.BenchmarkSkill._get_model_param_size, skills.benchmark.v2.skill.BenchmarkSkill.BENCHMARK_PROFILES, skills.benchmark.v2.skill.BenchmarkSkill._call_model_for_benchmark
+
 ### cores.v1.stable_snapshot.StableSnapshot
 > Manages stable/bugfix/feature versions of skills.
 
@@ -198,6 +210,15 @@ Key principles:
 - Stable is SACRED — only promote
 - **Methods**: 14
 - **Key Methods**: cores.v1.stable_snapshot.StableSnapshot.__init__, cores.v1.stable_snapshot.StableSnapshot.save_as_stable, cores.v1.stable_snapshot.StableSnapshot.create_branch, cores.v1.stable_snapshot.StableSnapshot.promote_branch, cores.v1.stable_snapshot.StableSnapshot.restore_stable, cores.v1.stable_snapshot.StableSnapshot.validate_against_stable, cores.v1.stable_snapshot.StableSnapshot.list_branches, cores.v1.stable_snapshot.StableSnapshot._detect_provider, cores.v1.stable_snapshot.StableSnapshot._find_current_version, cores.v1.stable_snapshot.StableSnapshot._copy_skill_files
+
+### skills.auto.v2.skill.AutoSkillBuilder
+- **Methods**: 14
+- **Key Methods**: skills.auto.v2.skill.AutoSkillBuilder.execute, skills.auto.v2.skill.AutoSkillBuilder._parse_command, skills.auto.v2.skill.AutoSkillBuilder._execute_command, skills.auto.v2.skill.AutoSkillBuilder._get_weather, skills.auto.v2.skill.AutoSkillBuilder._get_time, skills.auto.v2.skill.AutoSkillBuilder._get_date, skills.auto.v2.skill.AutoSkillBuilder._translate_text, skills.auto.v2.skill.AutoSkillBuilder._calculate_expression, skills.auto.v2.skill.AutoSkillBuilder._speak_text, skills.auto.v2.skill.AutoSkillBuilder._search_web
+
+### skills.benchmark.v3.skill.BenchmarkSkill
+> Analyzes and benchmarks LLM models for goal-based recommendations.
+- **Methods**: 14
+- **Key Methods**: skills.benchmark.v3.skill.BenchmarkSkill.__init__, skills.benchmark.v3.skill.BenchmarkSkill._load_config, skills.benchmark.v3.skill.BenchmarkSkill._get_models_from_tier, skills.benchmark.v3.skill.BenchmarkSkill._get_api_key, skills.benchmark.v3.skill.BenchmarkSkill._get_cached_recommendations, skills.benchmark.v3.skill.BenchmarkSkill._call_model_for_benchmark, skills.benchmark.v3.skill.BenchmarkSkill.execute, skills.benchmark.v3.skill.BenchmarkSkill._recommend_models_live, skills.benchmark.v3.skill.BenchmarkSkill._get_model_param_size, skills.benchmark.v3.skill.BenchmarkSkill._compare_models
 
 ### cores.v1.provider_selector.ProviderChain
 > Ordered provider fallback chain with auto-degradation.
@@ -220,34 +241,10 @@ Usage:
 - **Methods**: 13
 - **Key Methods**: skills.git_ops.v1.skill.GitOpsSkill.__init__, skills.git_ops.v1.skill.GitOpsSkill._run, skills.git_ops.v1.skill.GitOpsSkill.init, skills.git_ops.v1.skill.GitOpsSkill.status, skills.git_ops.v1.skill.GitOpsSkill.add, skills.git_ops.v1.skill.GitOpsSkill.commit, skills.git_ops.v1.skill.GitOpsSkill.log, skills.git_ops.v1.skill.GitOpsSkill.diff, skills.git_ops.v1.skill.GitOpsSkill.tag, skills.git_ops.v1.skill.GitOpsSkill.checkout
 
-### cores.v1.quality_gate.SkillQualityGate
-> Validates skill quality before registration.
-Each check contributes a weight to the final score.
-- **Methods**: 12
-- **Key Methods**: cores.v1.quality_gate.SkillQualityGate.__init__, cores.v1.quality_gate.SkillQualityGate.evaluate, cores.v1.quality_gate.SkillQualityGate.should_register, cores.v1.quality_gate.SkillQualityGate.compare, cores.v1.quality_gate.SkillQualityGate._check_preflight, cores.v1.quality_gate.SkillQualityGate._check_manifest_schema, cores.v1.quality_gate.SkillQualityGate._check_health, cores.v1.quality_gate.SkillQualityGate._check_test_exec, cores.v1.quality_gate.SkillQualityGate._check_output, cores.v1.quality_gate.SkillQualityGate._check_code_quality
-
-### cores.v1.resource_monitor.ResourceMonitor
-> Detects CPU, RAM, GPU, disk, installed packages.
-- **Methods**: 12
-- **Key Methods**: cores.v1.resource_monitor.ResourceMonitor.__init__, cores.v1.resource_monitor.ResourceMonitor.snapshot, cores.v1.resource_monitor.ResourceMonitor._cpu_count, cores.v1.resource_monitor.ResourceMonitor._ram_total, cores.v1.resource_monitor.ResourceMonitor._ram_available, cores.v1.resource_monitor.ResourceMonitor._ram_from_proc, cores.v1.resource_monitor.ResourceMonitor._disk_free, cores.v1.resource_monitor.ResourceMonitor._detect_gpu, cores.v1.resource_monitor.ResourceMonitor._installed_packages, cores.v1.resource_monitor.ResourceMonitor.has_command
-
-### cores.v1.user_memory.UserMemory
-> Persistent long-term memory for user preferences and directives.
-
-Directives are short text notes th
-- **Methods**: 12
-- **Key Methods**: cores.v1.user_memory.UserMemory.__init__, cores.v1.user_memory.UserMemory.directives, cores.v1.user_memory.UserMemory.add, cores.v1.user_memory.UserMemory.remove, cores.v1.user_memory.UserMemory.clear_all, cores.v1.user_memory.UserMemory.voice_mode, cores.v1.user_memory.UserMemory.set_voice_mode, cores.v1.user_memory.UserMemory.has_directive, cores.v1.user_memory.UserMemory.build_system_context, cores.v1.user_memory.UserMemory.looks_like_preference
-
-### cores.v1.provider_selector.ProviderSelector
-> Selects the best available provider for a capability.
-- **Methods**: 12
-- **Key Methods**: cores.v1.provider_selector.ProviderSelector.__init__, cores.v1.provider_selector.ProviderSelector.list_capabilities, cores.v1.provider_selector.ProviderSelector.list_providers, cores.v1.provider_selector.ProviderSelector.load_manifest, cores.v1.provider_selector.ProviderSelector.load_meta, cores.v1.provider_selector.ProviderSelector.get_provider_info, cores.v1.provider_selector.ProviderSelector.select, cores.v1.provider_selector.ProviderSelector._check_runnable, cores.v1.provider_selector.ProviderSelector._score, cores.v1.provider_selector.ProviderSelector._fallback
-
-### cores.v1.llm_client.LLMClient
-> Tiered LLM routing: free remote → local (ollama) → paid remote.
-- Rate-limited models get cooldown (
-- **Methods**: 12
-- **Key Methods**: cores.v1.llm_client.LLMClient.__init__, cores.v1.llm_client.LLMClient.tier_info, cores.v1.llm_client.LLMClient._is_available, cores.v1.llm_client.LLMClient._report_ok, cores.v1.llm_client.LLMClient._report_fail, cores.v1.llm_client.LLMClient.chat, cores.v1.llm_client.LLMClient._build_error_msg, cores.v1.llm_client.LLMClient._try_model, cores.v1.llm_client.LLMClient._get_unavailable_reason, cores.v1.llm_client.LLMClient.gen_code
+### skills.document_reader.v1.skill.DocumentReaderSkill
+> Extract text from various document formats.
+- **Methods**: 13
+- **Key Methods**: skills.document_reader.v1.skill.DocumentReaderSkill._detect_file_type, skills.document_reader.v1.skill.DocumentReaderSkill._read_text_file, skills.document_reader.v1.skill.DocumentReaderSkill._read_pdf, skills.document_reader.v1.skill.DocumentReaderSkill._read_pdf_basic, skills.document_reader.v1.skill.DocumentReaderSkill._read_docx, skills.document_reader.v1.skill.DocumentReaderSkill._read_docx_basic, skills.document_reader.v1.skill.DocumentReaderSkill._read_html, skills.document_reader.v1.skill.DocumentReaderSkill.read, skills.document_reader.v1.skill.DocumentReaderSkill.extract, skills.document_reader.v1.skill.DocumentReaderSkill.info
 
 ## Data Transformation Functions
 
@@ -301,10 +298,6 @@ Returns (valid: bool, reason: str).
 3. Run s
 - **Output to**: result.get, ValidationResult, result.get, ValidationResult, isinstance
 
-### cores.v1.smart_intent.EmbeddingEngine.encode
-> Encode texts to vectors.
-- **Output to**: self._try_init, self._model.encode, None.toarray, TfidfVectorizer, None.toarray
-
 ### cores.v1.skill_schema.SkillSchemaValidator.validate_manifest
 > Validate a skill manifest against schema.
 - **Output to**: self._validate_against_schema
@@ -325,10 +318,9 @@ Returns (valid: bool, reason: str).
 > Quick validation of a manifest.json file.
 - **Output to**: SkillSchemaValidator, validator.validate_file
 
-### cores.v1.evo_engine.EvoEngine._validate_result
-> Validate whether the skill result actually achieved the goal.
-Returns {verdict: success|partial|fail
-- **Output to**: result.get, result.get, isinstance, inner.get, inner.get
+### cores.v1.smart_intent.EmbeddingEngine.encode
+> Encode texts to vectors.
+- **Output to**: self._try_init, self._model.encode, None.toarray, TfidfVectorizer, None.toarray
 
 ### cores.v1.stable_snapshot.StableSnapshot.validate_against_stable
 > Compare current version against stable reference.
@@ -336,9 +328,18 @@ Returns {verdict: success|partial|fail
 Returns: {"matches": bool, "diff_lines": int, "he
 - **Output to**: self._find_current_version, stable_skill.read_text, current_skill.read_text, cores.v1.prompts.PromptManager.list, self._check_health
 
+### cores.v1.evo_engine.EvoEngine._validate_result
+> Validate whether the skill result actually achieved the goal.
+Returns {verdict: success|partial|fail
+- **Output to**: result.get, result.get, isinstance, inner.get, inner.get
+
 ### cores.v1.session_config.SessionConfig.format_change_feedback
 > Format configuration change for user feedback.
 - **Output to**: category_names.get
+
+### cores.v1.pipeline_manager.PipelineManager._process_input
+> Process input dict, substituting variables in all string values.
+- **Output to**: isinstance, isinstance, self._process_input, isinstance, input_data.items
 
 ### cores.v1.logger.Logger._format_markdown
 > Format entry as markdown with code blocks.
@@ -348,14 +349,13 @@ Returns: {"matches": bool, "diff_lines": int, "he
 > Human-readable status summary.
 - **Output to**: self.status, None.join, lines.append, len
 
-### skills.kalkulator.v47.skill.Kalkulator._validate_expression
-- **Output to**: ast.walk, ast.parse, isinstance, ValueError, isinstance
+### skills.converter.v1.skill.ConverterSkill.convert_unit
+> Convert between units.
+- **Output to**: self.UNITS.items, round, str
 
-### skills.gbp_to_jpy_converter.v5.skill.parse_amount_from_text
-- **Output to**: text.lower, replacements.items, re.findall, text_lower.replace, float
-
-### skills.gbp_to_jpy_converter.v4.skill.parse_amount_from_text
-- **Output to**: text.lower, replacements.items, re.findall, text_lower.replace, float
+### skills.converter.v1.skill.ConverterSkill.convert_temperature
+> Convert temperature (special handling).
+- **Output to**: round, str
 
 ## Public API Surface
 
@@ -366,16 +366,17 @@ Functions exposed as public API (no underscore prefix):
 - `scripts.benchmark_system.run_all_benchmarks` - 63 calls
 - `cores.v1.self_reflection.SelfReflection.run_diagnostic` - 53 calls
 - `cores.v1.intent_engine.IntentEngine.analyze` - 48 calls
+- `cores.v1.core.main` - 48 calls
 - `scripts.simulate.Simulator.run_scenario` - 47 calls
-- `cores.v1.core.main` - 45 calls
 - `cores.v1.skill_logger.get_markdown_logs` - 44 calls
+- `cores.v1.evo_engine.EvoEngine.handle_request` - 43 calls
 - `cores.v1.skill_manager.SkillManager.smart_evolve` - 43 calls
 - `cores.v1.intent.SmartIntentClassifier.classify` - 43 calls
-- `cores.v1.evo_engine.EvoEngine.handle_request` - 42 calls
 - `cores.v1.metrics_collector.MetricsCollector.compute_system_health` - 41 calls
 - `cores.v1.llm_client.LLMClient.chat` - 37 calls
 - `cli.cmd_cache_reset` - 36 calls
 - `cores.v1.resource_monitor.ResourceMonitor.can_run` - 36 calls
+- `skills.shell.v3.skill.ShellSkill.execute` - 36 calls
 - `scripts.generate_manifests.main` - 34 calls
 - `main.bootstrap` - 33 calls
 - `skills.shell.v2.skill.ShellSkill.execute` - 33 calls
@@ -385,22 +386,21 @@ Functions exposed as public API (no underscore prefix):
 - `cores.v1.system_identity.SystemIdentity.build_system_prompt` - 31 calls
 - `cores.v1.skill_manager.SkillManager.create_skill` - 31 calls
 - `cli.cmd_status` - 30 calls
+- `skills.task_manager.v1.skill.TaskManagerSkill.execute` - 30 calls
 - `cli.cmd_logs_reset` - 29 calls
 - `cores.v1.repair_journal.RepairJournal.ask_llm_and_try` - 28 calls
 - `scripts.simulate.Simulator.run_all` - 27 calls
 - `cores.v1.preflight.SkillPreflight.check_imports` - 27 calls
-- `skills.shell.v1.skill.ShellSkill.execute` - 27 calls
-- `skills.benchmark.v1.skill.BenchmarkSkill.execute` - 27 calls
 - `cores.v1.preflight.SkillPreflight.auto_fix_imports` - 26 calls
 - `seeds.core_v1.SkillManager.exec_skill` - 26 calls
+- `skills.benchmark.v3.skill.BenchmarkSkill.execute` - 26 calls
+- `skills.benchmark.v2.skill.BenchmarkSkill.execute` - 26 calls
 - `scripts.generate_manifests.generate_manifest_for_skill` - 25 calls
 - `cores.v1.skill_logger.get_health_markdown` - 25 calls
+- `skills.converter.v1.skill.ConverterSkill.execute` - 24 calls
+- `skills.notes.v1.skill.NotesSkill.execute` - 24 calls
 - `skills.local_computer_discovery.v3.skill.LocalComputerDiscovery.execute` - 24 calls
-- `cli.main_cli` - 23 calls
-- `scripts.benchmark_system.main` - 23 calls
-- `skills.git_ops.v1.skill.GitOpsSkill.execute` - 23 calls
-- `skills.stt.providers.vosk.archive.v6.skill.STTSkill.execute` - 23 calls
-- `skills.stt.providers.vosk.archive.v7.skill.STTSkill.execute` - 23 calls
+- `skills.file_manager.v1.skill.FileManagerSkill.execute` - 24 calls
 
 ## System Interactions
 

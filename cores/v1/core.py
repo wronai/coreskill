@@ -409,6 +409,43 @@ def _cmd_stt(a1, **ctx):
             mprint("### 🎤 Nie usłyszałem nic\nSpróbuj powiedzieć coś głośniej.")
             conv.append({"role": "assistant", "content": "Nie usłyszałem nic. Spróbuj ponownie."})
 
+def _cmd_tts(a1, **ctx):
+    """TTS command: /tts [provider] - Test or switch TTS provider"""
+    sm = ctx["sm"]
+    evo = ctx["evo"]
+    ps = ctx.get("provider_selector")
+    
+    if not a1:
+        # Show current TTS providers
+        if ps:
+            providers = ps.list_providers("tts")
+            cpr(C.CYAN, "Dostępni TTS providerzy:")
+            for prov in providers:
+                cpr(C.DIM, f"  - {prov}")
+            cpr(C.DIM, "Użycie: /tts <provider> aby przetestować")
+        else:
+            cpr(C.YELLOW, "ProviderSelector nie jest dostępny")
+        return
+    
+    # Test TTS with specified provider
+    provider = a1.strip().lower()
+    cpr(C.CYAN, f"🔊 Testuję TTS z providerem: {provider}")
+    
+    result = sm.exec_skill("tts", inp={"text": "To jest test syntezy mowy.", "lang": "pl"}, provider=provider)
+    
+    if result.get("success"):
+        method = result.get("result", {}).get("method", "unknown")
+        cpr(C.GREEN, f"✓ TTS działa! Method: {method}")
+        # Save as preferred provider in session config
+        session_cfg = ctx.get("session_config")
+        if session_cfg:
+            session_cfg.set("tts", "provider", provider)
+            cpr(C.CYAN, f"💾 Ustawiono {provider} jako domyślny provider TTS dla tej sesji")
+    else:
+        cpr(C.RED, f"✗ TTS nie działa: {result.get('error', 'unknown error')}")
+        cpr(C.DIM, "Sprawdź /providers aby zobaczyć dostępnych providerów")
+
+
 def _cmd_fix(a1, **ctx):
     """Autonomous repair: /fix [skill_name]"""
     sm = ctx["sm"]
@@ -1274,6 +1311,7 @@ COMMANDS = {
     "/gc": _cmd_gc,
     "/resources": _cmd_resources,
     "/stt": _cmd_stt,
+    "/tts": _cmd_tts,
     "/fix": _cmd_fix,
     "/voice": _cmd_voice,
     "/health": _cmd_health,

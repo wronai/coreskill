@@ -1,23 +1,9 @@
 {
-  "provider": "piper",
-  "tier": "premium",
-  "quality_score": 9,
-  "requirements": {
-    "python_packages": [
-      "piper-tts"
-    ],
-    "system_packages": [
-      "ffmpeg"
-    ],
-    "min_ram_mb": 512,
-    "recommended_ram_mb": 1024
-  },
-  "fallback_to": "espeak",
-  "tags": [
-    "neural",
-    "high-quality",
-    "multilingual",
-    "polish-optimized",
-    "auto-download"
-  ]
+  "name": "tts",
+  "version": "latest",
+  "parent": "stable",
+  "phase": "runtime",
+  "created_at": "2026-03-04T16:18:25.820786+00:00",
+  "quality_score": 0.765,
+  "is_regression": false
 }

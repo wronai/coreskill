@@ -34,8 +34,8 @@
       "version": "v1",
       "input": {
         "action": "add",
-        "title": "Daily Briefing - {date}",
-        "content": "Date: {timestamp}\n\nTasks Due Today: {count}\nPending Tasks: {pending}\nCompleted Today: {completed}\n\nFocus: Complete high priority tasks first!",
+        "title": "Daily Briefing - {current_time.result.date}",
+        "content": "Date: {current_time.result.timestamp}\n\nTasks Due Today: {due_tasks.result.count}\nPending Tasks: {task_stats.result.pending}\nCompleted Today: {task_stats.result.completed}\n\nFocus: Complete high priority tasks first!",
         "tags": ["daily", "briefing", "planning"]
       },
       "output_key": "briefing_note"
