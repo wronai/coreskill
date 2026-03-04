@@ -13,6 +13,31 @@ from enum import Enum
 import re
 
 
+# Test prompts for different evaluation scenarios
+BENCHMARK_TESTS = {
+    "coding": {
+        "prompt": "Write a Python function that reverses a string without using slicing or built-in reverse methods. Include docstring and error handling.",
+        "criteria": ["function definition", "docstring", "error handling", "no slice notation"]
+    },
+    "reasoning": {
+        "prompt": "If a train travels 120 km in 2 hours, and then 80 km in 1.5 hours, what is the average speed for the entire journey? Show your reasoning step by step.",
+        "criteria": ["step by step", "correct formula", "correct answer", "km/h unit"]
+    },
+    "polish": {
+        "prompt": "Napisz krótkie podsumowanie (2-3 zdania) o sztucznej inteligencji w języku polskim.",
+        "criteria": ["polish language", "2-3 sentences", "AI topic", "coherent"]
+    },
+    "json": {
+        "prompt": 'Return ONLY a JSON object with keys: "name", "age", "city". No markdown, no explanation.',
+        "criteria": ["valid json", "no markdown", "all keys present"]
+    },
+    "speed": {
+        "prompt": "Say 'hello' and nothing else.",
+        "criteria": ["response"]
+    }
+}
+
+
 class GoalType(Enum):
     CODING = "coding"
     CHAT = "chat"
@@ -155,6 +180,54 @@ class BenchmarkSkill:
             "min_context": 4000,
         },
     }
+
+    # Optimization profiles - adjust weights for different priorities
+    BENCHMARK_PROFILES = {
+        "fastest": {
+            "quality_weight": 0.20,
+            "speed_weight": 0.60,
+            "context_weight": 0.10,
+            "cost_weight": 0.10,
+            "description": "Najszybszy model, nawet kosztem jakości",
+        },
+        "best_quality": {
+            "quality_weight": 0.70,
+            "speed_weight": 0.10,
+            "context_weight": 0.15,
+            "cost_weight": 0.05,
+            "description": "Najlepsza jakość, bez względu na koszt i prędkość",
+        },
+        "ignore_cost": {
+            "quality_weight": 0.50,
+            "speed_weight": 0.30,
+            "context_weight": 0.15,
+            "cost_weight": 0.05,
+            "description": "Nie zwraca uwagi na koszt (dostępne też płatne)",
+        },
+        "free_only": {
+            "quality_weight": 0.45,
+            "speed_weight": 0.30,
+            "context_weight": 0.15,
+            "cost_weight": 0.10,
+            "description": "Tylko darmowe modele",
+            "budget": "free",
+        },
+        "balanced": {
+            "quality_weight": 0.35,
+            "speed_weight": 0.35,
+            "context_weight": 0.15,
+            "cost_weight": 0.15,
+            "description": "Zbalansowane podejście (domyślne)",
+        },
+        "large_context": {
+            "quality_weight": 0.30,
+            "speed_weight": 0.20,
+            "context_weight": 0.45,
+            "cost_weight": 0.05,
+            "description": "Duży kontekst (256k+) priorytet",
+            "constraints": ["large_context"],
+        },
+    }
     
     def execute(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -164,6 +237,7 @@ class BenchmarkSkill:
             - goal: "coding" | "chat" | "reasoning" | "summarization" | "translation" | "creative" | "general"
             - budget: "free" | "cheap" | "any" (default: free)
             - constraints: list of "fast", "reliable", "large_context", "polish", "english"
+            - profile: "fastest" | "best_quality" | "ignore_cost" | "free_only" | "balanced" | "large_context"
             - available_models: list of model IDs to consider (optional)
             - limit: max recommendations (default: 3)
         """
@@ -179,8 +253,12 @@ class BenchmarkSkill:
                 return self._compare_models(params)
             elif action == "analyze":
                 return self._analyze_current_model(params)
+            elif action == "run_benchmark":
+                return self._run_live_benchmark(params)
             elif action == "list_goals":
                 return self._list_goal_profiles()
+            elif action == "list_profiles":
+                return self._list_benchmark_profiles()
             else:
                 return {"success": False, "error": f"Unknown action: {action}"}
                 
@@ -188,14 +266,29 @@ class BenchmarkSkill:
             return {"success": False, "error": str(e)}
     
     def _recommend_models(self, params: Dict, goal: GoalType) -> Dict[str, Any]:
-        """Recommend best models for a specific goal."""
+        """Recommend best models for a specific goal with optional profile."""
         budget = params.get("budget", "free")
         constraints = params.get("constraints", [])
         available_models = params.get("available_models", None)
         limit = params.get("limit", 3)
+        profile_name = params.get("profile", "balanced")
         
-        # Get profile for this goal
-        profile = self.GOAL_PROFILES.get(goal, self.GOAL_PROFILES[GoalType.GENERAL])
+        # Get base profile for this goal
+        base_profile = self.GOAL_PROFILES.get(goal, self.GOAL_PROFILES[GoalType.GENERAL]).copy()
+        
+        # Apply BENCHMARK_PROFILE overrides if specified
+        benchmark_profile = self.BENCHMARK_PROFILES.get(profile_name)
+        if benchmark_profile:
+            base_profile["quality_weight"] = benchmark_profile.get("quality_weight", base_profile["quality_weight"])
+            base_profile["speed_weight"] = benchmark_profile.get("speed_weight", base_profile["speed_weight"])
+            base_profile["context_weight"] = benchmark_profile.get("context_weight", base_profile.get("context_weight", 0.15))
+            base_profile["cost_weight"] = benchmark_profile.get("cost_weight", base_profile["cost_weight"])
+            # Override budget if profile specifies it
+            if "budget" in benchmark_profile:
+                budget = benchmark_profile["budget"]
+            # Add constraints from profile
+            if "constraints" in benchmark_profile:
+                constraints = list(set(constraints + benchmark_profile["constraints"]))
         
         # Define candidate models based on budget
         candidates = self._get_candidate_models(budget, available_models)
@@ -204,7 +297,7 @@ class BenchmarkSkill:
         scored_models = []
         for model_id in candidates:
             score = self._calculate_model_score(
-                model_id, goal, profile, constraints
+                model_id, goal, base_profile, constraints
             )
             scored_models.append(score)
         
@@ -212,7 +305,7 @@ class BenchmarkSkill:
         scored_models.sort(key=lambda x: x.overall_score, reverse=True)
         
         # Filter by constraints
-        filtered = self._apply_constraints(scored_models, constraints, profile)
+        filtered = self._apply_constraints(scored_models, constraints, base_profile)
         
         # Store results
         self.last_results = filtered
@@ -242,16 +335,21 @@ class BenchmarkSkill:
             "timestamp": time.time(),
             "goal": goal.value,
             "budget": budget,
+            "profile": profile_name,
             "constraints": constraints,
             "top_model": recommendations[0]["model_id"] if recommendations else None,
             "all_scores": [asdict(m) for m in filtered[:10]],
         }
         self.benchmark_history.append(benchmark_record)
         
+        profile_desc = benchmark_profile["description"] if benchmark_profile else "custom"
+        
         return {
             "success": True,
             "goal": goal.value,
             "budget": budget,
+            "profile": profile_name,
+            "profile_description": profile_desc,
             "constraints": constraints,
             "recommendations": recommendations,
             "summary": self._generate_summary(recommendations, goal),
@@ -534,6 +632,115 @@ class BenchmarkSkill:
             "alternatives": better,
             "recommendation": f"Consider switching to {better[0].split('/')[-1]}" if better and rank != 1 else "Current model is optimal",
         }
+
+    def _run_live_benchmark(self, params: Dict) -> Dict[str, Any]:
+        """Run actual live benchmark tests - inline implementation."""
+        models = params.get("models", [])
+        api_key = params.get("api_key", os.environ.get("OPENROUTER_API_KEY", ""))
+        test_types = params.get("tests", ["speed", "coding", "json"])
+        timeout = params.get("timeout_per_model", 25)
+
+        if not models:
+            budget = params.get("budget", "free")
+            models = self._get_candidate_models(budget, None)[:5]
+
+        results = []
+        for model_id in models:
+            scores = {}
+            latencies = []
+            errors = []
+            for test_type in test_types:
+                test = BENCHMARK_TESTS.get(test_type, BENCHMARK_TESTS["speed"])
+                start = time.time()
+                try:
+                    response = self._call_model_for_benchmark(model_id, api_key, test["prompt"], timeout)
+                    latency = time.time() - start
+                    latencies.append(latency)
+                    quality = self._score_benchmark_response(response, test["criteria"], test_type)
+                    scores[test_type] = {"latency_ms": round(latency * 1000, 1), "quality": round(quality, 2)}
+                except Exception as e:
+                    latencies.append(timeout)
+                    errors.append(str(e)[:50])
+                    scores[test_type] = {"latency_ms": timeout * 1000, "quality": 0.0, "error": str(e)[:50]}
+
+            avg_latency = sum(latencies) / len(latencies) if latencies else timeout
+            avg_quality = sum(s["quality"] for s in scores.values() if "quality" in s) / max(1, len([s for s in scores.values() if "quality" in s]))
+            latency_score = max(0, 1 - (avg_latency / 5.0))
+            combined = (avg_quality * 0.7) + (latency_score * 0.3)
+
+            results.append({
+                "model_id": model_id,
+                "provider": model_id.split("/")[1] if "/" in model_id else "unknown",
+                "combined_score": round(combined, 3),
+                "avg_quality": round(avg_quality, 2),
+                "avg_latency_ms": round(avg_latency * 1000, 1),
+                "latency_score": round(latency_score, 2),
+                "test_scores": scores,
+                "errors": errors if errors else None,
+            })
+
+        results.sort(key=lambda x: x["combined_score"], reverse=True)
+        best = results[0] if results else None
+
+        summary_lines = [
+            f"Best: {best['model_id'].split('/')[-1] if best else 'none'} (score: {best['combined_score'] if best else 0})",
+            "Top 3:",
+        ]
+        for i, r in enumerate(results[:3], 1):
+            name = r['model_id'].split('/')[-1][:22]
+            summary_lines.append(f"  {i}. {name} s={r['combined_score']:.2f} q={r['avg_quality']:.2f}")
+
+        return {
+            "success": True,
+            "tested_models": len(results),
+            "test_types": test_types,
+            "results": results[:10],
+            "best_model": best["model_id"] if best else None,
+            "best_score": best["combined_score"] if best else 0,
+            "summary": "\n".join(summary_lines),
+        }
+
+    def _call_model_for_benchmark(self, model: str, api_key: str, prompt: str, timeout: int) -> str:
+        """Make LLM call via litellm for benchmarking."""
+        try:
+            import litellm
+            litellm.suppress_debug_info = True
+            is_local = model.startswith("ollama/")
+            kw = dict(model=model, messages=[{"role": "user", "content": prompt}], temperature=0.3, max_tokens=500, timeout=timeout)
+            if not is_local and api_key:
+                kw["api_key"] = api_key
+            response = litellm.completion(**kw)
+            return response.choices[0].message.content or ""
+        except Exception as e:
+            raise Exception(f"Model call failed: {str(e)[:80]}")
+
+    def _score_benchmark_response(self, response: str, criteria: List[str], test_type: str) -> float:
+        """Score benchmark response quality."""
+        if not response:
+            return 0.0
+        response_lower = response.lower()
+        score = 0.0
+        if test_type == "coding":
+            if "def " in response: score += 0.3
+            if '"""' in response or "'''" in response: score += 0.2
+            if "try:" in response and "except" in response: score += 0.2
+            if 100 < len(response) < 2000: score += 0.15
+        elif test_type == "polish":
+            polish_words = ["sztuczna", "inteligencja", "ai", "technologia"]
+            matches = sum(1 for w in polish_words if w in response_lower)
+            score += min(0.5, matches * 0.1)
+            if len(response) > 50: score += 0.3
+        elif test_type == "json":
+            try:
+                json_str = response
+                if "```json" in response: json_str = response.split("```json")[1].split("```")[0].strip()
+                elif "```" in response: json_str = response.split("```")[1].split("```")[0].strip()
+                data = json.loads(json_str)
+                if all(k in data for k in ["name", "age", "city"]): score = 1.0
+            except: pass
+        elif test_type == "speed":
+            score = 1.0 if len(response) > 0 else 0.0
+        return min(1.0, score)
     
     def _list_goal_profiles(self) -> Dict[str, Any]:
         """List available goal profiles."""
@@ -548,6 +755,28 @@ class BenchmarkSkill:
         return {
             "success": True,
             "available_goals": list(GoalType),
+            "profiles": profiles,
+        }
+
+    def _list_benchmark_profiles(self) -> Dict[str, Any]:
+        """List available benchmark optimization profiles."""
+        profiles = {}
+        for name, profile in self.BENCHMARK_PROFILES.items():
+            profiles[name] = {
+                "description": profile["description"],
+                "weights": {
+                    "quality": profile.get("quality_weight", 0.35),
+                    "speed": profile.get("speed_weight", 0.35),
+                    "context": profile.get("context_weight", 0.15),
+                    "cost": profile.get("cost_weight", 0.15),
+                },
+                "budget": profile.get("budget", "any"),
+                "constraints": profile.get("constraints", []),
+            }
+        
+        return {
+            "success": True,
+            "available_profiles": list(self.BENCHMARK_PROFILES.keys()),
             "profiles": profiles,
         }
 

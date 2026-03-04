@@ -102,19 +102,75 @@
       "description": "OpenRouter paid models (last resort)",
       "models": [
         {
+          "id": "openrouter/qwen/qwen3.5-flash-02-23",
+          "name": "Qwen 3.5 Flash 02-23",
+          "provider": "qwen",
+          "context_length": 32000,
+          "tags": ["flash", "fast", "new"],
+          "enabled": true
+        },
+        {
+          "id": "openrouter/qwen/qwen3.5-plus-02-15",
+          "name": "Qwen 3.5 Plus 02-15",
+          "provider": "qwen",
+          "context_length": 32000,
+          "tags": ["plus", "quality", "new"],
+          "enabled": true
+        },
+        {
+          "id": "openrouter/qwen/qwen3-coder-next",
+          "name": "Qwen 3 Coder Next",
+          "provider": "qwen",
+          "context_length": 32000,
+          "tags": ["coder", "coding", "new"],
+          "enabled": true
+        },
+        {
+          "id": "openrouter/moonshotai/kimi-k2.5",
+          "name": "Kimi K2.5",
+          "provider": "moonshotai",
+          "context_length": 256000,
+          "tags": ["long-context", "quality", "new"],
+          "enabled": true
+        },
+        {
+          "id": "openrouter/z-ai/glm-4.7",
+          "name": "GLM 4.7",
+          "provider": "z-ai",
+          "context_length": 32000,
+          "tags": ["balanced", "new"],
+          "enabled": true
+        },
+        {
+          "id": "openrouter/x-ai/grok-4.1-fast",
+          "name": "Grok 4.1 Fast",
+          "provider": "x-ai",
+          "context_length": 32000,
+          "tags": ["flash", "fast", "new"],
+          "enabled": true
+        },
+        {
+          "id": "openrouter/deepseek/deepseek-v3.2",
+          "name": "DeepSeek V3.2",
+          "provider": "deepseek",
+          "context_length": 64000,
+          "tags": ["reasoning", "coding", "new"],
+          "enabled": true
+        },
+        {
+          "id": "openrouter/openai/gpt-5-mini",
+          "name": "GPT-5 Mini",
+          "provider": "openai",
+          "context_length": 32000,
+          "tags": ["mini", "fast", "new"],
+          "enabled": true
+        },
+        {
           "id": "openrouter/google/gemini-2.5-flash-lite",
           "name": "Gemini 2.5 Flash Lite",
           "provider": "google",
           "context_length": 32000,
           "tags": ["flash", "lite", "new"],
-          "enabled": true
-        },
-        {
-          "id": "openrouter/qwen/qwen3.5-flash-02-23",
-          "name": "Qwen 3.5 Flash",
-          "provider": "qwen",
-          "context_length": 32000,
-          "tags": ["coding", "flash", "new"],
           "enabled": true
         },
         {
@@ -158,8 +214,11 @@
     "anthropic": 0.98,
     "openai": 0.95,
     "google": 0.92,
+    "moonshotai": 0.91,
+    "x-ai": 0.90,
     "xiaomi": 0.90,
     "nvidia": 0.90,
+    "z-ai": 0.89,
     "qwen": 0.88,
     "meta-llama": 0.88,
     "mistralai": 0.85,

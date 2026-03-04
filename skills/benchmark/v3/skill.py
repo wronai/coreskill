@@ -377,3 +377,12 @@ class BenchmarkSkill:
         # Adjust for context length if constraint is present
         if "large_context" in constraints and context_length < profile["min_context"]:
             overall *= 0.
+
+
+def get_info():
+    return {"name": "benchmark", "version": "v1", "description": "benchmark skill"}
+
+
+def health_check():
+    return True
+
