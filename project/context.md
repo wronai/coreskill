@@ -4,9 +4,9 @@
 
 - **Project**: .
 - **Analysis Mode**: static
-- **Total Functions**: 949
-- **Total Classes**: 126
-- **Modules**: 118
+- **Total Functions**: 866
+- **Total Classes**: 115
+- **Modules**: 92
 - **Entry Points**: 0
 
 ## Architecture by Module
@@ -20,6 +20,11 @@
 - **Classes**: 5
 - **File**: `smart_intent.py`
 
+### skills.benchmark.v1.skill
+- **Functions**: 30
+- **Classes**: 3
+- **File**: `skill.py`
+
 ### root.core
 - **Functions**: 29
 - **Classes**: 6
@@ -29,16 +34,6 @@
 - **Functions**: 29
 - **Classes**: 6
 - **File**: `core.py`
-
-### examples.core
-- **Functions**: 29
-- **Classes**: 6
-- **File**: `core.py`
-
-### skills.benchmark.v1.skill
-- **Functions**: 28
-- **Classes**: 3
-- **File**: `skill.py`
 
 ### seeds.core_v1
 - **Functions**: 27
@@ -50,6 +45,11 @@
 - **Classes**: 3
 - **File**: `provider_selector.py`
 
+### cores.v1.auto_repair
+- **Functions**: 24
+- **Classes**: 2
+- **File**: `auto_repair.py`
+
 ### cores.v1.skill_manager
 - **Functions**: 24
 - **Classes**: 1
@@ -60,18 +60,13 @@
 - **Classes**: 2
 - **File**: `session_config.py`
 
-### cores.v1.auto_repair
-- **Functions**: 22
-- **Classes**: 2
-- **File**: `auto_repair.py`
-
 ### cores.v1.evo_journal
 - **Functions**: 20
 - **Classes**: 2
 - **File**: `evo_journal.py`
 
 ### cores.v1.self_reflection
-- **Functions**: 18
+- **Functions**: 20
 - **Classes**: 3
 - **File**: `self_reflection.py`
 
@@ -101,7 +96,7 @@
 - **File**: `evo_engine.py`
 
 ### cores.v1.intent
-- **Functions**: 15
+- **Functions**: 16
 - **Classes**: 2
 - **File**: `__init__.py`
 
@@ -109,6 +104,11 @@
 - **Functions**: 15
 - **Classes**: 1
 - **File**: `skill.py`
+
+### cores.v1.config
+- **Functions**: 14
+- **Classes**: 1
+- **File**: `config.py`
 
 ## Key Entry Points
 
@@ -120,6 +120,11 @@ Key execution flows identified:
 
 ## Key Classes
 
+### skills.benchmark.v1.skill.BenchmarkSkill
+> Analyzes and benchmarks LLM models for goal-based recommendations.
+- **Methods**: 27
+- **Key Methods**: skills.benchmark.v1.skill.BenchmarkSkill.__init__, skills.benchmark.v1.skill.BenchmarkSkill._load_config, skills.benchmark.v1.skill.BenchmarkSkill._get_models_from_tier, skills.benchmark.v1.skill.BenchmarkSkill._get_api_key, skills.benchmark.v1.skill.BenchmarkSkill._load_benchmark_results, skills.benchmark.v1.skill.BenchmarkSkill._save_benchmark_results, skills.benchmark.v1.skill.BenchmarkSkill._update_benchmark_results, skills.benchmark.v1.skill.BenchmarkSkill._get_cached_recommendations, skills.benchmark.v1.skill.BenchmarkSkill.execute, skills.benchmark.v1.skill.BenchmarkSkill._recommend_models
+
 ### cores.v1.session_config.SessionConfig
 > User-facing configuration manager.
 
@@ -127,27 +132,22 @@ This is a SESSION-ONLY layer - changes are NOT persisted to disk
 - **Methods**: 25
 - **Key Methods**: cores.v1.session_config.SessionConfig.__init__, cores.v1.session_config.SessionConfig.CATEGORIES, cores.v1.session_config.SessionConfig.PROVIDER_TIERS, cores.v1.session_config.SessionConfig.get, cores.v1.session_config.SessionConfig.set, cores.v1.session_config.SessionConfig.reset, cores.v1.session_config.SessionConfig.on_change, cores.v1.session_config.SessionConfig._notify, cores.v1.session_config.SessionConfig.handle_configure_intent, cores.v1.session_config.SessionConfig._configure_llm
 
-### skills.benchmark.v1.skill.BenchmarkSkill
-> Analyzes and benchmarks LLM models for goal-based recommendations.
-- **Methods**: 25
-- **Key Methods**: skills.benchmark.v1.skill.BenchmarkSkill.__init__, skills.benchmark.v1.skill.BenchmarkSkill._load_config, skills.benchmark.v1.skill.BenchmarkSkill._get_models_from_tier, skills.benchmark.v1.skill.BenchmarkSkill._get_api_key, skills.benchmark.v1.skill.BenchmarkSkill._load_benchmark_results, skills.benchmark.v1.skill.BenchmarkSkill._save_benchmark_results, skills.benchmark.v1.skill.BenchmarkSkill._update_benchmark_results, skills.benchmark.v1.skill.BenchmarkSkill._get_cached_recommendations, skills.benchmark.v1.skill.BenchmarkSkill.execute, skills.benchmark.v1.skill.BenchmarkSkill._recommend_models
-
-### cores.v1.skill_manager.SkillManager
-- **Methods**: 22
-- **Key Methods**: cores.v1.skill_manager.SkillManager.__init__, cores.v1.skill_manager.SkillManager._collect_versions, cores.v1.skill_manager.SkillManager.list_skills, cores.v1.skill_manager.SkillManager._is_rolled_back, cores.v1.skill_manager.SkillManager.latest_v, cores.v1.skill_manager.SkillManager._active_provider, cores.v1.skill_manager.SkillManager.skill_path, cores.v1.skill_manager.SkillManager.create_skill, cores.v1.skill_manager.SkillManager.diagnose_skill, cores.v1.skill_manager.SkillManager._raw_test
-
 ### cores.v1.auto_repair.AutoRepair
 > Self-healing engine with task-based repair loop.
 
 Flow per task:
     1. DIAGNOSE — identify exact is
-- **Methods**: 20
-- **Key Methods**: cores.v1.auto_repair.AutoRepair.__init__, cores.v1.auto_repair.AutoRepair.run_boot_repair, cores.v1.auto_repair.AutoRepair.repair_skill, cores.v1.auto_repair.AutoRepair._scan_all_skills, cores.v1.auto_repair.AutoRepair._list_all_skills, cores.v1.auto_repair.AutoRepair._diagnose_skill, cores.v1.auto_repair.AutoRepair._get_skill_path, cores.v1.auto_repair.AutoRepair._execute_repair_task, cores.v1.auto_repair.AutoRepair._plan_strategy, cores.v1.auto_repair.AutoRepair._apply_fix
+- **Methods**: 22
+- **Key Methods**: cores.v1.auto_repair.AutoRepair.__init__, cores.v1.auto_repair.AutoRepair._init_learned_strategy, cores.v1.auto_repair.AutoRepair.run_boot_repair, cores.v1.auto_repair.AutoRepair.repair_skill, cores.v1.auto_repair.AutoRepair.on_repair_requested, cores.v1.auto_repair.AutoRepair._scan_all_skills, cores.v1.auto_repair.AutoRepair._list_all_skills, cores.v1.auto_repair.AutoRepair._diagnose_skill, cores.v1.auto_repair.AutoRepair._get_skill_path, cores.v1.auto_repair.AutoRepair._execute_repair_task
 
 ### cores.v1.self_reflection.SelfReflection
 > Autonomiczny silnik autorefleksji systemu evo-engine.
-- **Methods**: 20
+- **Methods**: 22
 - **Key Methods**: cores.v1.self_reflection.SelfReflection.__init__, cores.v1.self_reflection.SelfReflection.journal, cores.v1.self_reflection.SelfReflection.snapshot, cores.v1.self_reflection.SelfReflection.start_operation, cores.v1.self_reflection.SelfReflection.end_operation, cores.v1.self_reflection.SelfReflection.record_skill_outcome, cores.v1.self_reflection.SelfReflection.check_stall, cores.v1.self_reflection.SelfReflection._trigger_event, cores.v1.self_reflection.SelfReflection.run_diagnostic, cores.v1.self_reflection.SelfReflection._check_llm_health
+
+### cores.v1.skill_manager.SkillManager
+- **Methods**: 22
+- **Key Methods**: cores.v1.skill_manager.SkillManager.__init__, cores.v1.skill_manager.SkillManager._collect_versions, cores.v1.skill_manager.SkillManager.list_skills, cores.v1.skill_manager.SkillManager._is_rolled_back, cores.v1.skill_manager.SkillManager.latest_v, cores.v1.skill_manager.SkillManager._active_provider, cores.v1.skill_manager.SkillManager.skill_path, cores.v1.skill_manager.SkillManager.create_skill, cores.v1.skill_manager.SkillManager.diagnose_skill, cores.v1.skill_manager.SkillManager._raw_test
 
 ### cores.v1.evo_journal.EvolutionJournal
 > Persistent journal for evolutionary cycles.
@@ -187,6 +187,13 @@ Key principles:
 - **Methods**: 14
 - **Key Methods**: cores.v1.stable_snapshot.StableSnapshot.__init__, cores.v1.stable_snapshot.StableSnapshot.save_as_stable, cores.v1.stable_snapshot.StableSnapshot.create_branch, cores.v1.stable_snapshot.StableSnapshot.promote_branch, cores.v1.stable_snapshot.StableSnapshot.restore_stable, cores.v1.stable_snapshot.StableSnapshot.validate_against_stable, cores.v1.stable_snapshot.StableSnapshot.list_branches, cores.v1.stable_snapshot.StableSnapshot._detect_provider, cores.v1.stable_snapshot.StableSnapshot._find_current_version, cores.v1.stable_snapshot.StableSnapshot._copy_skill_files
 
+### cores.v1.intent.SmartIntentClassifier
+> 3-tier ML intent classifier:
+1. Embeddings (sbert/tf-idf/bow) — fastest, 90%+ accuracy
+2. Local LLM 
+- **Methods**: 14
+- **Key Methods**: cores.v1.intent.SmartIntentClassifier.__init__, cores.v1.intent.SmartIntentClassifier._load_training, cores.v1.intent.SmartIntentClassifier._rebuild_skill_vectors, cores.v1.intent.SmartIntentClassifier.classify, cores.v1.intent.SmartIntentClassifier._embedding_classify, cores.v1.intent.SmartIntentClassifier._cosine_classify, cores.v1.intent.SmartIntentClassifier._llm_classify, cores.v1.intent.SmartIntentClassifier._record_use, cores.v1.intent.SmartIntentClassifier.learn_from_correction, cores.v1.intent.SmartIntentClassifier.learn_from_success
+
 ### cores.v1.provider_selector.ProviderChain
 > Ordered provider fallback chain with auto-degradation.
 
@@ -194,12 +201,14 @@ Tracks failures per provider and automatical
 - **Methods**: 13
 - **Key Methods**: cores.v1.provider_selector.ProviderChain.__init__, cores.v1.provider_selector.ProviderChain._key, cores.v1.provider_selector.ProviderChain._get_stats, cores.v1.provider_selector.ProviderChain.build_chain, cores.v1.provider_selector.ProviderChain._reorder_by_fallback, cores.v1.provider_selector.ProviderChain.select_with_fallback, cores.v1.provider_selector.ProviderChain.select_best, cores.v1.provider_selector.ProviderChain.record_failure, cores.v1.provider_selector.ProviderChain.record_success, cores.v1.provider_selector.ProviderChain._cooldown_expired
 
-### cores.v1.intent.SmartIntentClassifier
-> 3-tier ML intent classifier:
-1. Embeddings (sbert/tf-idf/bow) — fastest, 90%+ accuracy
-2. Local LLM 
+### cores.v1.proactive_scheduler.ProactiveScheduler
+> Thread-based periodic task scheduler.
+
+Usage:
+    scheduler = ProactiveScheduler()
+    scheduler.reg
 - **Methods**: 13
-- **Key Methods**: cores.v1.intent.SmartIntentClassifier.__init__, cores.v1.intent.SmartIntentClassifier._load_training, cores.v1.intent.SmartIntentClassifier._rebuild_skill_vectors, cores.v1.intent.SmartIntentClassifier.classify, cores.v1.intent.SmartIntentClassifier._embedding_classify, cores.v1.intent.SmartIntentClassifier._llm_classify, cores.v1.intent.SmartIntentClassifier._record_use, cores.v1.intent.SmartIntentClassifier.learn_from_correction, cores.v1.intent.SmartIntentClassifier.learn_from_success, cores.v1.intent.SmartIntentClassifier._is_similar_to_training
+- **Key Methods**: cores.v1.proactive_scheduler.ProactiveScheduler.__init__, cores.v1.proactive_scheduler.ProactiveScheduler.register, cores.v1.proactive_scheduler.ProactiveScheduler.unregister, cores.v1.proactive_scheduler.ProactiveScheduler.enable, cores.v1.proactive_scheduler.ProactiveScheduler.disable, cores.v1.proactive_scheduler.ProactiveScheduler.start, cores.v1.proactive_scheduler.ProactiveScheduler.stop, cores.v1.proactive_scheduler.ProactiveScheduler.is_running, cores.v1.proactive_scheduler.ProactiveScheduler._tick, cores.v1.proactive_scheduler.ProactiveScheduler._execute_task
 
 ### skills.git_ops.v1.skill.GitOpsSkill
 > Manage local git repos for skill development and versioning.
@@ -229,20 +238,15 @@ Directives are short text notes th
 - **Methods**: 12
 - **Key Methods**: cores.v1.llm_client.LLMClient.__init__, cores.v1.llm_client.LLMClient.tier_info, cores.v1.llm_client.LLMClient._is_available, cores.v1.llm_client.LLMClient._report_ok, cores.v1.llm_client.LLMClient._report_fail, cores.v1.llm_client.LLMClient.chat, cores.v1.llm_client.LLMClient._build_error_msg, cores.v1.llm_client.LLMClient._try_model, cores.v1.llm_client.LLMClient._get_unavailable_reason, cores.v1.llm_client.LLMClient.gen_code
 
+### cores.v1.garbage_collector.EvolutionGarbageCollector
+> Cleans up failed evolution stubs, promotes stable versions.
+- **Methods**: 11
+- **Key Methods**: cores.v1.garbage_collector.EvolutionGarbageCollector.__init__, cores.v1.garbage_collector.EvolutionGarbageCollector.is_stub, cores.v1.garbage_collector.EvolutionGarbageCollector.is_broken, cores.v1.garbage_collector.EvolutionGarbageCollector.scan_versions, cores.v1.garbage_collector.EvolutionGarbageCollector.cleanup_provider, cores.v1.garbage_collector.EvolutionGarbageCollector.cleanup_legacy, cores.v1.garbage_collector.EvolutionGarbageCollector.migrate_to_stable_latest, cores.v1.garbage_collector.EvolutionGarbageCollector._copy_version, cores.v1.garbage_collector.EvolutionGarbageCollector.trim_archive, cores.v1.garbage_collector.EvolutionGarbageCollector.cleanup_all
+
 ### cores.v1.logger.Logger
 > Per-skill, per-core structured logging with learning.
 - **Methods**: 11
 - **Key Methods**: cores.v1.logger.Logger.__init__, cores.v1.logger.Logger._write, cores.v1.logger.Logger._write_markdown, cores.v1.logger.Logger._format_markdown, cores.v1.logger.Logger._entry, cores.v1.logger.Logger.core, cores.v1.logger.Logger.skill, cores.v1.logger.Logger.read_skill_log, cores.v1.logger.Logger.read_core_log, cores.v1.logger.Logger.get_markdown_logs
-
-### cores.v1.garbage_collector.EvolutionGarbageCollector
-> Cleans up failed evolution stubs, promotes stable versions.
-- **Methods**: 10
-- **Key Methods**: cores.v1.garbage_collector.EvolutionGarbageCollector.__init__, cores.v1.garbage_collector.EvolutionGarbageCollector.is_stub, cores.v1.garbage_collector.EvolutionGarbageCollector.is_broken, cores.v1.garbage_collector.EvolutionGarbageCollector.scan_versions, cores.v1.garbage_collector.EvolutionGarbageCollector.cleanup_provider, cores.v1.garbage_collector.EvolutionGarbageCollector.cleanup_legacy, cores.v1.garbage_collector.EvolutionGarbageCollector.migrate_to_stable_latest, cores.v1.garbage_collector.EvolutionGarbageCollector._copy_version, cores.v1.garbage_collector.EvolutionGarbageCollector.cleanup_all, cores.v1.garbage_collector.EvolutionGarbageCollector.summary
-
-### cores.v1.supervisor.Supervisor
-> Manages core versions: can create coreB/C/D, test, promote, rollback.
-- **Methods**: 10
-- **Key Methods**: cores.v1.supervisor.Supervisor.__init__, cores.v1.supervisor.Supervisor.active, cores.v1.supervisor.Supervisor.active_version, cores.v1.supervisor.Supervisor.list_cores, cores.v1.supervisor.Supervisor.switch, cores.v1.supervisor.Supervisor.health, cores.v1.supervisor.Supervisor.create_next_core, cores.v1.supervisor.Supervisor.promote_core, cores.v1.supervisor.Supervisor.rollback_core, cores.v1.supervisor.Supervisor.recover
 
 ## Data Transformation Functions
 
@@ -263,6 +267,10 @@ Key functions that process and transform data:
 > Check if a model is suitable for chat (not code-only).
 Returns (valid: bool, reason: str).
 - **Output to**: model_name.lower
+
+### cores.v1.adaptive_monitor.AdaptiveResourceMonitor.format_status
+> One-line status string for display.
+- **Output to**: self.snapshot
 
 ### cores.v1.smart_intent.EmbeddingEngine.encode
 > Encode texts to vectors.
@@ -287,6 +295,10 @@ Returns {verdict: success|partial|fail
 > Format entry as markdown with code blocks.
 - **Output to**: entry.get, entry.get, entry.get, entry.get, None.join
 
+### cores.v1.proactive_scheduler.ProactiveScheduler.format_status
+> Human-readable status summary.
+- **Output to**: self.status, None.join, lines.append, len
+
 ### cores.v1.intent.embedding.EmbeddingEngine.encode
 > Encode texts to vectors.
 - **Output to**: self._try_init, self._model.encode, None.toarray, TfidfVectorizer, None.toarray
@@ -307,8 +319,8 @@ Functions exposed as public API (no underscore prefix):
 - `cores.v1.llm_client.LLMClient.chat` - 37 calls
 - `cores.v1.skill_manager.SkillManager.smart_evolve` - 37 calls
 - `cli.cmd_cache_reset` - 36 calls
+- `cores.v1.intent.SmartIntentClassifier.classify` - 36 calls
 - `cores.v1.evo_engine.EvoEngine.handle_request` - 35 calls
-- `skills.zarz_dzania.v5.skill.ZarzadzaniaSkill.execute` - 35 calls
 - `cores.v1.core.main` - 34 calls
 - `main.bootstrap` - 33 calls
 - `skills.shell.v2.skill.ShellSkill.execute` - 33 calls
@@ -317,7 +329,6 @@ Functions exposed as public API (no underscore prefix):
 - `examples.advanced.01_pipeline.main` - 32 calls
 - `cli.cmd_status` - 30 calls
 - `cli.cmd_logs_reset` - 29 calls
-- `cores.v1.intent.SmartIntentClassifier.classify` - 29 calls
 - `cores.v1.repair_journal.RepairJournal.ask_llm_and_try` - 28 calls
 - `scripts.simulate.Simulator.run_all` - 27 calls
 - `cores.v1.preflight.SkillPreflight.check_imports` - 27 calls
@@ -332,12 +343,13 @@ Functions exposed as public API (no underscore prefix):
 - `skills.echo.v5.skill.EchoSkill.execute` - 23 calls
 - `skills.echo.v4.skill.EchoSkill.execute` - 23 calls
 - `skills.stt.providers.vosk.archive.v6.skill.STTSkill.execute` - 23 calls
-- `skills.stt.providers.vosk.archive.v3.skill.STTSkill.execute` - 23 calls
 - `skills.stt.providers.vosk.archive.v7.skill.STTSkill.execute` - 23 calls
-- `skills.stt.providers.vosk.archive.v1.skill.STTSkill.execute` - 23 calls
 - `cores.v1.auto_repair.AutoRepair.run_boot_repair` - 22 calls
 - `cores.v1.smart_intent.SmartIntentClassifier.classify` - 22 calls
 - `cores.v1.stable_snapshot.StableSnapshot.validate_against_stable` - 22 calls
+- `cores.v1.preflight.EvolutionGuard.is_stub_skill` - 22 calls
+- `skills.stt.providers.vosk.stable.skill.STTSkill.execute` - 22 calls
+- `cores.v1.garbage_collector.EvolutionGarbageCollector.cleanup_legacy` - 21 calls
 
 ## System Interactions
 

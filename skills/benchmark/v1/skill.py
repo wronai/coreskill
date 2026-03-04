@@ -588,39 +588,31 @@ class BenchmarkSkill:
         return 30
 
     def _get_benchmark_prompt(self, model_id: str) -> tuple:
-        """Return (prompt, test_type) based on model size.
+        """Single refactoring prompt for ALL models.
         
-        - Default: 3-field simple JSON
+        Same code with known bugs (SQL injection, resource leak, no error
+        handling) for every model — scoring differentiates by analysis depth.
         """
-        param_size = self._get_model_param_size(model_id)
-        
-        if param_size >= 120:
-            prompt = (
-                'Jestes ekspertem refaktoryzacji. Odpowiedz TYLKO JSON:\n'
-                '{"czytelnosc":{"score":1-10,"issues":[],"fixes":[]},'
-                '"wydajnosc":{"score":1-10,"bigO":"O(?)→O(?)","optymalizacje":[]},'
-                '"bezpieczenstwo":{"score":1-10,"vulns":[]},'
-                '"architektura":{"score":1-10,"SOLID":{"S":bool,"O":bool,"L":bool,"I":bool,"D":bool}},'
-                '"overall":{"recommendation":"APPROVE|MAJOR|MINOR|REJECT","confidence":1-10}}\n'
-                'KOD:\n'
-                'def process(data):\n'
-                '    result=[]\n'
-                '    for i in range(len(data)):\n'
-                '        if data[i]>0: result.append(data[i]*2)\n'
-                '    return result'
-            )
-            return prompt, "refactor_advanced"
-        else:
-            prompt = (
-                'Analizuj kod. Odpowiedz TYLKO jednym JSON: {"czytelnosc": score_1_10, "wydajnosc": "tak/nie", "bezpieczenstwo": "tak/nie"}.\n'
-                'def process(data):\n'
-                '    result = []\n'
-                '    for i in range(len(data)):\n'
-                '        if data[i] > 0:\n'
-                '            result.append(data[i] * 2)\n'
-                '    return result'
-            )
-            return prompt, "refactor_json"
+        prompt = (
+            'Przeanalizuj kod i odpowiedz TYLKO jednym obiektem JSON '
+            '(bez markdown, bez tekstu przed/po).\n\n'
+            'Format:\n'
+            '{"czytelnosc":{"score":7,"issues":["opis problemu"]},'
+            '"wydajnosc":{"score":5,"optymalizacje":["opis"]},'
+            '"bezpieczenstwo":{"score":3,"vulns":["opis podatnosci"]},'
+            '"overall":"REJECT"}\n\n'
+            'KOD:\n'
+            'def process_users(db, query):\n'
+            '    result = []\n'
+            '    data = db.execute("SELECT * FROM users WHERE name = \'" + query + "\'")\n'
+            '    for i in range(len(data)):\n'
+            '        if data[i]["age"] > 0:\n'
+            '            result.append(data[i]["name"] + ":" + str(data[i]["age"]))\n'
+            '    f = open("/tmp/log.txt", "a")\n'
+            '    f.write(str(result))\n'
+            '    return result'
+        )
+        return prompt, "refactor"
 
     def _recommend_models_live(self, params: Dict, goal: GoalType) -> Dict[str, Any]:
         """Recommend models based on LIVE API tests (real latency + quality)."""
@@ -645,18 +637,6 @@ class BenchmarkSkill:
         self._last_candidates = candidates
         
         print(f"[Benchmark LIVE] Testing {len(candidates)} models (timeout=10s)...")
-        
-        # Single JSON-based refactoring quality prompt (per TODO spec)
-        # Model must respond with one JSON: {"czytelnosc": 1-10, "wydajnosc": "tak/nie", "bezpieczenstwo": "tak/nie"}
-        benchmark_prompt = (
-            'Analizuj kod. Odpowiedz TYLKO jednym JSON: {"czytelnosc": score_1_10, "wydajnosc": "tak/nie", "bezpieczenstwo": "tak/nie"}.\n'
-            'def process(data):\n'
-            '    result = []\n'
-            '    for i in range(len(data)):\n'
-            '        if data[i] > 0:\n'
-            '            result.append(data[i] * 2)\n'
-            '    return result'
-        )
         
         live_results = []
         failed_models = []
@@ -698,7 +678,7 @@ class BenchmarkSkill:
             
             print(f"✓ q={avg_quality:.2f} lat={avg_latency*1000:.0f}ms")
             
-            speed_score = max(0, 1 - (avg_latency / 5.0))
+            speed_score = 1.0 / (1.0 + (avg_latency / 2.0) ** 1.5) if avg_latency > 0 else 1.0
             cost_score = 1.0 if ":free" in model_id else 0.5
             
             weights = benchmark_profile
@@ -1074,7 +1054,7 @@ class BenchmarkSkill:
 
             avg_latency = sum(latencies) / len(latencies) if latencies else timeout
             avg_quality = sum(s["quality"] for s in scores.values() if "quality" in s) / max(1, len([s for s in scores.values() if "quality" in s]))
-            latency_score = max(0, 1 - (avg_latency / 5.0))
+            latency_score = 1.0 / (1.0 + (avg_latency / 2.0) ** 1.5) if avg_latency > 0 else 1.0
             combined = (avg_quality * 0.7) + (latency_score * 0.3)
 
             results.append({
@@ -1122,6 +1102,172 @@ class BenchmarkSkill:
         except Exception as e:
             raise Exception(f"Model call failed: {str(e)[:80]}")
 
+    def _extract_json_robust(self, text: str) -> Optional[dict]:
+        """Extract and parse JSON from LLM response with error recovery."""
+        # Strip markdown fences
+        text = re.sub(r"```(?:json)?\s*", "", text)
+        text = re.sub(r"```", "", text)
+        # Strip <think>...</think> tags (qwen/deepseek thinking mode)
+        text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+        text = text.strip()
+        
+        # Find outermost JSON object
+        depth = 0
+        start_idx = None
+        end_idx = None
+        for i, ch in enumerate(text):
+            if ch == '{':
+                if depth == 0:
+                    start_idx = i
+                depth += 1
+            elif ch == '}':
+                depth -= 1
+                if depth == 0 and start_idx is not None:
+                    end_idx = i + 1
+                    break
+        
+        if start_idx is None:
+            return None
+        
+        json_str = text[start_idx:end_idx]
+        
+        # Try direct parse
+        try:
+            return json.loads(json_str)
+        except json.JSONDecodeError:
+            pass
+        
+        # Fix common LLM JSON errors
+        fixed = json_str
+        fixed = re.sub(r'\bTrue\b', 'true', fixed)
+        fixed = re.sub(r'\bFalse\b', 'false', fixed)
+        fixed = re.sub(r'\bNone\b', 'null', fixed)
+        fixed = re.sub(r',\s*([}\]])', r'\1', fixed)
+        
+        try:
+            return json.loads(fixed)
+        except json.JSONDecodeError:
+            return None
+
+    def _score_refactor(self, response: str) -> float:
+        """Unified refactoring quality scorer for ALL model sizes.
+        
+        Score breakdown (max ~0.95):
+          Format  (0.30): parseable JSON + required fields with valid values
+          Depth   (0.45): identified bugs (SQL injection, resource leak, etc.)
+          Correct (0.20): severity awareness + recommendation correctness
+        
+        Expected differentiation:
+          4B model (shallow analysis):  ~0.30-0.45
+          12B model (finds SQL inj):    ~0.55-0.70
+          70B+ model (finds all bugs):  ~0.80-0.95
+        """
+        data = self._extract_json_robust(response)
+        if data is None:
+            return 0.05 if '{' in response else 0.0
+        
+        score = 0.10  # parseable JSON
+        
+        # --- Helper: extract score from nested or flat field ---
+        def get_nested_score(field):
+            val = data.get(field)
+            if isinstance(val, dict):
+                val = val.get("score", val.get("Score"))
+            if isinstance(val, (int, float)) and 1 <= val <= 10:
+                return val
+            if isinstance(val, str):
+                try:
+                    v = int(val.strip())
+                    return v if 1 <= v <= 10 else 0
+                except ValueError:
+                    pass
+            return 0
+        
+        def get_array_items(field, subfield):
+            val = data.get(field)
+            if isinstance(val, dict):
+                arr = val.get(subfield, [])
+                if isinstance(arr, list):
+                    return [str(x).lower() for x in arr if x]
+            return []
+        
+        # --- Structure (0.20) ---
+        czyt_s = get_nested_score("czytelnosc")
+        wyd_s = get_nested_score("wydajnosc")
+        bezp_s = get_nested_score("bezpieczenstwo")
+        score += 0.05 if czyt_s > 0 else 0
+        score += 0.05 if wyd_s > 0 else 0
+        score += 0.05 if bezp_s > 0 else 0
+        
+        # Overall field (string or nested dict)
+        overall_raw = data.get("overall", "")
+        if isinstance(overall_raw, dict):
+            overall_val = str(overall_raw.get("recommendation", "")).upper().strip()
+        else:
+            overall_val = str(overall_raw).upper().strip()
+        score += 0.05 if overall_val in ("APPROVE", "MAJOR", "MINOR", "REJECT") else 0
+        
+        # --- Depth of analysis (0.45) — key differentiator ---
+        issues = get_array_items("czytelnosc", "issues")
+        fixes = get_array_items("czytelnosc", "fixes")
+        vulns = get_array_items("bezpieczenstwo", "vulns")
+        opts = get_array_items("wydajnosc", "optymalizacje")
+        
+        all_analysis = " ".join(issues + fixes + vulns + opts)
+        
+        # SQL injection (most critical bug — +0.15)
+        sql_found = any(k in all_analysis for k in [
+            "sql", "injection", "inject", "parametr", "parameteriz",
+            "prepared", "sanitiz", "escap", "binding", "iniekcj",
+        ])
+        score += 0.15 if sql_found else 0.0
+        
+        # Resource leak — file not closed (+0.10)
+        leak_found = any(k in all_analysis for k in [
+            "close", "zamkn", "with ", "context", "resource",
+            "leak", "wyciek", "zamyka",
+        ])
+        score += 0.10 if leak_found else 0.0
+        
+        # Error handling / validation (+0.08)
+        error_found = any(k in all_analysis for k in [
+            "error", "exception", "try", "except", "walidacj",
+            "validat", "handling", "obs\u0142ug",
+        ])
+        score += 0.08 if error_found else 0.0
+        
+        # Code style — range(len), SELECT *, hardcoded path (+0.07)
+        style_found = any(k in all_analysis for k in [
+            "range(len", "enumerate", "select *", "hardcod",
+            "magic", "/tmp", "sta\u0142",
+        ])
+        score += 0.07 if style_found else 0.0
+        
+        # Non-empty arrays bonus (+0.05)
+        filled = sum(1 for arr in [issues, vulns, opts] if len(arr) >= 1)
+        score += min(0.05, filled * 0.017)
+        
+        # --- Correctness (0.20) ---
+        # Recommendation: REJECT/MAJOR correct for SQL injection code
+        if overall_val == "REJECT":
+            score += 0.08
+        elif overall_val == "MAJOR":
+            score += 0.06
+        elif overall_val == "MINOR":
+            score += 0.02
+        
+        # Security score should be low (SQL injection = critical)
+        if bezp_s > 0 and bezp_s <= 4:
+            score += 0.07  # correctly rated security as poor
+        elif bezp_s >= 8:
+            score -= 0.05  # penalize: missed critical vulnerability
+        
+        # Readability should be moderate-to-low
+        if czyt_s > 0 and czyt_s <= 6:
+            score += 0.05
+        
+        return min(1.0, max(0.0, score))
+
     def _score_benchmark_response(self, response: str, criteria: List[str], test_type: str) -> float:
         """Score benchmark response quality.
         
@@ -1130,51 +1276,8 @@ class BenchmarkSkill:
         if not response:
             return 0.0
         
-        if test_type == "refactor_json":
-            import json, re
-            score = 0.0
-            
-            # Try to extract JSON from response (some models wrap in markdown)
-            text = response.strip()
-            # Strip markdown code fences if present
-            text = re.sub(r"```(?:json)?\s*", "", text)
-            text = re.sub(r"```", "", text)
-            text = text.strip()
-            
-            # Find first JSON object in text
-            match = re.search(r'\{[^}]+\}', text, re.DOTALL)
-            if not match:
-                return 0.0  # No JSON found at all
-            
-            # +0.3 for having parseable JSON
-            score += 0.3
-            
-            try:
-                data = json.loads(match.group())
-            except Exception:
-                # JSON not parseable — partial credit for having braces
-                return 0.15
-            
-            # +0.3 for czytelnosc being a valid integer 1-10
-            czytelnosc = data.get("czytelnosc")
-            if isinstance(czytelnosc, (int, float)) and 1 <= czytelnosc <= 10:
-                score += 0.3
-            elif isinstance(czytelnosc, str) and re.match(r'^\d+$', czytelnosc.strip()):
-                val = int(czytelnosc.strip())
-                if 1 <= val <= 10:
-                    score += 0.25  # slightly less for string instead of int
-            
-            # +0.2 for wydajnosc being tak/nie
-            wydajnosc = str(data.get("wydajnosc", "")).lower().strip()
-            if wydajnosc in ("tak", "nie", "yes", "no"):
-                score += 0.2
-            
-            # +0.2 for bezpieczenstwo being tak/nie
-            bezp = str(data.get("bezpieczenstwo", "")).lower().strip()
-            if bezp in ("tak", "nie", "yes", "no"):
-                score += 0.2
-            
-            return min(1.0, score)
+        if test_type in ("refactor", "refactor_json", "refactor_advanced"):
+            return self._score_refactor(response)
         
         # Legacy scoring for old test types (fallback)
         response_lower = response.lower().strip()

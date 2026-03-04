@@ -48,3 +48,8 @@ from .repair_journal import RepairJournal, RepairAttempt, KnownFix
 from .stable_snapshot import StableSnapshot, SnapshotInfo
 from .fuzzy_router import FuzzyCommandRouter
 from .event_bus import EventBus
+from .adaptive_monitor import AdaptiveResourceMonitor
+from .proactive_scheduler import ProactiveScheduler
+from .learned_repair import LearnedRepairStrategy
+from .bandit_selector import UCB1BanditSelector
+from .resilience import retry_llm, retry_skill, retry_io, with_retry, get_struct_logger

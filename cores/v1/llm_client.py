@@ -259,24 +259,36 @@ class LLMClient:
         if not is_local:
             kw["api_key"] = self.api_key
 
-        retries = 2 if is_primary else 1  # only retry on primary model
-        for attempt in range(retries):
-            try:
-                r = litellm.completion(**kw)
+        try:
+            from .resilience import with_retry, _HAS_TENACITY
+            if _HAS_TENACITY and is_primary:
+                # tenacity: 2 attempts, 3s backoff for rate limits
+                @with_retry(max_attempts=2, backoff_base=3.0, backoff_max=6.0)
+                def _call():
+                    return litellm.completion(**kw)
+                r = _call()
                 self._report_ok(model)
                 return r.choices[0].message.content
-            except Exception as e:
-                err = str(e)
-                if self.logger:
-                    self.logger.core("llm_error", {"model": model, "error": err[:200]})
-                # Rate limit on primary → wait and retry once
-                if is_primary and ("RateLimitError" in err or "rate limit" in err.lower()) and attempt == 0:
-                    time.sleep(3)
-                    continue
-                self._report_fail(model, err)
-                return None
-        self._report_fail(model, "max_retries")
-        return None
+        except ImportError:
+            pass
+        except Exception as e:
+            err = str(e)
+            if self.logger:
+                self.logger.core("llm_error", {"model": model, "error": err[:200]})
+            self._report_fail(model, err)
+            return None
+
+        # Fallback: single attempt (non-primary or no tenacity)
+        try:
+            r = litellm.completion(**kw)
+            self._report_ok(model)
+            return r.choices[0].message.content
+        except Exception as e:
+            err = str(e)
+            if self.logger:
+                self.logger.core("llm_error", {"model": model, "error": err[:200]})
+            self._report_fail(model, err)
+            return None
 
     def _get_unavailable_reason(self, model: str) -> str:
         """Get human-readable reason why model is unavailable."""

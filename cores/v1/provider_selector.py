@@ -276,8 +276,9 @@ class ProviderChain:
     providers based on their runtime reliability.
     """
 
-    def __init__(self, selector: ProviderSelector):
+    def __init__(self, selector: ProviderSelector, bandit=None):
         self.selector = selector
+        self.bandit = bandit  # optional UCB1BanditSelector overlay
         # {(capability, provider): {failures: int, last_fail: float,
         #                           successes: int, demoted: bool}}
         self._stats: dict = {}
@@ -385,9 +386,20 @@ class ProviderChain:
     def select_best(self, capability: str,
                     prefer: str = "quality",
                     context: Optional[dict] = None) -> str:
-        """Select single best provider (health-aware)."""
+        """Select single best provider (health-aware, UCB1 when available)."""
         chain = self.build_chain(capability, prefer, context)
-        return chain[0] if chain else "default"
+        if not chain:
+            return "default"
+
+        # Use UCB1 bandit for exploration/exploitation when available
+        if self.bandit and len(chain) > 1:
+            base_scores = {}
+            for pname in chain:
+                info = self.selector.get_provider_info(capability, pname)
+                base_scores[pname] = self.selector._score(info, prefer, context)
+            return self.bandit.select(capability, chain, base_scores)
+
+        return chain[0]
 
     # ── Failure/Success Tracking ────────────────────────────────────
 
@@ -402,7 +414,12 @@ class ProviderChain:
         if stats["failures"] >= FAILURE_THRESHOLD:
             stats["demoted"] = True
 
-    def record_success(self, capability: str, provider: str):
+        # Forward to bandit
+        if self.bandit:
+            self.bandit.record(capability, provider, reward=0.0, success=False)
+
+    def record_success(self, capability: str, provider: str,
+                       quality: float = 1.0):
         """Record a provider success. Restores after threshold."""
         stats = self._get_stats(capability, provider)
         stats["successes"] += 1
@@ -410,6 +427,10 @@ class ProviderChain:
         if stats["successes"] >= SUCCESS_RECOVERY:
             stats["demoted"] = False
             stats["failures"] = 0
+
+        # Forward to bandit
+        if self.bandit:
+            self.bandit.record(capability, provider, reward=quality, success=True)
 
     def _cooldown_expired(self, stats: dict) -> bool:
         """Check if demotion cooldown has expired."""

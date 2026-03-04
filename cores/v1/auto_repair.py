@@ -77,6 +77,29 @@ class AutoRepair:
         self.gc = EvolutionGarbageCollector()
         self._tasks = []
         self._history = []  # completed tasks for reflection
+        self._learned_strategy = None
+        self._init_learned_strategy()
+
+    def _init_learned_strategy(self):
+        """Try to fit LearnedRepairStrategy from repair journal data."""
+        try:
+            from .learned_repair import LearnedRepairStrategy
+            from .repair_journal import RepairJournal
+            self._learned_strategy = LearnedRepairStrategy()
+            journal = RepairJournal()
+            if hasattr(journal, '_entries') and journal._entries:
+                records = [
+                    {"issue_type": e.get("error_signature", "").split(":")[0] if ":" in e.get("error_signature", "") else "syntax",
+                     "strategy": e.get("fix_type", "skip"),
+                     "attempt": 1,
+                     "severity": "high",
+                     "success": e.get("success", False),
+                     "has_sm": True}
+                    for e in journal._entries
+                ]
+                self._learned_strategy.fit(records)
+        except Exception:
+            pass
 
     # ── Boot Repair (full scan) ──────────────────────────────────────
 
@@ -302,37 +325,21 @@ class AutoRepair:
         cpr(C.YELLOW, f"[REPAIR] ✗ {task.skill_name}: {task.issue_type} — {task.result[:80]}")
 
     def _plan_strategy(self, task):
-        """Choose repair strategy based on issue type and attempt history."""
-        t = task.issue_type
-        attempt = task.attempts
+        """Choose repair strategy. Uses learned model when available, else rule-based."""
+        # Try learned strategy first
+        if self._learned_strategy and self._learned_strategy.available:
+            result = self._learned_strategy.predict(
+                issue_type=task.issue_type,
+                attempt=task.attempts,
+                severity=task.severity,
+                has_sm=bool(self.sm),
+            )
+            if result:
+                return result
 
-        if t == "markdown":
-            return "strip_markdown"
-
-        if t == "syntax":
-            if attempt == 1:
-                return "strip_markdown"  # often syntax errors are from markdown
-            if attempt == 2 and self.sm:
-                return "rewrite_from_backup"
-            return "skip"
-
-        if t == "imports":
-            if attempt <= 2:
-                return "auto_fix_imports"
-            return "pip_install"
-
-        if t == "interface":
-            if attempt == 1:
-                return "add_interface"
-            return "skip"  # interface issues usually need LLM rewrite
-
-        if t == "stub":
-            return "skip"  # stubs need LLM to rewrite, can't auto-fix
-
-        if t == "missing_dep":
-            return "pip_install"
-
-        return "skip"
+        # Fallback: rule-based
+        from .learned_repair import rule_based_strategy
+        return rule_based_strategy(task.issue_type, task.attempts, bool(self.sm))
 
     def _apply_fix(self, task, strategy):
         """Apply a repair strategy. Returns (success: bool, message: str)."""

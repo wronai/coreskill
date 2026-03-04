@@ -17,6 +17,13 @@ class Logger:
     def __init__(self, core_id="A"):
         LOGS_DIR.mkdir(parents=True, exist_ok=True)
         self.core_id = core_id
+        self._slog = None
+        try:
+            from .resilience import get_struct_logger, _HAS_STRUCTLOG
+            if _HAS_STRUCTLOG:
+                self._slog = get_struct_logger(f"core_{core_id}")
+        except Exception:
+            pass
 
     def _write(self, path, entry):
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -66,6 +73,12 @@ class Logger:
         # Markdown format for LLM consumption
         self._write_markdown(LOGS_DIR / f"core_{self.core_id}.md", e)
         self._write_markdown(LOGS_DIR / "core.md", e)
+        # structlog channel
+        if self._slog:
+            try:
+                self._slog.info(event, **(data or {}))
+            except Exception:
+                pass
 
     def skill(self, skill_name, event, data=None):
         e = self._entry(event, data)
@@ -75,6 +88,12 @@ class Logger:
         # Markdown format
         self._write_markdown(LOGS_DIR / "skills" / f"{skill_name}.md", e)
         self._write_markdown(LOGS_DIR / "core.md", e)
+        # structlog channel
+        if self._slog:
+            try:
+                self._slog.info(event, skill=skill_name, **(data or {}))
+            except Exception:
+                pass
 
     def read_skill_log(self, skill_name, last_n=20, format="json"):
         """Read skill logs. Format: 'json' or 'markdown'."""

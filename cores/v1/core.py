@@ -38,6 +38,9 @@ from .config_generator import ConfigGenerator, get_config_generator
 from .voice_loop import _extract_stt_text, _speak_tts, _run_stt_cycle, _run_voice_loop
 from .fuzzy_router import FuzzyCommandRouter
 from .event_bus import EventBus
+from .adaptive_monitor import AdaptiveResourceMonitor
+from .proactive_scheduler import ProactiveScheduler, setup_default_tasks
+from .bandit_selector import UCB1BanditSelector
 
 
 # ─── Docker Compose Generator ────────────────────────────────────────
@@ -472,7 +475,8 @@ def _init_components(ak, mdl, models, logger, state):
     provider_sel = ProviderSelector(SKILLS_DIR, resource_mon)
     sm = SkillManager(llm, logger, provider_selector=provider_sel)
     pm = PipelineManager(sm, llm, logger)
-    chain = ProviderChain(provider_sel)
+    bandit = UCB1BanditSelector()
+    chain = ProviderChain(provider_sel, bandit=bandit)
     evo = EvoEngine(sm, llm, logger, provider_chain=chain)
     intent = IntentEngine(llm, logger, state)
     identity = SystemIdentity(skill_manager=sm, resource_monitor=resource_mon)
@@ -1177,6 +1181,18 @@ def _boot():
     bus.wire(reflection=reflection, repairer=repairer, evo=evo, logger=logger)
     cpr(C.DIM, f"SelfReflection: aktywny | EventBus: {'wired' if bus.is_active else 'fallback'}")
 
+    # Adaptive resource monitor (EWMA trend detection)
+    adaptive_mon = AdaptiveResourceMonitor()
+    adaptive_mon.start(interval=5.0)
+
+    # Proactive scheduler (periodic GC, health checks, resource alerts)
+    scheduler = ProactiveScheduler()
+    gc = EvolutionGarbageCollector()
+    setup_default_tasks(scheduler, adaptive_monitor=adaptive_mon, gc=gc,
+                        skill_manager=sm, logger=logger)
+    scheduler.start()
+    cpr(C.DIM, f"AdaptiveMonitor: aktywny | Scheduler: {len(scheduler.status())} zadań")
+
     cpr(C.DIM, f"Model: {llm.model} | Core: {sv.active()} | Tiers: {llm.tier_info()}")
     sk = sm.list_skills()
     if sk:
@@ -1200,7 +1216,7 @@ def _boot():
         "intent": intent, "logger": logger, "state": state, "conv": conv,
         "provider_selector": provider_sel, "resource_monitor": resource_mon,
         "identity": identity, "memory": memory, "session_config": session_cfg,
-        "router": router,
+        "router": router, "adaptive_monitor": adaptive_mon, "scheduler": scheduler,
     }
     return cmd_ctx, conv, memory
 

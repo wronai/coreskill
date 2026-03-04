@@ -1,4 +1,4 @@
-# code2llm/evolution | 949 func | 102f | 2026-03-04
+# code2llm/evolution | 866 func | 82f | 2026-03-04
 
 NEXT[10] (ranked by impact):
   [1] !! SPLIT-FUNC      main  CC=74  fan=55
@@ -13,46 +13,46 @@ NEXT[10] (ranked by impact):
       WHY: CC=54 exceeds 15
       EFFORT: ~1h  IMPACT: 2160
 
-  [4] !! SPLIT-FUNC      IntentEngine.analyze  CC=46  fan=25
+  [4] !! SPLIT-FUNC      BenchmarkSkill._score_benchmark_response  CC=58  fan=28
+      WHY: CC=58 exceeds 15
+      EFFORT: ~1h  IMPACT: 1624
+
+  [5] !! SPLIT-FUNC      IntentEngine.analyze  CC=46  fan=25
       WHY: CC=46 exceeds 15
       EFFORT: ~1h  IMPACT: 1150
 
-  [5] !! SPLIT-FUNC      SelfReflection.run_diagnostic  CC=28  fan=26
+  [6] !! SPLIT-FUNC      SelfReflection.run_diagnostic  CC=28  fan=26
       WHY: CC=28 exceeds 15
       EFFORT: ~1h  IMPACT: 728
 
-  [6] !! SPLIT-FUNC      ShellSkill.execute  CC=28  fan=23
+  [7] !! SPLIT-FUNC      ShellSkill.execute  CC=28  fan=23
       WHY: CC=28 exceeds 15
       EFFORT: ~1h  IMPACT: 644
 
-  [7] !  SPLIT-FUNC      SkillManager.smart_evolve  CC=18  fan=30
+  [8] !! SPLIT-FUNC      SmartIntentClassifier.classify  CC=40  fan=14
+      WHY: CC=40 exceeds 15
+      EFFORT: ~1h  IMPACT: 560
+
+  [9] !  SPLIT-FUNC      SkillManager.smart_evolve  CC=18  fan=30
       WHY: CC=18 exceeds 15
       EFFORT: ~1h  IMPACT: 540
 
-  [8] !  SPLIT-FUNC      BenchmarkSkill._recommend_models_live  CC=18  fan=28
-      WHY: CC=18 exceeds 15
-      EFFORT: ~1h  IMPACT: 504
-
-  [9] !  SPLIT-FUNC      Simulator.run_scenario  CC=21  fan=22
-      WHY: CC=21 exceeds 15
-      EFFORT: ~1h  IMPACT: 462
-
-  [10] !! SPLIT-FUNC      SkillPreflight.auto_fix_imports  CC=25  fan=18
-      WHY: CC=25 exceeds 15
-      EFFORT: ~1h  IMPACT: 450
+  [10] !  SPLIT-FUNC      BenchmarkSkill._recommend_models_live  CC=19  fan=26
+      WHY: CC=19 exceeds 15
+      EFFORT: ~1h  IMPACT: 494
 
 
 RISKS[3]:
   ⚠ Splitting tests/test_e2e.py may break 0 import paths
-  ⚠ Splitting skills/hw_test/v1/skill.py may break 0 import paths
   ⚠ Splitting cores/v1/core.py may break 0 import paths
+  ⚠ Splitting skills/hw_test/v1/skill.py may break 0 import paths
 
 METRICS-TARGET:
-  CC̄:          4.8 → ≤3.4
+  CC̄:          5.1 → ≤3.6
   max-CC:      74 → ≤20
   god-modules: 14 → 0
-  high-CC(≥15): 51 → ≤25
+  high-CC(≥15): 52 → ≤26
   hub-types:   0 → ≤0
 
 HISTORY:
-  (first run — no previous data)
+  prev CC̄=4.8 → now CC̄=5.1

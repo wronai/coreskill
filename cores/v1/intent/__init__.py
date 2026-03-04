@@ -38,13 +38,15 @@ _INTENT_CONFIG = {
 @dataclass
 class IntentResult:
     """Result of intent classification."""
-    action: str  # use, create, evolve, chat
+    action: str  # use, create, evolve, chat, configure
     skill: str = ""  # skill name for 'use' action
     confidence: float = 0.0
     tier: str = "unknown"  # embedding, local_llm, remote_llm, fallback
     goal: str = ""  # human-readable intent description
     input: Dict[str, Any] = field(default_factory=dict)  # skill params
     all_scores: Dict[str, float] = field(default_factory=dict)  # all skill scores
+    category: str = ""  # for configure: llm, tts, stt, voice
+    target: str = ""  # for configure: model name, provider name, etc.
 
     def to_analysis(self) -> dict:
         """Convert to IntentEngine-compatible analysis dict."""
@@ -55,6 +57,10 @@ class IntentResult:
             d["input"] = self.input
         if self.goal:
             d["goal"] = self.goal
+        if self.category:
+            d["category"] = self.category
+        if self.target:
+            d["target"] = self.target
         d["_conf"] = self.confidence
         d["_tier"] = self.tier
         return d
@@ -187,8 +193,21 @@ class SmartIntentClassifier:
         if any(w in ul for w in ("porozmawiajmy głosowo", "pogadajmy głosem", "włącz tryb głosowy", "voice mode", "let's talk")):
             return IntentResult(action="use", skill="stt", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
         
-        # Web search
-        if any(w in ul for w in ("wyszukaj", "szukaj", "znajdź w internecie", "google", "search", "find online", "look up")):
+        # Configure / settings (NEW - LLM model changes) - CHECK THIS FIRST
+        configure_keywords = ("ustaw jako domyślny", "ustaw model", "zmień model", "zmień domyślny",
+                            "ustaw domyślny model", "przełącz na", "użyj modelu", "zmień na",
+                            "set as default", "change model", "switch to", "use model",
+                            "set default LLM", "set default llm", "set default model")
+        if any(w in ul for w in configure_keywords):
+            target = self._extract_model_target(user_msg)
+            return IntentResult(action="configure", category="llm", target=target,
+                              confidence=0.95, tier="keyword_prefilter", goal=user_msg)
+        
+        # Web search - check specific verbs first, then "google" only if not part of model path
+        if any(w in ul for w in ("wyszukaj", "szukaj", "znajdź w internecie", "search", "find online", "look up")):
+            return IntentResult(action="use", skill="web_search", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
+        # Special check for "google" - avoid matching when part of openrouter/google/... model path
+        if "google" in ul and "openrouter/google" not in ul and "google/gemma" not in ul:
             return IntentResult(action="use", skill="web_search", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
         
         # Shell
@@ -204,6 +223,17 @@ class SmartIntentClassifier:
         
         if any(w in ul for w in ("napraw", "popraw", "ulepsz", "fix", "repair", "improve")):
             return IntentResult(action="evolve", skill="", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
+        
+        # Configure / settings (NEW - LLM model changes)
+        configure_keywords = ("ustaw jako domyślny", "ustaw model", "zmień model", "zmień domyślny",
+                            "ustaw domyślny model", "przełącz na", "użyj modelu", "zmień na",
+                            "set as default", "change model", "switch to", "use model",
+                            "set default LLM", "set default llm", "set default model")
+        if any(w in ul for w in configure_keywords):
+            # Extract model name from message
+            target = self._extract_model_target(user_msg)
+            return IntentResult(action="configure", category="llm", target=target,
+                              confidence=0.95, tier="keyword_prefilter", goal=user_msg)
 
         # Tier 1: Embedding similarity
         result = self._embedding_classify(user_msg)
@@ -314,6 +344,14 @@ class SmartIntentClassifier:
         all_scores = {f"{a}:{s}": sim for sim, a, s in scores[:5]}
         conf = min(top_sim * 1.2, 0.95)
 
+        # Handle configure action with target extraction
+        category = ""
+        target = ""
+        if top_action == "configure":
+            category = top_skill if top_skill else "llm"  # default to llm if empty
+            target = self._extract_model_target(user_msg)
+            top_skill = ""  # skill is empty for configure
+
         return IntentResult(
             action=top_action,
             skill=top_skill if top_action == "use" else "",
@@ -321,7 +359,39 @@ class SmartIntentClassifier:
             tier=f"embedding_{self._embedder._mode}",
             goal=user_msg,
             all_scores=all_scores,
+            category=category,
+            target=target,
         )
+
+    def _extract_model_target(self, user_msg: str) -> str:
+        """Extract model name/target from user message for configure intent."""
+        import re
+        ul = user_msg.lower()
+        
+        # Common model name patterns
+        # Pattern 1: openrouter/namespace/model-name:variant (handles dots and colons like :free, :paid)
+        # Match openrouter/ followed by namespace/model with optional :variant suffix
+        openrouter_match = re.search(r'(openrouter/[a-z0-9\-]+/[a-z0-9\-\.:]+)', ul)
+        if openrouter_match:
+            return openrouter_match.group(1)
+        
+        # Pattern 2: namespace/model-name:variant without openrouter/ prefix
+        # Match patterns like google/gemma-3-27b-it:free or moonshotai/kimi-k2.5
+        model_match = re.search(r'([a-z][a-z0-9\-]*/[a-z][a-z0-9\-\.:]+)', ul)
+        if model_match:
+            model = model_match.group(1)
+            # Add openrouter/ prefix if missing
+            if not model.startswith("openrouter/"):
+                return f"openrouter/{model}"
+            return model
+        
+        # Pattern 3: just model name like "kimi-k2.5", "gemma-3-27b-it", "llama-3.3-70b" etc.
+        simple_match = re.search(r'\b(gemma[\w\-\.:]*|qwen[\w\-\.:]*|llama[\w\-\.:]*|claude[\w\-\.:]*|gpt[\w\-\.:]*|kimi[\w\-\.:]*|deepseek[\w\-\.:]*|mistral[\w\-\.:]*)', ul)
+        if simple_match:
+            model = simple_match.group(1)
+            return f"openrouter/{model}"
+        
+        return ""
 
     def _llm_classify(self, user_msg: str, skills: list, context: str) -> Optional[IntentResult]:
         """Classify using remote LLM (last resort)."""
