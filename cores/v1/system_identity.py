@@ -7,6 +7,7 @@ SystemIdentity tells the LLM what the system CAN do (even if broken)
 and how to respond when skills fail.
 """
 import json
+import os
 from datetime import datetime, timezone
 
 from .config import SKILLS_DIR
@@ -60,8 +61,19 @@ class SystemIdentity:
         self._last_refresh = None
 
     def refresh_statuses(self):
-        """Check health of all skills. Called on startup and periodically."""
+        """Check health of all skills. Called on startup and periodically.
+        Skip in text-only mode to avoid hanging on audio skill checks."""
         if not self.sm:
+            return
+        # Skip health checks in text-only mode (EVO_TEXT_ONLY=1)
+        if os.environ.get("EVO_TEXT_ONLY"):
+            # Mark all skills as healthy without checking
+            for name in self.sm.list_skills():
+                version = self.sm.latest_v(name) or "v1"
+                self._skill_statuses[name] = SkillStatus(
+                    name=name, healthy=True, provider="default", version=version
+                )
+            self._last_refresh = datetime.now(timezone.utc)
             return
         for name in self.sm.list_skills():
             try:

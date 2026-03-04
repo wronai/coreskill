@@ -145,29 +145,31 @@ def get_info():
 
 
 def health_check():
-    # Try urllib first (short timeout)
+    # Fast path 1: DNS resolution (instant, proves network is up)
     try:
-        req = urllib.request.Request("https://lite.duckduckgo.com/",
-                                     headers={"User-Agent": "Mozilla/5.0"})
-        urllib.request.urlopen(req, timeout=8)
-        return True
+        import socket
+        socket.getaddrinfo("lite.duckduckgo.com", 443, socket.AF_INET)
+        return True  # DNS works = network available
     except Exception:
         pass
-    # Fallback: try curl (bypasses Python SSL issues)
+    # Fast path 2: curl with short timeout (usually faster than urllib)
     try:
         r = subprocess.run(
-            ["curl", "-sL", "-m", "8", "-o", "/dev/null", "-w", "%{http_code}",
+            ["curl", "-sL", "--connect-timeout", "3", "-m", "5",
+             "-o", "/dev/null", "-w", "%{http_code}",
              "https://lite.duckduckgo.com/"],
-            capture_output=True, text=True, timeout=12)
+            capture_output=True, text=True, timeout=8)
         if r.returncode == 0 and r.stdout.strip().startswith(("2", "3")):
             return True
     except Exception:
         pass
-    # Fallback: basic DNS resolution (skill code is valid even if network is down)
+    # Slow path: urllib (only if others fail)
     try:
-        import socket
-        socket.getaddrinfo("lite.duckduckgo.com", 443, socket.AF_INET)
-        return True  # DNS works = network available, just slow
+        req = urllib.request.Request(
+            "https://lite.duckduckgo.com/",
+            headers={"User-Agent": "Mozilla/5.0"})
+        urllib.request.urlopen(req, timeout=5)
+        return True
     except Exception:
         pass
     return False
