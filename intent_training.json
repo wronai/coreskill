@@ -1,0 +1,502 @@
+[
+  {
+    "text": "cześć",
+    "action": "chat",
+    "skill": ""
+  },
+  {
+    "text": "hej",
+    "action": "chat",
+    "skill": ""
+  },
+  {
+    "text": "jak się masz",
+    "action": "chat",
+    "skill": ""
+  },
+  {
+    "text": "co słychać",
+    "action": "chat",
+    "skill": ""
+  },
+  {
+    "text": "dzień dobry",
+    "action": "chat",
+    "skill": ""
+  },
+  {
+    "text": "hi",
+    "action": "chat",
+    "skill": ""
+  },
+  {
+    "text": "hello",
+    "action": "chat",
+    "skill": ""
+  },
+  {
+    "text": "how are you",
+    "action": "chat",
+    "skill": ""
+  },
+  {
+    "text": "powiedz",
+    "action": "use",
+    "skill": "tts"
+  },
+  {
+    "text": "wypowiedz",
+    "action": "use",
+    "skill": "tts"
+  },
+  {
+    "text": "przeczytaj",
+    "action": "use",
+    "skill": "tts"
+  },
+  {
+    "text": "mów do mnie",
+    "action": "use",
+    "skill": "tts"
+  },
+  {
+    "text": "odczytaj",
+    "action": "use",
+    "skill": "tts"
+  },
+  {
+    "text": "speak",
+    "action": "use",
+    "skill": "tts"
+  },
+  {
+    "text": "say",
+    "action": "use",
+    "skill": "tts"
+  },
+  {
+    "text": "read aloud",
+    "action": "use",
+    "skill": "tts"
+  },
+  {
+    "text": "słuchaj",
+    "action": "use",
+    "skill": "stt"
+  },
+  {
+    "text": "nagrywaj",
+    "action": "use",
+    "skill": "stt"
+  },
+  {
+    "text": "zapisz co mówię",
+    "action": "use",
+    "skill": "stt"
+  },
+  {
+    "text": "rozpoznaj mowę",
+    "action": "use",
+    "skill": "stt"
+  },
+  {
+    "text": "transkrybuj",
+    "action": "use",
+    "skill": "stt"
+  },
+  {
+    "text": "listen",
+    "action": "use",
+    "skill": "stt"
+  },
+  {
+    "text": "record",
+    "action": "use",
+    "skill": "stt"
+  },
+  {
+    "text": "transcribe",
+    "action": "use",
+    "skill": "stt"
+  },
+  {
+    "text": "porozmawiajmy głosowo",
+    "action": "use",
+    "skill": "stt"
+  },
+  {
+    "text": "pogadajmy głosem",
+    "action": "use",
+    "skill": "stt"
+  },
+  {
+    "text": "włącz tryb głosowy",
+    "action": "use",
+    "skill": "stt"
+  },
+  {
+    "text": "rozmawiajmy głosowo",
+    "action": "use",
+    "skill": "stt"
+  },
+  {
+    "text": "voice mode",
+    "action": "use",
+    "skill": "stt"
+  },
+  {
+    "text": "let's talk",
+    "action": "use",
+    "skill": "stt"
+  },
+  {
+    "text": "voice conversation",
+    "action": "use",
+    "skill": "stt"
+  },
+  {
+    "text": "wyszukaj",
+    "action": "use",
+    "skill": "web_search"
+  },
+  {
+    "text": "szukaj",
+    "action": "use",
+    "skill": "web_search"
+  },
+  {
+    "text": "znajdź w internecie",
+    "action": "use",
+    "skill": "web_search"
+  },
+  {
+    "text": "przeszukaj web",
+    "action": "use",
+    "skill": "web_search"
+  },
+  {
+    "text": "daj mi linki",
+    "action": "use",
+    "skill": "web_search"
+  },
+  {
+    "text": "google",
+    "action": "use",
+    "skill": "web_search"
+  },
+  {
+    "text": "search",
+    "action": "use",
+    "skill": "web_search"
+  },
+  {
+    "text": "find online",
+    "action": "use",
+    "skill": "web_search"
+  },
+  {
+    "text": "look up",
+    "action": "use",
+    "skill": "web_search"
+  },
+  {
+    "text": "deploy",
+    "action": "use",
+    "skill": "devops"
+  },
+  {
+    "text": "wdrożenie",
+    "action": "use",
+    "skill": "devops"
+  },
+  {
+    "text": "status systemu",
+    "action": "use",
+    "skill": "devops"
+  },
+  {
+    "text": "restart usługi",
+    "action": "use",
+    "skill": "devops"
+  },
+  {
+    "text": "przebuduj",
+    "action": "use",
+    "skill": "devops"
+  },
+  {
+    "text": "check service",
+    "action": "use",
+    "skill": "devops"
+  },
+  {
+    "text": "commit",
+    "action": "use",
+    "skill": "git_ops"
+  },
+  {
+    "text": "push",
+    "action": "use",
+    "skill": "git_ops"
+  },
+  {
+    "text": "pull",
+    "action": "use",
+    "skill": "git_ops"
+  },
+  {
+    "text": "status gita",
+    "action": "use",
+    "skill": "git_ops"
+  },
+  {
+    "text": "zacommituj",
+    "action": "use",
+    "skill": "git_ops"
+  },
+  {
+    "text": "wypchnij",
+    "action": "use",
+    "skill": "git_ops"
+  },
+  {
+    "text": "ściągnij zmiany",
+    "action": "use",
+    "skill": "git_ops"
+  },
+  {
+    "text": "zainstaluj",
+    "action": "use",
+    "skill": "deps"
+  },
+  {
+    "text": "doinstaluj",
+    "action": "use",
+    "skill": "deps"
+  },
+  {
+    "text": "dodaj paczkę",
+    "action": "use",
+    "skill": "deps"
+  },
+  {
+    "text": "install",
+    "action": "use",
+    "skill": "deps"
+  },
+  {
+    "text": "requirements",
+    "action": "use",
+    "skill": "deps"
+  },
+  {
+    "text": "dependencies",
+    "action": "use",
+    "skill": "deps"
+  },
+  {
+    "text": "napraw",
+    "action": "evolve",
+    "skill": ""
+  },
+  {
+    "text": "popraw",
+    "action": "evolve",
+    "skill": ""
+  },
+  {
+    "text": "ulepsz",
+    "action": "evolve",
+    "skill": ""
+  },
+  {
+    "text": "fix",
+    "action": "evolve",
+    "skill": ""
+  },
+  {
+    "text": "repair",
+    "action": "evolve",
+    "skill": ""
+  },
+  {
+    "text": "improve",
+    "action": "evolve",
+    "skill": ""
+  },
+  {
+    "text": "stwórz skill",
+    "action": "create",
+    "skill": ""
+  },
+  {
+    "text": "nowy skill",
+    "action": "create",
+    "skill": ""
+  },
+  {
+    "text": "zbuduj",
+    "action": "create",
+    "skill": ""
+  },
+  {
+    "text": "utwórz",
+    "action": "create",
+    "skill": ""
+  },
+  {
+    "text": "create skill",
+    "action": "create",
+    "skill": ""
+  },
+  {
+    "text": "new skill",
+    "action": "create",
+    "skill": ""
+  },
+  {
+    "text": "build skill",
+    "action": "create",
+    "skill": ""
+  },
+  {
+    "text": "napisz program",
+    "action": "create",
+    "skill": ""
+  },
+  {
+    "text": "zbuduj aplikację",
+    "action": "create",
+    "skill": ""
+  },
+  {
+    "text": "stwórz program",
+    "action": "create",
+    "skill": ""
+  },
+  {
+    "text": "napisz kod",
+    "action": "create",
+    "skill": ""
+  },
+  {
+    "text": "zbuduj system",
+    "action": "create",
+    "skill": ""
+  },
+  {
+    "text": "utwórz aplikację",
+    "action": "create",
+    "skill": ""
+  },
+  {
+    "text": "echo",
+    "action": "use",
+    "skill": "echo"
+  },
+  {
+    "text": "test echo",
+    "action": "use",
+    "skill": "echo"
+  },
+  {
+    "text": "przetestuj echo",
+    "action": "use",
+    "skill": "echo"
+  },
+  {
+    "text": "ping",
+    "action": "use",
+    "skill": "echo"
+  },
+  {
+    "text": "uruchom",
+    "action": "use",
+    "skill": "shell"
+  },
+  {
+    "text": "wykonaj",
+    "action": "use",
+    "skill": "shell"
+  },
+  {
+    "text": "bash",
+    "action": "use",
+    "skill": "shell"
+  },
+  {
+    "text": "command",
+    "action": "use",
+    "skill": "shell"
+  },
+  {
+    "text": "terminal",
+    "action": "use",
+    "skill": "shell"
+  },
+  {
+    "text": "run command",
+    "action": "use",
+    "skill": "shell"
+  },
+  {
+    "text": "execute",
+    "action": "use",
+    "skill": "shell"
+  },
+  {
+    "text": "jaki mam adres ip",
+    "action": "use",
+    "skill": "network_info"
+  },
+  {
+    "text": "pokaż mac",
+    "action": "use",
+    "skill": "network_info"
+  },
+  {
+    "text": "jaki numer ip",
+    "action": "use",
+    "skill": "network_info"
+  },
+  {
+    "text": "adres mac urządzenia",
+    "action": "use",
+    "skill": "network_info"
+  },
+  {
+    "text": "pokaż ip i mac",
+    "action": "use",
+    "skill": "network_info"
+  },
+  {
+    "text": "która jest godzina",
+    "action": "use",
+    "skill": "time"
+  },
+  {
+    "text": "jaki mamy czas",
+    "action": "use",
+    "skill": "time"
+  },
+  {
+    "text": "podaj datę",
+    "action": "use",
+    "skill": "time"
+  },
+  {
+    "text": "ile jest godzin",
+    "action": "use",
+    "skill": "time"
+  },
+  {
+    "text": "pokaż czas",
+    "action": "use",
+    "skill": "time"
+  },
+  {
+    "text": "test msg",
+    "action": "stt",
+    "skill": "stt"
+  }
+]
