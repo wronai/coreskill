@@ -1,0 +1,7 @@
+{
+  "name": "local_computer_discovery",
+  "version": "v1",
+  "description": "Skill odpowiadaj\u0105cy na zapytanie: 'znajd\u017a komputery si\u0119 si\u0119 lokalnych'. Poprzedni skill 'web_search' zwr\u00f3ci\u0142 puste wyniki. Wymagana funkcjonalno\u015b\u0107: znajd\u017a komputery si\u0119 si\u0119 lokalnych",
+  "created_at": "2026-03-04T13:56:40.855213+00:00",
+  "checksum": "72074c344dff07adaedc63c8807692e6"
+}
