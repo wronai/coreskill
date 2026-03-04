@@ -17,16 +17,16 @@ import time
 from pathlib import Path
 from typing import Optional
 
-from .config import SKILLS_DIR
+from .config import SKILLS_DIR, get_config_value
 
 
 # Tier priority (higher = more demanding but better quality)
 TIER_ORDER = {"lite": 0, "standard": 1, "premium": 2}
 
-# Auto-degradation constants
-FAILURE_THRESHOLD = 3       # failures before demotion
-DEMOTION_COOLDOWN = 300     # seconds before re-trying demoted provider
-SUCCESS_RECOVERY = 2        # consecutive successes to fully restore
+# Auto-degradation constants - loaded from system config
+FAILURE_THRESHOLD = get_config_value("cooldowns.failure_threshold", 3)
+DEMOTION_COOLDOWN = get_config_value("cooldowns.demotion", 300)
+SUCCESS_RECOVERY = get_config_value("cooldowns.success_recovery", 2)
 
 
 class ProviderInfo:

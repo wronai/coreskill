@@ -27,3 +27,4 @@ from .skill_logger import init_nfo, inject_logging, get_skill_logger
 from .user_memory import UserMemory
 from .smart_intent import SmartIntentClassifier
 from .garbage_collector import EvolutionGarbageCollector
+from .auto_repair import AutoRepair, RepairTask

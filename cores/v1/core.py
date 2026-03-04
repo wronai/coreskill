@@ -32,6 +32,7 @@ from .system_identity import SystemIdentity
 from .skill_logger import init_nfo
 from .user_memory import UserMemory
 from .garbage_collector import EvolutionGarbageCollector
+from .auto_repair import AutoRepair
 
 
 # ─── Docker Compose Generator ────────────────────────────────────────
@@ -978,30 +979,18 @@ def main():
     llm, sm, pm, evo, intent, provider_sel, resource_mon, identity = _init_components(
         ak, mdl, models, logger, state)
 
-    # Startup health scan
+    # Startup: auto-repair (GC + skill fixes + model validation)
+    repairer = AutoRepair(skill_manager=sm, logger=logger, identity=identity)
+    repair_report = repairer.run_boot_repair()
+
+    # Refresh identity after repairs
     identity.refresh_statuses()
     report = identity.get_readiness_report()
     if report["broken"]:
-        cpr(C.YELLOW, f"Uszkodzone skille: {', '.join(report['broken'])}")
-        for broken_skill in report["broken"]:
-            p = sm.skill_path(broken_skill)
-            if p and p.exists():
-                code = p.read_text()
-                fixed = sm.preflight.auto_fix_imports(code)
-                if fixed != code:
-                    p.write_text(fixed)
-                    cpr(C.GREEN, f"  Auto-fixed: {broken_skill}")
-        identity.refresh_statuses()
+        cpr(C.YELLOW, f"Nadal uszkodzone: {', '.join(report['broken'])}")
 
     # Multi-level readiness check (deps/hw/api/resources)
     sm.boot_health_check()
-
-    # Auto-GC: clean stubs and broken versions on boot (silent)
-    gc = EvolutionGarbageCollector()
-    gc_reports = gc.cleanup_all(migrate=False, dry_run=False)
-    gc_deleted = sum(len(r.get("deleted", [])) for r in gc_reports)
-    if gc_deleted:
-        cpr(C.DIM, f"[GC] Auto-cleanup: usunięto {gc_deleted} stub(ów)/broken wersji")
 
     # Long-term user memory
     memory = UserMemory(state)

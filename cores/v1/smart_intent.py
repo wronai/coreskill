@@ -494,7 +494,17 @@ class SmartIntentClassifier:
     # ── Training data management ──────────────────────────────────────
 
     def _training_path(self) -> Path:
-        return self._state_dir / self.TRAINING_FILE
+        # Prefer logs/ directory for training data
+        logs_path = self._state_dir / "logs" / self.TRAINING_FILE
+        if logs_path.exists():
+            return logs_path
+        # Fallback: legacy location (state_dir root)
+        legacy = self._state_dir / self.TRAINING_FILE
+        if legacy.exists():
+            return legacy
+        # New files go to logs/
+        logs_path.parent.mkdir(parents=True, exist_ok=True)
+        return logs_path
 
     def _load_training_data(self):
         """Load training data: file + defaults."""
