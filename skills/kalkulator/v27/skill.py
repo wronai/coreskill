@@ -16,7 +16,7 @@ class Kalkulator:
     def execute(self, params: dict) -> dict:
         text = params.get('text', '')
         if not text:
-            return {'success': False, 'error': 'Brak tekstu do przetworzenia.', 'spoken': 'Proszę podać wyrażenie matematyczne.'}
+            return {'success': False, 'error': 'Brak tekstu do przetworzenia.'}
 
         try:
             # Usuń słowa kluczowe i znaki interpunkcyjne, zostawiając tylko wyrażenie matematyczne
@@ -24,49 +24,43 @@ class Kalkulator:
             cleaned_text = re.sub(r'(oblicz|ile to jest|podaj wynik|kalkulator|:|\?|\.)', '', text, flags=re.IGNORECASE).strip()
 
             # Bardziej restrykcyjne sprawdzenie, aby upewnić się, że mamy tylko liczby, operatory i nawiasy
-            # Pozwalamy na +, -, *, /, %, ** (potęgowanie) i nawiasy.
-            if not re.fullmatch(r'[-+]?[\d\s()*/%+\-.]+', cleaned_text):
-                return {'success': False, 'error': 'Wyrażenie zawiera niedozwolone znaki lub jest nieprawidłowe.', 'spoken': 'Wyrażenie zawiera niedozwolone znaki.'}
+            # Pozwalamy na +, -, *, /, %, ** (potęgowanie), nawiasy i kropki dziesiętne.
+            if not re.fullmatch(r'[-+]?[\d\s()*/%.,+*-]+', cleaned_text):
+                return {'success': False, 'error': 'Wyrażenie zawiera niedozwolone znaki lub jest nieprawidłowe.'}
 
-            # Upewnij się, że nie ma liter ani innych niebezpiecznych znaków
+            # Dodatkowe sprawdzenie, aby upewnić się, że nie ma liter ani innych niebezpiecznych znaków
             if re.search(r'[a-zA-Z_]', cleaned_text):
-                return {'success': False, 'error': 'Wyrażenie zawiera niedozwolone znaki.', 'spoken': 'Wyrażenie zawiera niedozwolone znaki.'}
+                return {'success': False, 'error': 'Wyrażenie zawiera niedozwolone znaki.'}
 
             # Bezpieczniejsze podejście do ewaluacji, ograniczając dostępne funkcje
             # Używamy ast.literal_eval, ale to nie obsługuje operacji.
             # Dlatego stosujemy eval() z ostrożnością i po walidacji regex.
-            # Ograniczamy dozwolone znaki i operatory.
-            
-            # Sprawdzenie czy wyrażenie jest puste po czyszczeniu
-            if not cleaned_text:
-                return {'success': False, 'error': 'Wyrażenie matematyczne jest puste.', 'spoken': 'Proszę podać wyrażenie matematyczne.'}
+            # Zastępujemy przecinki kropkami dla obsługi liczb dziesiętnych w różnych formatach.
+            cleaned_text = cleaned_text.replace(',', '.')
 
-            # Dodatkowe zabezpieczenie przed potencjalnie niebezpiecznymi konstrukcjami
-            # np. wywołaniami funkcji, które nie są matematyczne.
-            # Pozwalamy tylko na podstawowe operatory i liczby.
-            allowed_chars = set("0123456789+-*/%(). ")
-            if not all(char in allowed_chars for char in cleaned_text):
-                return {'success': False, 'error': 'Wyrażenie zawiera niedozwolone znaki.', 'spoken': 'Wyrażenie zawiera niedozwolone znaki.'}
+            # Upewnij się, że nie ma pustych operatorów lub nieprawidłowych sekwencji
+            if re.search(r'[\d\s][+\-*/%]{2,}[\d\s]', cleaned_text) or \
+               re.search(r'[\d\s][+\-*/%][+\-*/%][\d\s]', cleaned_text) or \
+               re.search(r'^[+\-*/%]', cleaned_text) or \
+               re.search(r'[+\-*/%]$', cleaned_text):
+                return {'success': False, 'error': 'Nieprawidłowa sekwencja operatorów.'}
 
-            # Ograniczamy funkcje dostępne w eval, ale w tym przypadku, ponieważ użyliśmy regex,
-            # nie ma potrzeby dodatkowego ograniczania, o ile regex jest wystarczająco restrykcyjny.
-            # Bezpieczniej jest użyć ast.parse i przejść przez drzewo, ale dla prostych obliczeń
-            # i po walidacji regex, eval jest akceptowalny.
-            
+            # Ograniczenie do bezpiecznych operacji matematycznych
+            # Używamy eval z ostrożnością, po dokładnej walidacji.
+            # Można by rozważyć użycie biblioteki `ast` do parsowania drzewa składniowego,
+            # ale dla prostych obliczeń i po walidacji regex, `eval` jest akceptowalny.
             result = eval(cleaned_text)
 
-            return {'success': True, 'result': str(result), 'spoken': f'Wynik to {str(result)}'}
+            return {'success': True, 'result': str(result)}
 
         except SyntaxError:
-            return {'success': False, 'error': 'Błąd składni w wyrażeniu matematycznym.', 'spoken': 'Błąd składni w wyrażeniu.'}
+            return {'success': False, 'error': 'Błąd składni w wyrażeniu matematycznym.'}
         except ZeroDivisionError:
-            return {'success': False, 'error': 'Nie można dzielić przez zero.', 'spoken': 'Nie można dzielić przez zero.'}
+            return {'success': False, 'error': 'Nie można dzielić przez zero.'}
         except TypeError:
-            return {'success': False, 'error': 'Nieprawidłowy typ danych w wyrażeniu.', 'spoken': 'Nieprawidłowy typ danych w wyrażeniu.'}
-        except ValueError:
-            return {'success': False, 'error': 'Nieprawidłowa wartość w wyrażeniu.', 'spoken': 'Nieprawidłowa wartość w wyrażeniu.'}
+            return {'success': False, 'error': 'Nieprawidłowy typ danych w wyrażeniu.'}
         except Exception as e:
-            return {'success': False, 'error': f'Wystąpił nieoczekiwany błąd: {str(e)}', 'spoken': f'Wystąpił nieoczekiwany błąd: {str(e)}'}
+            return {'success': False, 'error': f'Wystąpił nieoczekiwany błąd: {str(e)}'}
 
 def execute(params: dict) -> dict:
     kalkulator_instance = Kalkulator()
@@ -85,17 +79,20 @@ if __name__ == '__main__':
         {'text': 'oblicz 10 + (5 * 2)'},
         {'text': 'oblicz 10 % 3'},
         {'text': 'ile to jest (2+3)*(4-1)'},
-        {'text': 'kalkulator 5.'}, # Test z kropką na końcu
-        {'text': 'oblicz 5 + '}, # Test z niekompletnym wyrażeniem
-        {'text': 'oblicz 2^3'}, # Test z potęgowaniem za pomocą ^
-        {'text': 'oblicz 10 / 3.14'},
-        {'text': 'oblicz (10 + 5) * 2 / (6 - 4)'},
-        {'text': 'oblicz sin(90)'}, # Test z niedozwoloną funkcją
-        {'text': 'oblicz 10 + '}, # Test z niekompletnym wyrażeniem po czyszczeniu
-        {'text': 'oblicz '}, # Test z pustym wyrażeniem po czyszczeniu
+        {'text': 'kalkulator 5.'},
+        {'text': 'oblicz 5 + '},
+        {'text': 'oblicz 2,5 * 2'}, # Test z przecinkiem
+        {'text': 'oblicz 10 / 3'},
+        {'text': 'oblicz 2 + 2 * 3'},
+        {'text': 'oblicz 10 / (2 + 2)'},
+        {'text': 'oblicz 10 ++ 5'}, # Nieprawidłowa sekwencja operatorów
+        {'text': 'oblicz * 5'}, # Nieprawidłowy operator na początku
+        {'text': 'oblicz 5 *'}, # Nieprawidłowy operator na końcu
+        {'text': 'oblicz 10 / 2.5'},
     ]
 
     for case in test_cases:
         print(f"Input: {case['text']}")
         result = execute(case)
         print(f"Output: {result}\n")
+```
