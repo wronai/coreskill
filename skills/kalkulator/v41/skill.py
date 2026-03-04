@@ -29,31 +29,36 @@ class Kalkulator:
             return {'success': False, 'error': str(e)}
 
     def _extract_expression(self, text: str) -> str | None:
-        match = re.search(r'(?:oblicz|ile to jest)\s+(.*)', text, re.IGNORECASE)
+        # Try to find expressions after keywords like "oblicz", "ile to jest"
+        match = re.search(r'(?:oblicz|ile to jest|ile to)\s+(.*)', text, re.IGNORECASE)
         if match:
-            return match.group(1).strip()
-        if re.match(r'^[\d\s\+\-\*\/\.\(\)\%]+$', text.strip()):
-            return text.strip()
+            expression = match.group(1).strip()
+            # Remove trailing question marks
+            if expression.endswith('?'):
+                expression = expression[:-1].strip()
+            return expression
+
+        # If no keywords, try to match a pattern that looks like a mathematical expression
+        # This pattern is more permissive to catch cases like "100 / 7?"
+        potential_expression = re.sub(r'[^0-9\+\-\*\/\.\(\)\%\s,]', '', text).strip()
+        if potential_expression and re.match(r'^[\d\s\+\-\*\/\.\(\)\%,\.]+$', potential_expression):
+            return potential_expression
+        
         return None
 
     def _calculate(self, expression: str) -> float:
-        allowed_chars = r'0-9\+\-\*\/\.\(\)\%\s'
+        allowed_chars = r'0-9\+\-\*\/\.\(\)\%\s,'
         if not re.fullmatch(f'[{allowed_chars}]+', expression):
             raise ValueError("Wyrażenie zawiera niedozwolone znaki.")
 
         expression = expression.replace(',', '.')
 
         # Basic sanitization to prevent common injection attempts
-        # This is not a foolproof security measure for arbitrary code execution
-        # but aims to block obvious keywords.
         for func_name in ['eval', 'exec', 'open', 'input', '__import__']:
             expression = re.sub(r'\b' + func_name + r'\b', '', expression)
 
         try:
             # Using a restricted environment for eval
-            # We explicitly allow 'math' module and basic builtins like 'abs', 'pow', etc.
-            # Note: eval is inherently risky. This is a simplified approach.
-            # For robust calculation, a dedicated library or a more secure sandbox is recommended.
             result = eval(expression, {"__builtins__": {
                 'abs': abs, 'pow': pow, 'round': round, 'max': max, 'min': min,
                 'True': True, 'False': False, 'None': None
@@ -95,6 +100,9 @@ if __name__ == '__main__':
         {'text': 'oblicz abs(-5)', 'expected': '5.0'},
         {'text': 'oblicz pow(2, 3)', 'expected': '8.0'},
         {'text': 'oblicz round(3.14159, 2)', 'expected': '3.14'},
+        {'text': 'ile to 100 / 7?', 'expected': '14.285714285714286'},
+        {'text': '100 / 7', 'expected': '14.285714285714286'},
+        {'text': 'oblicz 5 + 3 * 2?', 'expected': '11.0'},
     ]
 
     print(f"Info: {get_info()}")
@@ -111,8 +119,10 @@ if __name__ == '__main__':
             assert result['success']
             assert 'result' in result
             try:
+                # Compare floats with tolerance
                 assert abs(float(result['result']) - float(case['expected'])) < 1e-9
             except ValueError:
+                # Fallback for non-float results if any
                 assert result['result'] == case['expected']
             print(f"Result: {result['result']}")
         else:
