@@ -6,7 +6,7 @@ def get_info() -> dict:
     return {
         "name": "json_validator",
         "version": "v1",
-        "description": "Validates if a given string is a valid JSON object. It can also extract JSON from a user's text."
+        "description": "Validates if a given string is a valid JSON object."
     }
 
 def health_check() -> dict:
@@ -18,20 +18,19 @@ class JsonValidator:
         if not input_text:
             return {'success': False, 'error': 'No input text provided.', 'spoken': 'Please provide some text to validate.'}
 
-        # Try to extract JSON if the input is not already a direct JSON string
-        json_to_validate = input_text
+        # Attempt to extract JSON if it's part of a larger string
+        json_candidate = input_text
         if not (input_text.strip().startswith('{') and input_text.strip().endswith('}')) and \
            not (input_text.strip().startswith('[') and input_text.strip().endswith(']')):
-            # Look for JSON objects or arrays within the text
-            match = re.search(r'({.*?})|(\[.*?\])', input_text, re.DOTALL)
+            match = re.search(r'(\{.*\})|(\[.*\])', input_text, re.DOTALL)
             if match:
-                json_to_validate = match.group(0)
+                json_candidate = match.group(0)
             else:
-                # If no JSON structure is found, treat the whole input as potentially invalid JSON
-                pass
+                # If no JSON-like structure is found, treat the whole input as potentially invalid JSON
+                json_candidate = input_text
 
         try:
-            json.loads(json_to_validate)
+            json.loads(json_candidate)
             return {'success': True, 'message': 'The provided text is a valid JSON.', 'spoken': 'This is a valid JSON.'}
         except json.JSONDecodeError as e:
             return {'success': False, 'error': f'Invalid JSON: {e}', 'spoken': f'This is not a valid JSON. Error: {e}'}
@@ -96,22 +95,38 @@ if __name__ == '__main__':
     assert result6['success'] is True
     assert result6['spoken'] == 'This is a valid JSON.'
 
-    # Test case 7: User query with JSON array
-    user_query_input_array = 'sprawdz ten json array: [1, "two", false]'
-    result7 = execute({'text': user_query_input_array})
-    print(f"Input: {user_query_input_array}")
+    # Test case 7: JSON array
+    valid_json_array_input = '[1, 2, 3, {"a": 1}]'
+    result7 = execute({'text': valid_json_array_input})
+    print(f"Input: {valid_json_array_input}")
     print(f"Result: {result7}")
     assert result7['success'] is True
     assert result7['spoken'] == 'This is a valid JSON.'
 
-    # Test case 8: User query with invalid JSON embedded
-    user_query_input_invalid = 'zwaliduj ten json: {"name": "test", "value": 42'
-    result8 = execute({'text': user_query_input_invalid})
-    print(f"Input: {user_query_input_invalid}")
+    # Test case 8: Invalid JSON array
+    invalid_json_array_input = '[1, 2, 3, {"a": 1}'
+    result8 = execute({'text': invalid_json_array_input})
+    print(f"Input: {invalid_json_array_input}")
     print(f"Result: {result8}")
     assert result8['success'] is False
     assert 'Invalid JSON' in result8['error']
     assert 'This is not a valid JSON.' in result8['spoken']
+
+    # Test case 9: JSON embedded in text with surrounding characters
+    embedded_json_input = 'Here is some text and then {"key": "value"} and more text.'
+    result9 = execute({'text': embedded_json_input})
+    print(f"Input: {embedded_json_input}")
+    print(f"Result: {result9}")
+    assert result9['success'] is True
+    assert result9['spoken'] == 'This is a valid JSON.'
+
+    # Test case 10: JSON embedded in text with newlines
+    embedded_json_newline_input = '{\n  "key": "value"\n}'
+    result10 = execute({'text': embedded_json_newline_input})
+    print(f"Input: {embedded_json_newline_input}")
+    print(f"Result: {result10}")
+    assert result10['success'] is True
+    assert result10['spoken'] == 'This is a valid JSON.'
 
 
     print("\njson_validator skill tests completed.")
