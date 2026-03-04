@@ -87,13 +87,6 @@ def execute(params: dict) -> dict:
 
 if __name__ == "__main__":
     # Test block
-    print("Testing TTS skill...")
-    info = get_info()
-    print(f"Skill info: {info}")
-    
-    health = health_check()
-    print(f"Health check: {health}")
-    
-    test_text = "Hello, this is a test of the text-to-speech system."
+    test_text = "Hello, world! This is a test of the text-to-speech system."
     result = execute({"text": test_text})
-    print(f"Execute result: {result}")
+    print(f"Result: {result}")
