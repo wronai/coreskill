@@ -140,6 +140,20 @@ class SessionConfig:
         target = intent_result.get("target", "")
         original = intent_result.get("original_msg", "")
         
+        # Detect query messages — "jaki model", "what LLM" etc. are NOT configure
+        ul = original.lower()
+        query_words = ("jaki ", "jaki?", "który ", "która ", "what ", "which ", "current ", "aktualn")
+        if any(ul.startswith(w) or w in ul for w in query_words):
+            # Use word boundary to avoid "ustawiony" matching "ustaw"
+            if not re.search(r'\b(ustaw|zmień|przełącz|set|change|switch)\b', ul):
+                # It's a query, not a configure request
+                if self.llm and category in ("", "llm"):
+                    return ConfigChange(
+                        category="llm", setting="model",
+                        old_value=self.llm.model, new_value=self.llm.model,
+                        success=True, message=f"Aktualny model: {self.llm.model}"
+                    )
+        
         # FALLBACK: Check for ambiguity - if no clear category but quality words present
         # Prioritize LLM as default for "better/worse/faster" when ambiguous
         if not category or category == "":
@@ -205,6 +219,11 @@ class SessionConfig:
         else:
             # Specific model name
             new_model = target if target else self._extract_model_name(original)
+            # If target looks partial (no '/'), try extracting full name from message
+            if new_model and '/' not in new_model:
+                extracted = self._extract_model_name(original)
+                if extracted:
+                    new_model = extracted
         
         if new_model and new_model != current:
             # Try to switch

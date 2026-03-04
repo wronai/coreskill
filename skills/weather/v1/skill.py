@@ -3,10 +3,26 @@
 Weather skill - Sprawdza pogodę używając wttr.in (bez API key)
 """
 import json
+import re
 import ssl
 import urllib.request
 import urllib.error
 from typing import Dict, Any
+
+
+def _extract_location(text: str) -> str:
+    """Extract location from free text like 'jaka jest pogoda w Warszawie'."""
+    if not text:
+        return ""
+    # Try Polish/English prepositions
+    for pattern in [r'\bw\s+([A-Z\u0100-\u017E][\w\s-]{1,30})',
+                    r'\bin\s+([A-Z][\w\s-]{1,30})',
+                    r'\bdla\s+([A-Z\u0100-\u017E][\w\s-]{1,30})',
+                    r'\bfor\s+([A-Z][\w\s-]{1,30})']:
+        m = re.search(pattern, text)
+        if m:
+            return m.group(1).strip().rstrip('?.!')
+    return ""
 
 
 def _fetch_weather(location: str) -> Dict:
@@ -27,10 +43,12 @@ def _fetch_weather(location: str) -> Dict:
 def execute(input_data: Dict[str, Any]) -> Dict[str, Any]:
     """Główna funkcja wykonawcza skilla pogodowego."""
     try:
-        location = input_data.get("location")
+        location = input_data.get("location", "")
         if not location:
-            return {"success": False, "error": "Brak lokalizacji"}
-            
+            # Parse location from free text (e.g. "jaka jest pogoda w Warszawie")
+            text = input_data.get("text", "")
+            location = _extract_location(text)
+        # wttr.in auto-detects from IP when location is empty
         data = _fetch_weather(location)
         
         return {

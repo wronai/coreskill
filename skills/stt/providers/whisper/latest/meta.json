@@ -1,0 +1,22 @@
+{
+  "provider": "whisper",
+  "tier": "premium",
+  "quality_score": 9,
+  "requirements": {
+    "python_packages": [
+      "faster-whisper"
+    ],
+    "system_packages": [
+      "ffmpeg"
+    ],
+    "min_ram_mb": 2048,
+    "recommended_ram_mb": 4096
+  },
+  "fallback_to": "vosk",
+  "tags": [
+    "neural",
+    "high-quality",
+    "multilingual",
+    "polish-optimized"
+  ]
+}

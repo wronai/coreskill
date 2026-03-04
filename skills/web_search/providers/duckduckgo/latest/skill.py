@@ -145,34 +145,17 @@ def get_info():
 
 
 def health_check():
-    # Fast path 1: DNS resolution (instant, proves network is up)
+    # Verify skill structure and imports (no network calls — DNS failure ≠ broken code)
     try:
-        import socket
-        socket.getaddrinfo("lite.duckduckgo.com", 443, socket.AF_INET)
-        return True  # DNS works = network available
-    except Exception:
-        pass
-    # Fast path 2: curl with short timeout (usually faster than urllib)
-    try:
-        r = subprocess.run(
-            ["curl", "-sL", "--connect-timeout", "3", "-m", "5",
-             "-o", "/dev/null", "-w", "%{http_code}",
-             "https://lite.duckduckgo.com/"],
-            capture_output=True, text=True, timeout=8)
-        if r.returncode == 0 and r.stdout.strip().startswith(("2", "3")):
-            return True
-    except Exception:
-        pass
-    # Slow path: urllib (only if others fail)
-    try:
-        req = urllib.request.Request(
-            "https://lite.duckduckgo.com/",
-            headers={"User-Agent": "Mozilla/5.0"})
-        urllib.request.urlopen(req, timeout=5)
+        w = WebSearchSkill()
+        assert callable(getattr(w, "execute", None))
+        assert callable(getattr(w, "search_duckduckgo", None))
+        assert callable(getattr(w, "fetch_page_text", None))
+        # Verify stdlib imports are available
+        import urllib.request, urllib.parse, html.parser
         return True
     except Exception:
-        pass
-    return False
+        return False
 
 
 if __name__ == "__main__":

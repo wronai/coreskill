@@ -644,10 +644,53 @@ def _handle_chat(llm, sm, logger, conv, identity=None, memory=None):
         logger.core("chat_error", {"error": r[:200]})
         cpr(C.RED, f"evo> {r}")
         return None
+    # Validate: detect hallucinated skill usage in LLM response
+    if r:
+        r = _sanitize_chat_response(r, sm, logger)
     conv.append({"role": "assistant", "content": r})
     mprint(f"**evo>** {r}\n")
     logger.core("chat_response", {"length": len(r) if r else 0})
     return r
+
+
+def _sanitize_chat_response(text, sm, logger):
+    """Detect and flag when LLM hallucinates skill execution in its text response.
+    
+    The LLM sometimes writes '✅ web_search → ...' pretending it ran a skill,
+    then fabricates results. This strips those fake skill invocations and adds
+    a warning so the user isn't misled.
+    """
+    import re as _re
+    if not text:
+        return text
+    skill_names = set(sm.list_skills().keys()) if sm else set()
+    # Pattern: ✅ skill_name → ... or skill_name → ... at line start
+    # Also catches: ➡️ skill_name → ...
+    _fake_patterns = []
+    for sn in skill_names:
+        # "✅ web_search → ..." or "✅ `web_search` → ..."
+        _fake_patterns.append(
+            _re.compile(r'✅\s*`?' + _re.escape(sn) + r'`?\s*→[^\n]*', _re.IGNORECASE))
+        # "➡️ web_search → ..."  or  "➡️ `web_search` → ..."
+        _fake_patterns.append(
+            _re.compile(r'➡️\s*`?' + _re.escape(sn) + r'`?\s*→[^\n]*', _re.IGNORECASE))
+    
+    found_fake = False
+    cleaned = text
+    for pat in _fake_patterns:
+        if pat.search(cleaned):
+            found_fake = True
+            cleaned = pat.sub('', cleaned)
+    
+    if found_fake:
+        logger.core("hallucination_detected", {"original_len": len(text), "cleaned_len": len(cleaned)})
+        cpr(C.YELLOW, "[VALIDATE] LLM halucynował wykonanie skilla — usunięto fałszywe dane")
+        # Clean up leftover blank lines
+        cleaned = _re.sub(r'\n{3,}', '\n\n', cleaned).strip()
+        if not cleaned or len(cleaned) < 10:
+            cleaned = "Nie mam aktualnych danych. System uruchomi odpowiedni skill automatycznie."
+    return cleaned
+
 
 def _check_proactive_learning(intent):
     unhandled = intent._p.get("unhandled", [])

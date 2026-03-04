@@ -339,17 +339,15 @@ class EvoEngine:
                 "reason": validation["reason"]})
 
             # Track consecutive outcomes for auto-reflection
-            if self.reflection:
+            # Skip for STT silence in voice_conversation — voice loop has its own autotest
+            if self.reflection and not (
+                    skill_name == "stt" and goal == "voice_conversation"
+                    and validation["verdict"] == "partial"):
                 is_success = validation["verdict"] == "success"
                 is_partial = validation["verdict"] == "partial"
-                reflect_report = self.reflection.record_skill_outcome(
+                self.reflection.record_skill_outcome(
                     skill_name, success=is_success, partial=is_partial,
                     error=validation.get("reason", ""))
-                # If reflection triggered and found auto-fixable issues, try them
-                if reflect_report and reflect_report.auto_fixable:
-                    fixes = self.reflection.attempt_auto_fix(reflect_report)
-                    for fix in fixes:
-                        cpr(C.GREEN, f"[REFLECT] {fix}")
 
             if validation["verdict"] == "success":
                 cpr(C.GREEN, f"[PIPE] ✓ Goal achieved: {goal or 'OK'}")

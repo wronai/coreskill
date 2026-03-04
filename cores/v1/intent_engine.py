@@ -176,13 +176,45 @@ class IntentEngine:
                 "_tier": "rule_config_llm",
             }
 
+        # Stage 0c: Deterministic utility queries (prevent hallucinations)
+        # Route time/date/weather questions to real skills when available.
+        skills_list = list(skills.keys()) if isinstance(skills, dict) else list(skills)
+        _ul = ul
+
+        if "time" in skills_list:
+            _time_q = (
+                "która jest godzina", "ktora jest godzina", "jaka jest godzina",
+                "godzina", "czas",
+                "jaka data", "jaka jest data", "podaj dat", "dzisiejsza data",
+                "dzisiaj jest", "dzis jest",
+            )
+            if any(q in _ul for q in _time_q):
+                return {
+                    "action": "use",
+                    "skill": "time",
+                    "input": {"text": user_msg},
+                    "goal": "current_time_date",
+                    "_conf": 0.95,
+                    "_tier": "rule_time",
+                }
+
+        if "weather" in skills_list:
+            _weather_q = ("pogoda", "jaka pogoda", "jaka jest pogoda", "weather")
+            if any(q in _ul for q in _weather_q):
+                return {
+                    "action": "use",
+                    "skill": "weather",
+                    "input": {"text": user_msg},
+                    "goal": "weather_query",
+                    "_conf": 0.95,
+                    "_tier": "rule_weather",
+                }
+
         # Stage 1: ML classification
         # Build skills dict with metadata for rich schema
         if isinstance(skills, dict):
             skills_dict = skills
-            skills_list = list(skills.keys())
         else:
-            skills_list = list(skills)
             skills_dict = {name: {} for name in skills_list}  # Minimal metadata
         context = self._build_context(conv) if has_conv else ""
 

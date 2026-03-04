@@ -200,6 +200,19 @@ class SystemIdentity:
             "i NIE mów że nie umiesz.\n"
             "9. Nigdy nie mów 'jako model językowy nie mam możliwości' — BO MASZ, przez skille.\n"
             "10. Przy tworzeniu czegokolwiek - kalkuluj: co najtańsze, najszybsze.\n"
+            "\nKRYTYCZNE ZASADY ANTY-HALUCYNACJA:\n"
+            "11. NIGDY nie udawaj że uruchomiłeś skill. Ty NIE wykonujesz skilli — robi to SYSTEM. "
+            "Nie pisz '✅ web_search →' ani 'echo → weryfikacja' — to kłamstwo.\n"
+            "12. NIGDY nie fabrykuj danych z internetu. Jeśli nie masz REALNYCH wyników "
+            "z web_search, NIE wymyślaj pogody, temperatury, dat ani żadnych danych.\n"
+            "13. Jeśli user pyta o pogodę/dane z sieci — odpowiedz KRÓTKO: "
+            "'Sprawdzam...' i system sam uruchomi odpowiedni skill. "
+            "NIE generuj fałszywych wyników wyszukiwania.\n"
+            "14. Jeśli NIE WIESZ czegoś (bo nie masz realnych danych) — powiedz wprost "
+            "'Nie mam aktualnych danych, muszę użyć web_search'. "
+            "NIGDY nie wymyślaj odpowiedzi.\n"
+            "15. Dane z poprzednich wiadomości w konwersacji mogą być NIEAKTUALNE lub ZMYŚLONE "
+            "przez poprzednie odpowiedzi. Nie powtarzaj ich bezkrytycznie.\n"
         )
 
         return identity + capabilities + env_ctx + inventory + rules

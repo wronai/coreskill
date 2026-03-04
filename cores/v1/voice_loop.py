@@ -1,5 +1,7 @@
 """Voice loop module - STT/TTS voice conversation handling."""
+import json as _json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -48,23 +50,90 @@ def _extract_stt_text(outcome: dict) -> str:
     return ""
 
 
+def _clean_for_tts(text: str) -> str:
+    """Strip markdown formatting and emojis for clean TTS output."""
+    if not text:
+        return ""
+    # Remove code blocks
+    text = re.sub(r'```[\s\S]*?```', '', text)
+    # Remove inline code backticks
+    text = re.sub(r'`([^`]*)`', r'\1', text)
+    # Remove markdown headings
+    text = re.sub(r'^#{1,6}\s+', '', text, flags=re.MULTILINE)
+    # Remove bold/italic markers
+    text = re.sub(r'\*{1,3}([^*]+)\*{1,3}', r'\1', text)
+    # Remove markdown links [text](url)
+    text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', text)
+    # Remove common emojis that espeak reads literally
+    text = re.sub(r'[\U0001F300-\U0001F9FF\u2600-\u27BF\u2300-\u23FF'
+                  r'\u2B50\u2705\u274C\u26A0\u2728\u2757\u2753'
+                  r'\u25B6\u25C0\u27A1\u2B05\u2B06\u2B07'
+                  r'\u2139\u2049\u203C\u2934\u2935]', '', text)
+    # Remove arrow → and bullet markers
+    text = re.sub(r'[→←↑↓⇒⇐•●○■□▸▹]', ' ', text)
+    # Remove stray markdown list markers at line start
+    text = re.sub(r'^\s*[-*+]\s+', '', text, flags=re.MULTILINE)
+    # Clean up whitespace
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    text = re.sub(r'  +', ' ', text)
+    return text.strip()
+
+
 def _speak_tts(sm, evo, text: str) -> None:
-    """Speak text using TTS skill."""
+    """Speak text using TTS skill (with markdown cleanup)."""
+    clean = _clean_for_tts(text)
+    if not clean:
+        return
+
+    def _chunks(s: str, max_chars: int = 260, max_parts: int = 6):
+        if len(s) <= max_chars:
+            return [s]
+        parts = re.split(r'(?<=[.!?])\s+', s)
+        out = []
+        buf = ""
+        for p in parts:
+            if not p:
+                continue
+            cand = (buf + " " + p).strip() if buf else p.strip()
+            if len(cand) <= max_chars:
+                buf = cand
+                continue
+            if buf:
+                out.append(buf)
+                buf = ""
+                if len(out) >= max_parts:
+                    break
+            if len(p) > max_chars:
+                out.append(p[:max_chars].strip())
+            else:
+                buf = p.strip()
+            if len(out) >= max_parts:
+                break
+        if buf and len(out) < max_parts:
+            out.append(buf)
+        return out
+
     sk = sm.list_skills()
-    evo.handle_request(
-        text, sk,
-        analysis={"action": "use", "skill": "tts",
-                  "input": {"text": text, "lang": "pl"},
-                  "goal": "voice_response"}
-    )
+    for part in _chunks(clean):
+        evo.handle_request(
+            part, sk,
+            analysis={"action": "use", "skill": "tts",
+                      "input": {"text": part, "lang": "pl"},
+                      "goal": "voice_response"}
+        )
 
 
 def _run_stt_cycle(sm, evo, llm, intent, logger, conv, identity, duration=5, memory=None):
-    """Single STT→LLM→TTS cycle. Returns ('got_text', text) or ('silence', '') or ('error', msg)."""
-    # Import here to avoid circular dependency
+    """Single STT→Intent→Skill/LLM→TTS cycle.
+    
+    Routes transcribed text through IntentEngine so voice commands like
+    'jaka jest pogoda' actually use the weather skill instead of just chatting.
+    Returns ('got_text', text) or ('silence', '') or ('error', msg).
+    """
     from .core import _handle_chat
     
     sk = sm.list_skills()
+    # Step 1: Record audio via STT
     outcome = evo.handle_request(
         "[voice]", sk,
         analysis={"action": "use", "skill": "stt",
@@ -79,8 +148,36 @@ def _run_stt_cycle(sm, evo, llm, intent, logger, conv, identity, duration=5, mem
     cpr(C.GREEN, f"[STT] Usłyszałem: \"{stt_text}\"")
     mprint(f"### 🎤 *{stt_text}*")
     conv.append({"role": "user", "content": f"[głosowo] {stt_text}"})
+    
+    # Step 2: Analyze intent — should we use a skill or just chat?
+    analysis = intent.analyze(stt_text, sk, conv)
+    action = (analysis.get("action") or "chat") if analysis else "chat"
+    skill_name = (analysis.get("skill") or "") if analysis else ""
+    
+    # Step 3: Execute skill if intent says so (skip stt/tts — voice loop handles those)
+    if action in ("use", "create", "evolve") and skill_name and skill_name not in ("stt", "tts"):
+        cpr(C.CYAN, f"[VOICE] Intent: {action} → {skill_name}")
+        skill_outcome = evo.handle_request(stt_text, sk, analysis=analysis)
+        
+        if skill_outcome:
+            otype = skill_outcome.get("type", "")
+            if otype == "success":
+                r = skill_outcome.get("result", {})
+                res_data = r.get("result", {}) if isinstance(r, dict) else r
+                summary = (_json.dumps(res_data, ensure_ascii=False, default=str)[:600]
+                           if isinstance(res_data, dict) else str(res_data)[:600])
+                conv.append({"role": "system", "content":
+                    f"Skill '{skill_name}' wykonany pomyślnie. Wynik: {summary}\n"
+                    f"Podsumuj wynik krótko po polsku (mówisz głosem, bądź zwięzły)."})
+                intent.record_skill_use(skill_name)
+            elif otype in ("failed", "evo_failed"):
+                msg = skill_outcome.get("message", skill_outcome.get("goal", "?"))
+                conv.append({"role": "system", "content":
+                    f"Skill '{skill_name}' nie powiódł się: {str(msg)[:200]}\n"
+                    f"Poinformuj użytkownika po polsku i zaproponuj alternatywę."})
+    
+    # Step 4: Generate natural language response (always — for spoken output)
     response = _handle_chat(llm, sm, logger, conv, identity=identity, memory=memory)
-    # Speak the response via TTS
     if response:
         _speak_tts(sm, evo, response)
     intent.record_skill_use("stt")
@@ -173,6 +270,28 @@ def _run_file_input_loop(sm, evo, llm, intent, logger, conv, identity, memory=No
                     cpr(C.GREEN, f"  [STT] Rozpoznano: \"{stt_text}\"")
                     mprint(f"### 🎤 *{stt_text}*")
                     conv.append({"role": "user", "content": f"[głosowo/plik] {stt_text}"})
+                    # Route through intent engine (same as _run_stt_cycle)
+                    sk = sm.list_skills()
+                    analysis = intent.analyze(stt_text, sk, conv)
+                    act = (analysis.get("action") or "chat") if analysis else "chat"
+                    sk_name = (analysis.get("skill") or "") if analysis else ""
+                    if act in ("use", "create", "evolve") and sk_name and sk_name not in ("stt", "tts"):
+                        cpr(C.CYAN, f"  [FILE] Intent: {act} → {sk_name}")
+                        sk_out = evo.handle_request(stt_text, sk, analysis=analysis)
+                        if sk_out:
+                            ot = sk_out.get("type", "")
+                            if ot == "success":
+                                r = sk_out.get("result", {})
+                                rd = r.get("result", {}) if isinstance(r, dict) else r
+                                s = (_json.dumps(rd, ensure_ascii=False, default=str)[:600]
+                                     if isinstance(rd, dict) else str(rd)[:600])
+                                conv.append({"role": "system", "content":
+                                    f"Skill '{sk_name}' wykonany pomyślnie. Wynik: {s}\n"
+                                    f"Podsumuj wynik krótko po polsku."})
+                                intent.record_skill_use(sk_name)
+                            elif ot in ("failed", "evo_failed"):
+                                conv.append({"role": "system", "content":
+                                    f"Skill '{sk_name}' nie powiódł się."})
                     response = _handle_chat(
                         llm, sm, logger, conv, identity=identity, memory=memory)
                     if response:

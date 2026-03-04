@@ -1,17 +1,18 @@
-# coreskill | 100f 27537L | python:100
+# coreskill | 101f 28303L | python:101
 # Keys: M=modules, D=details, i=imports, c=classes, f=functions, m=methods
-M[100]:
+M[101]:
+  skills/auto/v1/skill.py,254
   __init__.py,19
   build_core.py,525
   cli.py,248
   core.py,515
-  cores/v1/__init__.py,52
+  cores/v1/__init__.py,53
   cores/v1/adaptive_monitor.py,188
   cores/v1/auto_repair.py,473
   cores/v1/bandit_selector.py,136
   cores/v1/config.py,188
   cores/v1/config_generator.py,221
-  cores/v1/core.py,1129
+  cores/v1/core.py,1137
   cores/v1/event_bus.py,94
   cores/v1/evo_engine.py,605
   cores/v1/evo_journal.py,350
@@ -37,17 +38,17 @@ M[100]:
   cores/v1/resource_monitor.py,129
   cores/v1/self_healing/__init__.py,294
   cores/v1/self_reflection.py,509
-  cores/v1/session_config.py,370
+  cores/v1/session_config.py,394
   cores/v1/skill_logger.py,245
   cores/v1/skill_manager.py,459
   cores/v1/smart_intent.py,722
   cores/v1/stable_snapshot.py,318
-  cores/v1/stt_autotest.py,661
+  cores/v1/stt_autotest.py,679
   cores/v1/supervisor.py,69
-  cores/v1/system_identity.py,157
+  cores/v1/system_identity.py,167
   cores/v1/user_memory.py,148
   cores/v1/utils.py,100
-  cores/v1/voice_loop.py,154
+  cores/v1/voice_loop.py,233
   examples/advanced/01_pipeline.py,48
   examples/basic/01_hello.py,33
   examples/basic/02_memory.py,32
@@ -66,7 +67,7 @@ M[100]:
   skills/echo/v4/skill.py,61
   skills/echo/v5/skill.py,61
   skills/git_ops/v1/skill.py,120
-  skills/hw_test/v1/skill.py,1157
+  skills/hw_test/v1/skill.py,1367
   skills/json_validator/v8/skill.py,115
   skills/json_validator/v9/skill.py,114
   skills/kalkulator/v46/skill.py,103
@@ -91,17 +92,24 @@ M[100]:
   skills/time/v1/skill.py,93
   skills/tts/providers/espeak/archive/v63/skill.py,17
   skills/tts/providers/espeak/archive/v72/skill.py,22
-  skills/tts/providers/espeak/latest/skill.py,4
+  skills/tts/providers/espeak/latest/skill.py,42
   skills/tts/providers/espeak/stable/skill.py,54
   skills/weather/v1/skill.py,54
   skills/web_search/providers/duckduckgo/archive/v1/skill.py,131
-  skills/web_search/providers/duckduckgo/latest/skill.py,149
-  skills/web_search/providers/duckduckgo/stable/skill.py,149
+  skills/web_search/providers/duckduckgo/latest/skill.py,151
+  skills/web_search/providers/duckduckgo/stable/skill.py,151
   skills/zarz_dzania/v7/skill.py,105
   skills/zarz_dzania/v8/skill.py,107
   tests/__init__.py,0
   tests/test_e2e.py,1728
 D:
+  skills/auto/v1/skill.py:
+    i: subprocess,re,json,os,pathlib.Path,urllib.{error,request}
+    e: get_info,health_check,AutoSkillBuilder,execute
+    AutoSkillBuilder: execute(1),_detect_capability(1),_execute_tts(1),_execute_http_get(1),_execute_system(1)
+    get_info()->dict
+    health_check()->dict
+    execute(params:dict)->dict
   cli.py:
     i: argparse,os,sys,shutil,json,cores.v1.config.{LOGS_DIR,ROOT,STATE_FILE,load_state},pathlib.Path
     e: print_color,cmd_logs_reset,cmd_cache_reset,cmd_state_reset,cmd_status,cmd_shell,main_cli
@@ -361,7 +369,7 @@ D:
     e: Supervisor
     Supervisor: __init__(2),active(0),active_version(0),list_cores(0),switch(0)  # Manages core versions: can create cor...
   cores/v1/system_identity.py:
-    i: json,datetime,config.SKILLS_DIR,datetime.timezone
+    i: json,os,datetime,config.SKILLS_DIR,datetime.timezone
     e: SkillStatus,SystemIdentity
     SkillStatus: __init__(5),to_dict(0)  # Runtime status of a single capability.
     SystemIdentity: __init__(2),refresh_statuses(0),get_status(1),build_system_prompt(0),build_fallback_message(3)  # Builds dynamic system prompt that sep...
@@ -378,13 +386,15 @@ D:
     clean_code(code)
     clean_json(text)
   cores/v1/voice_loop.py:
-    i: sys,time,config.{C,cpr},utils.mprint
+    i: os,subprocess,sys,tempfile,time,config.{C,cpr},pathlib.Path,utils.mprint
     _extract_stt_text(outcome:dict)->str
     _speak_tts(sm;evo;text:str)->None
     _run_stt_cycle(sm;evo;llm;intent;logger;conv;...+1)
     _run_stt_autotest(sm;logger;llm=None)->dict
     _try_pulseaudio_fix(diagnostics:dict)
-    _run_voice_loop(sm;evo;llm;intent;logger;conv;...+1)
+    _generate_speech_file(text:str;lang:str='pl')->str
+    _run_stt_from_file(sm;evo;wav_path:str;lang:str='pl')->dict
+    _run_file_input_loop(sm;evo;llm;intent;logger;conv;...+1)
   examples/advanced/01_pipeline.py:
     i: sys,cores.v1.config.load_state,cores.v1.evo_engine.EvoEngine,cores.v1.intent_engine.IntentEngine,cores.v1.llm_client.LLMClient,cores.v1.skill_manager.SkillManager
     e: main
@@ -678,10 +688,12 @@ D:
     get_info()
     health_check()
   skills/tts/providers/espeak/latest/skill.py:
-    e: TestSkill,get_info,health_check
-    TestSkill: execute(1)
+    i: subprocess,shutil,re
+    e: TTSSkill,get_info,health_check,execute
+    TTSSkill: __init__(0),execute(1)  # Text-to-Speech using espeak (stdlib +...
     get_info()
     health_check()
+    execute(params:dict)->dict
   skills/tts/providers/espeak/stable/skill.py:
     i: subprocess,shutil,re
     e: TTSSkill,get_info,health_check,check_readiness
