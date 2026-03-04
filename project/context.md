@@ -4,15 +4,15 @@
 
 - **Project**: .
 - **Analysis Mode**: static
-- **Total Functions**: 1312
-- **Total Classes**: 168
-- **Modules**: 135
+- **Total Functions**: 1332
+- **Total Classes**: 172
+- **Modules**: 138
 - **Entry Points**: 0
 
 ## Architecture by Module
 
 ### cores.v1.core
-- **Functions**: 59
+- **Functions**: 60
 - **File**: `core.py`
 
 ### cores.v1.smart_intent
@@ -388,18 +388,18 @@ Functions exposed as public API (no underscore prefix):
 - `cli.cmd_status` - 30 calls
 - `skills.task_manager.v1.skill.TaskManagerSkill.execute` - 30 calls
 - `cli.cmd_logs_reset` - 29 calls
+- `skills.text_summarizer.v1.skill.TextSummarizerSkill.summarize` - 29 calls
 - `cores.v1.repair_journal.RepairJournal.ask_llm_and_try` - 28 calls
 - `scripts.simulate.Simulator.run_all` - 27 calls
 - `cores.v1.preflight.SkillPreflight.check_imports` - 27 calls
 - `cores.v1.preflight.SkillPreflight.auto_fix_imports` - 26 calls
 - `seeds.core_v1.SkillManager.exec_skill` - 26 calls
 - `skills.benchmark.v3.skill.BenchmarkSkill.execute` - 26 calls
+- `skills.local_computer_discovery.v3.skill.LocalComputerDiscovery.execute` - 26 calls
 - `skills.benchmark.v2.skill.BenchmarkSkill.execute` - 26 calls
 - `scripts.generate_manifests.generate_manifest_for_skill` - 25 calls
 - `cores.v1.skill_logger.get_health_markdown` - 25 calls
-- `skills.converter.v1.skill.ConverterSkill.execute` - 24 calls
 - `skills.notes.v1.skill.NotesSkill.execute` - 24 calls
-- `skills.local_computer_discovery.v3.skill.LocalComputerDiscovery.execute` - 24 calls
 - `skills.file_manager.v1.skill.FileManagerSkill.execute` - 24 calls
 
 ## System Interactions

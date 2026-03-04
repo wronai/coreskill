@@ -321,21 +321,24 @@ class ConverterSkill:
         action = input_data.get("action", "convert_unit")
         
         if action == "convert_unit":
-            # Check if it's a temperature conversion
-            from_unit = input_data.get("from", "").upper()
-            to_unit = input_data.get("to", "").upper()
+            value = input_data.get("value", 0)
+            from_unit = input_data.get("from", "").strip()
+            to_unit = input_data.get("to", "").strip()
             
-            if from_unit in ['C', 'F', 'K'] and to_unit in ['C', 'F', 'K']:
-                return self.convert_temperature(
-                    input_data.get("value", 0),
-                    from_unit,
-                    to_unit
-                )
-            return self.convert_unit(
-                input_data.get("value", 0),
-                input_data.get("from", ""),
-                input_data.get("to", "")
-            )
+            # Validate inputs
+            if not from_unit:
+                return {"success": False, "error": "Missing 'from' unit"}
+            if not to_unit:
+                return {"success": False, "error": "Missing 'to' unit"}
+            
+            # Check if it's a temperature conversion
+            from_upper = from_unit.upper()
+            to_upper = to_unit.upper()
+            
+            if from_upper in ['C', 'F', 'K'] and to_upper in ['C', 'F', 'K']:
+                return self.convert_temperature(value, from_upper, to_upper)
+            
+            return self.convert_unit(value, from_unit, to_unit)
         elif action == "convert_currency":
             return self.convert_currency(
                 input_data.get("value", 0),

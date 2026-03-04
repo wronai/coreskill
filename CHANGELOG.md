@@ -4,7 +4,8 @@
 
 feat(docs): Complete documentation, CLI, API testing, and packaging updates
 feat(skills): Add 5 utility skills (file_manager, process_manager, clipboard, qr_generator, url_codec)
-feat(skills): Add 5 office worker skills (document_reader, notes, converter, task_manager)
+feat(skills): Add 7 office worker skills (document_reader, notes, converter, task_manager, text_summarizer, calculator_advanced, network_tools)
+feat(pipeline): Add 4 complex multi-step pipelines with variable substitution
 
 ### New Utility Skills
 
@@ -20,6 +21,16 @@ feat(skills): Add 5 office worker skills (document_reader, notes, converter, tas
 - **notes**: Personal note taking with tags, search, and organization (stored in ~/.evo_notes/)
 - **converter**: Unit conversions (length, weight, temperature, data, time), time zones, currencies
 - **task_manager**: Task and reminder management with priorities, due dates, categories, and search
+- **text_summarizer**: Summarize long texts using extractive methods with keyword extraction
+- **calculator_advanced**: Advanced calculator with variables, formulas, scientific functions, equation solver
+- **network_tools**: Network diagnostics (ping, DNS lookup, port check, HTTP status)
+
+### New Pipelines
+
+- **daily_briefing**: Time → Tasks stats → Create daily briefing note
+- **research_and_summarize**: Web search → Fetch content → Save as note
+- **file_analysis_report**: List files → Read document → Save analysis
+- **system_health_check**: System info → Processes → QR code → Clipboard
 
 ### Features
 

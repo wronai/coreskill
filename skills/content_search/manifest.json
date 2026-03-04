@@ -1,7 +1,7 @@
 {
   "capability": "content_search",
   "description": "Text transformation and analysis",
-  "version_structure": "flat",
+  "version_structure": "stable/latest/archive",
   "interface": {
     "input": {
       "text": "str"

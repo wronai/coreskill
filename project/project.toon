@@ -1,6 +1,9 @@
-# coreskill | 146f 39016L | python:156
+# coreskill | 151f 39951L | python:152
 # Keys: M=modules, D=details, i=imports, c=classes, f=functions, m=methods
-M[146]:
+M[151]:
+  skills/calculator_advanced/v1/skill.py,282
+  skills/content_search/providers/default/stable/skill.py,157
+  skills/text_summarizer/v1/skill.py,183
   __init__.py,19
   build_core.py,525
   cli.py,248
@@ -11,7 +14,7 @@ M[146]:
   cores/v1/bandit_selector.py,136
   cores/v1/config.py,196
   cores/v1/config_generator.py,221
-  cores/v1/core.py,1299
+  cores/v1/core.py,1328
   cores/v1/drift_detector.py,259
   cores/v1/event_bus.py,94
   cores/v1/evo_engine.py,731
@@ -71,8 +74,7 @@ M[146]:
   skills/benchmark/v3/skill.py,384
   skills/chat/v1/skill.py,101
   skills/clipboard/v1/skill.py,197
-  skills/content_search/v3/skill.py,157
-  skills/converter/v1/skill.py,320
+  skills/converter/v1/skill.py,319
   skills/core_loader/v1/skill.py,68
   skills/deps/v2/skill.py,84
   skills/deps/v3/skill.py,164
@@ -80,8 +82,9 @@ M[146]:
   skills/devops/v4/skill.py,211
   skills/diagnostic_runner/v1/skill.py,114
   skills/document_reader/v1/skill.py,375
+  skills/echo/providers/default/stable/skill.py,67
   skills/echo/v8/skill.py,67
-  skills/echo/v9/skill.py,67
+  skills/echo/v9/skill.py,79
   skills/evo_engine_bootstrap/v1/skill.py,55
   skills/evo_engine_bootstrap/v2/skill.py,62
   skills/file_manager/v1/skill.py,251
@@ -90,12 +93,13 @@ M[146]:
   skills/gbp_to_jpy_converter/v6/skill.py,98
   skills/gbp_to_jpy_converter/v7/skill.py,101
   skills/git_ops/v1/skill.py,120
+  skills/health/v1/skill.py,104
   skills/hw_test/v4/skill.py,514
   skills/hw_test/v5/skill.py,514
   skills/interior_inspection/v1/skill.py,78
   skills/interior_inspection/v2/skill.py,85
   skills/invalid_input_handler/v1/skill.py,88
-  skills/json_validator/v8/skill.py,115
+  skills/json_validator/v8/skill.py,114
   skills/json_validator/v9/skill.py,114
   skills/kalkulator/v47/skill.py,106
   skills/kalkulator/v48/skill.py,105
@@ -103,7 +107,7 @@ M[146]:
   skills/llm/v2/skill.py,102
   skills/llm_router/v1/skill.py,113
   skills/local_computer_discovery/v2/skill.py,243
-  skills/local_computer_discovery/v3/skill.py,254
+  skills/local_computer_discovery/v3/skill.py,257
   skills/network_info/v1/skill.py,58
   skills/notes/v1/skill.py,263
   skills/openrouter/v1/skill.py,224
@@ -125,12 +129,13 @@ M[146]:
   skills/system_info/v3/skill.py,64
   skills/system_info/v4/skill.py,72
   skills/task_manager/v1/skill.py,386
+  skills/test_supervisor_probe/v10/skill.py,38
   skills/test_supervisor_probe/v8/skill.py,39
   skills/test_supervisor_probe/v9/skill.py,43
   skills/text_processor_/v6/skill.py,47
   skills/text_processor_/v7/skill.py,46
   skills/time/v1/skill.py,93
-  skills/tts/providers/piper/latest/skill.py,204
+  skills/tts/providers/piper/latest/skill.py,191
   skills/tts/providers/piper/stable/skill.py,204
   skills/tts/providers/pyttsx3/latest/skill.py,4
   skills/tts/providers/pyttsx3/stable/skill.py,70
@@ -138,7 +143,7 @@ M[146]:
   skills/weather/v2/skill.py,91
   skills/weather/v3/skill.py,90
   skills/weather_gdansk/v8/skill.py,166
-  skills/weather_gdansk/v9/skill.py,99
+  skills/weather_gdansk/v9/skill.py,123
   skills/web_search/providers/duckduckgo/archive/v1/skill.py,131
   skills/web_search/providers/duckduckgo/latest/skill.py,151
   skills/web_search/providers/duckduckgo/stable/skill.py,135
@@ -148,6 +153,28 @@ M[146]:
   tests/test_auto_create_e2e.py,202
   tests/test_e2e.py,1985
 D:
+  skills/calculator_advanced/v1/skill.py:
+    i: math,json,re,pathlib.Path
+    e: get_info,health_check,AdvancedCalculatorSkill,execute
+    AdvancedCalculatorSkill: __init__(0),_load_history(0),_save_history(0),calculate(2),set_variable(2)  # Advanced calculator with variables an...
+    get_info()
+    health_check()
+    execute(input_data:dict)->dict
+  skills/content_search/providers/default/stable/skill.py:
+    i: subprocess,json,re,html.parser.HTMLParser,urllib.{error,parse,request}
+    e: ContentSearchSkill,DuckDuckGoParser,get_info,health_check,execute
+    ContentSearchSkill: __init__(0),execute(1),_search_duckduckgo(1)
+    DuckDuckGoParser: __init__(0),handle_starttag(2),handle_endtag(1),handle_data(1)
+    get_info()->dict
+    health_check()->dict
+    execute(params:dict)->dict
+  skills/text_summarizer/v1/skill.py:
+    i: re,json,collections.Counter
+    e: get_info,health_check,TextSummarizerSkill,execute
+    TextSummarizerSkill: _tokenize_sentences(1),_tokenize_words(1),_score_sentences(2),summarize(3),extract_keywords(2)  # Text summarization using extractive m...
+    get_info()
+    health_check()
+    execute(input_data:dict)->dict
   cli.py:
     i: argparse,os,sys,shutil,json,cores.v1.config.{LOGS_DIR,ROOT,STATE_FILE,load_state},pathlib.Path
     e: print_color,cmd_logs_reset,cmd_cache_reset,cmd_state_reset,cmd_status,cmd_shell,main_cli
@@ -610,14 +637,6 @@ D:
     get_info()
     health_check()
     execute(input_data:dict)->dict
-  skills/content_search/v3/skill.py:
-    i: subprocess,json,re,html.parser.HTMLParser,urllib.{error,parse,request}
-    e: ContentSearchSkill,DuckDuckGoParser,get_info,health_check,execute
-    ContentSearchSkill: __init__(0),execute(1),_search_duckduckgo(1)
-    DuckDuckGoParser: __init__(0),handle_starttag(2),handle_endtag(1),handle_data(1)
-    get_info()->dict
-    health_check()->dict
-    execute(params:dict)->dict
   skills/converter/v1/skill.py:
     i: json,re,datetime,datetime.{timedelta,timezone},decimal.{Decimal,ROUND_HALF_UP}
     e: get_info,health_check,ConverterSkill,execute
@@ -673,6 +692,13 @@ D:
     get_info()
     health_check()
     execute(input_data:dict)->dict
+  skills/echo/providers/default/stable/skill.py:
+    i: subprocess,json,datetime,re,time,datetime.timezone
+    e: get_info,health_check,EchoSkill,execute
+    EchoSkill: execute(1)
+    get_info()
+    health_check()
+    execute(params:dict)->dict
   skills/echo/v8/skill.py:
     i: subprocess,json,datetime,re,time,datetime.timezone
     e: get_info,health_check,EchoSkill,execute
@@ -748,6 +774,13 @@ D:
     GitOpsSkill: __init__(1),_run(2),init(1),status(1),add(2)  # Manage local git repos for skill deve...
     get_info()
     health_check()
+  skills/health/v1/skill.py:
+    i: subprocess,platform,os,re,json,urllib.request
+    e: get_info,health_check,HealthSkill,execute
+    HealthSkill: execute(1)
+    get_info()->dict
+    health_check()->dict
+    execute(params:dict)->dict
   skills/hw_test/v4/skill.py:
     i: json,os,platform,shutil,subprocess,sys,tempfile,time,wave,struct
     e: _SYSTEM,_IS_LINUX,_IS_MAC,_IS_WIN,get_info,health_check,AudioInputTester,AudioOutputTester
@@ -996,6 +1029,13 @@ D:
     get_info()
     health_check()
     execute(input_data:dict)->dict
+  skills/test_supervisor_probe/v10/skill.py:
+    i: subprocess,sys,json
+    e: get_info,health_check,execute,TestSupervisorProbe
+    TestSupervisorProbe: execute(1)
+    get_info()
+    health_check()
+    execute(params:dict)->dict
   skills/test_supervisor_probe/v8/skill.py:
     i: subprocess,sys,json
     e: get_info,health_check,TestSupervisorProbe,execute
@@ -1031,7 +1071,7 @@ D:
     execute(params:Dict[str;Any])->Dict[str, Any]
     health_check()->Dict[str, Any]
   skills/tts/providers/piper/latest/skill.py:
-    i: json,os,shutil,subprocess,sys,tempfile,pathlib.Path,urllib.request
+    i: json,os,re,shutil,subprocess,sys,tempfile,pathlib.Path,urllib.request
     e: DEFAULT_MODELS,get_info,health_check,PiperTTSSkill,execute
     PiperTTSSkill: __init__(0),_clean_for_tts(1),execute(1)  # Piper TTS with auto-model download an...
     get_info()
@@ -1100,9 +1140,10 @@ D:
     health_check()->dict
     execute(params:dict)->dict
   skills/weather_gdansk/v9/skill.py:
-    i: subprocess,re,html,html.parser.HTMLParser,urllib.request
-    e: WeatherGdanskSkill,get_info,health_check,execute
-    WeatherGdanskSkill: __init__(0),execute(1),get_info(0),health_check(0)
+    i: subprocess,re,html.parser.HTMLParser,urllib.{error,request}
+    e: WeatherGdanskParser,get_info,health_check,WeatherGdanskSkill,execute
+    WeatherGdanskParser: __init__(0),handle_starttag(2),handle_endtag(1),handle_data(1)
+    WeatherGdanskSkill: execute(1)
     get_info()->dict
     health_check()->dict
     execute(params:dict)->dict
