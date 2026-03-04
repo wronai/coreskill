@@ -1,5 +1,3 @@
-version: "3.9"
-
 # ============================================================================
 # CoreSkill Demo — Docker Compose
 # ============================================================================
@@ -23,16 +21,17 @@ services:
       dockerfile: Dockerfile
     container_name: coreskill-api
     ports:
-      - "8000:8000"
+      - "8001:8000"  # Host:8001 → Container:8000
+    env_file:
+      - .env
     environment:
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - OLLAMA_HOST=http://ollama:11434
       - CORESKILL_MODE=demo
       - PYTHONUNBUFFERED=1
     volumes:
       - coreskill-data:/app/data
       - coreskill-logs:/app/logs
+      - ./.evo_state.json:/app/.evo_state.json:ro
     depends_on:
       ollama:
         condition: service_started
@@ -68,21 +67,13 @@ services:
   ollama:
     image: ollama/ollama:latest
     container_name: coreskill-ollama
-    ports:
-      - "11434:11434"
+    # Port 11434 not exposed on host - only internal network access
+    # (backend connects via http://ollama:11434)
     volumes:
       - ollama-models:/root/.ollama
     restart: unless-stopped
     networks:
       - coreskill-net
-    # Uncomment for GPU support:
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [gpu]
 
   # --------------------------------------------------------------------------
   # Ollama GPU variant (use with --profile gpu)

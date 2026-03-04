@@ -165,6 +165,75 @@ class DiagnosticEngine:
         except Exception as e:
             return {"ok": False, "error": str(e)}
     
+    # ── Full Scan ──────────────────────────────────────────────────────
+
+    def full_scan(self, include_llm: bool = False) -> dict:
+        """Run all diagnostic checks and return aggregated report.
+
+        Returns dict with:
+            status: "healthy" | "degraded" | "critical"
+            checks: dict of check_name → result dict
+            issues: list of problem descriptions
+            auto_fixable: list of commands that can auto-fix issues
+        """
+        checks = {}
+        issues = []
+        auto_fixable = []
+
+        # Run all non-LLM checks
+        check_methods = [
+            ("system_commands", self.check_system_commands),
+            ("disk_space", self.check_disk_space),
+            ("tts_backend", self.check_tts_backend),
+            ("vosk_model", self.check_vosk_model),
+            ("microphone", self.check_microphone),
+            ("skills_health", self.check_skills_health),
+        ]
+
+        if include_llm:
+            check_methods.insert(0, ("llm_health", self.check_llm_health))
+
+        for name, method in check_methods:
+            try:
+                result = method()
+                checks[name] = result
+                if not result.get("ok"):
+                    desc = result.get("error", "")
+                    if not desc and "missing" in result:
+                        desc = f"Missing: {', '.join(result['missing'])}"
+                    if not desc and "broken" in result:
+                        desc = f"Broken skills: {', '.join(result['broken'])}"
+                    if not desc:
+                        desc = f"{name} check failed"
+                    issues.append({"check": name, "description": desc,
+                                   "critical": result.get("critical", False)})
+                    # Collect auto-fixable commands
+                    if result.get("install_cmd"):
+                        auto_fixable.append(result["install_cmd"])
+            except Exception as e:
+                checks[name] = {"ok": False, "error": str(e)}
+                issues.append({"check": name, "description": str(e),
+                               "critical": False})
+
+        # Determine overall status
+        critical = any(i.get("critical") for i in issues)
+        if critical:
+            status = "critical"
+        elif issues:
+            status = "degraded"
+        else:
+            status = "healthy"
+
+        return {
+            "status": status,
+            "checks": checks,
+            "issues": issues,
+            "auto_fixable": auto_fixable,
+            "total_checks": len(check_methods),
+            "passed": sum(1 for c in checks.values() if c.get("ok")),
+            "failed": sum(1 for c in checks.values() if not c.get("ok")),
+        }
+
     # ── LLM Analysis ───────────────────────────────────────────────────
     
     def llm_analyze_error(self, skill_name: str, error: str, findings: List[dict]) -> str:

@@ -34,9 +34,15 @@ OPENROUTER_KEY = os.getenv("OPENROUTER_API_KEY", "")
 ANTHROPIC_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 DATA_DIR = Path("/app/data")
 DATA_DIR.mkdir(parents=True, exist_ok=True)
+CHAT_LOG_FILE = DATA_DIR / "chat_history.jsonl"
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger("coreskill")
+
+# Debug: log env state (without exposing full keys)
+log.info(f"OLLAMA_HOST={OLLAMA_HOST}")
+log.info(f"OPENROUTER_KEY set: {bool(OPENROUTER_KEY)} (len={len(OPENROUTER_KEY)})")
+log.info(f"ANTHROPIC_KEY set: {bool(ANTHROPIC_KEY)} (len={len(ANTHROPIC_KEY)})")
 
 # ---------------------------------------------------------------------------
 # Globals
@@ -74,43 +80,60 @@ class LLMClient:
     async def close(self):
         await self.http.aclose()
 
-    async def chat(self, messages: list[dict], model: str = "auto") -> str:
+    async def llm_chat(self, messages: list[dict], model: str = "auto") -> str:
         """Send chat request with automatic provider fallback."""
+        log.info(f"[LLM] Starting chat with {len(messages)} messages")
+        
         # Tier 1: Ollama (local)
+        log.info("[LLM] Trying Ollama...")
         result = await self._try_ollama(messages)
+        log.info(f"[LLM] Ollama result: {'success' if result else 'failed/no response'}")
         if result:
             self.active_provider = "ollama"
             return result
 
         # Tier 2: OpenRouter (free models)
+        log.info(f"[LLM] Trying OpenRouter... (key present: {bool(OPENROUTER_KEY)})")
         if OPENROUTER_KEY:
             result = await self._try_openrouter(messages)
+            log.info(f"[LLM] OpenRouter result: {'success' if result else 'failed/no response'}")
             if result:
                 self.active_provider = "openrouter"
                 return result
+        else:
+            log.warning("[LLM] OPENROUTER_KEY not set, skipping OpenRouter")
 
         # Tier 3: Anthropic (paid)
+        log.info(f"[LLM] Trying Anthropic... (key present: {bool(ANTHROPIC_KEY)})")
         if ANTHROPIC_KEY:
             result = await self._try_anthropic(messages)
+            log.info(f"[LLM] Anthropic result: {'success' if result else 'failed/no response'}")
             if result:
                 self.active_provider = "anthropic"
                 return result
+        else:
+            log.warning("[LLM] ANTHROPIC_KEY not set, skipping Anthropic")
 
         self.active_provider = "echo"
+        log.warning("[LLM] All providers failed, using echo mode")
         return self._echo_response(messages)
 
     async def _try_ollama(self, messages: list[dict]) -> Optional[str]:
         try:
             resp = await self.http.post(
                 f"{OLLAMA_HOST}/api/chat",
-                json={"model": "qwen2.5:1.5b", "messages": messages, "stream": False},
-                timeout=30.0,
+                json={"model": "phi3:mini", "messages": messages, "stream": False},
+                timeout=90.0,
             )
             if resp.status_code == 200:
                 data = resp.json()
                 return data.get("message", {}).get("content", "")
+            else:
+                log.warning(f"Ollama HTTP {resp.status_code}: {resp.text[:100]}")
+        except httpx.TimeoutException:
+            log.warning("Ollama timeout after 90s")
         except Exception as e:
-            log.warning(f"Ollama unavailable: {e}")
+            log.warning(f"Ollama error: {e}")
         return None
 
     async def _try_openrouter(self, messages: list[dict]) -> Optional[str]:
@@ -118,7 +141,7 @@ class LLMClient:
             resp = await self.http.post(
                 "https://openrouter.ai/api/v1/chat/completions",
                 headers={"Authorization": f"Bearer {OPENROUTER_KEY}"},
-                json={"model": "google/gemma-2-9b-it:free", "messages": messages},
+                json={"model": "meta-llama/llama-3.3-70b-instruct:free", "messages": messages},
                 timeout=30.0,
             )
             if resp.status_code == 200:
@@ -324,10 +347,10 @@ async def _pull_ollama_model():
         async with httpx.AsyncClient(timeout=10.0) as c:
             r = await c.get(f"{OLLAMA_HOST}/api/tags")
             if r.status_code == 200 and not r.json().get("models"):
-                log.info("Pulling qwen2.5:1.5b for Ollama (first run)...")
+                log.info("Pulling phi3:mini for Ollama (first run)...")
                 await c.post(
                     f"{OLLAMA_HOST}/api/pull",
-                    json={"name": "qwen2.5:1.5b", "stream": False},
+                    json={"name": "phi3:mini", "stream": False},
                     timeout=600.0,
                 )
                 log.info("Model pulled successfully.")
@@ -379,9 +402,44 @@ async def status():
     }
 
 
-@app.get("/api/skills")
-async def list_skills():
-    return {"skills": DEMO_SKILLS}
+@app.get("/api/diagnose")
+async def diagnose():
+    """Run diagnostics on LLM connectivity."""
+    results = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "env": {
+            "OLLAMA_HOST": OLLAMA_HOST,
+            "OPENROUTER_KEY_SET": bool(OPENROUTER_KEY),
+            "ANTHROPIC_KEY_SET": bool(ANTHROPIC_KEY),
+        },
+        "tests": {}
+    }
+    
+    # Test Ollama
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as c:
+            r = await c.get(f"{OLLAMA_HOST}/api/tags")
+            models = [m["name"] for m in r.json().get("models", [])] if r.status_code == 200 else []
+            results["tests"]["ollama"] = {"status": "ok" if models else "no_models", "models": models}
+    except Exception as e:
+        results["tests"]["ollama"] = {"status": "error", "error": str(e)}
+    
+    # Test OpenRouter (simple request)
+    if OPENROUTER_KEY:
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as c:
+                r = await c.post(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {OPENROUTER_KEY}"},
+                    json={"model": "meta-llama/llama-3.3-70b-instruct:free", "messages": [{"role": "user", "content": "Hi"}]},
+                )
+                results["tests"]["openrouter"] = {"status": "ok" if r.status_code == 200 else f"http_{r.status_code}"}
+        except Exception as e:
+            results["tests"]["openrouter"] = {"status": "error", "error": str(e)}
+    else:
+        results["tests"]["openrouter"] = {"status": "skipped", "reason": "no_key"}
+    
+    return results
 
 
 class TTSRequest(BaseModel):
@@ -462,7 +520,20 @@ async def websocket_chat(ws: WebSocket):
             else:
                 # LLM response
                 await ws.send_json({"type": "typing", "content": True})
-                response = await llm.chat(chat_histories[session_id])
+                log.info(f"[{session_id}] Sending to LLM: {content[:50]}...")
+                response = await llm.llm_chat(chat_histories[session_id])
+                log.info(f"[{session_id}] LLM response ({llm.active_provider}): {response[:50]}...")
+                
+            # Log chat to file
+            chat_log_entry = {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "session_id": session_id,
+                "provider": llm.active_provider,
+                "user": content,
+                "assistant": response,
+            }
+            with open(CHAT_LOG_FILE, "a", encoding="utf-8") as f:
+                f.write(json.dumps(chat_log_entry, ensure_ascii=False) + "\n")
 
             chat_histories[session_id].append({"role": "assistant", "content": response})
 

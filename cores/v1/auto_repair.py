@@ -78,7 +78,29 @@ class AutoRepair:
         self._tasks = []
         self._history = []  # completed tasks for reflection
         self._learned_strategy = None
+        self._tiered_repair = None  # lazy-init TieredRepair
+        self._journal = None  # lazy-init RepairJournal
         self._init_learned_strategy()
+        self._init_tiered_repair()
+
+    @property
+    def journal(self):
+        """Lazy-init RepairJournal (avoids import cost if never used)."""
+        if self._journal is None:
+            try:
+                from .repair_journal import RepairJournal
+                self._journal = RepairJournal()
+            except Exception:
+                pass
+        return self._journal
+
+    def _init_tiered_repair(self):
+        """Initialize TieredRepair escalation engine."""
+        try:
+            from .learned_repair import TieredRepair
+            self._tiered_repair = TieredRepair()
+        except Exception:
+            pass
 
     def _init_learned_strategy(self):
         """Try to fit LearnedRepairStrategy from repair journal data."""
@@ -162,8 +184,18 @@ class AutoRepair:
     # ── Single Skill Repair ──────────────────────────────────────────
 
     def repair_skill(self, skill_name):
-        """Repair a single skill. Returns (fixed: bool, message: str)."""
+        """Repair a single skill. Returns (fixed: bool, message: str).
+
+        Checks RepairJournal for known fixes before full diagnosis.
+        """
         self._tasks.clear()
+
+        # Phase 0: check RepairJournal for a known fix first
+        known_applied = self._try_known_fix(skill_name)
+        if known_applied:
+            return True, f"{skill_name}: naprawiono znanym rozwiązaniem"
+
+        # Phase 1: full diagnosis
         issues = self._diagnose_skill(skill_name)
 
         if not issues:
@@ -178,6 +210,43 @@ class AutoRepair:
         fixed = all(t.status == RepairTask.FIXED for t in self._tasks)
         results = [f"{t.issue_type}:{t.status}" for t in self._tasks]
         return fixed, f"{skill_name}: {', '.join(results)}"
+
+    def _try_known_fix(self, skill_name):
+        """Try a known fix from RepairJournal. Returns True if fix worked."""
+        if not self.journal:
+            return False
+        # Get recent errors for this skill to look up known fixes
+        history = self.journal.get_history(skill_name, last_n=5)
+        if not history:
+            return False
+        # Use the most recent error to look up a known fix
+        last_error = next(
+            (h for h in reversed(history) if h.fix_result == "fail"), None)
+        if not last_error:
+            return False
+        known = self.journal.get_known_fix(last_error.error_full)
+        if not known or known.confidence < 0.7:
+            return False
+        # Apply the known fix
+        cpr(C.CYAN, f"[REPAIR] {skill_name}: próbuję znane rozwiązanie "
+                    f"({known.fix_type}, confidence={known.confidence:.0%})")
+        path = self._get_skill_path(skill_name)
+        if not path:
+            return False
+        task = RepairTask(skill_name, "known_fix", known.fix_type, "high")
+        fix_ok, fix_msg = self._apply_fix(task, known.fix_type)
+        if fix_ok:
+            verify_ok = self._verify_fix(task)
+            if verify_ok:
+                self.journal.record_attempt(
+                    skill_name, last_error.error_full, known.fix_type,
+                    known.fix_command, success=True, detail="known_fix_applied")
+                cpr(C.GREEN, f"[REPAIR] ✓ {skill_name}: znane rozwiązanie zadziałało")
+                return True
+        self.journal.record_attempt(
+            skill_name, last_error.error_full, known.fix_type,
+            known.fix_command, success=False, detail="known_fix_failed")
+        return False
 
     def on_repair_requested(self, sender, **kwargs):
         """Event bus handler: repair a skill and emit repair_completed."""
@@ -308,11 +377,16 @@ class AutoRepair:
     # ── Repair Task Execution (with reflection loop) ─────────────────
 
     def _execute_repair_task(self, task):
-        """Execute a single repair task with retry + reflection."""
+        """Execute a single repair task with retry + reflection.
+
+        Records every attempt in RepairJournal for learning.
+        """
         task.status = RepairTask.IN_PROGRESS
+        import time as _time
 
         while task.attempts < task.max_attempts:
             task.attempts += 1
+            t0 = _time.monotonic()
 
             # PLAN: choose strategy based on issue type + history
             strategy = self._plan_strategy(task)
@@ -324,9 +398,11 @@ class AutoRepair:
 
             # FIX: apply the repair
             fix_ok, fix_msg = self._apply_fix(task, strategy)
+            elapsed_ms = int((_time.monotonic() - t0) * 1000)
 
             if not fix_ok:
                 task.result = fix_msg
+                self._journal_record(task, strategy, False, fix_msg, elapsed_ms)
                 # REFLECT: can we try a different approach?
                 task.reflection = self._reflect(task, fix_msg)
                 if task.reflection == "give_up":
@@ -341,6 +417,7 @@ class AutoRepair:
             if verify_ok:
                 task.status = RepairTask.FIXED
                 task.result = fix_msg
+                self._journal_record(task, strategy, True, fix_msg, elapsed_ms)
                 cpr(C.GREEN, f"[REPAIR] ✓ {task.skill_name}: {task.issue_type} naprawiony")
                 if self.log:
                     self.log.skill(task.skill_name, "auto_repaired", {
@@ -348,6 +425,8 @@ class AutoRepair:
                         "attempts": task.attempts})
                 return
             else:
+                self._journal_record(task, strategy, False,
+                                     "Verification failed after fix", elapsed_ms)
                 # REFLECT on verification failure
                 task.reflection = self._reflect(task, "Verification failed after fix")
                 if task.reflection == "give_up":
@@ -358,9 +437,41 @@ class AutoRepair:
             task.result = f"Failed after {task.attempts} attempts"
         cpr(C.YELLOW, f"[REPAIR] ✗ {task.skill_name}: {task.issue_type} — {task.result[:80]}")
 
+    def _journal_record(self, task, strategy, success, detail, duration_ms=0):
+        """Record a repair attempt in RepairJournal (if available)."""
+        if not self.journal:
+            return
+        try:
+            self.journal.record_attempt(
+                skill_name=task.skill_name,
+                error=task.description,
+                fix_type=strategy,
+                fix_command=strategy,
+                success=success,
+                detail=detail[:300],
+                duration_ms=duration_ms,
+            )
+        except Exception:
+            pass
+
     def _plan_strategy(self, task):
-        """Choose repair strategy. Uses learned model when available, else rule-based."""
-        # Try learned strategy first
+        """Choose repair strategy with 3-level selection:
+
+        1. Learned ML model (if fitted from journal data)
+        2. TieredRepair (5-level escalation)
+        3. rule_based_strategy (flat fallback)
+
+        Consults RepairJournal to avoid repeating strategies that always fail.
+        """
+        # Collect strategies to avoid (failed >=2 times with low confidence)
+        avoid = set()
+        if self.journal:
+            try:
+                avoid = set(self.journal.get_failed_fixes(task.description))
+            except Exception:
+                pass
+
+        # 1. Try learned ML strategy first
         if self._learned_strategy and self._learned_strategy.available:
             result = self._learned_strategy.predict(
                 issue_type=task.issue_type,
@@ -368,12 +479,38 @@ class AutoRepair:
                 severity=task.severity,
                 has_sm=bool(self.sm),
             )
-            if result:
+            if result and result not in avoid:
                 return result
 
-        # Fallback: rule-based
+        # 2. TieredRepair escalation (preferred over flat rule-based)
+        if self._tiered_repair:
+            result = self._tiered_repair.select(
+                issue_type=task.issue_type,
+                attempt=task.attempts,
+                severity=task.severity,
+                has_sm=bool(self.sm),
+                skill_name=task.skill_name,
+            )
+            if result and result not in avoid:
+                return result
+            if result in avoid:
+                # Escalate past the avoided strategy
+                return self._tiered_repair.select(
+                    issue_type=task.issue_type,
+                    attempt=task.attempts + 1,
+                    severity=task.severity,
+                    has_sm=bool(self.sm),
+                    skill_name=task.skill_name,
+                )
+
+        # 3. Flat rule-based fallback
         from .learned_repair import rule_based_strategy
-        return rule_based_strategy(task.issue_type, task.attempts, bool(self.sm))
+        result = rule_based_strategy(task.issue_type, task.attempts, bool(self.sm))
+        if result in avoid:
+            cpr(C.DIM, f"[REPAIR] {task.skill_name}: pomijam strategię '{result}' "
+                      f"(journal: zawsze zawodzi)")
+            return "skip"
+        return result
 
     def _apply_fix(self, task, strategy):
         """Apply a repair strategy. Returns (success: bool, message: str)."""
@@ -395,6 +532,12 @@ class AutoRepair:
 
         if strategy == "rewrite_from_backup":
             return self._fix_from_backup(task.skill_name, path)
+
+        if strategy == "llm_diagnose":
+            return self._fix_llm_diagnose(task, path)
+
+        if strategy == "llm_rewrite":
+            return self._fix_llm_rewrite(task, path)
 
         return False, f"Unknown strategy: {strategy}"
 
@@ -600,6 +743,66 @@ class AutoRepair:
                 continue
 
         return False, "All backup versions also broken"
+
+    # ── LLM-Assisted Repair (Tier 4 & 5) ────────────────────────────
+
+    def _fix_llm_diagnose(self, task, path):
+        """Tier 4: Ask RepairJournal's LLM diagnosis for a targeted fix."""
+        if not self.journal:
+            return False, "RepairJournal not available"
+        try:
+            diagnosis = self.journal.ask_llm_diagnosis(
+                skill_name=task.skill_name,
+                error=task.description,
+                attempted_fixes=[],
+            )
+            if not diagnosis or not diagnosis.get("fix_command"):
+                return False, "LLM could not suggest a fix"
+
+            fix_cmd = diagnosis["fix_command"]
+            if fix_cmd == "manual":
+                return False, f"LLM says manual fix needed: {diagnosis.get('diagnosis', '')}"
+
+            # Safety: only run apt/pip commands, not arbitrary shell
+            safe_prefixes = ("sudo apt ", "pip install ", "pip3 install ",
+                             f"{sys.executable} -m pip install ")
+            if not any(fix_cmd.strip().startswith(p) for p in safe_prefixes):
+                return False, f"LLM suggested unsafe command: {fix_cmd[:60]}"
+
+            r = subprocess.run(
+                fix_cmd, shell=True, capture_output=True, text=True, timeout=120)
+            if r.returncode == 0:
+                return True, f"LLM fix applied: {fix_cmd[:60]}"
+            return False, f"LLM fix failed (rc={r.returncode}): {r.stderr[:80]}"
+        except Exception as e:
+            return False, f"llm_diagnose error: {e}"
+
+    def _fix_llm_rewrite(self, task, path):
+        """Tier 5: Request complete skill rewrite from LLM."""
+        if not self.sm or not hasattr(self.sm, 'smart_evolve'):
+            return False, "SkillManager.smart_evolve not available"
+        try:
+            code = path.read_text()
+            # Use smart_evolve with a repair-focused goal
+            goal = (f"Napraw ten skill. Problem: {task.issue_type}: "
+                    f"{task.description[:200]}. Przepisz cały kod od zera, "
+                    f"zachowując tę samą funkcjonalność.")
+            result = self.sm.smart_evolve(task.skill_name, goal)
+            if result and isinstance(result, dict) and result.get("success"):
+                return True, "LLM rewrote skill from scratch"
+            # Check if the file was actually changed
+            new_code = path.read_text()
+            if new_code != code:
+                try:
+                    ast.parse(new_code)
+                    return True, "LLM rewrote skill (file changed)"
+                except SyntaxError:
+                    # Revert if rewrite introduced syntax errors
+                    path.write_text(code)
+                    return False, "LLM rewrite has syntax errors, reverted"
+            return False, "LLM rewrite produced no changes"
+        except Exception as e:
+            return False, f"llm_rewrite error: {e}"
 
     # ── Model Validation ─────────────────────────────────────────────
 

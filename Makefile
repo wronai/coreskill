@@ -110,3 +110,56 @@ ci-test: ## Run tests for CI (JUnit output)
 ci-smoke: ## Quick smoke test for CI
 	@echo -e "$(BLUE)[CI]$(NC) Running smoke test..."
 	@docker-compose -f docker-compose.test.yml run --rm test-smoke
+
+# ============================================================================
+# Chat UI — CoreSkill Demo (Docker Compose)
+# ============================================================================
+CHAT_COMPOSE := docker compose -f docker-compose.chat.yml
+
+up: ## Start all chat UI services (backend + frontend + ollama)
+	@echo -e "$(BLUE)[CHAT]$(NC) Starting CoreSkill Demo..."
+	@$(CHAT_COMPOSE) down 2>/dev/null || true
+	@$(CHAT_COMPOSE) up -d --build --force-recreate
+	@echo -e "$(GREEN)[CHAT]$(NC) Ready at http://localhost:3000"
+
+down: ## Stop all chat UI services
+	@echo -e "$(YELLOW)[CHAT]$(NC) Stopping..."
+	@$(CHAT_COMPOSE) down
+	@echo -e "$(GREEN)[CHAT]$(NC) Stopped"
+
+web: up ## Start + open in browser
+	@echo -e "$(BLUE)[CHAT]$(NC) Opening browser..."
+	@sleep 2
+	@xdg-open http://localhost:3000 2>/dev/null || open http://localhost:3000 2>/dev/null || echo "Open http://localhost:3000"
+
+desktop: up ## Start + open as desktop app (Chrome --app or Electron)
+	@echo -e "$(BLUE)[CHAT]$(NC) Launching desktop app..."
+	@./desktop/run.sh
+
+logs: ## Show live logs from chat services
+	@$(CHAT_COMPOSE) logs -f --tail=50
+
+logs-chat: ## Show chat history from backend
+	@docker exec coreskill-api cat /app/data/chat_history.jsonl 2>/dev/null | tail -20 || echo "No chat history yet"
+
+diagnose: ## Run LLM connectivity diagnostics
+	@echo -e "$(BLUE)[CHAT]$(NC) Running diagnostics..."
+	@curl -s http://localhost:8001/api/diagnose 2>/dev/null | python3 -m json.tool || echo -e "$(RED)Diagnostics failed$(NC)"
+
+status: ## Show status of chat services + API health
+	@echo -e "$(BLUE)[CHAT]$(NC) Service status:"
+	@$(CHAT_COMPOSE) ps
+	@echo ""
+	@echo -e "$(BLUE)[CHAT]$(NC) API health:"
+	@curl -sf http://localhost:8001/health 2>/dev/null && echo "" || echo -e "$(RED)API not reachable$(NC)"
+	@echo -e "$(BLUE)[CHAT]$(NC) LLM status:"
+	@curl -sf http://localhost:8001/api/status 2>/dev/null | python3 -m json.tool 2>/dev/null || echo -e "$(YELLOW)API not responding$(NC)"
+
+pull-model: ## Manually pull Ollama model
+	@echo -e "$(BLUE)[CHAT]$(NC) Pulling qwen2.5:1.5b..."
+	@docker exec coreskill-ollama ollama pull qwen2.5:1.5b
+
+clean-chat: down ## Remove chat containers and volumes
+	@echo -e "$(YELLOW)[CHAT]$(NC) Cleaning chat data..."
+	@$(CHAT_COMPOSE) down -v
+	@echo -e "$(GREEN)[CHAT]$(NC) Clean"

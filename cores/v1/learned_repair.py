@@ -208,3 +208,132 @@ def rule_based_strategy(issue_type: str, attempt: int, has_sm: bool = True) -> s
         return "pip_install"
 
     return "skip"
+
+
+# ── TieredRepair — 5-level escalation strategy ──────────────────────
+
+class TieredRepair:
+    """5-level repair escalation: each tier is progressively more aggressive.
+
+    Tier 1 — Quick Fix:       strip_markdown, auto_fix_imports
+    Tier 2 — Structural:      add_interface, rewrite_from_backup
+    Tier 3 — Dependency:      pip_install
+    Tier 4 — LLM-Assisted:    ask_llm_diagnosis + apply suggestion
+    Tier 5 — Full Rewrite:    request complete skill rewrite via LLM
+
+    Usage:
+        tiered = TieredRepair()
+        strategy = tiered.select(issue_type, attempt, severity, has_sm)
+    """
+
+    # Each tier: list of (issue_types_that_apply, strategy)
+    TIERS = [
+        # Tier 1: Quick Fix (cheap, safe)
+        {
+            "name": "quick_fix",
+            "strategies": {
+                "markdown": "strip_markdown",
+                "syntax": "strip_markdown",
+                "imports": "auto_fix_imports",
+            },
+        },
+        # Tier 2: Structural Repair (moderate cost)
+        {
+            "name": "structural",
+            "strategies": {
+                "syntax": "rewrite_from_backup",
+                "interface": "add_interface",
+                "stub": "rewrite_from_backup",
+            },
+        },
+        # Tier 3: Dependency Repair (external side-effect)
+        {
+            "name": "dependency",
+            "strategies": {
+                "imports": "pip_install",
+                "missing_dep": "pip_install",
+            },
+        },
+        # Tier 4: LLM-Assisted (expensive, uncertain)
+        {
+            "name": "llm_assisted",
+            "strategies": {
+                "syntax": "llm_diagnose",
+                "imports": "llm_diagnose",
+                "interface": "llm_diagnose",
+                "stub": "llm_diagnose",
+                "read_error": "llm_diagnose",
+            },
+        },
+        # Tier 5: Full Rewrite (last resort)
+        {
+            "name": "full_rewrite",
+            "strategies": {
+                "syntax": "llm_rewrite",
+                "imports": "llm_rewrite",
+                "interface": "llm_rewrite",
+                "stub": "llm_rewrite",
+                "markdown": "llm_rewrite",
+            },
+        },
+    ]
+
+    def __init__(self):
+        self._tier_attempts = {}  # (skill, issue) → current tier index
+
+    def select(self, issue_type: str, attempt: int = 1,
+               severity: str = "high", has_sm: bool = True,
+               skill_name: str = "") -> str:
+        """Select repair strategy based on escalation tier.
+
+        Each call for the same (skill, issue) escalates to the next tier.
+        Critical severity starts at tier 2.
+        """
+        key = (skill_name, issue_type)
+
+        # Determine starting tier
+        if key not in self._tier_attempts:
+            start = 1 if severity != "critical" else 2
+            self._tier_attempts[key] = start - 1  # 0-indexed
+
+        tier_idx = self._tier_attempts[key]
+
+        # Walk tiers from current level until we find a matching strategy
+        while tier_idx < len(self.TIERS):
+            tier = self.TIERS[tier_idx]
+            strategy = tier["strategies"].get(issue_type)
+
+            # Skip tiers that need SkillManager if unavailable
+            if strategy in ("rewrite_from_backup",) and not has_sm:
+                tier_idx += 1
+                continue
+
+            if strategy:
+                self._tier_attempts[key] = tier_idx + 1  # escalate next time
+                return strategy
+
+            tier_idx += 1
+
+        # All tiers exhausted
+        self._tier_attempts[key] = 0  # reset for next repair cycle
+        return "skip"
+
+    def current_tier(self, skill_name: str, issue_type: str) -> int:
+        """Return the current tier (1-based) for a skill/issue pair."""
+        return self._tier_attempts.get((skill_name, issue_type), 0) + 1
+
+    def reset(self, skill_name: str = "", issue_type: str = ""):
+        """Reset escalation state. No args = reset all."""
+        if skill_name and issue_type:
+            self._tier_attempts.pop((skill_name, issue_type), None)
+        elif not skill_name and not issue_type:
+            self._tier_attempts.clear()
+
+    def summary(self) -> str:
+        if not self._tier_attempts:
+            return "TieredRepair: no active escalations"
+        lines = ["TieredRepair escalation state:"]
+        for (skill, issue), tier_idx in sorted(self._tier_attempts.items()):
+            tier_name = self.TIERS[min(tier_idx, len(self.TIERS) - 1)]["name"]
+            lines.append(f"  {skill}/{issue}: tier {tier_idx + 1} ({tier_name})")
+        return "\n".join(lines)
