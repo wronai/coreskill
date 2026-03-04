@@ -1,0 +1,19 @@
+{
+  "provider": "piper",
+  "tier": "standard",
+  "quality_score": 8,
+  "requirements": {
+    "system_packages": [
+      "piper"
+    ],
+    "env_vars": [
+      "PIPER_MODEL"
+    ]
+  },
+  "fallback_to": "espeak",
+  "tags": [
+    "offline",
+    "neural",
+    "high-quality"
+  ]
+}
