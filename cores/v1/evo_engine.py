@@ -16,6 +16,8 @@ from .config import MAX_EVO_ITERATIONS, cpr, C
 from .preflight import EvolutionGuard
 from .evo_journal import EvolutionJournal
 from .self_reflection import SelfReflection
+from .skill_forge import SkillForge
+from .intent import EmbeddingEngine
 
 
 # ─── Failure Tracker ─────────────────────────────────────────────────
@@ -93,6 +95,9 @@ class EvoEngine:
         self.journal = EvolutionJournal()
         self.reflection = None  # Injected via set_reflection()
         self.failure_tracker = FailureTracker()
+        # Semantic dedup + gated creation with embeddings
+        embedder = EmbeddingEngine()
+        self.forge = SkillForge(embedding_engine=embedder)
 
     def set_reflection(self, reflection: SelfReflection):
         """Inject SelfReflection instance for stall/timeout detection."""
@@ -108,23 +113,40 @@ class EvoEngine:
         if not isinstance(inp, dict): inp = {}
 
         if action == "chat":
-            # AUTO-CREATE SKILL: when intent is unknown/chat - create skill to answer this query
+            # SEMANTIC DEDUP: check before creating anything
+            should_create, reason = self.forge.should_create(user_msg, skills)
+
+            if reason == "chat":
+                # Conversational query — let LLM handle directly, no skill
+                return None
+
+            if reason.startswith("reuse:"):
+                # Existing skill can handle this
+                reuse_name = reason.split(":", 1)[1]
+                cpr(C.DIM, f"[DEDUP] Reusing '{reuse_name}' instead of creating new skill")
+                inp = {"text": user_msg}
+                return self._execute_with_validation(
+                    reuse_name, inp, user_msg, user_msg)
+
+            if reason == "budget_exceeded":
+                cpr(C.YELLOW, "[FORGE] Creation budget exceeded — chat only mode")
+                return None
+
+            # reason == "new_skill_needed" — proceed with creation
             new_skill_name = self._generate_skill_name(user_msg)
             skill_desc = f"Skill odpowiadający na zapytanie: '{user_msg}'. " \
                           f"Zadanie: odpowiedzieć na to pytanie/potrzebę użytkownika. " \
                           f"Funkcjonalność: {goal or 'obsługa tego typu zapytań'}"
-            
-            cpr(C.CYAN, f"[AUTO-CREATE] Nieznane zapytanie - tworzę skill '{new_skill_name}'...")
-            
-            # Auto-create the skill
+
+            cpr(C.CYAN, f"[AUTO-CREATE] Tworzę skill '{new_skill_name}'...")
+
             ok, msg = self.evolve_skill(new_skill_name, skill_desc)
             if ok:
                 cpr(C.GREEN, f"[AUTO-CREATE] ✓ Skill '{new_skill_name}' stworzony!")
-                cpr(C.DIM, f"[AUTO-CREATE] Wykonuję nowy skill...")
-                # Execute the newly created skill with the original input
                 inp = {"text": user_msg}
                 return self._execute_with_validation(new_skill_name, inp, user_msg, user_msg)
             else:
+                self.forge.record_create_error()
                 cpr(C.YELLOW, f"[AUTO-CREATE] ✗ Nie udało się stworzyć: {msg}")
                 return None  # Fallback to normal chat if creation fails
 

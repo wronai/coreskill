@@ -1,0 +1,1 @@
+{"name": "test_deps", "steps": [{"skill": "echo", "input": {}, "id": "step_a"}, {"skill": "echo", "input": {}, "id": "step_b", "depends_on": ["step_a", "nonexistent"]}]}

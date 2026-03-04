@@ -1,0 +1,1 @@
+{"name": "test_skip", "steps": [{"skill": "broken", "input": {}, "on_error": "skip"}, {"skill": "echo", "input": {"text": "after skip"}}]}

@@ -1,0 +1,1 @@
+{"name": "test_mixed", "steps": [{"skill": "ok_skill", "input": {}}, {"skill": "fail_skip", "input": {}, "on_error": "skip"}, {"skill": "ok_skill", "input": {}}, {"skill": "fail_hard", "input": {}}]}

@@ -1,0 +1,1 @@
+{"name": "test_chain", "steps": [{"skill": "search", "input": {"query": "test"}, "output_key": "search_result"}, {"skill": "fetch", "input": {"url": "{search_result.result.url}"}, "output_key": "fetch_result"}]}

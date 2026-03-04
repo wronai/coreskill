@@ -13,8 +13,6 @@ Fazy:
 """
 
 import time
-import json
-import shutil
 from pathlib import Path
 from typing import Optional, Dict, List, Any
 from dataclasses import dataclass, field
@@ -22,6 +20,7 @@ from datetime import datetime, timezone
 
 from .config import cpr, C
 from .logger import Logger
+from .self_healing.diagnostics import DiagnosticEngine
 
 
 @dataclass
@@ -71,6 +70,8 @@ class SelfReflection:
         # Repair journal + stable snapshots (lazy-init to avoid circular imports)
         self._journal = None
         self._snapshot = None
+        # Diagnostic engine for health checks
+        self._diagnostics = DiagnosticEngine(llm_client, skill_manager, logger)
     
     @property
     def journal(self):
@@ -242,8 +243,8 @@ class SelfReflection:
         auto_fixable = []
         requires_user = []
         
-        # 1. Sprawdź stan API LLM
-        llm_status = self._check_llm_health()
+        # 1. Check LLM API status
+        llm_status = self._diagnostics.check_llm_health()
         findings.append({"category": "llm", **llm_status})
         if not llm_status["ok"]:
             recommendations.append(f"LLM: {llm_status.get('error', 'problem')}")
@@ -252,8 +253,8 @@ class SelfReflection:
             elif "auth" in llm_status.get("error", "").lower():
                 requires_user.append("Sprawdź klucz API w /apikey lub .evo_state.json")
                 
-        # 2. Sprawdź wymagane komendy systemowe
-        sys_status = self._check_system_commands()
+        # 2. Check required system commands
+        sys_status = self._diagnostics.check_system_commands()
         findings.append({"category": "system_commands", **sys_status})
         if not sys_status["ok"]:
             missing = sys_status.get("missing", [])
@@ -261,40 +262,40 @@ class SelfReflection:
             if "sox" in missing or "ffmpeg" in missing:
                 auto_fixable.append(f"sudo apt install {' '.join(missing)}")
                 
-        # 3. Sprawdź dostępność mikrofonu (jeśli STT używany)
+        # 3. Check microphone availability (if STT used)
         if skill_name == "stt" or not skill_name:
-            mic_status = self._check_microphone()
+            mic_status = self._diagnostics.check_microphone()
             findings.append({"category": "microphone", **mic_status})
             if not mic_status["ok"]:
                 recommendations.append(f"Mikrofon: {mic_status.get('error', 'niedostępny')}")
                 requires_user.append("Podłącz mikrofon lub sprawdź uprawnienia (arecord -l)")
                 
-        # 4. Sprawdź stan skilli (health_check)
+        # 4. Check skills health status
         if self.sm:
-            skills_status = self._check_skills_health()
+            skills_status = self._diagnostics.check_skills_health()
             findings.append({"category": "skills", **skills_status})
             if not skills_status["ok"]:
                 broken = skills_status.get("broken", [])
                 recommendations.append(f"Uszkodzone skills: {', '.join(broken)}")
                 auto_fixable.append("Automatyczna naprawa na starcie (/fix <skill>)")
                 
-        # 5. Sprawdź model Vosk (dla STT)
+        # 5. Check Vosk model (for STT)
         if skill_name == "stt" or not skill_name:
-            vosk_status = self._check_vosk_model()
+            vosk_status = self._diagnostics.check_vosk_model()
             findings.append({"category": "vosk_model", **vosk_status})
             if not vosk_status["ok"]:
                 recommendations.append("Brak modelu Vosk")
                 auto_fixable.append("Pobierz model: curl -L 'https://alphacephei.com/vosk/models/vosk-model-small-pl-0.22.zip'")
                 
-        # 6. Sprawdź dostępność TTS
-        tts_status = self._check_tts_backend()
+        # 6. Check TTS availability
+        tts_status = self._diagnostics.check_tts_backend()
         findings.append({"category": "tts", **tts_status})
         if not tts_status["ok"]:
             recommendations.append(f"TTS: {tts_status.get('error', 'problem')}")
             auto_fixable.append("sudo apt install espeak-ng")
             
-        # 7. Sprawdź stan pamięci/dysku
-        disk_status = self._check_disk_space()
+        # 7. Check disk space
+        disk_status = self._diagnostics.check_disk_space()
         findings.append({"category": "disk", **disk_status})
         if not disk_status["ok"]:
             recommendations.append(f"Mało miejsca: {disk_status.get('free_gb', 0):.1f}GB")
@@ -311,9 +312,9 @@ class SelfReflection:
         else:
             overall = "healthy"
             
-        # Dodaj rekomendację od LLM jeśli mamy specyficzny błąd
+        # Add LLM recommendation if we have specific error
         if specific_error or skill_name:
-            llm_recommendation = self._llm_analyze_error(skill_name, specific_error, findings)
+            llm_recommendation = self._diagnostics.llm_analyze_error(skill_name, specific_error, findings)
             if llm_recommendation:
                 recommendations.append(f"[LLM Analysis] {llm_recommendation}")
                 
@@ -330,163 +331,6 @@ class SelfReflection:
         self._print_report(report)
         return report
         
-    def _check_llm_health(self) -> dict:
-        """Sprawdź czy LLM odpowiada."""
-        try:
-            # Szybki test ping
-            start = time.time()
-            response = self.llm.chat(
-                [{"role": "user", "content": "Respond with only 'OK'"}],
-                max_tokens=5)
-            latency_ms = int((time.time() - start) * 1000)
-            
-            if response and "error" not in response.lower():
-                return {"ok": True, "latency_ms": latency_ms, "model": self.llm.model}
-            else:
-                return {"ok": False, "error": response or "No response", "latency_ms": latency_ms}
-        except Exception as e:
-            return {"ok": False, "error": str(e), "critical": True}
-            
-    def _check_system_commands(self) -> dict:
-        """Sprawdź wymagane komendy systemowe."""
-        required = {
-            "arecord": "alsa-utils",
-            "sox": "sox",
-            "ffmpeg": "ffmpeg", 
-            "espeak-ng": "espeak-ng",
-            "vosk-transcriber": "vosk (pip)",
-        }
-        
-        missing = []
-        for cmd, pkg in required.items():
-            if not shutil.which(cmd):
-                missing.append((cmd, pkg))
-                
-        if missing:
-            return {
-                "ok": False,
-                "missing": [m[0] for m in missing],
-                "packages": [m[1] for m in missing],
-                "install_cmd": f"sudo apt install {' '.join(set(m[1] for m in missing if not m[1].startswith('vosk')))}"
-            }
-        return {"ok": True, "commands": list(required.keys())}
-        
-    def _check_microphone(self) -> dict:
-        """Sprawdź dostępność mikrofonu."""
-        if not shutil.which("arecord"):
-            return {"ok": False, "error": "arecord not installed"}
-            
-        try:
-            import subprocess
-            result = subprocess.run(
-                ["arecord", "-l"],
-                capture_output=True,
-                text=True,
-                timeout=5
-            )
-            if result.returncode != 0:
-                return {"ok": False, "error": f"arecord -l failed: {result.stderr[:100]}"}
-                
-            lines = result.stdout.strip().split('\n')
-            capture_cards = [l for l in lines if l.strip().startswith('card') and 'device' in l]
-            
-            if not capture_cards:
-                return {"ok": False, "error": "No capture devices found"}
-                
-            return {"ok": True, "devices": len(capture_cards)}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
-            
-    def _check_skills_health(self) -> dict:
-        """Sprawdź health_check() wszystkich skilli."""
-        if not self.sm:
-            return {"ok": False, "error": "SkillManager not available"}
-            
-        broken = []
-        all_skills = self.sm.list_skills()
-        
-        for skill_name in all_skills:
-            try:
-                health = self.sm.check_health(skill_name)
-                # check_health returns bool or dict
-                if isinstance(health, dict):
-                    if not health.get("ok", True):
-                        broken.append(skill_name)
-                elif not health:
-                    broken.append(skill_name)
-            except Exception as e:
-                broken.append(f"{skill_name}({str(e)[:20]})")
-                
-        if broken:
-            return {"ok": False, "broken": broken, "total": len(all_skills)}
-        return {"ok": True, "total": len(all_skills)}
-        
-    def _check_vosk_model(self) -> dict:
-        """Sprawdź czy model Vosk istnieje."""
-        model_paths = [
-            Path.home() / ".cache" / "vosk" / "vosk-model-small-pl-0.22",
-            Path.home() / ".cache" / "vosk" / "model",
-            Path("/usr/share/vosk/model"),
-        ]
-        
-        for p in model_paths:
-            if p.exists():
-                return {"ok": True, "path": str(p)}
-                
-        return {
-            "ok": False,
-            "error": "No Vosk model found",
-            "searched": [str(p) for p in model_paths]
-        }
-        
-    def _check_tts_backend(self) -> dict:
-        """Sprawdź backend TTS."""
-        if shutil.which("espeak-ng"):
-            return {"ok": True, "backend": "espeak-ng"}
-        elif shutil.which("espeak"):
-            return {"ok": True, "backend": "espeak"}
-        else:
-            return {"ok": False, "error": "No TTS backend found (espeak-ng/espeak)"}
-            
-    def _check_disk_space(self) -> dict:
-        """Sprawdź miejsce na dysku."""
-        try:
-            import shutil
-            total, used, free = shutil.disk_usage("/home")
-            free_gb = free / (1024**3)
-            
-            if free_gb < 1:
-                return {"ok": False, "free_gb": free_gb, "critical": True}
-            elif free_gb < 5:
-                return {"ok": False, "free_gb": free_gb, "warning": True}
-            else:
-                return {"ok": True, "free_gb": free_gb}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
-            
-    def _llm_analyze_error(self, skill_name: str, error: str, findings: List[dict]) -> str:
-        """Użyj LLM do analizy błędu i rekomendacji."""
-        try:
-            # Zbuduj prompt dla LLM
-            context = f"""System evo-engine napotkał problem:
-- Skill: {skill_name or 'general'}
-- Error: {error or 'unknown'}
-- Diagnostyka: {json.dumps(findings, default=str, ensure_ascii=False)[:1000]}
-
-Jako techniczny ekspert systemu evo-engine, podaj:
-1. Najbardziej prawdopodobną przyczynę (1 zdanie)
-2. Konkretne polecenie naprawcze (komenda do wykonania)
-3. Czy to można naprawić automatycznie (tak/nie)
-
-Odpowiedź krótko, konkretnie, po polsku."""
-
-            response = self.llm.chat(
-                [{"role": "user", "content": context}],
-                max_tokens=200, temperature=0.3)
-            return response.strip() if response else ""
-        except Exception as e:
-            return f"[LLM analysis failed: {e}]"
-            
     def _print_report(self, report: DiagnosisReport):
         """Wyświetl raport diagnostyczny."""
         status_color = C.GREEN if report.overall_status == "healthy" else C.YELLOW if report.overall_status == "degraded" else C.RED
@@ -526,22 +370,7 @@ Odpowiedź krótko, konkretnie, po polsku."""
         for fix_cmd in report.auto_fixable:
             if "apt install" in fix_cmd:
                 cpr(C.CYAN, f"[REFLECT] Instaluję brakujące pakiety...")
-                try:
-                    import subprocess
-                    # Wyciągnij nazwy pakietów
-                    pkgs = fix_cmd.replace("sudo apt install", "").strip().split()
-                    for pkg in pkgs:
-                        r = subprocess.run(
-                            ["sudo", "apt", "install", "-y", pkg],
-                            capture_output=True,
-                            timeout=120
-                        )
-                        if r.returncode == 0:
-                            actions.append(f"Zainstalowano {pkg}")
-                        else:
-                            actions.append(f"Nie udało się zainstalować {pkg}")
-                except Exception as e:
-                    actions.append(f"Błąd instalacji: {e}")
+                actions.extend(self._diagnostics.attempt_apt_install(fix_cmd))
         
         # Auto-repair broken skills detected in diagnostics
         broken_skills = []

@@ -42,6 +42,8 @@ class ErrorBudget:
         """Minutes until budget resets."""
         if not self.exhausted():
             return 0
+        if not self.errors or self.max <= 0:
+            return 0
         oldest_in_window = min(self.errors[-self.max:])
         return max(0, int((oldest_in_window + 3600 - time.time()) / 60))
 

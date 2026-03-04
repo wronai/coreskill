@@ -1,0 +1,1 @@
+{"name": "test_compat", "steps": [{"skill": "echo", "input": {"text": "hello"}, "output_key": "step_1"}]}

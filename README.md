@@ -58,27 +58,13 @@ coreskill cache reset       # Wyczyść cache
 | `/help` | Lista wszystkich komend |
 | `/apikey <key>` | Ustaw klucz OpenRouter (z auto-weryfikacją) |
 | `/voice on/off` | Włącz/wyłącz tryb głosowy |
-| `/stt [sekundy]` | Nagrywanie głosu (domyślnie 5s) |
-| `/tts [provider]` | Testuj/zmień TTS provider |
 | `/models` | Pokaż dostępne modele LLM |
-| `/model <name>` | Ustaw domyślny model |
 | `/autotune` | Automatyczny wybór najlepszego modelu |
 | `/skills` | Lista zainstalowanych skillów |
-| `/health [skill]` | Sprawdź stan skillów |
-| `/diagnose [skill]` | Diagnostyka skillu |
-| `/fix <skill>` | Napraw skill automatycznie |
-| `/repairs [skill]` | Historia napraw |
-| `/snapshot <cmd> [skill]` | Zarządzanie wersjami (save/restore/list/compare) |
-| `/journal [skill]` | Journal ewolucji |
-| `/chain` | Status ProviderChain (fallback) |
-| `/gc [--force]` | Garbage collector (cleanup starych wersji) |
+| `/health` | Sprawdź stan skillów |
 | `/evolve <skill>` | Ewoluuj skill |
 | `/remember <tekst>` | Zapamiętaj preferencję |
 | `/memories` | Pokaż zapamiętane dyrektywy |
-| `/forget <id>` | Usuń dyrektywę |
-| `/providers` | Status providerów |
-| `/resources` | Monitor zasobów systemu |
-| `/clear` | Wyczyść konwersację |
 
 ## 🏗️ Architektura
 

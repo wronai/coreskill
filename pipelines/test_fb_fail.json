@@ -1,0 +1,1 @@
+{"name": "test_fb_fail", "steps": [{"skill": "primary", "input": {}, "fallback_skill": "backup"}]}

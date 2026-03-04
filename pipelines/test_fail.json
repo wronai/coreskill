@@ -1,0 +1,1 @@
+{"name": "test_fail", "steps": [{"skill": "broken", "input": {}}, {"skill": "echo", "input": {"text": "should not run"}}]}
