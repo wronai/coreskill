@@ -6,7 +6,6 @@ import html.parser
 import re
 import socket
 import threading
-import queue
 import time
 import os
 
@@ -120,72 +119,186 @@ class WebSearchSkill:
 
         return search_result
 
+    def _scan_ip(self, ip, results, timeout=1.0):
+        """Check if an IP has common RTSP ports open."""
+        rtsp_ports = [554, 8554, 1935, 5554]
+        for port in rtsp_ports:
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(timeout)
+                result = sock.connect_ex((ip, port))
+                sock.close()
+                if result == 0:
+                    results.append({
+                        "ip": ip,
+                        "port": port,
+                        "url": f"rtsp://{ip}:{port}/stream",
+                        "status": "open"
+                    })
+                    return True
+            except:
+                continue
+        return False
+
+    def scan_local_network(self):
+        """Scan local network for RTSP cameras."""
+        results = []
+        # Get local IP to determine network range
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            local_ip = s.getsockname()[0]
+            s.close()
+            # Extract network prefix (e.g., "192.168.1.")
+            prefix = ".".join(local_ip.split(".")[:-1]) + "."
+        except:
+            return {"success": False, "error": "Could not determine local IP"}
+
+        # Scan common IPs (1-20) in parallel
+        threads = []
+        for i in range(1, 21):
+            ip = f"{prefix}{i}"
+            t = threading.Thread(target=self._scan_ip, args=(ip, results))
+            threads.append(t)
+            t.start()
+        
+        # Wait for all threads
+        for t in threads:
+            t.join(timeout=3.0)
+        
+        return {"success": True, "results": results}
+
     def execute(self, params: dict) -> dict:
         """evo-engine interface."""
-        try:
-            text = params.get("text", "")
-            action = params.get("action", "search")
-            
-            # Extract query from text if not explicitly provided
-            if action == "search" and not params.get("query"):
-                query = text.strip() if text else "current events"
+        text = params.get("text", "")
+        action = params.get("action", "search")
+        
+        # Parse action from text if not explicitly provided
+        if action == "search":
+            if "kamery" in text.lower() and ("rtsp" in text.lower() or "sieci" in text.lower()):
+                action = "scan_local"
+            elif "znajdź" in text.lower() or "szukaj" in text.lower():
+                action = "search"
+            elif "pobierz" in text.lower() or "pokaż" in text.lower():
+                action = "fetch"
+        
+        if action == "scan_local":
+            scan_result = self.scan_local_network()
+            if scan_result["success"]:
+                if scan_result["results"]:
+                    spoken = f"Znaleziono {len(scan_result['results'])} urządzeń RTSP. "
+                    for i, cam in enumerate(scan_result["results"][:3]):
+                        spoken += f"Kamera na {cam['ip']}:{cam['port']}. "
+                else:
+                    spoken = "Nie znaleziono urządzeń RTSP w sieci lokalnej."
+                return {
+                    "success": True,
+                    "results": scan_result["results"],
+                    "spoken": spoken
+                }
             else:
-                query = params.get("query", text.strip() if text else "")
-            
-            if action == "search":
-                result = self.search_duckduckgo(query)
-                if result.get("success"):
-                    spoken = f"Found {len(result.get('results', []))} results for '{query}'."
-                    if result.get("results"):
-                        spoken += f" Top result: {result['results'][0].get('title', 'No title')}."
-                    result["spoken"] = spoken
-                return result
-            elif action == "fetch":
-                url = params.get("url", "")
-                if not url:
-                    # Try to extract URL from text
-                    url_match = re.search(r'https?://[^\s]+', text)
-                    url = url_match.group(0) if url_match else ""
-                result = self.fetch_page_text(url)
-                if result.get("success"):
-                    result["spoken"] = f"Page fetched successfully. Content preview: {result.get('text', '')[:200]}..."
-                return result
-            elif action == "search_and_read":
-                result = self.search_and_summarize(query)
-                if result.get("success"):
-                    spoken = f"Found {len(result.get('results', []))} results for '{query}'."
-                    if result.get("results"):
-                        top_result = result['results'][0]
-                        spoken += f" Top result: {top_result.get('title', 'No title')}."
-                        if top_result.get('page_text'):
-                            spoken += f" Summary: {top_result['page_text'][:200]}..."
-                    result["spoken"] = spoken
-                return result
+                return {
+                    "success": False,
+                    "error": scan_result.get("error", "Nie udało się przeskanować sieci"),
+                    "spoken": "Nie udało się przeskanować sieci lokalnej."
+                }
+        
+        elif action == "search":
+            query = text.replace("znajdź", "").replace("szukaj", "").strip()
+            if not query:
+                query = "python"
+            result = self.search_duckduckgo(query)
+            if result["success"]:
+                if result["results"]:
+                    spoken = f"Znaleziono {len(result['results'])} wyników. Pierwszy: {result['results'][0]['title']}. "
+                else:
+                    spoken = "Nie znaleziono wyników."
+                return {
+                    "success": True,
+                    "results": result["results"],
+                    "spoken": spoken
+                }
             else:
-                return {"success": False, "error": f"Unknown action: {action}", "spoken": f"Unknown action: {action}"}
-        except Exception as e:
-            return {"success": False, "error": str(e), "spoken": "An error occurred while processing your request."}
+                return {
+                    "success": False,
+                    "error": result.get("error", "Błąd wyszukiwania"),
+                    "spoken": "Wystąpił błąd podczas wyszukiwania."
+                }
+        
+        elif action == "fetch":
+            url = text.replace("pobierz", "").replace("pokaż", "").strip()
+            if not url.startswith("http"):
+                url = f"https://{url}"
+            result = self.fetch_page_text(url)
+            if result["success"]:
+                return {
+                    "success": True,
+                    "text": result["text"],
+                    "spoken": f"Załadowano stronę: {result['url']}. Treść: {result['text'][:200]}..."
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": result.get("error", "Błąd pobierania strony"),
+                    "spoken": "Nie udało się pobrać strony."
+                }
+        
+        elif action == "search_and_read":
+            query = text.replace("znajdź", "").replace("szukaj", "").strip()
+            if not query:
+                query = "python"
+            result = self.search_and_summarize(query)
+            if result["success"]:
+                if result["results"]:
+                    spoken = f"Znaleziono {len(result['results'])} wyników. "
+                    if result["results"][0].get("page_text"):
+                        spoken += f"Pierwszy wynik: {result['results'][0]['page_text'][:200]}..."
+                    else:
+                        spoken += f"Pierwszy wynik: {result['results'][0]['title']}. "
+                else:
+                    spoken = "Nie znaleziono wyników."
+                return {
+                    "success": True,
+                    "results": result["results"],
+                    "spoken": spoken
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": result.get("error", "Błąd wyszukiwania"),
+                    "spoken": "Wystąpił błąd podczas wyszukiwania."
+                }
+        
+        else:
+            return {
+                "success": False,
+                "error": f"Nieznana akcja: {action}",
+                "spoken": f"Nie rozumiem akcji: {action}"
+            }
 
 
-def get_info():
+def get_info() -> dict:
     return {
         "name": "web_search",
         "version": "v1",
-        "description": "Search internet via DuckDuckGo, fetch pages. Stdlib only.",
-        "actions": ["search", "fetch", "search_and_read"],
+        "description": "Search internet via DuckDuckGo, fetch pages, scan for RTSP cameras. Stdlib only.",
+        "actions": ["search", "fetch", "search_and_read", "scan_local"],
         "author": "evo-engine"
     }
 
 
-def health_check():
+def health_check() -> dict:
     try:
-        # Verify skill structure and imports (no network calls — DNS failure ≠ broken code)
+        # Verify class structure and imports
         w = WebSearchSkill()
         assert callable(getattr(w, "execute", None))
         assert callable(getattr(w, "search_duckduckgo", None))
         assert callable(getattr(w, "fetch_page_text", None))
+        assert callable(getattr(w, "scan_local_network", None))
+        
         # Verify stdlib imports are available
-        import urllib.request, urllib.parse, html.parser
+        import urllib.request, urllib.parse, html.parser, socket, threading
+        
         return {"status": "ok"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
@@ -200,7 +313,13 @@ def execute(params: dict) -> dict:
 if __name__ == "__main__":
     w = WebSearchSkill()
     print(f"Info: {json.dumps(get_info(), indent=2)}")
-    health = health_check()
-    print(f"Health: {json.dumps(health, indent=2)}")
+    print(f"Health: {health_check()}")
+    
+    # Test search
     r = w.search_duckduckgo("python espeak tts", 3)
     print(f"Search: {json.dumps(r, indent=2)}")
+    
+    # Test local network scan (limited for demo)
+    print("Scanning local network for RTSP cameras...")
+    scan_r = w.scan_local_network()
+    print(f"Scan: {json.dumps(scan_r, indent=2)}")
