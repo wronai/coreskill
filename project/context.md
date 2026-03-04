@@ -4,9 +4,9 @@
 
 - **Project**: .
 - **Analysis Mode**: static
-- **Total Functions**: 985
-- **Total Classes**: 129
-- **Modules**: 106
+- **Total Functions**: 990
+- **Total Classes**: 132
+- **Modules**: 107
 - **Entry Points**: 0
 
 ## Architecture by Module
@@ -287,6 +287,10 @@ Returns: {"matches": bool, "diff_lines": int, "he
 Returns {verdict: success|partial|fail
 - **Output to**: result.get, result.get, isinstance, inner.get, inner.get
 
+### cores.v1.session_config.SessionConfig.format_change_feedback
+> Format configuration change for user feedback.
+- **Output to**: category_names.get
+
 ### cores.v1.logger.Logger._format_markdown
 > Format entry as markdown with code blocks.
 - **Output to**: entry.get, entry.get, entry.get, entry.get, None.join
@@ -298,10 +302,6 @@ Returns {verdict: success|partial|fail
 ### cores.v1.intent.embedding.EmbeddingEngine.encode
 > Encode texts to vectors.
 - **Output to**: self._try_init, self._model.encode, None.toarray, TfidfVectorizer, None.toarray
-
-### cores.v1.session_config.SessionConfig.format_change_feedback
-> Format configuration change for user feedback.
-- **Output to**: category_names.get
 
 ### skills.kalkulator.v47.skill.Kalkulator._validate_expression
 - **Output to**: ast.walk, ast.parse, isinstance, ValueError, isinstance
@@ -336,20 +336,20 @@ Functions exposed as public API (no underscore prefix):
 - `cores.v1.preflight.SkillPreflight.check_imports` - 27 calls
 - `skills.shell.v1.skill.ShellSkill.execute` - 27 calls
 - `skills.benchmark.v1.skill.BenchmarkSkill.execute` - 27 calls
-- `seeds.core_v1.SkillManager.exec_skill` - 26 calls
 - `cores.v1.preflight.SkillPreflight.auto_fix_imports` - 26 calls
+- `seeds.core_v1.SkillManager.exec_skill` - 26 calls
 - `cores.v1.skill_logger.get_health_markdown` - 25 calls
 - `cores.v1.skill_manager.SkillManager.create_skill` - 24 calls
 - `skills.local_computer_discovery.v3.skill.LocalComputerDiscovery.execute` - 24 calls
 - `cli.main_cli` - 23 calls
 - `skills.git_ops.v1.skill.GitOpsSkill.execute` - 23 calls
-- `skills.echo.v5.skill.EchoSkill.execute` - 23 calls
-- `skills.echo.v4.skill.EchoSkill.execute` - 23 calls
 - `skills.stt.providers.vosk.archive.v6.skill.STTSkill.execute` - 23 calls
 - `skills.stt.providers.vosk.archive.v7.skill.STTSkill.execute` - 23 calls
 - `cores.v1.auto_repair.AutoRepair.run_boot_repair` - 22 calls
 - `cores.v1.smart_intent.SmartIntentClassifier.classify` - 22 calls
 - `cores.v1.stable_snapshot.StableSnapshot.validate_against_stable` - 22 calls
+- `cores.v1.preflight.EvolutionGuard.is_stub_skill` - 22 calls
+- `skills.stt.providers.vosk.stable.skill.STTSkill.execute` - 22 calls
 
 ## System Interactions
 

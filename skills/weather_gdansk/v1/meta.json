@@ -1,7 +1,0 @@
-{
-  "name": "weather_gdansk",
-  "version": "v1",
-  "description": "Skill odpowiadaj\u0105cy na zapytanie: 'wyszukaj w internecie pogod\u0119 w Gda\u0144sku'. Poprzedni skill 'web_search' zwr\u00f3ci\u0142 puste wyniki. Wymagana funkcjonalno\u015b\u0107: wyszukaj w internecie pogod\u0119 w Gda\u0144sku",
-  "created_at": "2026-03-04T14:00:52.321095+00:00",
-  "checksum": "e3163ade8c1a5341d4718f65857c16d3"
-}

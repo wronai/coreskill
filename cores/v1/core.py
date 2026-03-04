@@ -113,10 +113,13 @@ def _cmd_skills(**ctx):
 
 def _cmd_create(a1, a2, **ctx):
     if not a1:
-        cpr(C.YELLOW, "Usage: /create <name>")
+        cpr(C.YELLOW, "Usage: /create <name> [description]")
         return
-    cpr(C.CYAN, f"Describe '{a1}':")
-    d = input(f"{C.GREEN}> {C.R}").strip()
+    if a2:
+        d = a2
+    else:
+        cpr(C.CYAN, f"Describe '{a1}':")
+        d = input(f"{C.GREEN}> {C.R}").strip()
     if d:
         ok, msg = ctx["evo"].evolve_skill(a1, d)
         cpr(C.GREEN if ok else C.RED, msg)
@@ -132,14 +135,17 @@ def _cmd_run(a1, a2, **ctx):
     if not a1:
         cpr(C.YELLOW, "Usage: /run <name>")
         return
-    print(json.dumps(ctx["sm"].exec_skill(a1, a2 or None), indent=2, default=str))
+    print(json.dumps(ctx["sm"].exec_skill(a1, inp=a2 or None), indent=2, default=str))
 
-def _cmd_evolve(a1, **ctx):
+def _cmd_evolve(a1, a2="", **ctx):
     if not a1:
-        cpr(C.YELLOW, "Usage: /evolve <name>")
+        cpr(C.YELLOW, "Usage: /evolve <name> [feedback]")
         return
-    cpr(C.CYAN, "Feedback:")
-    fb = input(f"{C.GREEN}> {C.R}").strip()
+    if a2:
+        fb = a2
+    else:
+        cpr(C.CYAN, "Feedback:")
+        fb = input(f"{C.GREEN}> {C.R}").strip()
     if fb:
         sm = ctx["sm"]
         ok, msg = sm.evolve(a1, fb)

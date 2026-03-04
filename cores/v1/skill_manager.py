@@ -303,14 +303,17 @@ class SkillManager:
         spec.loader.exec_module(mod)
         inject_logging(mod, skill_name=name)
         info = mod.get_info() if hasattr(mod, "get_info") else {"name": name}
+        if isinstance(inp, str):
+            inp = {"text": inp, "command": inp}
+        inp_data = inp or {}
         for a in dir(mod):
             o = getattr(mod, a)
             if isinstance(o, type) and hasattr(o, "execute"):
-                result = o().execute(inp or {})
+                result = o().execute(inp_data)
                 self.log.skill(name, "exec_success", {"version": version})
                 return {"success": True, "result": result, "info": info}
         if hasattr(mod, "execute"):
-            result = mod.execute(inp or {})
+            result = mod.execute(inp_data)
             self.log.skill(name, "exec_success", {"version": version})
             return {"success": True, "result": result, "info": info}
         return {"success": True, "result": info}

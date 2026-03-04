@@ -1,7 +1,0 @@
-{
-  "name": "actionchat",
-  "version": "v1",
-  "description": "Skill odpowiadaj\u0105cy na zapytanie: 'hej'. Zadanie: odpowiedzie\u0107 na to pytanie/potrzeb\u0119 u\u017cytkownika. Funkcjonalno\u015b\u0107: obs\u0142uga tego typu zapyta\u0144",
-  "created_at": "2026-03-04T15:19:02.108004+00:00",
-  "checksum": "5a32ada54fc9bc32be0791643b6697d7"
-}
