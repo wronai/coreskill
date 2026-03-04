@@ -110,10 +110,8 @@ class EventBus:
 
         # ── skill_failed ────────────────────────────────────────────────
         # Emitted by EvoEngine on skill execution failure.
-        if repairer and hasattr(repairer, 'on_repair_requested'):
-            skill_failed.connect(repairer.on_repair_requested, weak=False)
-            self._subscriber_count += 1
-
+        # NOTE: skill_failed does NOT go directly to repairer — the flow is:
+        # skill_failed → SelfReflection (via FailureTracker) → repair_requested → AutoRepair
         if metrics and hasattr(metrics, 'on_skill_failed'):
             skill_failed.connect(metrics.on_skill_failed, weak=False)
             self._subscriber_count += 1

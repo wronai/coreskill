@@ -1,7 +1,8 @@
 # evo-engine Testing Makefile
 # Fully automated Docker-based testing
 
-.PHONY: help test test-unit test-integration test-smoke test-e2e clean build report
+.PHONY: help test test-unit test-integration test-smoke test-e2e clean build report \
+       up down web desktop logs status pull-model clean-chat
 
 # Default target
 .DEFAULT_GOAL := help
