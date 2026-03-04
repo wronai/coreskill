@@ -1,0 +1,7 @@
+{
+  "name": "content_search",
+  "version": "v1",
+  "description": "Skill odpowiadaj\u0105cy na zapytanie: 'znajd\u017a'. Poprzedni skill 'web_search' zwr\u00f3ci\u0142 puste wyniki. Wymagana funkcjonalno\u015b\u0107: use_web_search",
+  "created_at": "2026-03-04T13:53:32.509132+00:00",
+  "checksum": "b3418062e0d6128b512f87a10b326e23"
+}
