@@ -3,7 +3,7 @@
   "version": "v2",
   "parent": "v1",
   "phase": "runtime",
-  "created_at": "2026-03-04T15:46:21.289994+00:00",
+  "created_at": "2026-03-04T15:48:47.512381+00:00",
   "quality_score": 0.59,
-  "is_regression": true
+  "is_regression": false
 }
