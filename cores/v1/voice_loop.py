@@ -337,11 +337,33 @@ def _run_stt_autotest(sm, logger, llm=None) -> dict:
             pass
     
     if shutil.which("vosk-transcriber"):
+        # Pre-detect model and clean stale zips BEFORE first test
+        models, stale_zips = _find_vosk_models()
+        if stale_zips:
+            for zf in stale_zips:
+                try:
+                    zf.unlink()
+                    cpr(C.DIM, f"    Usunięto stary zip: {zf.name}")
+                    diagnostics["fixes_applied"].append(f"removed stale {zf.name}")
+                except Exception:
+                    pass
+        
+        # Find best model path for first test
+        detected_model = None
+        for m in models:
+            if "pl" in m.name.lower():
+                detected_model = m
+                break
+        if not detected_model and models:
+            detected_model = models[0]
+        if detected_model:
+            cpr(C.DIM, f"    Model: {detected_model.name}")
+        
         fd3, test_wav3 = tempfile.mkstemp(suffix=".wav", prefix="stt_vosk_test_")
         os.close(fd3)
         try:
             if _record_test(test_wav3, duration=2):
-                vosk_ok, vosk_err = _test_vosk(test_wav3)
+                vosk_ok, vosk_err = _test_vosk(test_wav3, model_path=detected_model)
                 if vosk_ok:
                     cpr(C.GREEN, "  ✓ vosk-transcriber: działa")
                     diagnostics["transcription"] = {"ok": True}
@@ -521,25 +543,55 @@ def _run_stt_autotest(sm, logger, llm=None) -> dict:
 
 
 def _try_pulseaudio_fix(diagnostics: dict):
-    """Last resort: try PulseAudio source adjustments."""
+    """Last resort: try PulseAudio source adjustments.
+    Prioritizes actual input sources over output monitors."""
     import subprocess, shutil
     if not shutil.which("pactl"):
         return
     try:
-        # List sources
         r = subprocess.run(["pactl", "list", "sources", "short"],
                            capture_output=True, text=True, timeout=5)
         sources = [l.split('\t') for l in r.stdout.strip().split('\n') if l.strip()]
+        
+        # Separate real inputs from output monitors
+        real_inputs = []
+        monitors = []
         for parts in sources:
             if len(parts) >= 2:
                 src_name = parts[1]
-                # Unmute and set volume to 100%
-                subprocess.run(["pactl", "set-source-mute", src_name, "0"],
-                               capture_output=True, timeout=3)
-                subprocess.run(["pactl", "set-source-volume", src_name, "100%"],
-                               capture_output=True, timeout=3)
-                cpr(C.DIM, f"    PulseAudio: unmute + 100% → {src_name}")
-                diagnostics.setdefault("fixes_applied", []).append(f"pactl unmute {src_name}")
+                if ".monitor" in src_name:
+                    monitors.append(src_name)
+                else:
+                    real_inputs.append(src_name)
+        
+        # Process real inputs first (these are actual microphones)
+        best_input = None
+        for src_name in real_inputs:
+            subprocess.run(["pactl", "set-source-mute", src_name, "0"],
+                           capture_output=True, timeout=3)
+            subprocess.run(["pactl", "set-source-volume", src_name, "100%"],
+                           capture_output=True, timeout=3)
+            cpr(C.DIM, f"    PulseAudio input: unmute + 100% → {src_name}")
+            diagnostics.setdefault("fixes_applied", []).append(f"pactl unmute {src_name}")
+            # Prefer USB audio inputs (typically external mics/headsets)
+            if "usb" in src_name.lower() and best_input is None:
+                best_input = src_name
+        
+        # Set the best input as default source
+        if best_input:
+            subprocess.run(["pactl", "set-default-source", best_input],
+                           capture_output=True, timeout=3)
+            cpr(C.CYAN, f"    PulseAudio: domyślne źródło → {best_input}")
+            diagnostics.setdefault("fixes_applied", []).append(f"pactl default-source {best_input}")
+        elif real_inputs:
+            subprocess.run(["pactl", "set-default-source", real_inputs[0]],
+                           capture_output=True, timeout=3)
+            cpr(C.CYAN, f"    PulseAudio: domyślne źródło → {real_inputs[0]}")
+        
+        # Also unmute monitors (low priority, usually not needed for mic input)
+        for src_name in monitors:
+            subprocess.run(["pactl", "set-source-mute", src_name, "0"],
+                           capture_output=True, timeout=3)
     except Exception:
         pass
 

@@ -179,6 +179,13 @@ class SelfReflection:
         
         report = self.run_diagnostic(skill_name, specific_error=error)
         
+        # Actually attempt auto-fixes (not just recommend them)
+        if report.auto_fixable:
+            cpr(C.CYAN, "[REFLECT] Próbuję automatycznych napraw...")
+            fixes_done = self.attempt_auto_fix(report)
+            for fix in fixes_done:
+                cpr(C.GREEN, f"[REFLECT] ✓ {fix}")
+        
         # Record the reflection attempt in journal
         try:
             self.journal.record_attempt(
@@ -401,7 +408,11 @@ class SelfReflection:
         for skill_name in all_skills:
             try:
                 health = self.sm.check_health(skill_name)
-                if not health.get("ok", True):
+                # check_health returns bool or dict
+                if isinstance(health, dict):
+                    if not health.get("ok", True):
+                        broken.append(skill_name)
+                elif not health:
                     broken.append(skill_name)
             except Exception as e:
                 broken.append(f"{skill_name}({str(e)[:20]})")
@@ -531,6 +542,29 @@ Odpowiedź krótko, konkretnie, po polsku."""
                             actions.append(f"Nie udało się zainstalować {pkg}")
                 except Exception as e:
                     actions.append(f"Błąd instalacji: {e}")
+        
+        # Auto-repair broken skills detected in diagnostics
+        broken_skills = []
+        for f in report.findings:
+            if f.get("category") == "skills" and not f.get("ok"):
+                broken_skills = f.get("broken", [])
+                break
+        
+        if broken_skills and self.sm:
+            try:
+                from .auto_repair import AutoRepair
+                repairer = AutoRepair(skill_manager=self.sm, logger=self.log)
+                for skill_name in broken_skills:
+                    # Strip any error suffix like "skill(error...)"
+                    clean_name = skill_name.split("(")[0]
+                    cpr(C.CYAN, f"[REFLECT] Naprawiam skill: {clean_name}...")
+                    fixed, msg = repairer.repair_skill(clean_name)
+                    if fixed:
+                        actions.append(f"Naprawiono {clean_name}: {msg}")
+                    else:
+                        actions.append(f"Nie udało się naprawić {clean_name}: {msg}")
+            except Exception as e:
+                actions.append(f"Błąd auto-repair: {e}")
                     
         return actions
         

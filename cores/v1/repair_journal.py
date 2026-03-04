@@ -199,7 +199,7 @@ Odpowiedz TYLKO w formacie JSON:
  "confidence": "high/medium/low"}}"""
         
         try:
-            response = self.llm.complete(
+            response = self.llm.chat(
                 [{"role": "system", "content": "Odpowiadaj TYLKO poprawnym JSON."},
                  {"role": "user", "content": prompt}],
                 max_tokens=300,

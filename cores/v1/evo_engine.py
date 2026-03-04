@@ -251,7 +251,11 @@ class EvoEngine:
         history_avoid = []
         prev_history = self.journal.get_skill_history(skill_name, 5)
         if prev_history:
-            failed = [h for h in prev_history if not h.get("success") and h.get("error")]
+            import time as _t
+            cutoff = _t.time() - 3600  # Only consider errors from last hour
+            failed = [h for h in prev_history
+                      if not h.get("success") and h.get("error")
+                      and h.get("timestamp", 0) > cutoff]
             history_avoid = [h["error"][:60] for h in failed[-2:]]
             if history_avoid:
                 cpr(C.DIM, f"[JOURNAL] Znane problemy: {'; '.join(history_avoid[:2])}")
