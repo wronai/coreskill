@@ -4,15 +4,15 @@
 
 - **Project**: .
 - **Analysis Mode**: static
-- **Total Functions**: 881
-- **Total Classes**: 116
-- **Modules**: 93
+- **Total Functions**: 985
+- **Total Classes**: 129
+- **Modules**: 106
 - **Entry Points**: 0
 
 ## Architecture by Module
 
 ### cores.v1.core
-- **Functions**: 56
+- **Functions**: 58
 - **File**: `core.py`
 
 ### skills.benchmark.v1.skill
@@ -70,6 +70,11 @@
 - **Classes**: 3
 - **File**: `self_reflection.py`
 
+### cores.v1.evo_engine
+- **Functions**: 17
+- **Classes**: 2
+- **File**: `evo_engine.py`
+
 ### cores.v1.preflight
 - **Functions**: 17
 - **Classes**: 3
@@ -95,20 +100,15 @@
 - **Classes**: 1
 - **File**: `intent_engine.py`
 
-### cores.v1.evo_engine
-- **Functions**: 16
-- **Classes**: 2
-- **File**: `evo_engine.py`
+### cores.v1.config
+- **Functions**: 15
+- **Classes**: 1
+- **File**: `config.py`
 
 ### skills.git_ops.v1.skill
 - **Functions**: 15
 - **Classes**: 1
 - **File**: `skill.py`
-
-### cores.v1.config
-- **Functions**: 14
-- **Classes**: 1
-- **File**: `config.py`
 
 ## Key Entry Points
 
@@ -287,10 +287,6 @@ Returns: {"matches": bool, "diff_lines": int, "he
 Returns {verdict: success|partial|fail
 - **Output to**: result.get, result.get, isinstance, inner.get, inner.get
 
-### cores.v1.session_config.SessionConfig.format_change_feedback
-> Format configuration change for user feedback.
-- **Output to**: category_names.get
-
 ### cores.v1.logger.Logger._format_markdown
 > Format entry as markdown with code blocks.
 - **Output to**: entry.get, entry.get, entry.get, entry.get, None.join
@@ -303,6 +299,10 @@ Returns {verdict: success|partial|fail
 > Encode texts to vectors.
 - **Output to**: self._try_init, self._model.encode, None.toarray, TfidfVectorizer, None.toarray
 
+### cores.v1.session_config.SessionConfig.format_change_feedback
+> Format configuration change for user feedback.
+- **Output to**: category_names.get
+
 ### skills.kalkulator.v47.skill.Kalkulator._validate_expression
 - **Output to**: ast.walk, ast.parse, isinstance, ValueError, isinstance
 
@@ -313,20 +313,22 @@ Functions exposed as public API (no underscore prefix):
 - `core.main` - 147 calls
 - `seeds.core_v1.main` - 108 calls
 - `cores.v1.self_reflection.SelfReflection.run_diagnostic` - 53 calls
+- `cores.v1.intent_engine.IntentEngine.analyze` - 48 calls
 - `scripts.simulate.Simulator.run_scenario` - 47 calls
 - `cores.v1.skill_logger.get_markdown_logs` - 44 calls
 - `cores.v1.intent.SmartIntentClassifier.classify` - 43 calls
-- `cores.v1.intent_engine.IntentEngine.analyze` - 41 calls
+- `cores.v1.evo_engine.EvoEngine.handle_request` - 42 calls
 - `cores.v1.llm_client.LLMClient.chat` - 37 calls
 - `cores.v1.skill_manager.SkillManager.smart_evolve` - 37 calls
 - `cli.cmd_cache_reset` - 36 calls
-- `cores.v1.evo_engine.EvoEngine.handle_request` - 35 calls
-- `cores.v1.core.main` - 35 calls
+- `cores.v1.core.main` - 36 calls
 - `main.bootstrap` - 33 calls
 - `skills.shell.v2.skill.ShellSkill.execute` - 33 calls
 - `examples.skills.01_create.main` - 33 calls
+- `cores.v1.resource_monitor.ResourceMonitor.can_run` - 32 calls
 - `cores.v1.evo_engine.EvoEngine.evolve_skill` - 32 calls
 - `examples.advanced.01_pipeline.main` - 32 calls
+- `cores.v1.system_identity.SystemIdentity.build_system_prompt` - 31 calls
 - `cli.cmd_status` - 30 calls
 - `cli.cmd_logs_reset` - 29 calls
 - `cores.v1.repair_journal.RepairJournal.ask_llm_and_try` - 28 calls
@@ -334,10 +336,11 @@ Functions exposed as public API (no underscore prefix):
 - `cores.v1.preflight.SkillPreflight.check_imports` - 27 calls
 - `skills.shell.v1.skill.ShellSkill.execute` - 27 calls
 - `skills.benchmark.v1.skill.BenchmarkSkill.execute` - 27 calls
-- `cores.v1.preflight.SkillPreflight.auto_fix_imports` - 26 calls
 - `seeds.core_v1.SkillManager.exec_skill` - 26 calls
+- `cores.v1.preflight.SkillPreflight.auto_fix_imports` - 26 calls
 - `cores.v1.skill_logger.get_health_markdown` - 25 calls
 - `cores.v1.skill_manager.SkillManager.create_skill` - 24 calls
+- `skills.local_computer_discovery.v3.skill.LocalComputerDiscovery.execute` - 24 calls
 - `cli.main_cli` - 23 calls
 - `skills.git_ops.v1.skill.GitOpsSkill.execute` - 23 calls
 - `skills.echo.v5.skill.EchoSkill.execute` - 23 calls
@@ -347,9 +350,6 @@ Functions exposed as public API (no underscore prefix):
 - `cores.v1.auto_repair.AutoRepair.run_boot_repair` - 22 calls
 - `cores.v1.smart_intent.SmartIntentClassifier.classify` - 22 calls
 - `cores.v1.stable_snapshot.StableSnapshot.validate_against_stable` - 22 calls
-- `cores.v1.preflight.EvolutionGuard.is_stub_skill` - 22 calls
-- `skills.stt.providers.vosk.stable.skill.STTSkill.execute` - 22 calls
-- `cores.v1.garbage_collector.EvolutionGarbageCollector.cleanup_legacy` - 21 calls
 
 ## System Interactions
 

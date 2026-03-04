@@ -1279,6 +1279,7 @@ COMMANDS = {
     "/benchmark": _cmd_autotune,
     "/journal": lambda **ctx: cpr(C.CYAN, ctx["evo"].journal.format_report()),
     "/config": _cmd_config,
+    "/reload_config": _cmd_reload_config,
     "/reflect": _cmd_reflect,
     "/repairs": _cmd_repairs,
     "/snapshot": _cmd_snapshot,
