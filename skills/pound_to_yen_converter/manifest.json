@@ -1,0 +1,23 @@
+{
+  "capability": "pound_to_yen_converter",
+  "description": "Unit and currency conversion",
+  "version_structure": "flat",
+  "interface": {
+    "input": {
+      "text": "str"
+    },
+    "output": {
+      "result": "any"
+    }
+  },
+  "constraints": {
+    "max_lines": 153,
+    "min_quality_score": 0.5,
+    "forbidden_imports": []
+  },
+  "evolution_rules": {
+    "auto_create_from_query": true,
+    "max_auto_versions": 5,
+    "promote_after_n_successes": 3
+  }
+}

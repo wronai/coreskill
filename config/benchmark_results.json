@@ -75,9 +75,11 @@
     },
     "openrouter/google/gemma-3-4b-it:free": {
       "last_tested": "2026-03-04",
-      "working": false,
-      "reason": "timeout",
-      "tier": "free"
+      "avg_quality": 0.85,
+      "avg_latency_ms": 3509.1,
+      "speed_score": 0.3,
+      "tier": "free",
+      "working": true
     },
     "openrouter/google/gemini-2.5-flash-lite": {
       "last_tested": "2026-03-04",

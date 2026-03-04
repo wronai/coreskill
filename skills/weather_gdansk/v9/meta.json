@@ -4,5 +4,6 @@
   "description": "Skill odpowiadaj\u0105cy na zapytanie: 'wyszukaj w internecie pogod\u0119 w Gda\u0144sku'. Poprzedni skill 'web_search' zwr\u00f3ci\u0142 puste wyniki. Wymagana funkcjonalno\u015b\u0107: wyszukaj w internecie pogod\u0119 w Gda\u0144sku",
   "created_at": "2026-03-04T15:58:10.985029+00:00",
   "checksum": "5471703589d99fc58706f235fbe96901",
-  "quality_score": 0.815
+  "quality_score": 0.815,
+  "rolled_back": true
 }

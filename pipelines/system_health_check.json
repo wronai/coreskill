@@ -1,0 +1,52 @@
+{
+  "name": "system_health_check",
+  "description": "Check system resources, processes, generate QR with status, copy to clipboard",
+  "version": "1.0.0",
+  "steps": [
+    {
+      "skill": "system_info",
+      "version": "v1",
+      "input": {
+        "action": "snapshot"
+      },
+      "output_key": "sys_info"
+    },
+    {
+      "skill": "process_manager",
+      "version": "v1",
+      "input": {
+        "action": "list",
+        "limit": 10
+      },
+      "output_key": "processes"
+    },
+    {
+      "skill": "url_codec",
+      "version": "v1",
+      "input": {
+        "action": "base64encode",
+        "text": "CPU: {sys_info.cpu_percent}% | Memory: {sys_info.memory.percent}% | Processes: {processes.count}"
+      },
+      "output_key": "encoded_status"
+    },
+    {
+      "skill": "qr_generator",
+      "version": "v1",
+      "input": {
+        "action": "generate",
+        "text": "System Status - CPU: {sys_info.cpu_percent}% | Memory: {sys_info.memory.percent}%"
+      },
+      "output_key": "qr_code"
+    },
+    {
+      "skill": "clipboard",
+      "version": "v1",
+      "input": {
+        "action": "copy",
+        "text": "System Report: CPU {sys_info.cpu_percent}%, Memory {sys_info.memory.percent}%, Top Process: {processes.processes.0.name}"
+      },
+      "output_key": "clipboard_result"
+    }
+  ],
+  "created_at": "2026-03-04T17:00:00Z"
+}

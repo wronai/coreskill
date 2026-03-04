@@ -3,15 +3,23 @@
 ### Summary
 
 feat(docs): Complete documentation, CLI, API testing, and packaging updates
-feat(skills): Add 5 new utility skills (file_manager, process_manager, clipboard, qr_generator, url_codec)
+feat(skills): Add 5 utility skills (file_manager, process_manager, clipboard, qr_generator, url_codec)
+feat(skills): Add 5 office worker skills (document_reader, notes, converter, task_manager)
 
-### New Skills
+### New Utility Skills
 
 - **file_manager**: File operations (list, copy, move, delete, organize, find, info) using stdlib only
 - **process_manager**: Process management (list, find, kill, info) using /proc and ps fallback
 - **clipboard**: Clipboard operations (copy, paste, clear) with xclip/xsel/wl-copy/pbcopy support
 - **qr_generator**: QR code generation using qrencode or python-qrcode fallback
 - **url_codec**: URL encoding/decoding, base64, HTML entities using stdlib only
+
+### New Office Worker Skills
+
+- **document_reader**: Extract text from PDF, DOCX, TXT, MD files with multiple fallback methods
+- **notes**: Personal note taking with tags, search, and organization (stored in ~/.evo_notes/)
+- **converter**: Unit conversions (length, weight, temperature, data, time), time zones, currencies
+- **task_manager**: Task and reminder management with priorities, due dates, categories, and search
 
 ### Features
 

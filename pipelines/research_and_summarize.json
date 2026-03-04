@@ -1,0 +1,37 @@
+{
+  "name": "research_and_summarize",
+  "description": "Search web for topic, extract content from top result, create summary note",
+  "version": "1.0.0",
+  "steps": [
+    {
+      "skill": "web_search",
+      "version": "stable",
+      "input": {
+        "action": "search",
+        "query": "{topic}"
+      },
+      "output_key": "search_results"
+    },
+    {
+      "skill": "web_search",
+      "version": "stable",
+      "input": {
+        "action": "fetch",
+        "url": "{search_results.results.0.url}"
+      },
+      "output_key": "page_content"
+    },
+    {
+      "skill": "notes",
+      "version": "v1",
+      "input": {
+        "action": "add",
+        "title": "Research: {topic}",
+        "content": "URL: {search_results.results.0.url}\n\nSummary:\n{page_content.text}",
+        "tags": ["research", "web"]
+      },
+      "output_key": "saved_note"
+    }
+  ],
+  "created_at": "2026-03-04T17:00:00Z"
+}

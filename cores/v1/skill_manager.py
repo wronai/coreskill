@@ -446,12 +446,32 @@ class SkillManager:
                 pf = self.preflight.check_all(p)
         return pf
 
-    def exec_skill(self, name, version=None, inp=None):
-        """Execute skill with preflight validation."""
-        if not version: version = self.latest_v(name)
-        if not version: return {"success": False, "error": f"'{name}' not found"}
-
-        p = self._resolve_skill_path(name, version)
+    def exec_skill(self, name, version=None, inp=None, provider=None):
+        """Execute skill with preflight validation.
+        
+        Args:
+            name: Skill name
+            version: Version to use (default: latest)
+            inp: Input dict for the skill
+            provider: Force specific provider (e.g., 'piper' for TTS)
+        """
+        # If provider specified, resolve path directly to that provider
+        if provider:
+            from pathlib import Path
+            p = SKILLS_DIR / name / "providers" / provider / "stable" / "skill.py"
+            if not p.exists():
+                p = SKILLS_DIR / name / "providers" / provider / "latest" / "skill.py"
+            if p.exists():
+                version = "stable" if "stable" in str(p) else "latest"
+            else:
+                # Fall back to normal resolution
+                if not version: version = self.latest_v(name)
+                p = self._resolve_skill_path(name, version)
+        else:
+            if not version: version = self.latest_v(name)
+            if not version: return {"success": False, "error": f"'{name}' not found"}
+            p = self._resolve_skill_path(name, version)
+        
         if not p.exists(): return {"success": False, "error": f"Not found: {p}"}
 
         # Pre-flight check with auto-fix

@@ -1,0 +1,23 @@
+{
+  "provider": "piper",
+  "tier": "premium",
+  "quality_score": 9,
+  "requirements": {
+    "python_packages": [
+      "piper-tts"
+    ],
+    "system_packages": [
+      "ffmpeg"
+    ],
+    "min_ram_mb": 512,
+    "recommended_ram_mb": 1024
+  },
+  "fallback_to": "espeak",
+  "tags": [
+    "neural",
+    "high-quality",
+    "multilingual",
+    "polish-optimized",
+    "auto-download"
+  ]
+}

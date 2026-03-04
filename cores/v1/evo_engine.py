@@ -138,9 +138,10 @@ class EvoEngine:
 
         if action == "use":
             skill_name = analysis.get("skill")
+            provider = analysis.get("provider")  # Get provider from analysis if specified
             if skill_name and skill_name in skills:
                 result = self._execute_with_validation(
-                    skill_name, inp, goal, user_msg)
+                    skill_name, inp, goal, user_msg, provider=provider)
                 # On failure, try fallback providers
                 if (result and result.get("type") == "failed"
                         and self.provider_chain):
@@ -154,7 +155,7 @@ class EvoEngine:
                 cpr(C.CYAN, f"[EVO] Skill '{skill_name}' not found. Auto-creating...")
                 ok, msg = self.evolve_skill(skill_name, analysis.get("description", user_msg))
                 if ok:
-                    return self._execute_with_validation(skill_name, inp, goal, user_msg)
+                    return self._execute_with_validation(skill_name, inp, goal, user_msg, provider=provider)
                 return {"type": "evo_failed", "message": msg}
 
         if action == "evolve":
@@ -283,7 +284,7 @@ class EvoEngine:
             "requires_user": len(requires_user),
         })
 
-    def _execute_with_validation(self, skill_name, inp, goal, user_msg):
+    def _execute_with_validation(self, skill_name, inp, goal, user_msg, provider=None):
         """Pipeline: preflight → execute → validate → reflect → retry.
         Now split into focused sub-methods for maintainability."""
         max_retries = 2
@@ -300,7 +301,7 @@ class EvoEngine:
 
             # Execute single attempt
             result, validation = self._exec_attempt(
-                skill_name, effective_inp, goal, user_msg, attempt, max_retries, version)
+                skill_name, effective_inp, goal, user_msg, attempt, max_retries, version, provider)
 
             # Handle outcomes
             if validation["verdict"] == "success":
@@ -346,7 +347,7 @@ class EvoEngine:
         return j_entry, history_avoid
 
     def _exec_attempt(self, skill_name, effective_inp, goal, user_msg,
-                      attempt, max_retries, version):
+                      attempt, max_retries, version, provider=None):
         """Execute single attempt with validation."""
         cpr(C.CYAN, f"[PIPE] Execute: {skill_name} {version} "
                      f"(attempt {attempt + 1}/{max_retries + 1})")
@@ -358,7 +359,7 @@ class EvoEngine:
         if self.reflection:
             self.reflection.start_operation(f"{skill_name}:{goal}")
 
-        result = self.sm.exec_skill(skill_name, inp=effective_inp)
+        result = self.sm.exec_skill(skill_name, inp=effective_inp, provider=provider)
 
         # End reflection tracking
         if self.reflection:

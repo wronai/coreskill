@@ -1,0 +1,45 @@
+{
+  "name": "daily_briefing",
+  "description": "Get weather, time, list tasks due today, create daily summary note",
+  "version": "1.0.0",
+  "steps": [
+    {
+      "skill": "time",
+      "version": "v1",
+      "input": {
+        "action": "now",
+        "format": "full"
+      },
+      "output_key": "current_time"
+    },
+    {
+      "skill": "task_manager",
+      "version": "v1",
+      "input": {
+        "action": "due_soon",
+        "hours": 24
+      },
+      "output_key": "due_tasks"
+    },
+    {
+      "skill": "task_manager",
+      "version": "v1",
+      "input": {
+        "action": "stats"
+      },
+      "output_key": "task_stats"
+    },
+    {
+      "skill": "notes",
+      "version": "v1",
+      "input": {
+        "action": "add",
+        "title": "Daily Briefing - {current_time.date}",
+        "content": "Date: {current_time.datetime}\n\nTasks Due Today: {due_tasks.count}\nPending Tasks: {task_stats.pending}\nCompleted Today: {task_stats.completed}\n\nFocus: Complete high priority tasks first!",
+        "tags": ["daily", "briefing", "planning"]
+      },
+      "output_key": "briefing_note"
+    }
+  ],
+  "created_at": "2026-03-04T17:00:00Z"
+}
