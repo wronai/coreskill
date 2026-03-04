@@ -20,6 +20,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+try:
+    from dotenv import load_dotenv  # type: ignore
+except Exception:
+    load_dotenv = None
+
 import httpx
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -29,9 +34,39 @@ from pydantic import BaseModel
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+_ROOT_DIR = Path(__file__).resolve().parents[1]
+if load_dotenv is not None:
+    load_dotenv(_ROOT_DIR / ".env", override=False)
+    load_dotenv(override=False)
+
+
+def _read_state() -> dict:
+    for p in (_ROOT_DIR / ".evo_state.json", Path.cwd() / ".evo_state.json", Path("/app/.evo_state.json")):
+        try:
+            if p.exists():
+                return json.loads(p.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+    return {}
+
+
+_STATE = _read_state()
+
+
+def _get_key(*names: str, state_key: str) -> str:
+    for n in names:
+        v = os.getenv(n, "").strip()
+        if v:
+            return v
+    v = (_STATE.get(state_key) or "").strip()
+    if v:
+        return v
+    return ""
+
+
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://ollama:11434")
-OPENROUTER_KEY = os.getenv("OPENROUTER_API_KEY", "")
-ANTHROPIC_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+OPENROUTER_KEY = _get_key("OPENROUTER_API_KEY", "OPENROUTERAPIKEY", state_key="openrouter_api_key")
+ANTHROPIC_KEY = _get_key("ANTHROPIC_API_KEY", "ANTHROPICAPIKEY", state_key="anthropic_api_key")
 DATA_DIR = Path("/app/data")
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 CHAT_LOG_FILE = DATA_DIR / "chat_history.jsonl"
@@ -84,15 +119,7 @@ class LLMClient:
         """Send chat request with automatic provider fallback."""
         log.info(f"[LLM] Starting chat with {len(messages)} messages")
         
-        # Tier 1: Ollama (local)
-        log.info("[LLM] Trying Ollama...")
-        result = await self._try_ollama(messages)
-        log.info(f"[LLM] Ollama result: {'success' if result else 'failed/no response'}")
-        if result:
-            self.active_provider = "ollama"
-            return result
-
-        # Tier 2: OpenRouter (free models)
+        # Tier 1: OpenRouter (primary - matches .evo_state.json config)
         log.info(f"[LLM] Trying OpenRouter... (key present: {bool(OPENROUTER_KEY)})")
         if OPENROUTER_KEY:
             result = await self._try_openrouter(messages)
@@ -102,6 +129,14 @@ class LLMClient:
                 return result
         else:
             log.warning("[LLM] OPENROUTER_KEY not set, skipping OpenRouter")
+
+        # Tier 2: Ollama (local fallback)
+        log.info("[LLM] Trying Ollama (fallback)...")
+        result = await self._try_ollama(messages)
+        log.info(f"[LLM] Ollama result: {'success' if result else 'failed/no response'}")
+        if result:
+            self.active_provider = "ollama"
+            return result
 
         # Tier 3: Anthropic (paid)
         log.info(f"[LLM] Trying Anthropic... (key present: {bool(ANTHROPIC_KEY)})")
@@ -137,15 +172,28 @@ class LLMClient:
         return None
 
     async def _try_openrouter(self, messages: list[dict]) -> Optional[str]:
+        """Try OpenRouter with model from .evo_state.json or default."""
+        # Get model from state file (format: "openrouter/namespace/model")
+        raw_model = _STATE.get("model", "")
+        if raw_model and raw_model.startswith("openrouter/"):
+            # Strip "openrouter/" prefix to get actual model path
+            model = raw_model.replace("openrouter/", "", 1)
+        else:
+            # Fallback to default free model
+            model = "meta-llama/llama-3.3-70b-instruct:free"
+        
+        log.info(f"[OpenRouter] Using model: {model}")
         try:
             resp = await self.http.post(
                 "https://openrouter.ai/api/v1/chat/completions",
                 headers={"Authorization": f"Bearer {OPENROUTER_KEY}"},
-                json={"model": "meta-llama/llama-3.3-70b-instruct:free", "messages": messages},
+                json={"model": model, "messages": messages},
                 timeout=30.0,
             )
             if resp.status_code == 200:
                 return resp.json()["choices"][0]["message"]["content"]
+            else:
+                log.warning(f"OpenRouter HTTP {resp.status_code}: {resp.text[:200]}")
         except Exception as e:
             log.warning(f"OpenRouter error: {e}")
         return None
@@ -189,9 +237,10 @@ class LLMClient:
             f"🔄 **Tryb echo** — brak dostępnego LLM.\n\n"
             f"Twoja wiadomość: _{last}_\n\n"
             f"Aby aktywować pełne odpowiedzi:\n"
-            f"1. Poczekaj aż Ollama pobierze model (`docker exec coreskill-ollama ollama pull qwen2.5:1.5b`)\n"
-            f"2. Lub ustaw `OPENROUTER_API_KEY` w `.env`\n"
-            f"3. Lub ustaw `ANTHROPIC_API_KEY` w `.env`"
+            f"1. Ustaw `OPENROUTER_API_KEY` w `.env` (lub w env kontenera)\n"
+            f"2. Albo wpisz klucz do `.evo_state.json` jako `openrouter_api_key`\n"
+            f"3. Lub ustaw `ANTHROPIC_API_KEY` w `.env`\n"
+            f"4. Dla lokalnego fallback: uruchom/pobierz model Ollama (np. `phi3:mini`)"
         )
 
     async def get_status(self) -> dict:

@@ -83,6 +83,7 @@ except ImportError:
     from bandit_selector import UCB1BanditSelector
     from metrics_collector import MetricsCollector
     from drift_detector import DriftDetector
+    from autonomy_loop import AutonomyLoop
 
 
 # ─── Docker Compose Generator ────────────────────────────────────────
@@ -1352,6 +1353,38 @@ def _cmd_snapshot(a1, a2, **ctx):
         cpr(C.YELLOW, "Usage: /snapshot save|restore|branch|compare|list <skill_name>")
 
 
+def _cmd_autonomy(a1, **ctx):
+    """Autonomy loop control: /autonomy [run|status|report|on|off]"""
+    autonomy = ctx.get("autonomy")
+    if not autonomy:
+        cpr(C.YELLOW, "[AUTONOMY] Niedostępny")
+        return
+
+    action = (a1 or "").strip().lower()
+
+    if action == "run":
+        result = autonomy.run_cycle(force=True)
+        cpr(C.CYAN, result.summary())
+    elif action == "status":
+        s = autonomy.status()
+        cpr(C.CYAN, f"[AUTONOMY] Status:")
+        for k, v in s.items():
+            cpr(C.DIM, f"  {k}: {v}")
+    elif action == "report":
+        cpr(C.CYAN, autonomy.format_report())
+    elif action == "on":
+        autonomy.enable()
+        cpr(C.GREEN, "[AUTONOMY] Włączony")
+    elif action == "off":
+        autonomy.disable()
+        cpr(C.YELLOW, "[AUTONOMY] Wyłączony")
+    else:
+        cpr(C.CYAN, "[AUTONOMY] Użycie: /autonomy run|status|report|on|off")
+        s = autonomy.status()
+        cpr(C.DIM, f"  Aktywny: {s['enabled']} | Cykli: {s['cycles']} | "
+                   f"Ostatni: {s['last_status']}")
+
+
 # Command dispatch table
 COMMANDS = {
     "/help": _cmd_help,
@@ -1401,6 +1434,7 @@ COMMANDS = {
     "/snapshot": _cmd_snapshot,
     "/hw": _cmd_hw,
     "/hwtest": _cmd_hw,
+    "/autonomy": _cmd_autonomy,
 }
 
 
@@ -1529,8 +1563,22 @@ def _boot():
 
     scheduler.register("drift_scan", _drift_scan, interval_s=600)
     scheduler.register("quality_regression", _quality_regression_check, interval_s=1800)
+
+    # Autonomy loop: closed-loop diagnostics → repair → metrics → events
+    from .self_healing.diagnostics import DiagnosticEngine
+    diag_engine = DiagnosticEngine(llm_client=llm, skill_manager=sm, logger=logger)
+    autonomy = AutonomyLoop(
+        diagnostics=diag_engine,
+        repairer=repairer,
+        metrics=metrics,
+        event_bus=bus,
+        logger=logger,
+        skill_manager=sm,
+    )
+    scheduler.register("autonomy_cycle", autonomy.scheduled_cycle, interval_s=300)
+
     scheduler.start()
-    cpr(C.DIM, f"AdaptiveMonitor: aktywny | Scheduler: {len(scheduler.status())} zadań")
+    cpr(C.DIM, f"AdaptiveMonitor: aktywny | Scheduler: {len(scheduler.status())} zadań | AutonomyLoop: aktywny")
 
     cpr(C.DIM, f"Model: {llm.model} | Core: {sv.active()} | Tiers: {llm.tier_info()}")
     sk = sm.list_skills()
@@ -1558,6 +1606,7 @@ def _boot():
         "provider_selector": provider_sel, "resource_monitor": resource_mon,
         "identity": identity, "memory": memory, "session_config": session_cfg,
         "router": router, "adaptive_monitor": adaptive_mon, "scheduler": scheduler,
+        "autonomy": autonomy,
     }
     return cmd_ctx, conv, memory
 
