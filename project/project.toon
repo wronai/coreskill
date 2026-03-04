@@ -1,4 +1,4 @@
-# coreskill | 100f 27356L | python:102
+# coreskill | 100f 27537L | python:100
 # Keys: M=modules, D=details, i=imports, c=classes, f=functions, m=methods
 M[100]:
   __init__.py,19
@@ -11,18 +11,18 @@ M[100]:
   cores/v1/bandit_selector.py,136
   cores/v1/config.py,188
   cores/v1/config_generator.py,221
-  cores/v1/core.py,1126
+  cores/v1/core.py,1129
   cores/v1/event_bus.py,94
   cores/v1/evo_engine.py,605
   cores/v1/evo_journal.py,350
   cores/v1/fuzzy_router.py,57
   cores/v1/garbage_collector.py,277
-  cores/v1/intent/__init__.py,344
+  cores/v1/intent/__init__.py,394
   cores/v1/intent/embedding.py,117
   cores/v1/intent/ensemble.py,80
   cores/v1/intent/knn_classifier.py,97
   cores/v1/intent/local_llm.py,96
-  cores/v1/intent/training.py,103
+  cores/v1/intent/training.py,121
   cores/v1/intent_engine.py,391
   cores/v1/learned_repair.py,160
   cores/v1/llm_client.py,335
@@ -42,12 +42,12 @@ M[100]:
   cores/v1/skill_manager.py,459
   cores/v1/smart_intent.py,722
   cores/v1/stable_snapshot.py,318
-  cores/v1/stt_autotest.py,609
+  cores/v1/stt_autotest.py,661
   cores/v1/supervisor.py,69
   cores/v1/system_identity.py,157
   cores/v1/user_memory.py,148
   cores/v1/utils.py,100
-  cores/v1/voice_loop.py,140
+  cores/v1/voice_loop.py,154
   examples/advanced/01_pipeline.py,48
   examples/basic/01_hello.py,33
   examples/basic/02_memory.py,32
@@ -58,7 +58,7 @@ M[100]:
   seeds/echo_skill_v1.py,19
   setup.py,40
   skill.py,78
-  skills/benchmark/v1/skill.py,1104
+  skills/benchmark/v1/skill.py,1077
   skills/deps/v2/skill.py,84
   skills/deps/v3/skill.py,67
   skills/devops/v1/skill.py,213
@@ -95,8 +95,8 @@ M[100]:
   skills/tts/providers/espeak/stable/skill.py,54
   skills/weather/v1/skill.py,54
   skills/web_search/providers/duckduckgo/archive/v1/skill.py,131
-  skills/web_search/providers/duckduckgo/latest/skill.py,131
-  skills/web_search/providers/duckduckgo/stable/skill.py,131
+  skills/web_search/providers/duckduckgo/latest/skill.py,149
+  skills/web_search/providers/duckduckgo/stable/skill.py,149
   skills/zarz_dzania/v7/skill.py,105
   skills/zarz_dzania/v8/skill.py,107
   tests/__init__.py,0
@@ -353,8 +353,9 @@ D:
     test_vosk(wav_path:str;model_path:Optional[Path]=None)->tuple
     find_vosk_models()->tuple
     find_best_model(models:list;prefer_lang:str='pl')->Optional[Path]
+    _score_source(src_name:str)->int
+    _test_source_audio(src_name:str;duration:int=1)->float
     try_pulseaudio_fix(diagnostics:dict)
-    run_stt_autotest(sm;logger;llm=None)->dict
   cores/v1/supervisor.py:
     i: json,shutil,datetime,config.{ROOT,save_state},datetime.timezone
     e: Supervisor

@@ -1029,11 +1029,20 @@ class SkillHWValidator:
 
         return result
 
+    # S/PDIF and digital input patterns — NOT real microphones
+    _DIGITAL_PATTERNS = ("iec958", "spdif", "s/pdif", "hdmi")
+
     def _test_stt_hw(self) -> dict:
-        """Test STT hardware prerequisites."""
+        """Test STT hardware prerequisites with advanced diagnostics.
+        
+        Checks: capture devices, default source type (analog vs digital),
+        S/PDIF detection, Bluetooth profiles, per-source audio levels,
+        mute/volume state, required tools, vosk model.
+        """
         checks = {
             "hw_ok": True,
             "issues": [],
+            "recommendations": [],
             "details": {},
         }
 
@@ -1048,25 +1057,70 @@ class SkillHWValidator:
             checks["hw_ok"] = False
             checks["issues"].append("No real capture device (only monitors)")
 
-        # 2. Check default source is not a monitor
+        # 2. Check default source — detect S/PDIF, monitor, and digital inputs
         default = inp._get_default_source()
         checks["details"]["default_source"] = default
+        src_name = default.get("name", "")
+        src_lower = src_name.lower()
+
         if default.get("is_monitor"):
             checks["hw_ok"] = False
             checks["issues"].append(
                 "Default source is a monitor — switch to real microphone")
+        elif any(p in src_lower for p in self._DIGITAL_PATTERNS):
+            checks["hw_ok"] = False
+            checks["issues"].append(
+                f"Default source is S/PDIF digital input ({src_name}) — "
+                "NOT a microphone! Switch to analog/USB mic.")
+            # Find better source and recommend
+            better = self._find_best_mic_source()
+            if better:
+                checks["recommendations"].append(
+                    f"pactl set-default-source {better['name']}")
+                checks["details"]["recommended_source"] = better
 
         # 3. Check not muted
         if default.get("muted"):
             checks["issues"].append("Default source is MUTED")
+            checks["recommendations"].append(
+                f"pactl set-source-mute {src_name} 0")
 
         # 4. Check volume > 50%
         vol = default.get("volume_pct")
         if vol is not None and vol < 50:
             checks["issues"].append(
                 f"Default source volume too low: {vol}%")
+            checks["recommendations"].append(
+                f"pactl set-source-volume {src_name} 100%")
 
-        # 5. Check tools
+        # 5. Per-source audio level test (advanced)
+        source_levels = self._test_all_sources_level()
+        checks["details"]["source_levels"] = source_levels
+        if source_levels:
+            best_src = max(source_levels, key=lambda s: s.get("db", -999))
+            checks["details"]["best_source"] = best_src
+            if (best_src.get("db", -999) > -40
+                    and best_src.get("name") != src_name):
+                checks["issues"].append(
+                    f"Better mic available: {best_src['name']} "
+                    f"({best_src['db']:.0f}dB vs current)")
+                checks["recommendations"].append(
+                    f"pactl set-default-source {best_src['name']}")
+
+        # 6. Bluetooth profile analysis
+        bt_profiles = self._detect_bluetooth_profiles()
+        checks["details"]["bluetooth_profiles"] = bt_profiles
+        for bp in bt_profiles:
+            if bp.get("has_hfp") and not bp.get("active_profile_has_mic"):
+                checks["issues"].append(
+                    f"BT device {bp['name']}: HSP/HFP profile available "
+                    "but not active — mic won't work in A2DP mode")
+                if bp.get("hfp_profile_name"):
+                    checks["recommendations"].append(
+                        f"pactl set-card-profile {bp['card']} "
+                        f"{bp['hfp_profile_name']}")
+
+        # 7. Check tools
         tools_needed = {
             "arecord": "Recording audio (ALSA)",
             "vosk-transcriber": "Speech recognition",
@@ -1078,13 +1132,190 @@ class SkillHWValidator:
             else:
                 checks["details"][f"has_{tool}"] = True
 
-        # 6. Check vosk model
+        # 8. Check vosk model
         vosk_model = self._find_vosk_model()
         checks["details"]["vosk_model"] = vosk_model
         if not vosk_model:
             checks["issues"].append("No vosk model found in cache")
 
         return checks
+
+    def _find_best_mic_source(self) -> dict:
+        """Find the best real microphone source (not S/PDIF, not monitor)."""
+        if not shutil.which("pactl"):
+            return {}
+        try:
+            r = subprocess.run(
+                ["pactl", "list", "sources", "short"],
+                capture_output=True, text=True, timeout=5)
+            best = None
+            best_score = -1
+            for line in r.stdout.strip().split("\n"):
+                parts = line.split("\t")
+                if len(parts) < 2:
+                    continue
+                name = parts[1]
+                nl = name.lower()
+                # Skip monitors and digital inputs
+                if ".monitor" in nl:
+                    continue
+                if any(p in nl for p in self._DIGITAL_PATTERNS):
+                    continue
+                score = 0
+                if "usb" in nl:
+                    score += 10
+                if any(kw in nl for kw in ("plantronics", "poly", "jabra",
+                                            "headset", "microphone")):
+                    score += 8
+                if "mono" in nl:
+                    score += 3
+                if "analog" in nl:
+                    score += 5
+                if score > best_score:
+                    best_score = score
+                    best = {"name": name, "score": score}
+            return best or {}
+        except Exception:
+            return {}
+
+    def _test_all_sources_level(self) -> list:
+        """Quick dB test on each non-monitor, non-digital source."""
+        if not (shutil.which("pactl") and shutil.which("arecord")):
+            return []
+        results = []
+        try:
+            r = subprocess.run(
+                ["pactl", "list", "sources", "short"],
+                capture_output=True, text=True, timeout=5)
+            original_default = subprocess.run(
+                ["pactl", "get-default-source"],
+                capture_output=True, text=True, timeout=3
+            ).stdout.strip()
+
+            for line in r.stdout.strip().split("\n"):
+                parts = line.split("\t")
+                if len(parts) < 2:
+                    continue
+                name = parts[1]
+                nl = name.lower()
+                if ".monitor" in nl:
+                    continue
+                if any(p in nl for p in self._DIGITAL_PATTERNS):
+                    results.append({"name": name, "db": -999.0,
+                                    "type": "digital", "skip": True})
+                    continue
+                # Set as default, record 1s, measure
+                try:
+                    subprocess.run(
+                        ["pactl", "set-default-source", name],
+                        capture_output=True, timeout=3)
+                    time.sleep(0.2)
+                    fd, wav = tempfile.mkstemp(
+                        suffix=".wav", prefix="hw_src_test_")
+                    os.close(fd)
+                    try:
+                        rr = subprocess.run(
+                            ["arecord", "-q", "-d", "1", "-f", "S16_LE",
+                             "-r", "16000", "-c", "1", wav],
+                            capture_output=True, timeout=8)
+                        if rr.returncode == 0:
+                            inp_t = AudioInputTester()
+                            level = inp_t._measure_level(wav, -40.0)
+                            results.append({
+                                "name": name,
+                                "db": level.get("max_db", -999.0),
+                                "has_sound": level.get("ok", False),
+                            })
+                        else:
+                            results.append({"name": name, "db": -999.0,
+                                            "error": "arecord failed"})
+                    finally:
+                        try:
+                            os.unlink(wav)
+                        except Exception:
+                            pass
+                except Exception:
+                    results.append({"name": name, "db": -999.0,
+                                    "error": "test failed"})
+
+            # Restore original default
+            if original_default:
+                subprocess.run(
+                    ["pactl", "set-default-source", original_default],
+                    capture_output=True, timeout=3)
+        except Exception:
+            pass
+        return results
+
+    def _detect_bluetooth_profiles(self) -> list:
+        """Detect Bluetooth audio devices and their active profiles.
+        A2DP = audio only (no mic), HSP/HFP = headset (with mic)."""
+        if not shutil.which("pactl"):
+            return []
+        bt_devices = []
+        try:
+            r = subprocess.run(
+                ["pactl", "list", "cards"],
+                capture_output=True, text=True, timeout=5)
+            current_card = None
+            profiles = []
+            active_profile = ""
+            card_name = ""
+            for line in r.stdout.split("\n"):
+                line_s = line.strip()
+                if line_s.startswith("Card #"):
+                    # Save previous card
+                    if current_card and ("bluez" in card_name.lower()
+                                          or "bluetooth" in card_name.lower()):
+                        bt_devices.append(
+                            self._analyze_bt_card(
+                                current_card, card_name, profiles,
+                                active_profile))
+                    current_card = line_s
+                    profiles = []
+                    active_profile = ""
+                    card_name = ""
+                elif line_s.startswith("Name:"):
+                    card_name = line_s.split(":", 1)[1].strip()
+                elif line_s.startswith("Active Profile:"):
+                    active_profile = line_s.split(":", 1)[1].strip()
+                elif ("\t" in line or line.startswith("\t"))\
+                        and ": " in line_s and "output:" not in line_s[:10]:
+                    # Profile line
+                    if any(kw in line_s.lower() for kw in
+                           ("a2dp", "hsp", "hfp", "headset", "handsfree")):
+                        profiles.append(line_s.split(":")[0].strip())
+            # Last card
+            if current_card and ("bluez" in card_name.lower()
+                                  or "bluetooth" in card_name.lower()):
+                bt_devices.append(
+                    self._analyze_bt_card(
+                        current_card, card_name, profiles, active_profile))
+        except Exception:
+            pass
+        return bt_devices
+
+    def _analyze_bt_card(self, card_id: str, name: str,
+                         profiles: list, active: str) -> dict:
+        """Analyze a Bluetooth audio card's profiles."""
+        has_hfp = any("hfp" in p.lower() or "hsp" in p.lower()
+                      or "headset" in p.lower() or "handsfree" in p.lower()
+                      for p in profiles)
+        active_has_mic = any(kw in active.lower()
+                             for kw in ("hfp", "hsp", "headset", "handsfree"))
+        hfp_profile = next(
+            (p for p in profiles
+             if any(kw in p.lower() for kw in ("hfp", "hsp", "headset"))),
+            "")
+        return {
+            "card": card_id,
+            "name": name,
+            "profiles": profiles,
+            "active_profile": active,
+            "has_hfp": has_hfp,
+            "active_profile_has_mic": active_has_mic,
+            "hfp_profile_name": hfp_profile,
+        }
 
     def _test_tts_hw(self) -> dict:
         """Test TTS hardware prerequisites."""

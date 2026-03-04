@@ -590,8 +590,6 @@ class BenchmarkSkill:
     def _get_benchmark_prompt(self, model_id: str) -> tuple:
         """Single refactoring prompt for ALL models.
         
-        Same code with known bugs (SQL injection, resource leak, no error
-        handling) for every model — scoring differentiates by analysis depth.
         """
         prompt = (
             'Przeanalizuj kod i odpowiedz TYLKO jednym obiektem JSON '
@@ -1153,9 +1151,6 @@ class BenchmarkSkill:
         """Unified refactoring quality scorer for ALL model sizes.
         
         Score breakdown (max ~0.95):
-          Format  (0.30): parseable JSON + required fields with valid values
-          Depth   (0.45): identified bugs (SQL injection, resource leak, etc.)
-          Correct (0.20): severity awareness + recommendation correctness
         
         Expected differentiation:
           4B model (shallow analysis):  ~0.30-0.45

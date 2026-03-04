@@ -4,7 +4,7 @@
 
 - **Project**: .
 - **Analysis Mode**: static
-- **Total Functions**: 866
+- **Total Functions**: 869
 - **Total Classes**: 115
 - **Modules**: 92
 - **Entry Points**: 0
@@ -15,15 +15,15 @@
 - **Functions**: 56
 - **File**: `core.py`
 
+### skills.benchmark.v1.skill
+- **Functions**: 32
+- **Classes**: 3
+- **File**: `skill.py`
+
 ### cores.v1.smart_intent
 - **Functions**: 31
 - **Classes**: 5
 - **File**: `smart_intent.py`
-
-### skills.benchmark.v1.skill
-- **Functions**: 30
-- **Classes**: 3
-- **File**: `skill.py`
 
 ### root.core
 - **Functions**: 29
@@ -75,6 +75,11 @@
 - **Classes**: 3
 - **File**: `preflight.py`
 
+### cores.v1.intent
+- **Functions**: 17
+- **Classes**: 2
+- **File**: `__init__.py`
+
 ### cores.v1.self_healing
 - **Functions**: 17
 - **Classes**: 6
@@ -94,11 +99,6 @@
 - **Functions**: 16
 - **Classes**: 2
 - **File**: `evo_engine.py`
-
-### cores.v1.intent
-- **Functions**: 16
-- **Classes**: 2
-- **File**: `__init__.py`
 
 ### skills.git_ops.v1.skill
 - **Functions**: 15
@@ -122,7 +122,7 @@ Key execution flows identified:
 
 ### skills.benchmark.v1.skill.BenchmarkSkill
 > Analyzes and benchmarks LLM models for goal-based recommendations.
-- **Methods**: 27
+- **Methods**: 29
 - **Key Methods**: skills.benchmark.v1.skill.BenchmarkSkill.__init__, skills.benchmark.v1.skill.BenchmarkSkill._load_config, skills.benchmark.v1.skill.BenchmarkSkill._get_models_from_tier, skills.benchmark.v1.skill.BenchmarkSkill._get_api_key, skills.benchmark.v1.skill.BenchmarkSkill._load_benchmark_results, skills.benchmark.v1.skill.BenchmarkSkill._save_benchmark_results, skills.benchmark.v1.skill.BenchmarkSkill._update_benchmark_results, skills.benchmark.v1.skill.BenchmarkSkill._get_cached_recommendations, skills.benchmark.v1.skill.BenchmarkSkill.execute, skills.benchmark.v1.skill.BenchmarkSkill._recommend_models
 
 ### cores.v1.session_config.SessionConfig
@@ -179,6 +179,13 @@ Replaces all hardcoded _KW_* tuples with learnable embed
 - **Methods**: 15
 - **Key Methods**: cores.v1.smart_intent.SmartIntentClassifier.__init__, cores.v1.smart_intent.SmartIntentClassifier._training_path, cores.v1.smart_intent.SmartIntentClassifier._load_training_data, cores.v1.smart_intent.SmartIntentClassifier._save_training_data, cores.v1.smart_intent.SmartIntentClassifier.add_example, cores.v1.smart_intent.SmartIntentClassifier.learn_from_correction, cores.v1.smart_intent.SmartIntentClassifier.learn_from_success, cores.v1.smart_intent.SmartIntentClassifier._generate_variations, cores.v1.smart_intent.SmartIntentClassifier._ensure_embeddings, cores.v1.smart_intent.SmartIntentClassifier.classify
 
+### cores.v1.intent.SmartIntentClassifier
+> 3-tier ML intent classifier:
+1. Embeddings (sbert/tf-idf/bow) — fastest, 90%+ accuracy
+2. Local LLM 
+- **Methods**: 15
+- **Key Methods**: cores.v1.intent.SmartIntentClassifier.__init__, cores.v1.intent.SmartIntentClassifier._load_training, cores.v1.intent.SmartIntentClassifier._rebuild_skill_vectors, cores.v1.intent.SmartIntentClassifier.classify, cores.v1.intent.SmartIntentClassifier._embedding_classify, cores.v1.intent.SmartIntentClassifier._cosine_classify, cores.v1.intent.SmartIntentClassifier._extract_model_target, cores.v1.intent.SmartIntentClassifier._llm_classify, cores.v1.intent.SmartIntentClassifier._record_use, cores.v1.intent.SmartIntentClassifier.learn_from_correction
+
 ### cores.v1.stable_snapshot.StableSnapshot
 > Manages stable/bugfix/feature versions of skills.
 
@@ -186,13 +193,6 @@ Key principles:
 - Stable is SACRED — only promote
 - **Methods**: 14
 - **Key Methods**: cores.v1.stable_snapshot.StableSnapshot.__init__, cores.v1.stable_snapshot.StableSnapshot.save_as_stable, cores.v1.stable_snapshot.StableSnapshot.create_branch, cores.v1.stable_snapshot.StableSnapshot.promote_branch, cores.v1.stable_snapshot.StableSnapshot.restore_stable, cores.v1.stable_snapshot.StableSnapshot.validate_against_stable, cores.v1.stable_snapshot.StableSnapshot.list_branches, cores.v1.stable_snapshot.StableSnapshot._detect_provider, cores.v1.stable_snapshot.StableSnapshot._find_current_version, cores.v1.stable_snapshot.StableSnapshot._copy_skill_files
-
-### cores.v1.intent.SmartIntentClassifier
-> 3-tier ML intent classifier:
-1. Embeddings (sbert/tf-idf/bow) — fastest, 90%+ accuracy
-2. Local LLM 
-- **Methods**: 14
-- **Key Methods**: cores.v1.intent.SmartIntentClassifier.__init__, cores.v1.intent.SmartIntentClassifier._load_training, cores.v1.intent.SmartIntentClassifier._rebuild_skill_vectors, cores.v1.intent.SmartIntentClassifier.classify, cores.v1.intent.SmartIntentClassifier._embedding_classify, cores.v1.intent.SmartIntentClassifier._cosine_classify, cores.v1.intent.SmartIntentClassifier._llm_classify, cores.v1.intent.SmartIntentClassifier._record_use, cores.v1.intent.SmartIntentClassifier.learn_from_correction, cores.v1.intent.SmartIntentClassifier.learn_from_success
 
 ### cores.v1.provider_selector.ProviderChain
 > Ordered provider fallback chain with auto-degradation.
@@ -315,13 +315,13 @@ Functions exposed as public API (no underscore prefix):
 - `cores.v1.self_reflection.SelfReflection.run_diagnostic` - 53 calls
 - `scripts.simulate.Simulator.run_scenario` - 47 calls
 - `cores.v1.skill_logger.get_markdown_logs` - 44 calls
+- `cores.v1.intent.SmartIntentClassifier.classify` - 43 calls
 - `cores.v1.intent_engine.IntentEngine.analyze` - 41 calls
 - `cores.v1.llm_client.LLMClient.chat` - 37 calls
 - `cores.v1.skill_manager.SkillManager.smart_evolve` - 37 calls
 - `cli.cmd_cache_reset` - 36 calls
-- `cores.v1.intent.SmartIntentClassifier.classify` - 36 calls
 - `cores.v1.evo_engine.EvoEngine.handle_request` - 35 calls
-- `cores.v1.core.main` - 34 calls
+- `cores.v1.core.main` - 35 calls
 - `main.bootstrap` - 33 calls
 - `skills.shell.v2.skill.ShellSkill.execute` - 33 calls
 - `examples.skills.01_create.main` - 33 calls

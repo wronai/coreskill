@@ -35,7 +35,8 @@ from .garbage_collector import EvolutionGarbageCollector
 from .auto_repair import AutoRepair
 from .session_config import SessionConfig, ConfigChange
 from .config_generator import ConfigGenerator, get_config_generator
-from .voice_loop import _extract_stt_text, _speak_tts, _run_stt_cycle, _run_voice_loop
+from .voice_loop import (_extract_stt_text, _speak_tts, _run_stt_cycle,
+                        _run_voice_loop, _run_file_input_loop)
 from .fuzzy_router import FuzzyCommandRouter
 from .event_bus import EventBus
 from .adaptive_monitor import AdaptiveResourceMonitor
@@ -622,7 +623,7 @@ def _cmd_health(a1, **ctx):
 
 
 def _cmd_voice(a1, **ctx):
-    """Voice mode: /voice (start), /voice off (disable persistent), /voice on (enable persistent)"""
+    """Voice mode: /voice (start), /voice off (disable), /voice file (file fallback)"""
     memory = ctx.get("memory")
     subcmd = a1.strip().lower() if a1 else ""
 
@@ -632,6 +633,14 @@ def _cmd_voice(a1, **ctx):
             cpr(C.CYAN, "🔇 Tryb głosowy wyłączony na stałe.")
         else:
             cpr(C.YELLOW, "Brak modułu pamięci.")
+        return
+
+    if subcmd in ("file", "plik", "fallback"):
+        cpr(C.CYAN, "📁 Tryb plikowy — TTS→WAV→STT (bez mikrofonu)")
+        _run_file_input_loop(
+            ctx["sm"], ctx["evo"], ctx["llm"], ctx["intent"],
+            ctx["logger"], ctx["conv"], ctx.get("identity"), memory=memory
+        )
         return
 
     # Enable persistent voice mode (auto-save, don't ask)
@@ -1160,7 +1169,11 @@ def _boot():
         cpr(C.YELLOW, f"Nadal uszkodzone: {', '.join(report['broken'])}")
 
     # Multi-level readiness check (deps/hw/api/resources)
-    sm.boot_health_check()
+    # Skip in text-only mode (EVO_TEXT_ONLY=1)
+    if not os.environ.get("EVO_TEXT_ONLY"):
+        sm.boot_health_check()
+    else:
+        cpr(C.DIM, "[Text-only mode: skipping audio health checks]")
 
     # Long-term user memory
     memory = UserMemory(state)
@@ -1325,8 +1338,8 @@ def main():
     identity = cmd_ctx["identity"]
     session_cfg = cmd_ctx["session_config"]
 
-    # Auto-enter voice mode if persistent preference is saved
-    if memory and memory.voice_mode:
+    # Auto-enter voice mode if persistent preference is saved (but not in text-only mode)
+    if memory and memory.voice_mode and not os.environ.get("EVO_TEXT_ONLY"):
         cpr(C.CYAN, "🔊 Tryb głosowy aktywny (zapamiętana preferencja). "
                     "Wyłącz: /voice off")
         _run_voice_loop(sm, evo, llm, intent, logger, conv, identity, memory=memory)
