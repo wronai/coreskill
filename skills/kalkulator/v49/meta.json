@@ -1,8 +1,9 @@
 {
   "name": "kalkulator",
   "version": "v49",
-  "description": "stw\u00f3rz mi kalkulator",
-  "created_at": "2026-03-04T19:04:45.535155+00:00",
-  "checksum": "5a32ada54fc9bc32be0791643b6697d7",
-  "quality_score": 0.91
+  "parent": "v48",
+  "phase": "runtime",
+  "created_at": "2026-03-04T21:00:08.709017+00:00",
+  "quality_score": 0.91,
+  "is_regression": false
 }
