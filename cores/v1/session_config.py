@@ -424,17 +424,30 @@ class SessionConfig:
     
     def _extract_model_name(self, msg: str) -> Optional[str]:
         """Extract model name from message."""
-        # Common patterns
+        msg_lower = msg.lower()
+        
+        # Priority 1: namespace/model pattern (e.g. x-ai/grok-4.1-fast, google/gemma-3-27b)
+        ns_match = re.search(r'([a-z][a-z0-9\-]*/[a-z][a-z0-9\-\.:]+)', msg_lower)
+        if ns_match:
+            model = ns_match.group(1)
+            if not model.startswith("openrouter/"):
+                return f"openrouter/{model}"
+            return model
+        
+        # Priority 2: keyword + model name
         patterns = [
-            r'(?:model|modelu|na|używaj|przełącz na|zmień na)\s+([a-z0-9\-\.]+)',
+            r'(?:model|modelu|llm|na|używaj|przełącz na|zmień na)\s+([a-z0-9\-\.]+)',
             r'([a-z0-9\-]+(?:pro|flash|lite|mini|max))',
             r'(gpt-[a-z0-9\-]+)',
             r'(claude-[a-z0-9\-]+)',
             r'(gemini-[a-z0-9\-]+)',
             r'(llama-[a-z0-9\-]+)',
+            r'(grok-[a-z0-9\-\.]+)',
+            r'(qwen[a-z0-9\-\.]+)',
+            r'(deepseek-[a-z0-9\-\.]+)',
+            r'(gemma-[a-z0-9\-\.]+)',
         ]
         
-        msg_lower = msg.lower()
         for pattern in patterns:
             match = re.search(pattern, msg_lower)
             if match:

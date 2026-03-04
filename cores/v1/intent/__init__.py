@@ -194,10 +194,10 @@ class SmartIntentClassifier:
             return IntentResult(action="use", skill="stt", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
         
         # Configure / settings (NEW - LLM model changes) - CHECK THIS FIRST
-        configure_keywords = ("ustaw jako domyślny", "ustaw model", "zmień model", "zmień domyślny",
+        configure_keywords = ("ustaw jako domyślny", "ustaw model", "ustaw llm", "zmień model", "zmień domyślny",
                             "ustaw domyślny model", "przełącz na", "użyj modelu", "zmień na",
                             "set as default", "change model", "switch to", "use model",
-                            "set default LLM", "set default llm", "set default model")
+                            "set default LLM", "set default llm", "set default model", "set llm")
         if any(w in ul for w in configure_keywords):
             target = self._extract_model_target(user_msg)
             return IntentResult(action="configure", category="llm", target=target,
@@ -225,10 +225,10 @@ class SmartIntentClassifier:
             return IntentResult(action="evolve", skill="", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
         
         # Configure / settings (NEW - LLM model changes)
-        configure_keywords = ("ustaw jako domyślny", "ustaw model", "zmień model", "zmień domyślny",
+        configure_keywords = ("ustaw jako domyślny", "ustaw model", "ustaw llm", "zmień model", "zmień domyślny",
                             "ustaw domyślny model", "przełącz na", "użyj modelu", "zmień na",
                             "set as default", "change model", "switch to", "use model",
-                            "set default LLM", "set default llm", "set default model")
+                            "set default LLM", "set default llm", "set default model", "set llm")
         if any(w in ul for w in configure_keywords):
             # Extract model name from message
             target = self._extract_model_target(user_msg)
