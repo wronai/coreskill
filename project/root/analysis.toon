@@ -48,12 +48,12 @@ COUPLING:
          skills.openrouter                                                                             1                                                                                                                                                                                                                                                                                                                      ──
   CYCLES: none
   HUB: core/ (fan-in=8)
-  HUB: cores.v1/ (fan-in=17)
   HUB: skill/ (fan-in=20)
+  HUB: cores.v1/ (fan-in=17)
   HUB: main/ (fan-in=25)
   SMELL: skills.echo/ fan-out=11 → split needed
-  SMELL: cores.v1/ fan-out=18 → split needed
   SMELL: seeds/ fan-out=13 → split needed
+  SMELL: cores.v1/ fan-out=18 → split needed
 
 LAYERS:
   scripts/                        CC̄=7.7    ←in:1  →out:5
@@ -466,8 +466,8 @@ CLASSES:
   LLMClient                      ████████████              12m  CC̄=9.4   max=24    !!
   Logger                         ███████████               11m  CC̄=3.2   max=11  
   UserMemory                     ██████████                10m  CC̄=3.2   max=6   
-  Supervisor                     ██████████                10m  CC̄=1.9   max=6     ×1
   EvolutionGarbageCollector      ██████████                10m  CC̄=8.1   max=13  
+  Supervisor                     ██████████                10m  CC̄=1.9   max=6     ×1
   SelfHealingOrchestrator        ██████████                10m  CC̄=3.6   max=6   
   ConfigGenerator                █████████                  9m  CC̄=4.6   max=13  
   EvoEngine                      █████████                  9m  CC̄=17.3  max=56    !!
