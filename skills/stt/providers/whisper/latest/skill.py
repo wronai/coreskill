@@ -1,7 +1,3 @@
-"""
-Whisper STT Skill - High-quality speech recognition using faster-whisper.
-Falls back to openai-whisper if faster-whisper unavailable.
-"""
 import json
 import os
 import shutil
@@ -11,7 +7,6 @@ import tempfile
 import warnings
 from pathlib import Path
 
-# Suppress FP16 warnings on CPU
 warnings.filterwarnings("ignore", message=".*FP16 is not supported on CPU.*")
 
 
@@ -19,12 +14,11 @@ def get_info():
     return {
         "name": "stt",
         "version": "v1",
-        "description": "Speech-to-Text: high-quality transcription using Whisper (faster-whisper).",
+        "description": "Speech-to-Text: high-quality transcription using Whisper.",
     }
 
 
 def health_check():
-    has_whisper = False
     try:
         import faster_whisper
         has_whisper = True
@@ -33,36 +27,45 @@ def health_check():
             import whisper
             has_whisper = True
         except ImportError:
-            pass
+            has_whisper = False
+
     has_ffmpeg = shutil.which("ffmpeg") is not None
-    return bool(has_whisper and has_ffmpeg)
+    has_arecord = shutil.which("arecord") is not None
+
+    if has_whisper and has_ffmpeg:
+        return {"status": "ok"}
+    else:
+        missing = []
+        if not has_whisper:
+            missing.append("whisper (pip install faster-whisper)")
+        if not has_ffmpeg:
+            missing.append("ffmpeg")
+        if not has_arecord:
+            missing.append("arecord (alsa-utils)")
+        return {"status": "error", "message": "Missing dependencies: " + ", ".join(missing)}
 
 
 class WhisperSTTSkill:
     MODEL_SIZES = ["tiny", "base", "small", "medium", "large-v3"]
-    DEFAULT_MODEL = "small"  # Good balance: fast + accurate for Polish
+    DEFAULT_MODEL = "small"
 
     def __init__(self):
         self._has_ffmpeg = shutil.which("ffmpeg") is not None
         self._has_arecord = shutil.which("arecord") is not None
         self._model = None
         self._model_size = None
-        self._faster_mode = None  # True = faster-whisper, False = openai-whisper
+        self._faster_mode = None
 
-    def _load_model(self, size: str = None, lang_hint: str = None):
-        """Lazy-load whisper model with auto-detection of backend."""
+    def _load_model(self, size: str = None):
         if size is None:
             size = self.DEFAULT_MODEL
 
-        # Already loaded?
         if self._model and self._model_size == size:
             return self._model, self._faster_mode
 
-        # Try faster-whisper first (much faster)
         try:
             from faster_whisper import WhisperModel
 
-            # Auto-detect compute type based on available resources
             try:
                 import torch
                 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -75,13 +78,11 @@ class WhisperSTTSkill:
             self._model_size = size
             self._faster_mode = True
             return self._model, True
-        except Exception as e:
+        except Exception:
             pass
 
-        # Fallback to openai-whisper
         try:
             import whisper
-
             self._model = whisper.load_model(size)
             self._model_size = size
             self._faster_mode = False
@@ -89,28 +90,7 @@ class WhisperSTTSkill:
         except Exception as e:
             raise RuntimeError(f"Failed to load Whisper model ({size}). Install: pip install faster-whisper") from e
 
-    def _record_wav(self, duration_s: int, sample_rate: int = 16000) -> str:
-        """Record audio from microphone using arecord."""
-        if not self._has_arecord:
-            raise RuntimeError("Missing system command: arecord (install alsa-utils)")
-
-        fd, wav_path = tempfile.mkstemp(suffix=".wav", prefix="evo_whisper_")
-        os.close(fd)
-
-        cmd = [
-            "arecord",
-            "-q",
-            "-d", str(int(duration_s)),
-            "-f", "S16_LE",
-            "-r", str(int(sample_rate)),
-            "-c", "1",
-            wav_path,
-        ]
-        subprocess.run(cmd, check=True, capture_output=True)
-        return wav_path
-
     def _ensure_wav(self, input_path: str, sample_rate: int = 16000) -> str:
-        """Convert input to WAV format if needed."""
         p = Path(input_path)
         if not p.exists():
             raise FileNotFoundError(str(p))
@@ -129,16 +109,14 @@ class WhisperSTTSkill:
             "-ac", "1", "-ar", str(int(sample_rate)),
             wav_path,
         ]
-        subprocess.run(cmd, check=True, capture_output=True)
+        subprocess.run(cmd, check=True, capture_output=True, timeout=30)
         return wav_path
 
-    def _check_audio_level(self, wav_path: str, min_db: float = -40.0) -> tuple:
-        """Check if audio has sufficient volume. Returns (has_sound, db_level, message)."""
+    def _check_audio_level(self, wav_path: str) -> tuple:
         if not Path(wav_path).exists():
             return False, -999.0, "Audio file not found"
 
         if not self._has_ffmpeg:
-            # Fallback: file size check
             size = Path(wav_path).stat().st_size
             return size > 1000, 0.0, f"Size: {size}b"
 
@@ -152,7 +130,7 @@ class WhisperSTTSkill:
                     try:
                         db_str = line.split(':')[1].split('dB')[0].strip()
                         db = float(db_str)
-                        return db > min_db, db, f"Mean: {db:.1f}dB"
+                        return db > -40.0, db, f"Mean: {db:.1f}dB"
                     except (IndexError, ValueError):
                         pass
         except Exception:
@@ -161,134 +139,156 @@ class WhisperSTTSkill:
         return True, 0.0, "Level check inconclusive"
 
     def _transcribe_faster(self, model, wav_path: str, lang: str = None) -> dict:
-        """Transcribe using faster-whisper."""
-        segments, info = model.transcribe(wav_path, language=lang, beam_size=5)
-        text_parts = []
-        confidence_scores = []
+        try:
+            segments, info = model.transcribe(wav_path, language=lang, beam_size=5)
+            text_parts = []
+            confidence_scores = []
 
-        for segment in segments:
-            text_parts.append(segment.text)
-            confidence_scores.append(getattr(segment, 'avg_logprob', -0.5))
+            for segment in segments:
+                text_parts.append(segment.text)
+                confidence_scores.append(getattr(segment, 'avg_logprob', -0.5))
 
-        full_text = " ".join(text_parts).strip()
-        avg_confidence = sum(confidence_scores) / len(confidence_scores) if confidence_scores else 0.5
+            full_text = " ".join(text_parts).strip()
+            avg_confidence = sum(confidence_scores) / len(confidence_scores) if confidence_scores else 0.5
+            normalized_confidence = min(1.0, max(0.0, 1.0 + (avg_confidence / 2)))
 
-        # Normalize confidence to 0-1 range (logprob is typically -1 to 0)
-        normalized_confidence = min(1.0, max(0.0, 1.0 + (avg_confidence / 2)))
-
-        return {
-            "text": full_text,
-            "language": info.language,
-            "language_probability": info.language_probability,
-            "confidence": normalized_confidence,
-            "segments": len(text_parts),
-        }
+            return {
+                "text": full_text,
+                "language": info.language,
+                "language_probability": info.language_probability,
+                "confidence": normalized_confidence,
+                "segments": len(text_parts),
+            }
+        except Exception as e:
+            return {"text": "", "error": str(e)}
 
     def _transcribe_openai(self, model, wav_path: str, lang: str = None) -> dict:
-        """Transcribe using openai-whisper (fallback)."""
-        import whisper
+        try:
+            result = model.transcribe(wav_path, language=lang)
+            text = result.get("text", "").strip()
 
-        result = model.transcribe(wav_path, language=lang)
-        text = result.get("text", "").strip()
+            segs = result.get("segments", [])
+            confidences = [s.get("avg_logprob", -0.5) for s in segs if "avg_logprob" in s]
+            avg_conf = sum(confidences) / len(confidences) if confidences else -0.5
+            normalized_conf = min(1.0, max(0.0, 1.0 + (avg_conf / 2)))
 
-        # Estimate confidence from segment probabilities if available
-        segs = result.get("segments", [])
-        confidences = [s.get("avg_logprob", -0.5) for s in segs if "avg_logprob" in s]
-        avg_conf = sum(confidences) / len(confidences) if confidences else -0.5
-        normalized_conf = min(1.0, max(0.0, 1.0 + (avg_conf / 2)))
-
-        return {
-            "text": text,
-            "language": result.get("language"),
-            "confidence": normalized_conf,
-            "segments": len(segs),
-        }
+            return {
+                "text": text,
+                "language": result.get("language"),
+                "confidence": normalized_conf,
+                "segments": len(segs),
+            }
+        except Exception as e:
+            return {"text": "", "error": str(e)}
 
     def execute(self, params: dict) -> dict:
-        """Main execution: record or load audio, transcribe with Whisper."""
-        duration_s = int(params.get("duration_s", 4))
-        lang = params.get("lang", "pl")  # Default Polish
-        input_audio = params.get("audio_path")
-        model_size = params.get("model", self.DEFAULT_MODEL)
-        sample_rate = int(params.get("sample_rate", 16000))
+        text_input = params.get("text", "").strip()
+        duration_s = 4
+        lang = "pl"
+        input_audio = None
+        model_size = self.DEFAULT_MODEL
+
+        if text_input:
+            if text_input.startswith("http"):
+                input_audio = text_input
+            elif text_input.isdigit():
+                duration_s = int(text_input)
+            elif text_input.startswith("lang:"):
+                lang = text_input[5:].strip()
+            elif text_input.startswith("model:"):
+                model_size = text_input[6:].strip()
+            elif text_input.startswith("duration:"):
+                duration_s = int(text_input[9:].strip())
 
         wav_path = None
         conv_tmp = None
 
         try:
-            # Load model first (fails fast if not available)
-            model, is_faster = self._load_model(model_size, lang)
+            model, is_faster = self._load_model(model_size)
 
-            # Get audio input
             if input_audio:
-                wav_path = self._ensure_wav(str(input_audio), sample_rate=sample_rate)
-                if Path(wav_path).resolve() != Path(input_audio).resolve():
-                    conv_tmp = wav_path
+                wav_path = self._ensure_wav(input_audio)
             else:
-                wav_path = self._record_wav(duration_s=duration_s, sample_rate=sample_rate)
+                if not self._has_arecord:
+                    return {
+                        "success": False,
+                        "error": "Microphone recording not available (missing arecord)",
+                        "spoken": "",
+                    }
+                fd, wav_path = tempfile.mkstemp(suffix=".wav", prefix="evo_whisper_")
+                os.close(fd)
+                cmd = [
+                    "arecord",
+                    "-q",
+                    "-d", str(int(duration_s)),
+                    "-f", "S16_LE",
+                    "-r", "16000",
+                    "-c", "1",
+                    wav_path,
+                ]
+                subprocess.run(cmd, check=True, capture_output=True, timeout=30)
 
-            # Check audio level
             has_sound, db_level, level_msg = self._check_audio_level(wav_path)
             if not has_sound:
                 return {
                     "success": True,
                     "text": "",
-                    "hardware_ok": True,
+                    "spoken": "",
                     "has_sound": False,
                     "audio_level_db": db_level,
                     "warning": f"No sound detected ({level_msg}). Check microphone.",
-                    "audio_path": wav_path if input_audio else None,
                 }
 
-            # Transcribe
             if is_faster:
                 result = self._transcribe_faster(model, wav_path, lang=lang)
             else:
                 result = self._transcribe_openai(model, wav_path, lang=lang)
 
-            text = result.get("text", "")
+            text = result.get("text", "").strip()
             confidence = result.get("confidence", 0.0)
 
             return {
                 "success": True,
                 "text": text,
-                "hardware_ok": True,
-                "has_sound": True,
-                "audio_level_db": db_level,
-                "level_info": level_msg,
+                "spoken": text,
                 "confidence": confidence,
                 "language": result.get("language"),
                 "backend": "faster-whisper" if is_faster else "openai-whisper",
                 "model": self._model_size,
-                "audio_path": wav_path if input_audio else None,
+                "audio_level_db": db_level,
+                "level_info": level_msg,
             }
 
+        except subprocess.TimeoutExpired:
+            return {
+                "success": False,
+                "error": "Operation timed out",
+                "spoken": "",
+            }
         except Exception as e:
             return {
                 "success": False,
                 "error": str(e),
-                "hardware_ok": False,
-                "text": "",
+                "spoken": "",
             }
 
         finally:
-            # Cleanup temp files
             for path in [wav_path, conv_tmp]:
-                if path and not (input_audio and Path(path).resolve() == Path(input_audio).resolve()):
+                if path:
                     try:
                         Path(path).unlink(missing_ok=True)
                     except Exception:
                         pass
 
 
-def execute(input_data: dict) -> dict:
-    return WhisperSTTSkill().execute(input_data)
+def execute(params: dict) -> dict:
+    return WhisperSTTSkill().execute(params)
 
 
 if __name__ == "__main__":
     inp = {}
     if len(sys.argv) > 1:
-        inp["audio_path"] = sys.argv[1]
+        inp["text"] = sys.argv[1]
     else:
-        inp["duration_s"] = 5
+        inp["text"] = "duration:5"
     print(json.dumps(execute(inp), indent=2, ensure_ascii=False))
