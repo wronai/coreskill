@@ -11,15 +11,13 @@ def get_info() -> dict:
 
 def health_check() -> dict:
     try:
-        # Check if espeak is available (for future TTS capability)
-        subprocess.run(['espeak', '--version'], 
-                      stdout=subprocess.DEVNULL, 
-                      stderr=subprocess.DEVNULL, 
-                      check=True)
+        # Check if espeak is available (for TTS capability, though not used in this skill)
+        subprocess.run(['espeak', '--version'], capture_output=True, timeout=5)
         return {'status': 'ok'}
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        # espeak not available, but skill can still function for echo
-        return {'status': 'ok'}
+    except FileNotFoundError:
+        return {'status': 'error', 'message': 'espeak not found (optional dependency)'}
+    except Exception as e:
+        return {'status': 'error', 'message': str(e)}
 
 class TestSupervisorProbe:
     def execute(self, params: dict) -> dict:
@@ -28,7 +26,7 @@ class TestSupervisorProbe:
             return {
                 'success': True,
                 'echo': text,
-                'original_text': text
+                'original_input': text
             }
         except Exception as e:
             return {
