@@ -6,6 +6,8 @@ import re
 import subprocess
 from pathlib import Path
 from typing import Dict, List, Any, Optional
+import urllib.request
+import urllib.error
 
 
 class BenchmarkSkill:
@@ -17,6 +19,29 @@ class BenchmarkSkill:
         self._config = self._load_config()
         self.PROVIDER_QUALITY = self._config.get("provider_scores", {})
         self.SPEED_TIERS = self._config.get("speed_tiers", {})
+        self.BENCHMARK_PROFILES = {
+            "fastest": {
+                "quality_weight": 0.20,
+                "speed_weight": 0.60,
+                "context_weight": 0.10,
+                "cost_weight": 0.10,
+                "description": "Najszybszy model, nawet kosztem jakości",
+            },
+            "best_quality": {
+                "quality_weight": 0.70,
+                "speed_weight": 0.10,
+                "context_weight": 0.15,
+                "cost_weight": 0.05,
+                "description": "Najlepsza jakość, bez względu na koszt i prędkość",
+            },
+            "balanced": {
+                "quality_weight": 0.35,
+                "speed_weight": 0.35,
+                "context_weight": 0.15,
+                "cost_weight": 0.15,
+                "description": "Zbalansowane podejście (domyślne)",
+            },
+        }
 
     def _load_config(self) -> Dict:
         possible_paths = [
@@ -79,6 +104,30 @@ class BenchmarkSkill:
 
     def _get_cached_recommendations(self, params: Dict, goal: str) -> Optional[Dict[str, Any]]:
         return None
+
+    def _call_model_for_benchmark(self, model: str, api_key: str, prompt: str, timeout: int) -> str:
+        try:
+            url = "https://openrouter.ai/api/v1/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://github.com/wronai/evo-engine",
+                "X-Title": "evo-engine"
+            }
+            data = json.dumps({
+                "model": model,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.3,
+                "max_tokens": 500,
+                "timeout": timeout
+            }).encode('utf-8')
+            
+            req = urllib.request.Request(url, data=data, headers=headers, method='POST')
+            with urllib.request.urlopen(req, timeout=timeout) as response:
+                result = json.loads(response.read().decode('utf-8'))
+                return result.get("choices", [{}])[0].get("message", {}).get("content", "")
+        except Exception as e:
+            raise Exception(f"Model call failed: {str(e)[:80]}")
 
     def execute(self, params: Dict[str, Any]) -> Dict[str, Any]:
         try:
@@ -253,43 +302,6 @@ class BenchmarkSkill:
             if pattern in name:
                 return 12
         return 30
-
-    def BENCHMARK_PROFILES(self):
-        return {
-            "fastest": {
-                "quality_weight": 0.20,
-                "speed_weight": 0.60,
-                "context_weight": 0.10,
-                "cost_weight": 0.10,
-                "description": "Najszybszy model, nawet kosztem jakości",
-            },
-            "best_quality": {
-                "quality_weight": 0.70,
-                "speed_weight": 0.10,
-                "context_weight": 0.15,
-                "cost_weight": 0.05,
-                "description": "Najlepsza jakość, bez względu na koszt i prędkość",
-            },
-            "balanced": {
-                "quality_weight": 0.35,
-                "speed_weight": 0.35,
-                "context_weight": 0.15,
-                "cost_weight": 0.15,
-                "description": "Zbalansowane podejście (domyślne)",
-            },
-        }
-
-    def _call_model_for_benchmark(self, model: str, api_key: str, prompt: str, timeout: int) -> str:
-        try:
-            import litellm
-            litellm.suppress_debug_info = True
-            kw = dict(model=model, messages=[{"role": "user", "content": prompt}], temperature=0.3, max_tokens=500, timeout=timeout)
-            if not model.startswith("ollama/") and api_key:
-                kw["api_key"] = api_key
-            response = litellm.completion(**kw)
-            return response.choices[0].message.content or ""
-        except Exception as e:
-            raise Exception(f"Model call failed: {str(e)[:80]}")
 
     def _compare_models(self, params: Dict) -> Dict[str, Any]:
         models = params.get("models", [])
