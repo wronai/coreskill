@@ -1,4 +1,5 @@
-imports
+#!/usr/bin/env python3
+"""Shell Skill v1 — execute system commands and return output."""
 import json
 import os
 import shutil
