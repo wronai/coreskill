@@ -122,8 +122,8 @@
     }
   },
   "defaults": {
-    "tts": "pyttsx3",
-    "stt": "vosk"
+    "tts": "piper",
+    "stt": "whisper"
   },
   "tier_order": {
     "lite": 0,

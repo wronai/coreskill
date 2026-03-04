@@ -2,3 +2,4 @@ litellm>=1.0.0
 nfo
 sentence-transformers
 numpy
+piper-tts

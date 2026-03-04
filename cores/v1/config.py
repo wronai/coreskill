@@ -50,6 +50,12 @@ def _load_system_config():
     }
     return _SYSTEM_CONFIG
 
+def reload_system_config():
+    """Force reload system configuration from disk (for hot-reload)."""
+    global _SYSTEM_CONFIG
+    _SYSTEM_CONFIG = None
+    return _load_system_config()
+
 # Getters for system config
 def get_system_config():
     """Get full system configuration"""

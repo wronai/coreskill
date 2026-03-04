@@ -1078,6 +1078,33 @@ def _cmd_config(a1, **ctx):
     cpr(C.CYAN, feedback)
 
 
+def _cmd_reload_config(**ctx):
+    """Reload system configuration from config/system.json without restart: /reload_config"""
+    from .config import reload_system_config, get_config_value
+    
+    cpr(C.CYAN, "🔄 Przeładowuję konfigurację z config/system.json...")
+    
+    # Reload the config
+    config = reload_system_config()
+    
+    # Show what changed - check defaults for TTS/STT
+    tts_default = get_config_value("defaults.tts", "?")
+    stt_default = get_config_value("defaults.stt", "?")
+    
+    cpr(C.GREEN, "✓ Konfiguracja przeładowana!")
+    cpr(C.DIM, f"   defaults.tts: {tts_default}")
+    cpr(C.DIM, f"   defaults.stt: {stt_default}")
+    
+    # Note: running system components may need restart to pick up all changes
+    cpr(C.YELLOW, "\n⚠️  Uwaga: Niektóre komponenty mogą wymagać restartu systemu")
+    cpr(C.DIM, "   aby w pełni zastosować zmiany (np. ProviderSelector cache)")
+    
+    ctx["logger"].core("config_reloaded", {
+        "tts_default": tts_default,
+        "stt_default": stt_default
+    })
+
+
 def _cmd_reflect(a1, **ctx):
     """Run self-reflection diagnostic: /reflect [skill_name]"""
     from .self_reflection import SelfReflection
@@ -1476,14 +1503,6 @@ def main():
         try:
             # Explicitly print and flush prompt for non-tty stdout (pipes)
             print(f"{C.GREEN}you> {C.R}", end='', flush=True)
-            
-            # Use select to check if stdin has data (non-blocking for pipes)
-            import select
-            if not select.select([sys.stdin], [], [], 0.1)[0]:
-                # No data available, continue loop (don't block on input())
-                time.sleep(0.1)
-                continue
-            
             ui = input().strip()
         except (EOFError, KeyboardInterrupt):
             cpr(C.DIM, "\nBye!")
