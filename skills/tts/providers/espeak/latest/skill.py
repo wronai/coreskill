@@ -20,6 +20,7 @@ class TTSSkill:
         if not self._backend:
             return {"success": False, "error": "espeak not installed (apt install espeak)"}
         try:
+            # Use espeak to speak the text and capture any output/errors
             result = subprocess.run(
                 [self._backend, "-v", "pl", "--", text],
                 check=True, capture_output=True, timeout=30
@@ -36,20 +37,17 @@ def get_info():
 
 
 def health_check():
-    espeak = shutil.which("espeak-ng") or shutil.which("espeak")
-    if espeak:
-        return {"status": "ok"}
-    else:
-        return {"status": "error", "message": "espeak/espeak-ng not found"}
+    return {"status": "ok" if (shutil.which("espeak-ng") or shutil.which("espeak")) else "error"}
 
 
 def execute(params: dict) -> dict:
+    """Module-level execute function that creates class instance and calls .execute(params)."""
     skill = TTSSkill()
     return skill.execute(params)
 
 
 if __name__ == "__main__":
-    # Simple test
-    skill = TTSSkill()
-    result = skill.execute({"text": "Cześć, to jest test systemu głosowego."})
+    # Test block
+    test_params = {"text": "Witaj w systemie TTS. To jest test mowy na język polski."}
+    result = execute(test_params)
     print(result)
