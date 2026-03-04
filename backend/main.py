@@ -74,6 +74,32 @@ CHAT_LOG_FILE = DATA_DIR / "chat_history.jsonl"
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger("coreskill")
 
+# ---------------------------------------------------------------------------
+# CoreSkill Integration (after logging setup)
+# ---------------------------------------------------------------------------
+import sys
+_CORESKILL_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(_CORESKILL_ROOT))
+
+# Initialize flag BEFORE try block to avoid UnboundLocalError
+CORESKILL_AVAILABLE = False
+skill_manager = None
+evo_engine = None
+intent_engine = None
+
+# Import CoreSkill components
+try:
+    from cores.v1.skill_manager import SkillManager
+    from cores.v1.evo_engine import EvoEngine
+    from cores.v1.intent import IntentEngine
+    from cores.v1.logger import Logger
+    from cores.v1.config import Config
+    CORESKILL_AVAILABLE = True
+    log.info("CoreSkill modules loaded successfully")
+except Exception as e:
+    CORESKILL_AVAILABLE = False
+    log.warning(f"CoreSkill modules not available: {e}")
+
 # Debug: log env state (without exposing full keys)
 log.info(f"OLLAMA_HOST={OLLAMA_HOST}")
 log.info(f"OPENROUTER_KEY set: {bool(OPENROUTER_KEY)} (len={len(OPENROUTER_KEY)})")
@@ -86,19 +112,23 @@ whisper_model = None
 active_connections: dict[str, WebSocket] = {}
 chat_histories: dict[str, list] = {}
 
-SYSTEM_PROMPT = """Jesteś CoreSkill — ewolucyjnym asystentem AI z samonaprawiającymi się umiejętnościami.
-Twoje możliwości:
-- 🧠 Inteligentna klasyfikacja intencji (ML-based, 3-tier)
-- 🔧 Samonaprawianie i ewolucja skillów (AutoRepair, EvoEngine)
-- 🎯 35+ skillów: shell, web search, task manager, file manager, TTS, STT, benchmark...
-- 🔊 Tryb głosowy z pełnym STT/TTS
-- 💬 Wielojęzyczność: polski i angielski
-- ⚡ Tiered LLM: free → local → paid fallback
-- 📊 Monitoring zasobów, proactive scheduling, quality gates
+SYSTEM_PROMPT = """Jesteś CoreSkill Demo — asystentem AI z obsługą głosową STT/TTS.
+Możliwości:
+- 💬 Chat z odpowiedziami LLM (OpenRouter/Ollama)
+- 🔊 Text-to-Speech (edge-tts)
+- 🎤 Speech-to-Text (faster-whisper)
 
-Odpowiadaj konkretnie, pomocnie, po polsku (chyba że user pisze po angielsku).
-Demonstruj możliwości systemu gdy to stosowne.
-Jeśli user pyta o architekturę — opisz modularny system 40+ core modules.
+Zasady:
+- Odpowiadaj ZWIĘŹLE (2-4 zdania max)
+- Nie wymyślaj funkcji których nie masz
+- Nie pisz tabel markdown ani formatowania ASCII
+- Po polsku (chyba że user pisze po angielsku)
+
+DOSTĘPNE KOMENDY:
+/help - lista komend
+/status - status systemu
+/skills - lista skillów demo
+/clear - wyczyść historię
 """
 
 
@@ -154,10 +184,11 @@ class LLMClient:
         return self._echo_response(messages)
 
     async def _try_ollama(self, messages: list[dict]) -> Optional[str]:
+        """Try Ollama with qwen2.5:1.5b (available model)."""
         try:
             resp = await self.http.post(
                 f"{OLLAMA_HOST}/api/chat",
-                json={"model": "phi3:mini", "messages": messages, "stream": False},
+                json={"model": "qwen2.5:1.5b", "messages": messages, "stream": False},
                 timeout=90.0,
             )
             if resp.status_code == 200:
@@ -176,26 +207,26 @@ class LLMClient:
         # Get model from state file (format: "openrouter/namespace/model")
         raw_model = _STATE.get("model", "")
         if raw_model and raw_model.startswith("openrouter/"):
-            # Strip "openrouter/" prefix to get actual model path
             model = raw_model.replace("openrouter/", "", 1)
         else:
-            # Fallback to default free model
             model = "meta-llama/llama-3.3-70b-instruct:free"
         
-        log.info(f"[OpenRouter] Using model: {model}")
-        try:
-            resp = await self.http.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={"Authorization": f"Bearer {OPENROUTER_KEY}"},
-                json={"model": model, "messages": messages},
-                timeout=30.0,
-            )
-            if resp.status_code == 200:
-                return resp.json()["choices"][0]["message"]["content"]
-            else:
-                log.warning(f"OpenRouter HTTP {resp.status_code}: {resp.text[:200]}")
-        except Exception as e:
-            log.warning(f"OpenRouter error: {e}")
+        # Try configured model first, then fallback to known free model
+        for try_model in [model, "meta-llama/llama-3.3-70b-instruct:free"]:
+            log.info(f"[OpenRouter] Trying model: {try_model}")
+            try:
+                resp = await self.http.post(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {OPENROUTER_KEY}"},
+                    json={"model": try_model, "messages": messages},
+                    timeout=30.0,
+                )
+                if resp.status_code == 200:
+                    return resp.json()["choices"][0]["message"]["content"]
+                else:
+                    log.warning(f"OpenRouter HTTP {resp.status_code} for {try_model}: {resp.text[:100]}")
+            except Exception as e:
+                log.warning(f"OpenRouter error for {try_model}: {e}")
         return None
 
     async def _try_anthropic(self, messages: list[dict]) -> Optional[str]:
@@ -382,6 +413,8 @@ stt = STTEngine()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     log.info("CoreSkill Demo starting...")
+    # Initialize CoreSkill
+    await _init_coreskill()
     # Try to pull a small model on startup
     asyncio.create_task(_pull_ollama_model())
     yield
@@ -389,22 +422,27 @@ async def lifespan(app: FastAPI):
     log.info("CoreSkill Demo shutdown.")
 
 
-async def _pull_ollama_model():
-    """Background: pull small Ollama model if none exist."""
-    await asyncio.sleep(5)
+async def _init_coreskill():
+    """Initialize CoreSkill components for skill execution."""
+    global skill_manager, evo_engine, intent_engine
+    if not CORESKILL_AVAILABLE:
+        log.warning("CoreSkill not available, skipping initialization")
+        return
+    
     try:
-        async with httpx.AsyncClient(timeout=10.0) as c:
-            r = await c.get(f"{OLLAMA_HOST}/api/tags")
-            if r.status_code == 200 and not r.json().get("models"):
-                log.info("Pulling phi3:mini for Ollama (first run)...")
-                await c.post(
-                    f"{OLLAMA_HOST}/api/pull",
-                    json={"name": "phi3:mini", "stream": False},
-                    timeout=600.0,
-                )
-                log.info("Model pulled successfully.")
+        # Load config and logger
+        cfg = Config.from_file(_CORESKILL_ROOT / "config" / "system.json")
+        logger = Logger("chat_backend")
+        
+        # Initialize components
+        skill_manager = SkillManager(cfg.paths["skills"], logger=logger)
+        intent_engine = IntentEngine()
+        evo_engine = EvoEngine(skill_manager, None, logger, intent_engine)
+        
+        log.info(f"CoreSkill initialized: {len(skill_manager.list_skills())} skills available")
     except Exception as e:
-        log.info(f"Ollama model pull skipped: {e}")
+        log.error(f"Failed to initialize CoreSkill: {e}")
+        CORESKILL_AVAILABLE = False
 
 
 # ---------------------------------------------------------------------------
@@ -567,11 +605,28 @@ async def websocket_chat(ws: WebSocket):
             if content.startswith("/"):
                 response = _handle_command(content, session_id)
             else:
-                # LLM response
+                # Try CoreSkill first, then fall back to LLM
                 await ws.send_json({"type": "typing", "content": True})
-                log.info(f"[{session_id}] Sending to LLM: {content[:50]}...")
-                response = await llm.llm_chat(chat_histories[session_id])
-                log.info(f"[{session_id}] LLM response ({llm.active_provider}): {response[:50]}...")
+                
+                skill_used, skill_result = await _execute_skill_for_chat(content)
+                
+                if skill_used:
+                    # Skill executed successfully - use its result
+                    log.info(f"[{session_id}] Skill result: {skill_result[:50]}...")
+                    # Add skill result to context and let LLM summarize it
+                    chat_histories[session_id].append({
+                        "role": "system", 
+                        "content": f"Wykonano skill. Wynik: {skill_result}\nPodsumuj krótko po polsku."
+                    })
+                    response = await llm.llm_chat(chat_histories[session_id])
+                    # Remove the system message after getting response
+                    chat_histories[session_id].pop()
+                else:
+                    # No skill matched - use LLM directly
+                    log.info(f"[{session_id}] Sending to LLM: {content[:50]}...")
+                    response = await llm.llm_chat(chat_histories[session_id])
+                
+                log.info(f"[{session_id}] Response ({llm.active_provider}): {response[:50]}...")
                 
             # Log chat to file
             chat_log_entry = {
@@ -616,6 +671,52 @@ async def websocket_chat(ws: WebSocket):
     finally:
         active_connections.pop(session_id, None)
         chat_histories.pop(session_id, None)
+
+
+async def _execute_skill_for_chat(user_msg: str) -> tuple[bool, str]:
+    """Check intent and execute skill if needed. Returns (skill_used, result)."""
+    if not CORESKILL_AVAILABLE or skill_manager is None or intent_engine is None:
+        return False, ""
+    
+    try:
+        # Get available skills
+        skills = skill_manager.list_skills()
+        
+        # Check intent
+        analysis = intent_engine.classify(user_msg, skills)
+        action = analysis.action if analysis else "chat"
+        skill_name = analysis.skill if analysis else ""
+        
+        log.info(f"[Intent] action={action}, skill={skill_name}, confidence={analysis.confidence if analysis else 0}")
+        
+        # If chat intent, let LLM handle it
+        if action == "chat" or not skill_name:
+            return False, ""
+        
+        # Execute skill via EvoEngine
+        if evo_engine:
+            outcome = evo_engine.handle_request(user_msg, skills, analysis=analysis.__dict__ if analysis else None)
+            if outcome and outcome.get("type") == "success":
+                result = outcome.get("result", {})
+                result_data = result.get("result", "") if isinstance(result, dict) else str(result)
+                log.info(f"[Skill] {skill_name} executed successfully")
+                return True, f"[{skill_name}] {result_data}"
+            else:
+                error = outcome.get("message", "unknown error") if outcome else "no outcome"
+                log.warning(f"[Skill] {skill_name} failed: {error}")
+                return False, ""
+        
+        # Fallback: direct skill execution
+        if skill_name in skills:
+            result = skill_manager.exec_skill(skill_name, inp={"text": user_msg})
+            if result.get("success"):
+                result_data = result.get("result", "")
+                log.info(f"[Skill] {skill_name} executed (direct)")
+                return True, f"[{skill_name}] {result_data}"
+    except Exception as e:
+        log.warning(f"[Skill] Execution error: {e}")
+    
+    return False, ""
 
 
 def _handle_command(cmd: str, session_id: str) -> str:
