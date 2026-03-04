@@ -4,9 +4,9 @@
 
 - **Project**: .
 - **Analysis Mode**: static
-- **Total Functions**: 1009
-- **Total Classes**: 134
-- **Modules**: 109
+- **Total Functions**: 1044
+- **Total Classes**: 141
+- **Modules**: 115
 - **Entry Points**: 0
 
 ## Architecture by Module
@@ -238,15 +238,16 @@ Directives are short text notes th
 - **Methods**: 12
 - **Key Methods**: cores.v1.llm_client.LLMClient.__init__, cores.v1.llm_client.LLMClient.tier_info, cores.v1.llm_client.LLMClient._is_available, cores.v1.llm_client.LLMClient._report_ok, cores.v1.llm_client.LLMClient._report_fail, cores.v1.llm_client.LLMClient.chat, cores.v1.llm_client.LLMClient._build_error_msg, cores.v1.llm_client.LLMClient._try_model, cores.v1.llm_client.LLMClient._get_unavailable_reason, cores.v1.llm_client.LLMClient.gen_code
 
+### cores.v1.quality_gate.SkillQualityGate
+> Validates skill quality before registration.
+Each check contributes a weight to the final score.
+- **Methods**: 11
+- **Key Methods**: cores.v1.quality_gate.SkillQualityGate.__init__, cores.v1.quality_gate.SkillQualityGate.evaluate, cores.v1.quality_gate.SkillQualityGate.should_register, cores.v1.quality_gate.SkillQualityGate.compare, cores.v1.quality_gate.SkillQualityGate._check_preflight, cores.v1.quality_gate.SkillQualityGate._check_health, cores.v1.quality_gate.SkillQualityGate._check_test_exec, cores.v1.quality_gate.SkillQualityGate._check_output, cores.v1.quality_gate.SkillQualityGate._check_code_quality, cores.v1.quality_gate.SkillQualityGate._load_module
+
 ### cores.v1.garbage_collector.EvolutionGarbageCollector
 > Cleans up failed evolution stubs, promotes stable versions.
 - **Methods**: 11
 - **Key Methods**: cores.v1.garbage_collector.EvolutionGarbageCollector.__init__, cores.v1.garbage_collector.EvolutionGarbageCollector.is_stub, cores.v1.garbage_collector.EvolutionGarbageCollector.is_broken, cores.v1.garbage_collector.EvolutionGarbageCollector.scan_versions, cores.v1.garbage_collector.EvolutionGarbageCollector.cleanup_provider, cores.v1.garbage_collector.EvolutionGarbageCollector.cleanup_legacy, cores.v1.garbage_collector.EvolutionGarbageCollector.migrate_to_stable_latest, cores.v1.garbage_collector.EvolutionGarbageCollector._copy_version, cores.v1.garbage_collector.EvolutionGarbageCollector.trim_archive, cores.v1.garbage_collector.EvolutionGarbageCollector.cleanup_all
-
-### cores.v1.logger.Logger
-> Per-skill, per-core structured logging with learning.
-- **Methods**: 11
-- **Key Methods**: cores.v1.logger.Logger.__init__, cores.v1.logger.Logger._write, cores.v1.logger.Logger._write_markdown, cores.v1.logger.Logger._format_markdown, cores.v1.logger.Logger._entry, cores.v1.logger.Logger.core, cores.v1.logger.Logger.skill, cores.v1.logger.Logger.read_skill_log, cores.v1.logger.Logger.read_core_log, cores.v1.logger.Logger.get_markdown_logs
 
 ## Data Transformation Functions
 
@@ -272,6 +273,30 @@ Returns (valid: bool, reason: str).
 > One-line status string for display.
 - **Output to**: self.snapshot
 
+### cores.v1.skill_validator._validate_stt
+> STT-specific validation: check for hardware errors, silence, empty transcription.
+- **Output to**: result.get, isinstance, inner.get, inner.get, ValidationResult
+
+### cores.v1.skill_validator._validate_shell
+> Shell-specific validation: check exit code.
+- **Output to**: result.get, inner.get, isinstance, ValidationResult, inner.get
+
+### cores.v1.skill_validator._validate_tts
+> TTS-specific validation: check for error field.
+- **Output to**: result.get, inner.get, isinstance, ValidationResult
+
+### cores.v1.skill_validator._validate_web_search
+> Web search validation: check for empty results, especially local network queries.
+- **Output to**: result.get, inner.get, None.lower, any, isinstance
+
+### cores.v1.skill_validator.SkillValidator.validate
+> Validate a skill execution result.
+
+1. Check outer success flag
+2. Check inner success flag
+3. Run s
+- **Output to**: result.get, ValidationResult, result.get, ValidationResult, isinstance
+
 ### cores.v1.smart_intent.EmbeddingEngine.encode
 > Encode texts to vectors.
 - **Output to**: self._try_init, self._model.encode, None.toarray, TfidfVectorizer, None.toarray
@@ -284,8 +309,8 @@ Returns: {"matches": bool, "diff_lines": int, "he
 
 ### cores.v1.evo_engine.EvoEngine._validate_result
 > Validate whether the skill result actually achieved the goal.
-Returns {verdict: success|partial|fail
-- **Output to**: result.get, result.get, isinstance, inner.get, inner.get
+Delegates to SkillValidator plugin reg
+- **Output to**: self.skill_validator.validate
 
 ### cores.v1.session_config.SessionConfig.format_change_feedback
 > Format configuration change for user feedback.
@@ -322,10 +347,10 @@ Functions exposed as public API (no underscore prefix):
 - `cores.v1.intent_engine.IntentEngine.analyze` - 48 calls
 - `scripts.simulate.Simulator.run_scenario` - 47 calls
 - `cores.v1.skill_logger.get_markdown_logs` - 44 calls
+- `cores.v1.skill_manager.SkillManager.smart_evolve` - 43 calls
 - `cores.v1.intent.SmartIntentClassifier.classify` - 43 calls
 - `cores.v1.evo_engine.EvoEngine.handle_request` - 42 calls
 - `cores.v1.llm_client.LLMClient.chat` - 37 calls
-- `cores.v1.skill_manager.SkillManager.smart_evolve` - 37 calls
 - `cli.cmd_cache_reset` - 36 calls
 - `cores.v1.core.main` - 36 calls
 - `main.bootstrap` - 33 calls
@@ -335,6 +360,7 @@ Functions exposed as public API (no underscore prefix):
 - `cores.v1.evo_engine.EvoEngine.evolve_skill` - 32 calls
 - `examples.advanced.01_pipeline.main` - 32 calls
 - `cores.v1.system_identity.SystemIdentity.build_system_prompt` - 31 calls
+- `cores.v1.skill_manager.SkillManager.create_skill` - 31 calls
 - `cli.cmd_status` - 30 calls
 - `cli.cmd_logs_reset` - 29 calls
 - `cores.v1.repair_journal.RepairJournal.ask_llm_and_try` - 28 calls
@@ -345,7 +371,6 @@ Functions exposed as public API (no underscore prefix):
 - `cores.v1.preflight.SkillPreflight.auto_fix_imports` - 26 calls
 - `seeds.core_v1.SkillManager.exec_skill` - 26 calls
 - `cores.v1.skill_logger.get_health_markdown` - 25 calls
-- `cores.v1.skill_manager.SkillManager.create_skill` - 24 calls
 - `skills.local_computer_discovery.v3.skill.LocalComputerDiscovery.execute` - 24 calls
 - `cli.main_cli` - 23 calls
 - `skills.git_ops.v1.skill.GitOpsSkill.execute` - 23 calls

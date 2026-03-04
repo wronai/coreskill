@@ -221,8 +221,8 @@ class SkillQualityGate:
             for node in ast.walk(tree):
                 if isinstance(node, ast.ClassDef):
                     if (node.body and isinstance(node.body[0], ast.Expr)
-                            and isinstance(node.body[0].value,
-                                           (ast.Constant, ast.Str))):
+                            and isinstance(node.body[0].value, ast.Constant)
+                            and isinstance(node.body[0].value.value, str)):
                         has_docstrings = True
             if not has_docstrings and classes > 0:
                 report.warnings.append("code_quality:no_docstrings")

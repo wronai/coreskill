@@ -1,8 +1,0 @@
-{
-  "name": "test_supervisor_probe",
-  "version": "v10",
-  "description": "A simple skill that echoes its input text",
-  "created_at": "2026-03-04T15:24:36.987337+00:00",
-  "checksum": "da95b46ae4b023df0a2fc5868ddd36db",
-  "quality_score": 0.99
-}

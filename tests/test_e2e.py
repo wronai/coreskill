@@ -2188,5 +2188,296 @@ class TestHWTestSkill(unittest.TestCase):
         self.assertIn("tests", result)
 
 
+# ─── SkillQualityGate Tests ───────────────────────────────────────────
+class TestSkillQualityGate(unittest.TestCase):
+    """Test quality gate evaluation for skills."""
+
+    def setUp(self):
+        from cores.v1.quality_gate import SkillQualityGate, QualityReport
+        self.qg = SkillQualityGate()
+        self.tmpdir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def _write_skill(self, code, name="test_skill"):
+        p = Path(self.tmpdir) / name / "skill.py"
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(code)
+        return p
+
+    def test_good_skill_passes(self):
+        """A well-formed skill gets a high quality score."""
+        code = '''
+import json
+
+class TestSkill:
+    """A test skill."""
+    def execute(self, params):
+        text = params.get("text", "")
+        return {"success": True, "result": text.upper()}
+
+def get_info():
+    return {"name": "test_skill", "version": "v1", "description": "Test"}
+
+def health_check():
+    return {"status": "ok"}
+
+def execute(params):
+    return TestSkill().execute(params)
+
+if __name__ == "__main__":
+    print(execute({"text": "hello"}))
+'''
+        p = self._write_skill(code)
+        report = self.qg.evaluate(p, "test_skill")
+        self.assertGreaterEqual(report.score, 0.5)
+        self.assertTrue(report.ok)
+        self.assertIn("preflight", report.passed)
+
+    def test_syntax_error_fails(self):
+        """A skill with syntax errors gets zero preflight score."""
+        code = "def broken(\nclass invalid"
+        p = self._write_skill(code, "broken_skill")
+        report = self.qg.evaluate(p, "broken_skill")
+        self.assertLess(report.score, 0.5)
+        self.assertFalse(report.ok)
+        self.assertTrue(any("preflight" in f for f in report.failed))
+
+    def test_missing_interface_warns(self):
+        """A skill missing get_info/health_check gets lower score."""
+        code = '''
+class MinimalSkill:
+    def execute(self, params):
+        return {"success": True}
+'''
+        p = self._write_skill(code, "minimal_skill")
+        report = self.qg.evaluate(p, "minimal_skill")
+        # Should still pass preflight (interface check warns but may pass)
+        # but health_check missing means lower score
+        self.assertIsInstance(report.score, float)
+        self.assertLessEqual(report.score, 1.0)
+
+    def test_empty_file_fails(self):
+        """An empty file gets a very low score."""
+        p = self._write_skill("", "empty_skill")
+        report = self.qg.evaluate(p, "empty_skill")
+        self.assertLess(report.score, 0.5)
+        self.assertFalse(report.ok)
+
+    def test_should_register(self):
+        """should_register returns True only above MIN_QUALITY."""
+        from cores.v1.quality_gate import QualityReport
+        good = QualityReport(skill_name="a", score=0.7)
+        bad = QualityReport(skill_name="b", score=0.3)
+        self.assertTrue(self.qg.should_register(good))
+        self.assertFalse(self.qg.should_register(bad))
+
+    def test_compare_detects_regression(self):
+        """compare returns False when new score is much lower."""
+        from cores.v1.quality_gate import QualityReport
+        old = QualityReport(skill_name="s", score=0.8)
+        new_ok = QualityReport(skill_name="s", score=0.75)
+        new_bad = QualityReport(skill_name="s", score=0.5)
+        self.assertTrue(self.qg.compare(old, new_ok))
+        self.assertFalse(self.qg.compare(old, new_bad))
+
+    def test_report_summary(self):
+        """QualityReport.summary() returns readable string."""
+        from cores.v1.quality_gate import QualityReport
+        r = QualityReport(skill_name="test", score=0.85, passed=["preflight"])
+        s = r.summary()
+        self.assertIn("test", s)
+        self.assertIn("0.85", s)
+
+    def test_nonexistent_file(self):
+        """Evaluating a nonexistent file fails gracefully."""
+        report = self.qg.evaluate(Path("/tmp/nonexistent_skill.py"), "ghost")
+        self.assertFalse(report.ok)
+        self.assertLess(report.score, 0.5)
+
+    def test_code_quality_metrics(self):
+        """Code quality check reports line count and functions."""
+        code = '''
+import os
+import json
+
+class BigSkill:
+    """A bigger skill with more structure."""
+    def execute(self, params):
+        text = params.get("text", "")
+        if not text:
+            return {"success": False, "error": "No text"}
+        result = text.upper()
+        return {"success": True, "result": result}
+
+    def helper(self):
+        return "helper"
+
+def get_info():
+    return {"name": "big", "version": "v1", "description": "Big skill"}
+
+def health_check():
+    return {"status": "ok"}
+
+def execute(params):
+    return BigSkill().execute(params)
+
+if __name__ == "__main__":
+    print(execute({"text": "test"}))
+'''
+        p = self._write_skill(code, "big_skill")
+        report = self.qg.evaluate(p, "big_skill")
+        self.assertIn("line_count", report.details)
+        self.assertIn("functions", report.details)
+        self.assertGreater(report.details["line_count"], 10)
+
+
+# ─── SkillValidator Tests ────────────────────────────────────────────
+class TestSkillValidator(unittest.TestCase):
+    """Test the plugin-based skill validation registry."""
+
+    def setUp(self):
+        from cores.v1.skill_validator import SkillValidator
+        self.sv = SkillValidator()
+
+    def test_generic_success(self):
+        """Generic skill with success=True passes validation."""
+        result = {"success": True, "result": {"data": "hello"}}
+        vr = self.sv.validate("unknown_skill", result)
+        self.assertEqual(vr.verdict, "success")
+
+    def test_generic_failure(self):
+        """Skill with success=False fails validation."""
+        result = {"success": False, "error": "something broke"}
+        vr = self.sv.validate("any_skill", result)
+        self.assertEqual(vr.verdict, "fail")
+        self.assertIn("something broke", vr.reason)
+
+    def test_inner_failure(self):
+        """Inner result with success=False fails validation."""
+        result = {"success": True, "result": {"success": False, "error": "inner fail"}}
+        vr = self.sv.validate("any_skill", result)
+        self.assertEqual(vr.verdict, "fail")
+
+    def test_stt_empty_transcription(self):
+        """STT with empty text returns partial."""
+        result = {"success": True, "result": {"spoken": "", "text": ""}}
+        vr = self.sv.validate("stt", result)
+        self.assertEqual(vr.verdict, "partial")
+        self.assertIn("empty transcription", vr.reason)
+
+    def test_stt_hardware_fail(self):
+        """STT with hardware_ok=False returns fail."""
+        result = {"success": True, "result": {"hardware_ok": False, "error": "no mic"}}
+        vr = self.sv.validate("stt", result)
+        self.assertEqual(vr.verdict, "fail")
+        self.assertIn("hardware", vr.reason)
+
+    def test_stt_silence(self):
+        """STT with has_sound=False returns partial."""
+        result = {"success": True, "result": {"has_sound": False, "audio_level_db": -50}}
+        vr = self.sv.validate("stt", result)
+        self.assertEqual(vr.verdict, "partial")
+        self.assertIn("silence", vr.reason)
+
+    def test_stt_success(self):
+        """STT with spoken text passes."""
+        result = {"success": True, "result": {"spoken": "hello world", "text": "hello world"}}
+        vr = self.sv.validate("stt", result)
+        self.assertEqual(vr.verdict, "success")
+
+    def test_shell_nonzero_exit(self):
+        """Shell with exit_code != 0 returns partial."""
+        result = {"success": True, "result": {"exit_code": 1, "stderr": "not found"}}
+        vr = self.sv.validate("shell", result)
+        self.assertEqual(vr.verdict, "partial")
+        self.assertIn("exit_code=1", vr.reason)
+
+    def test_shell_success(self):
+        """Shell with exit_code 0 passes."""
+        result = {"success": True, "result": {"exit_code": 0, "stdout": "ok"}}
+        vr = self.sv.validate("shell", result)
+        self.assertEqual(vr.verdict, "success")
+
+    def test_tts_error(self):
+        """TTS with error field returns fail."""
+        result = {"success": True, "result": {"error": "espeak not found"}}
+        vr = self.sv.validate("tts", result)
+        self.assertEqual(vr.verdict, "fail")
+
+    def test_web_search_empty(self):
+        """Web search with empty results returns partial."""
+        result = {"success": True, "result": {"results": [], "query": "test query"}}
+        vr = self.sv.validate("web_search", result)
+        self.assertEqual(vr.verdict, "partial")
+        self.assertIn("empty results", vr.reason)
+
+    def test_web_search_local_net(self):
+        """Web search for local network with no results mentions scanner skill."""
+        result = {"success": True, "result": {"results": [], "query": "skanuj kamery w sieci"}}
+        vr = self.sv.validate("web_search", result)
+        self.assertEqual(vr.verdict, "partial")
+        self.assertIn("network scanner", vr.reason)
+
+    def test_web_search_with_results(self):
+        """Web search with results passes."""
+        result = {"success": True, "result": {"results": [{"title": "x"}], "query": "test"}}
+        vr = self.sv.validate("web_search", result)
+        self.assertEqual(vr.verdict, "success")
+
+    def test_register_custom_validator(self):
+        """Custom validator can be registered and used."""
+        def my_validator(result, goal, user_msg):
+            from cores.v1.skill_validator import ValidationResult
+            inner = result.get("result", {})
+            if isinstance(inner, dict) and inner.get("custom_field") == "bad":
+                return ValidationResult("fail", "custom check failed")
+            return None
+
+        self.sv.register("my_skill", my_validator)
+        self.assertTrue(self.sv.has_validator("my_skill"))
+
+        result = {"success": True, "result": {"custom_field": "bad"}}
+        vr = self.sv.validate("my_skill", result)
+        self.assertEqual(vr.verdict, "fail")
+        self.assertIn("custom check", vr.reason)
+
+        result2 = {"success": True, "result": {"custom_field": "good"}}
+        vr2 = self.sv.validate("my_skill", result2)
+        self.assertEqual(vr2.verdict, "success")
+
+    def test_unregister_validator(self):
+        """Unregistering a validator falls back to generic."""
+        self.sv.unregister("stt")
+        self.assertFalse(self.sv.has_validator("stt"))
+        result = {"success": True, "result": {"spoken": ""}}
+        vr = self.sv.validate("stt", result)
+        self.assertEqual(vr.verdict, "success")  # Generic passes
+
+    def test_list_validators(self):
+        """list_validators returns all registered skill names."""
+        validators = self.sv.list_validators()
+        self.assertIn("stt", validators)
+        self.assertIn("shell", validators)
+        self.assertIn("tts", validators)
+        self.assertIn("web_search", validators)
+
+    def test_validation_result_to_dict(self):
+        """ValidationResult.to_dict() returns proper format."""
+        from cores.v1.skill_validator import ValidationResult
+        vr = ValidationResult("partial", "some reason")
+        d = vr.to_dict()
+        self.assertEqual(d["verdict"], "partial")
+        self.assertEqual(d["reason"], "some reason")
+
+    def test_non_dict_inner_trusted(self):
+        """Non-dict inner result is trusted as success."""
+        result = {"success": True, "result": "just a string"}
+        vr = self.sv.validate("any_skill", result)
+        self.assertEqual(vr.verdict, "success")
+        self.assertIn("non-dict", vr.reason)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

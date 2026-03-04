@@ -1,108 +1,130 @@
 # TODO / Roadmap CoreSkill
 
-## Sprint 3: Core Refinement (WIP)
+## Current: Sprint 5 — Stabilization & Polish
 
-### Documentation
-- [x] Update README.md with current features
-- [x] Create architecture.md
-- [x] Create api_reference.md  
-- [x] Create creating_skills.md
-- [x] Create configuration.md
-- [x] Create troubleshooting.md
-- [x] Create examples/ folder with usage examples
-- [ ] Split smart_intent.py god-module (low priority)
+### Performance (P1)
+- [ ] Cache intent embeddings on disk (sbert model loads ~3s on startup)
+- [ ] Async LLM calls with asyncio (currently blocking)
+- [ ] Parallel skill execution for independent pipeline steps
+- [ ] Reduce boot time (currently ~5-8s with all components)
 
-### CLI
-- [x] Create coreskill CLI entry point
-- [x] Add coreskill logs reset command
-- [x] Add coreskill cache reset command
-- [x] Add coreskill status command
+### Code Quality (P1)
+- [ ] Split `smart_intent.py` (929 lines) — extract EmbeddingEngine, LocalLLMClassifier
+- [ ] Split `evo_engine.py` (817 lines) — extract validation, reflection triggers
+- [ ] Standardize meta.json / manifest.json schema across all skills
+- [ ] Improve type hints coverage in core modules
+- [ ] Unify error handling across skills (currently ad-hoc per skill)
 
-### API Testing
-- [x] Create openrouter_api_test skill
-- [x] Add API key validation on receipt
+### Testing (P1)
+- [ ] Increase test coverage to 90% (currently ~70% estimated)
+- [ ] Property-based testing for intent classification
+- [ ] Performance regression benchmarks
+- [ ] Integration tests for full boot → request → response cycle
 
-### Packaging
-- [x] Create Python package structure
-- [x] Update setup.py with entry points
-- [x] Create MANIFEST.in
+### Documentation (P2)
+- [ ] Auto-generate skill API docs from meta.json + docstrings
+- [ ] Add inline architecture diagrams (mermaid)
+- [ ] Document EventBus event catalog
+- [ ] Document QualityGate scoring criteria
 
-## Sprint 4: Future Enhancements
+## Sprint 6: Future Features
 
-### Performance
-- [ ] Cache intent embeddings on disk
-- [ ] Parallel skill execution for independent steps
-- [ ] Async LLM calls with asyncio
+### User Interface (P2)
+- [ ] Web UI (Streamlit/Gradio) for skill management
+- [ ] REST API server for remote access
+- [ ] Dashboard for monitoring (resource pressure, skill health, repair history)
 
-### Features
-- [ ] Web UI (Streamlit/Gradio)
-- [ ] REST API server
-- [ ] Multi-user support
-- [ ] Skill marketplace
-- [ ] Automatic skill documentation generation
-
-### Testing
-- [ ] Increase test coverage to 90%
-- [ ] Property-based testing
-- [ ] Performance benchmarks
-- [ ] Stress testing
-
-### Security
-- [ ] Sandboxing skill execution
-- [ ] API key encryption
-- [ ] Audit logging
+### Multi-user (P3)
+- [ ] Multi-user support with isolated state
+- [ ] Skill marketplace (share/import skills)
 - [ ] Rate limiting per user
 
-## Backlog
+### Security (P2)
+- [ ] Sandboxing skill execution (subprocess isolation)
+- [ ] API key encryption at rest
+- [ ] Audit logging (who ran what, when)
 
-### Nice to have
-- [ ] Git integration for skill versioning
-- [ ] Docker optimization
+### Voice (P2)
+- [ ] Voice wake word detection (always-listening mode)
+- [ ] Multi-language STT/TTS support (currently PL/EN)
+- [ ] Streaming TTS (currently batch)
+
+## Backlog (P3)
+
+- [ ] Git integration for skill versioning (currently file-based snapshots)
+- [ ] Docker optimization (multi-stage builds, smaller images)
 - [ ] Cloud deployment templates (AWS/GCP/Azure)
 - [ ] Mobile app companion
-- [ ] Voice wake word detection
-- [ ] Real-time collaboration
-
-### Technical debt
-- [ ] Refactor evo_engine.py (too large)
-- [ ] Unify error handling across skills
-- [ ] Standardize meta.json schema
-- [ ] Improve type hints coverage
+- [ ] Real-time collaboration (multi-user editing skills)
+- [ ] Skill dependency graph visualization
+- [ ] Auto-generated changelogs per skill
 
 ## Completed Sprints
 
-### Sprint 1: Skill Versioning ✅
-- [x] EvolutionGarbageCollector
-- [x] stable/latest/archive structure
-- [x] ProviderChain auto-degradation
-- [x] 208 tests passing
+### Sprint 4: Adaptive Systems ✅
+- [x] AdaptiveResourceMonitor (EWMA trend detection, pressure scoring, hysteresis alerts)
+- [x] ProactiveScheduler (threading-based, resource alerts 30s, GC 3600s, health 300s)
+- [x] LearnedRepairStrategy (DecisionTree from sklearn, trained on RepairJournal)
+- [x] UCB1BanditSelector (multi-armed bandit for provider selection)
+- [x] resilience.py (tenacity retry + structlog structured logging)
+- [x] EventBus (blinker pub/sub decoupling)
+- [x] QualityGate (skill quality validation before registration)
+- [x] SkillValidator (plugin registry for result validation)
+- [x] FuzzyCommandRouter (rapidfuzz typo-tolerant dispatch)
+- [x] SessionConfig (hot-swappable providers/models via natural language)
+- [x] ConfigGenerator (LLM-generated configs for missing files)
+- [x] 258 tests passing
 
-### Sprint 2: Provider Architecture ✅
-- [x] Core split into modules
-- [x] ProviderSelector with ResourceMonitor
-- [x] Multi-provider skills (TTS, STT)
-- [x] Capability/provider architecture
+### Sprint 3: Documentation & Packaging ✅
+- [x] Complete docs rewrite (architecture, API reference, creating_skills, configuration, troubleshooting)
+- [x] coreskill CLI (status, logs reset, cache reset)
+- [x] openrouter_api_test skill with API key validation
+- [x] Python package structure (setup.py, MANIFEST.in, entry points)
+- [x] Examples folder
+
+### Sprint 2: Self-Healing & Identity ✅
+- [x] AutoRepair (5-phase: DIAGNOSE → PLAN → FIX → VERIFY → REFLECT)
+- [x] SelfReflection (7 diagnostic checks + LLM analysis)
+- [x] RepairJournal (persistent trial DB with known fixes)
+- [x] StableSnapshot (stable/latest/archive/branches version management)
+- [x] SystemIdentity (dynamic system prompt, capability status)
+- [x] SkillPreflight + EvolutionGuard (auto_fix_imports, error fingerprinting)
+- [x] UserMemory (persistent preferences, voice mode persistence)
+- [x] EvolutionJournal (quality/speed metrics per evolution)
+- [x] STTAutoTestPipeline (Chain of Responsibility, 6 diagnostic steps)
+- [x] FailureTracker (global cross-skill threshold)
+
+### Sprint 1: Skill Versioning & Providers ✅
+- [x] EvolutionGarbageCollector (stub detection, cleanup, migration)
+- [x] stable/latest/archive version structure
+- [x] ProviderChain (auto-degradation after 3 failures, recovery after 2 successes)
+- [x] ProviderSelector (resource-aware scoring)
+- [x] ResourceMonitor (CPU/RAM/GPU/disk detection)
+- [x] Capability/provider architecture (TTS, STT multi-provider)
 
 ### Sprint 1.5: Smart Intent ✅
-- [x] SmartIntentClassifier with ML
-- [x] EmbeddingEngine (sbert + fallback)
-- [x] 198 tests passing
+- [x] SmartIntentClassifier (3-tier: embedding → local LLM → remote LLM)
+- [x] EmbeddingEngine (sbert + TF-IDF/BOW fallback)
+- [x] LocalLLMClassifier (auto-selects smallest ollama model)
+- [x] intent/ subpackage (embedding, local_llm, ensemble, knn, training)
+- [x] ~100+ PL/EN training examples, learnable from corrections
 
-### Pre-sprint: Core Features ✅
-- [x] LLMClient with tiered routing
-- [x] EvoEngine with validation
-- [x] IntentEngine v2
-- [x] UserMemory with persistence
-- [x] Voice mode with persistence
-- [x] NFO logging system
-- [x] CLI with status/logs/cache commands
+### Pre-sprint: Core Architecture ✅
+- [x] Core split: monolithic core.py → 40+ focused modules
+- [x] LLMClient (3-tier: free → local → paid)
+- [x] EvoEngine (evolutionary loop with validation pipeline)
+- [x] IntentEngine (multi-stage classification)
+- [x] NFO logging system (SQLite + JSONL)
+- [x] Shell skill (real-time streaming, interactive passthrough, safety blocks)
+- [x] Voice loop (STT/TTS bidirectional, auto-diagnosis on silence)
+- [x] Simulation infrastructure (Docker, 10 scenarios)
 
 ## Notes
 
 Priority levels:
-- P0: Critical, blocks release
-- P1: Important, should be in next sprint
-- P2: Nice to have, backlog
-- P3: Future idea
+- **P0**: Critical, blocks release
+- **P1**: Important, next sprint
+- **P2**: Nice to have, planned
+- **P3**: Future idea
 
-Current focus: Documentation and packaging for v1.0 release.
+Current state: **v2.0** — 40+ core modules, 35 skills, 258 tests, ML-based intent, self-healing pipeline.
