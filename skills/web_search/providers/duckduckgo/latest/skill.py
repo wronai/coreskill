@@ -1,14 +1,14 @@
-"""
-web_search skill - Search the internet using only stdlib (urllib).
-Bootstrap skill for evo-engine. No external dependencies.
-Falls back to curl if urllib fails.
-"""
 import subprocess
 import json
 import urllib.request
 import urllib.parse
 import html.parser
 import re
+import socket
+import threading
+import queue
+import time
+import os
 
 
 class SimpleHTMLTextExtractor(html.parser.HTMLParser):
@@ -120,18 +120,51 @@ class WebSearchSkill:
 
         return search_result
 
-    def execute(self, input_data: dict) -> dict:
+    def execute(self, params: dict) -> dict:
         """evo-engine interface."""
-        action = input_data.get("action", "search")
-        query = input_data.get("query", input_data.get("text", ""))
-
-        if action == "search":
-            return self.search_duckduckgo(query)
-        elif action == "fetch":
-            return self.fetch_page_text(input_data.get("url", ""))
-        elif action == "search_and_read":
-            return self.search_and_summarize(query)
-        return {"success": False, "error": f"Unknown action: {action}"}
+        try:
+            text = params.get("text", "")
+            action = params.get("action", "search")
+            
+            # Extract query from text if not explicitly provided
+            if action == "search" and not params.get("query"):
+                query = text.strip() if text else "current events"
+            else:
+                query = params.get("query", text.strip() if text else "")
+            
+            if action == "search":
+                result = self.search_duckduckgo(query)
+                if result.get("success"):
+                    spoken = f"Found {len(result.get('results', []))} results for '{query}'."
+                    if result.get("results"):
+                        spoken += f" Top result: {result['results'][0].get('title', 'No title')}."
+                    result["spoken"] = spoken
+                return result
+            elif action == "fetch":
+                url = params.get("url", "")
+                if not url:
+                    # Try to extract URL from text
+                    url_match = re.search(r'https?://[^\s]+', text)
+                    url = url_match.group(0) if url_match else ""
+                result = self.fetch_page_text(url)
+                if result.get("success"):
+                    result["spoken"] = f"Page fetched successfully. Content preview: {result.get('text', '')[:200]}..."
+                return result
+            elif action == "search_and_read":
+                result = self.search_and_summarize(query)
+                if result.get("success"):
+                    spoken = f"Found {len(result.get('results', []))} results for '{query}'."
+                    if result.get("results"):
+                        top_result = result['results'][0]
+                        spoken += f" Top result: {top_result.get('title', 'No title')}."
+                        if top_result.get('page_text'):
+                            spoken += f" Summary: {top_result['page_text'][:200]}..."
+                    result["spoken"] = spoken
+                return result
+            else:
+                return {"success": False, "error": f"Unknown action: {action}", "spoken": f"Unknown action: {action}"}
+        except Exception as e:
+            return {"success": False, "error": str(e), "spoken": "An error occurred while processing your request."}
 
 
 def get_info():
@@ -145,22 +178,29 @@ def get_info():
 
 
 def health_check():
-    # Verify skill structure and imports (no network calls — DNS failure ≠ broken code)
     try:
+        # Verify skill structure and imports (no network calls — DNS failure ≠ broken code)
         w = WebSearchSkill()
         assert callable(getattr(w, "execute", None))
         assert callable(getattr(w, "search_duckduckgo", None))
         assert callable(getattr(w, "fetch_page_text", None))
         # Verify stdlib imports are available
         import urllib.request, urllib.parse, html.parser
-        return True
-    except Exception:
-        return False
+        return {"status": "ok"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+def execute(params: dict) -> dict:
+    """Module-level execute function."""
+    skill = WebSearchSkill()
+    return skill.execute(params)
 
 
 if __name__ == "__main__":
     w = WebSearchSkill()
     print(f"Info: {json.dumps(get_info(), indent=2)}")
-    print(f"Health: {health_check()}")
+    health = health_check()
+    print(f"Health: {json.dumps(health, indent=2)}")
     r = w.search_duckduckgo("python espeak tts", 3)
     print(f"Search: {json.dumps(r, indent=2)}")
