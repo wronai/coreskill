@@ -1,8 +1,7 @@
 {
   "name": "json_validator",
   "version": "v5",
-  "parent": "v4",
-  "phase": "syntax",
-  "created_at": "2026-03-04T09:53:19.830590+00:00",
-  "rolled_back": true
+  "description": "zbuduj skill json_validator kt\u00f3ry sprawdza poprawno\u015b\u0107 JSON",
+  "created_at": "2026-03-04T09:58:34.500194+00:00",
+  "checksum": "f471b7e9663fb51fa57b530da62b1012"
 }
