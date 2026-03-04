@@ -2,6 +2,6 @@
   "name": "kalkulator",
   "version": "v9",
   "parent": "v8",
-  "phase": "runtime",
-  "created_at": "2026-03-04T09:40:40.111936+00:00"
+  "phase": "syntax",
+  "created_at": "2026-03-04T09:42:28.847249+00:00"
 }
