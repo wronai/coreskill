@@ -1495,15 +1495,10 @@ def main():
     # Setup signal handlers for graceful shutdown
     import signal
     _shutdown_requested = False
-    _in_voice_mode = False
     
     def _signal_handler(signum, frame):
-        nonlocal _shutdown_requested, _in_voice_mode
+        nonlocal _shutdown_requested
         if not _shutdown_requested:
-            if _in_voice_mode:
-                # In voice mode: just print message, don't exit - voice loop will handle KeyboardInterrupt
-                cpr(C.DIM, f"\n[SIGNAL] {signal.Signals(signum).name} — wychodzę z trybu głosowego...")
-                return  # Don't raise SystemExit, let voice loop catch KeyboardInterrupt
             _shutdown_requested = True
             cpr(C.DIM, f"\n[SIGNAL] Received {signal.Signals(signum).name}, shutting down gracefully...")
             # Save any pending state
@@ -1516,8 +1511,11 @@ def main():
                 pass
         raise SystemExit(0)
     
+    # SIGINT (Ctrl+C): leave default handler so we can use KeyboardInterrupt for control-flow.
+    # SIGTERM: graceful exit (system shutdown / docker stop)
+    # SIGQUIT (Ctrl+\): explicit hard exit from user
     signal.signal(signal.SIGTERM, _signal_handler)
-    signal.signal(signal.SIGINT, _signal_handler)
+    signal.signal(signal.SIGQUIT, _signal_handler)
     
     cmd_ctx, conv, memory = _boot()
     sm, llm, evo, intent, logger = (
@@ -1531,9 +1529,10 @@ def main():
     if memory and memory.voice_mode and not os.environ.get("EVO_TEXT_ONLY"):
         cpr(C.CYAN, "🔊 Tryb głosowy aktywny (zapamiętana preferencja). "
                     "Wyłącz: /voice off")
-        _in_voice_mode = True
-        _run_voice_loop(sm, evo, llm, intent, logger, conv, identity, memory=memory)
-        _in_voice_mode = False
+        try:
+            _run_voice_loop(sm, evo, llm, intent, logger, conv, identity, memory=memory)
+        except KeyboardInterrupt:
+            cpr(C.DIM, "\n[VOICE] Ctrl+C — przechodzę do trybu tekstowego (aplikacja działa dalej).")
         cpr(C.CYAN, "📝 Przechodzę do trybu tekstowego. Wpisz /voice aby wrócić do głosowego.")
 
     while True:

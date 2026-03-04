@@ -284,18 +284,56 @@ class EvoEngine:
         })
 
     def _execute_with_validation(self, skill_name, inp, goal, user_msg):
-        """Pipeline: preflight → execute → validate result → reflect → retry if needed.
-        Now with journal tracking and quality reflection."""
+        """Pipeline: preflight → execute → validate → reflect → retry.
+        Now split into focused sub-methods for maintainability."""
         max_retries = 2
         seen_errors = set()
         start_version = self.sm.latest_v(skill_name)
 
+        # Phase 1: Setup
+        j_entry, history_avoid = self._exec_prepare(skill_name, goal)
+
+        # Phase 2: Retry loop
+        for attempt in range(max_retries + 1):
+            version = self.sm.latest_v(skill_name) or "?"
+            effective_inp = inp if inp else {"text": user_msg}
+
+            # Execute single attempt
+            result, validation = self._exec_attempt(
+                skill_name, effective_inp, goal, user_msg, attempt, max_retries, version)
+
+            # Handle outcomes
+            if validation["verdict"] == "success":
+                return self._exec_handle_success(
+                    skill_name, result, goal, attempt, start_version)
+
+            if validation["verdict"] == "partial":
+                outcome = self._exec_handle_partial(
+                    skill_name, result, validation, goal, user_msg, attempt, start_version)
+                if outcome:
+                    return outcome
+                # If partial handler returns None, continue to failure handling
+
+            # Failed - attempt recovery
+            error_info = validation["reason"]
+            retry = self._exec_handle_failure(
+                skill_name, error_info, seen_errors, attempt, max_retries,
+                effective_inp, user_msg, history_avoid, version)
+            if not retry:
+                break
+
+        # Phase 3: Finalize failure
+        return self._exec_finalize_failure(
+            skill_name, goal, attempt, start_version, seen_errors)
+
+    def _exec_prepare(self, skill_name, goal):
+        """Phase 1: Journal consultation and setup."""
         # Journal: consult history for avoid-patterns before starting
         history_avoid = []
         prev_history = self.journal.get_skill_history(skill_name, 5)
         if prev_history:
             import time as _t
-            cutoff = _t.time() - 3600  # Only consider errors from last hour
+            cutoff = _t.time() - 3600
             failed = [h for h in prev_history
                       if not h.get("success") and h.get("error")
                       and h.get("timestamp", 0) > cutoff]
@@ -305,222 +343,233 @@ class EvoEngine:
 
         # Journal: start tracking
         j_entry = self.journal.start_evolution(skill_name, goal)
+        return j_entry, history_avoid
 
-        for attempt in range(max_retries + 1):
-            version = self.sm.latest_v(skill_name) or "?"
+    def _exec_attempt(self, skill_name, effective_inp, goal, user_msg,
+                      attempt, max_retries, version):
+        """Execute single attempt with validation."""
+        cpr(C.CYAN, f"[PIPE] Execute: {skill_name} {version} "
+                     f"(attempt {attempt + 1}/{max_retries + 1})")
+        if effective_inp:
+            inp_preview = str(effective_inp)[:80]
+            cpr(C.DIM, f"[PIPE]   input: {inp_preview}")
 
-            # Step 1+2: Execute (includes preflight + auto-fix inside exec_skill)
-            cpr(C.CYAN, f"[PIPE] Execute: {skill_name} {version} "
-                         f"(attempt {attempt + 1}/{max_retries + 1})")
-            if inp:
-                inp_preview = str(inp)[:80]
-                cpr(C.DIM, f"[PIPE]   input: {inp_preview}")
-            effective_inp = inp if inp else {"text": user_msg}
-            
-            # Start reflection tracking for stall/timeout detection
-            if self.reflection:
-                self.reflection.start_operation(f"{skill_name}:{goal}")
-            
-            result = self.sm.exec_skill(skill_name, inp=effective_inp)
-            
-            # End reflection tracking
-            if self.reflection:
-                exec_success = result.get("success", False) and not result.get("preflight")
-                self.reflection.end_operation(success=exec_success, error=result.get("error", ""))
+        # Start reflection tracking for stall/timeout detection
+        if self.reflection:
+            self.reflection.start_operation(f"{skill_name}:{goal}")
 
-            # Log preflight failure if that's what stopped execution
-            if result.get("preflight"):
-                cpr(C.RED, f"[PIPE] Preflight FAIL: {result.get('error', '?')[:100]}")
-            self.log.core("pipeline_exec", {
-                "skill": skill_name, "attempt": attempt + 1,
-                "success": result.get("success"), "goal": goal})
+        result = self.sm.exec_skill(skill_name, inp=effective_inp)
 
-            # Step 3: Validate result (always run normal validation first)
-            validation = self._validate_result(skill_name, result, goal, user_msg)
+        # End reflection tracking
+        if self.reflection:
+            exec_success = result.get("success", False) and not result.get("preflight")
+            self.reflection.end_operation(success=exec_success, error=result.get("error", ""))
 
-            # Step 3b: On first attempt, check for stub code (not output — code only)
-            if attempt == 0 and validation["verdict"] in ("success", "partial"):
-                skill_path = self.sm.skill_path(skill_name)
-                stub_check = self.evo_guard.check_execution_result(
-                    skill_name, result, skill_path)
-                if stub_check.get("is_stub"):
-                    cpr(C.YELLOW, f"[PIPE] ⚠ Stub code: {stub_check['issue']}")
-                    error_info = (f"Stub skill: {stub_check['issue']}. "
-                                  f"{stub_check['suggestion']}")
-                    self.evo_guard.record_error(skill_name, error_info, version)
-                    validation = {"verdict": "fail", "reason": error_info}
+        # Log preflight failure if that's what stopped execution
+        if result.get("preflight"):
+            cpr(C.RED, f"[PIPE] Preflight FAIL: {result.get('error', '?')[:100]}")
+        self.log.core("pipeline_exec", {
+            "skill": skill_name, "attempt": attempt + 1,
+            "success": result.get("success"), "goal": goal})
 
-            cpr(C.DIM, f"[PIPE] Validate: {validation['verdict']} "
-                       f"(reason: {validation['reason'][:60]})")
-            self.log.core("pipeline_validate", {
-                "skill": skill_name, "verdict": validation["verdict"],
-                "reason": validation["reason"]})
+        # Validate result
+        validation = self._validate_result(skill_name, result, goal, user_msg)
 
-            # Track consecutive outcomes for auto-reflection
-            # Skip for STT silence in voice_conversation — voice loop has its own autotest
-            if self.reflection and not (
-                    skill_name == "stt" and goal == "voice_conversation"
-                    and validation["verdict"] == "partial"):
-                is_success = validation["verdict"] == "success"
-                is_partial = validation["verdict"] == "partial"
-                self.reflection.record_skill_outcome(
-                    skill_name, success=is_success, partial=is_partial,
-                    error=validation.get("reason", ""))
+        # On first attempt, check for stub code
+        if attempt == 0 and validation["verdict"] in ("success", "partial"):
+            skill_path = self.sm.skill_path(skill_name)
+            stub_check = self.evo_guard.check_execution_result(
+                skill_name, result, skill_path)
+            if stub_check.get("is_stub"):
+                cpr(C.YELLOW, f"[PIPE] ⚠ Stub code: {stub_check['issue']}")
+                error_info = (f"Stub skill: {stub_check['issue']}. "
+                              f"{stub_check['suggestion']}")
+                self.evo_guard.record_error(skill_name, error_info, version)
+                validation = {"verdict": "fail", "reason": error_info}
 
-            if validation["verdict"] == "success":
-                cpr(C.GREEN, f"[PIPE] ✓ Goal achieved: {goal or 'OK'}")
-                self.log.skill(skill_name, "goal_achieved", {"goal": goal})
-                # Reset failure streak on success
-                self.failure_tracker.record_success()
-                # Journal: reflect + record success
-                refl = self.journal.reflect(skill_name, result)
-                self.journal.finish_evolution(
-                    skill_name, success=True,
-                    quality_score=refl["quality_score"],
-                    reflection=refl["reflection"],
-                    attempts=attempt + 1)
-                if refl["improvement"] > 0.05:
-                    cpr(C.DIM, f"[JOURNAL] Jakość: {refl['quality_score']:.2f} "
-                               f"(+{refl['improvement']:.2f}) | {refl['speed_assessment']}")
-                return {"type": "success", "skill": skill_name,
-                        "result": result, "goal": goal}
+        cpr(C.DIM, f"[PIPE] Validate: {validation['verdict']} "
+                   f"(reason: {validation['reason'][:60]})")
+        self.log.core("pipeline_validate", {
+            "skill": skill_name, "verdict": validation["verdict"],
+            "reason": validation["reason"]})
 
-            if validation["verdict"] == "partial":
-                cpr(C.YELLOW, f"[PIPE] ~ Partial: {validation['reason'][:100]}")
-                self.log.skill(skill_name, "goal_partial", {
-                    "goal": goal, "reason": validation["reason"]})
-                
-                # AUTO-CREATE SKILL: when existing skill returns empty/inadequate results
-                # Generate skill name from user query and auto-create via LLM
-                if skill_name == "web_search" and "empty results" in validation["reason"]:
-                    # Generate skill name from the query
-                    new_skill_name = self._generate_skill_name(user_msg)
-                    skill_desc = f"Skill odpowiadający na zapytanie: '{user_msg}'. " \
-                                  f"Poprzedni skill '{skill_name}' zwrócił puste wyniki. " \
-                                  f"Wymagana funkcjonalność: {goal}"
-                    
-                    cpr(C.CYAN, f"[AUTO-CREATE] Brak wyników z '{skill_name}'.")
-                    cpr(C.CYAN, f"[AUTO-CREATE] Automatycznie tworzę skill '{new_skill_name}'...")
-                    
-                    # Auto-create the skill
-                    ok, msg = self.evolve_skill(new_skill_name, skill_desc)
-                    if ok:
-                        cpr(C.GREEN, f"[AUTO-CREATE] ✓ Skill '{new_skill_name}' stworzony!")
-                        cpr(C.DIM, f"[AUTO-CREATE] Wykonuję nowy skill...")
-                        # Execute the newly created skill
-                        return self._execute_with_validation(new_skill_name, inp, goal, user_msg)
-                    else:
-                        cpr(C.YELLOW, f"[AUTO-CREATE] ✗ Nie udało się stworzyć: {msg}")
-                
-                # Autonomous repair for STT empty transcription
-                # Skip repair in voice_conversation mode — silence is normal
-                if (skill_name == "stt" and "empty transcription" in validation["reason"]
-                        and goal != "voice_conversation"):
-                    cpr(C.CYAN, "[AUTO] Próbuję autonomicznej naprawy STT...")
-                    fixed, msg, new_result = self._autonomous_stt_repair(skill_name, result, user_msg)
-                    if fixed:
-                        cpr(C.GREEN, f"[AUTO] Naprawione! {msg[:100]}")
-                        self.journal.finish_evolution(
-                            skill_name, success=True, quality_score=0.6,
-                            reflection="Auto-repair STT", attempts=attempt + 1)
-                        return {"type": "success", "skill": skill_name,
-                                "result": new_result, "goal": goal}
-                    else:
-                        cpr(C.YELLOW, f"[AUTO] Nie udało się naprawić: {msg}")
-                
-                # Journal: partial = moderate quality
-                refl = self.journal.reflect(skill_name, result)
-                self.journal.finish_evolution(
-                    skill_name, success=True,
-                    quality_score=max(refl["quality_score"], 0.3),
-                    reflection=f"Partial: {validation['reason'][:80]}",
-                    attempts=attempt + 1)
-                return {"type": "success", "skill": skill_name,
-                        "result": result, "goal": goal}
+        # Track consecutive outcomes for auto-reflection
+        if self.reflection and not (
+                skill_name == "stt" and goal == "voice_conversation"
+                and validation["verdict"] == "partial"):
+            is_success = validation["verdict"] == "success"
+            is_partial = validation["verdict"] == "partial"
+            self.reflection.record_skill_outcome(
+                skill_name, success=is_success, partial=is_partial,
+                error=validation.get("reason", ""))
 
-            # Failed
-            error_info = validation["reason"]
-            cpr(C.YELLOW, f"[PIPE] ✗ Failed: {error_info[:100]}")
+        return result, validation
 
-            # Step 4: Reflect — can we fix without evolving?
-            err_key = error_info[:80]
-            if err_key in seen_errors:
-                cpr(C.RED, f"[PIPE] Same error repeated, stopping.")
-                break
-            seen_errors.add(err_key)
+    def _exec_handle_success(self, skill_name, result, goal, attempt, start_version):
+        """Handle successful execution outcome."""
+        cpr(C.GREEN, f"[PIPE] ✓ Goal achieved: {goal or 'OK'}")
+        self.log.skill(skill_name, "goal_achieved", {"goal": goal})
+        self.failure_tracker.record_success()
 
-            if attempt >= max_retries:
-                break
+        refl = self.journal.reflect(skill_name, result)
+        self.journal.finish_evolution(
+            skill_name, success=True,
+            quality_score=refl["quality_score"],
+            reflection=refl["reflection"],
+            attempts=attempt + 1)
 
-            # Record in guard
-            self.evo_guard.record_error(skill_name, error_info, version)
+        if refl["improvement"] > 0.05:
+            cpr(C.DIM, f"[JOURNAL] Jakość: {refl['quality_score']:.2f} "
+                       f"(+{refl['improvement']:.2f}) | {refl['speed_assessment']}")
 
-            # Journal-enhanced reflection: use history to pick strategy
-            j_refl = self.journal.reflect(skill_name, result, error=error_info)
-            suggested = j_refl.get("suggested_strategy", "")
-            avoid = j_refl.get("avoid_patterns", [])
-            cpr(C.DIM, f"[JOURNAL] Sugestia: {suggested} | "
-                       f"Unikaj: {'; '.join(avoid[:2]) if avoid else 'brak'}")
+        return {"type": "success", "skill": skill_name,
+                "result": result, "goal": goal}
 
-            # Auto-fix path (prefer journal suggestion over guard)
-            strategy = self.evo_guard.suggest_strategy(skill_name, error_info)
-            effective_strategy = suggested if suggested and suggested != "normal_evolve" else strategy["strategy"]
-            cpr(C.DIM, f"[PIPE] Reflect: strategy={effective_strategy}")
+    def _exec_handle_partial(self, skill_name, result, validation, goal,
+                            user_msg, attempt, start_version):
+        """Handle partial success outcome. May auto-create skill or repair."""
+        cpr(C.YELLOW, f"[PIPE] ~ Partial: {validation['reason'][:100]}")
+        self.log.skill(skill_name, "goal_partial", {
+            "goal": goal, "reason": validation["reason"]})
 
-            if effective_strategy == "auto_fix_imports":
-                sp = self.sm.skill_path(skill_name)
-                if sp and sp.exists():
-                    code = sp.read_text()
-                    fixed = self.sm.preflight.auto_fix_imports(code)
-                    if fixed != code:
-                        sp.write_text(fixed)
-                        cpr(C.GREEN, f"[PIPE] Auto-fixed imports, retrying...")
-                        self.log.skill(skill_name, "auto_fix_imports", {})
-                        continue
+        # AUTO-CREATE: web_search empty results → create dedicated skill
+        if skill_name == "web_search" and "empty results" in validation["reason"]:
+            new_skill_name = self._generate_skill_name(user_msg)
+            skill_desc = f"Skill odpowiadający na zapytanie: '{user_msg}'. " \
+                          f"Poprzedni skill '{skill_name}' zwrócił puste wyniki. " \
+                          f"Wymagana funkcjonalność: {goal}"
 
-            # Diagnose → auto-install deps → evolve
-            cpr(C.DIM, f"[PIPE] Diagnose + evolve '{skill_name}'...")
-            diag = self.sm.diagnose_skill(skill_name)
-            phase = diag.get("phase", "?")
-            missing = diag.get("missing", [])
-            if missing:
-                cpr(C.YELLOW, f"[PIPE] Missing deps: {', '.join(missing)}")
-                # Auto-install missing Python packages
-                import subprocess as _sp
-                for pkg in missing:
-                    cpr(C.DIM, f"[PIPE] Auto-install: pip install {pkg}...")
-                    try:
-                        r = _sp.run(
-                            [sys.executable, "-m", "pip", "install", pkg, "-q"],
-                            capture_output=True, text=True, timeout=60)
-                        if r.returncode == 0:
-                            cpr(C.GREEN, f"[PIPE] ✓ Installed {pkg}")
-                            self.log.skill(skill_name, "auto_install_dep", {"pkg": pkg})
-                        else:
-                            cpr(C.DIM, f"[PIPE] pip install {pkg} failed: {r.stderr[:80]}")
-                    except Exception as e:
-                        cpr(C.DIM, f"[PIPE] pip install {pkg} error: {e}")
+            cpr(C.CYAN, f"[AUTO-CREATE] Brak wyników z '{skill_name}'.")
+            cpr(C.CYAN, f"[AUTO-CREATE] Automatycznie tworzę skill '{new_skill_name}'...")
 
-            # Include avoid-patterns and actual input in evolve prompt
-            evolve_ctx = error_info
-            evolve_ctx += f"\nActual input passed to execute(): {str(effective_inp)[:200]}"
-            evolve_ctx += ("\nIMPORTANT: params always has 'text' key with user's raw message. "
-                           "Extract what you need from it using regex/parsing. "
-                           "Do NOT require specific param names like 'expression'.")
-            if avoid:
-                evolve_ctx += f"\nWAŻNE: unikaj tych błędów z poprzednich iteracji: {'; '.join(avoid[:3])}"
-
-            ok, msg = self.sm.smart_evolve(skill_name, evolve_ctx, user_msg)
+            ok, msg = self.evolve_skill(new_skill_name, skill_desc)
             if ok:
-                cpr(C.DIM, f"[PIPE] {msg}")
+                cpr(C.GREEN, f"[AUTO-CREATE] ✓ Skill '{new_skill_name}' stworzony!")
+                cpr(C.DIM, f"[AUTO-CREATE] Wykonuję nowy skill...")
+                return self._execute_with_validation(new_skill_name,
+                    {"text": user_msg}, goal, user_msg)
             else:
-                cpr(C.RED, f"[PIPE] Evolution failed: {msg}")
-                break
+                cpr(C.YELLOW, f"[AUTO-CREATE] ✗ Nie udało się stworzyć: {msg}")
+
+        # Autonomous repair for STT empty transcription
+        if (skill_name == "stt" and "empty transcription" in validation["reason"]
+                and goal != "voice_conversation"):
+            cpr(C.CYAN, "[AUTO] Próbuję autonomicznej naprawy STT...")
+            fixed, msg, new_result = self._autonomous_stt_repair(
+                skill_name, result, user_msg)
+            if fixed:
+                cpr(C.GREEN, f"[AUTO] Naprawione! {msg[:100]}")
+                self.journal.finish_evolution(
+                    skill_name, success=True, quality_score=0.6,
+                    reflection="Auto-repair STT", attempts=attempt + 1)
+                return {"type": "success", "skill": skill_name,
+                        "result": new_result, "goal": goal}
+            else:
+                cpr(C.YELLOW, f"[AUTO] Nie udało się naprawić: {msg}")
+
+        # Return partial as success (with moderate quality)
+        refl = self.journal.reflect(skill_name, result)
+        self.journal.finish_evolution(
+            skill_name, success=True,
+            quality_score=max(refl["quality_score"], 0.3),
+            reflection=f"Partial: {validation['reason'][:80]}",
+            attempts=attempt + 1)
+        return {"type": "success", "skill": skill_name,
+                "result": result, "goal": goal}
+
+    def _exec_handle_failure(self, skill_name, error_info, seen_errors,
+                            attempt, max_retries, effective_inp, user_msg,
+                            history_avoid, version):
+        """Handle failure outcome. Returns True if should retry."""
+        cpr(C.YELLOW, f"[PIPE] ✗ Failed: {error_info[:100]}")
+
+        # Check for repeated errors
+        err_key = error_info[:80]
+        if err_key in seen_errors:
+            cpr(C.RED, f"[PIPE] Same error repeated, stopping.")
+            return False
+        seen_errors.add(err_key)
+
+        if attempt >= max_retries:
+            return False
+
+        # Record in guard
+        self.evo_guard.record_error(skill_name, error_info, version)
+
+        # Journal-enhanced reflection
+        j_refl = self.journal.reflect(skill_name, {"error": error_info}, error=error_info)
+        suggested = j_refl.get("suggested_strategy", "")
+        avoid = j_refl.get("avoid_patterns", [])
+        cpr(C.DIM, f"[JOURNAL] Sugestia: {suggested} | "
+                   f"Unikaj: {'; '.join(avoid[:2]) if avoid else 'brak'}")
+
+        # Determine strategy
+        strategy = self.evo_guard.suggest_strategy(skill_name, error_info)
+        effective_strategy = suggested if suggested and suggested != "normal_evolve" else strategy["strategy"]
+        cpr(C.DIM, f"[PIPE] Reflect: strategy={effective_strategy}")
+
+        # Auto-fix imports
+        if effective_strategy == "auto_fix_imports":
+            sp = self.sm.skill_path(skill_name)
+            if sp and sp.exists():
+                code = sp.read_text()
+                fixed = self.sm.preflight.auto_fix_imports(code)
+                if fixed != code:
+                    sp.write_text(fixed)
+                    cpr(C.GREEN, f"[PIPE] Auto-fixed imports, retrying...")
+                    self.log.skill(skill_name, "auto_fix_imports", {})
+                    return True
+
+        # Diagnose and evolve
+        cpr(C.DIM, f"[PIPE] Diagnose + evolve '{skill_name}'...")
+        diag = self.sm.diagnose_skill(skill_name)
+        missing = diag.get("missing", [])
+
+        # Auto-install missing deps
+        if missing:
+            cpr(C.YELLOW, f"[PIPE] Missing deps: {', '.join(missing)}")
+            import subprocess as _sp
+            for pkg in missing:
+                cpr(C.DIM, f"[PIPE] Auto-install: pip install {pkg}...")
+                try:
+                    r = _sp.run(
+                        [sys.executable, "-m", "pip", "install", pkg, "-q"],
+                        capture_output=True, text=True, timeout=60)
+                    if r.returncode == 0:
+                        cpr(C.GREEN, f"[PIPE] ✓ Installed {pkg}")
+                        self.log.skill(skill_name, "auto_install_dep", {"pkg": pkg})
+                    else:
+                        cpr(C.DIM, f"[PIPE] pip install {pkg} failed: {r.stderr[:80]}")
+                except Exception as e:
+                    cpr(C.DIM, f"[PIPE] pip install {pkg} error: {e}")
+
+        # Build evolve context
+        evolve_ctx = error_info
+        evolve_ctx += f"\nActual input: {str(effective_inp)[:200]}"
+        evolve_ctx += ("\nIMPORTANT: params always has 'text' key. "
+                       "Extract using regex/parsing. "
+                       "Do NOT require specific param names.")
+        if avoid:
+            evolve_ctx += f"\nWAŻNE: unikaj tych błędów: {'; '.join(avoid[:3])}"
+
+        ok, msg = self.sm.smart_evolve(skill_name, evolve_ctx, user_msg)
+        if ok:
+            cpr(C.DIM, f"[PIPE] {msg}")
+            return True
+        else:
+            cpr(C.RED, f"[PIPE] Evolution failed: {msg}")
+            return False
+
+    def _exec_finalize_failure(self, skill_name, goal, attempt,
+                               start_version, seen_errors):
+        """Phase 3: Finalize failure - rollback, record, reflect."""
+        # Get error info from seen_errors (last added)
+        error_info = list(seen_errors)[-1] if seen_errors else "unknown"
 
         # Journal: record failure
         self.journal.finish_evolution(
             skill_name, success=False, quality_score=0.0,
-            error=error_info if 'error_info' in dir() else "unknown",
+            error=error_info,
             reflection=f"Failed after {attempt + 1} attempts",
             attempts=attempt + 1)
 
@@ -530,21 +579,17 @@ class EvoEngine:
             cpr(C.DIM, f"[PIPE] Rolling back {skill_name} to {start_version}")
             self.sm.rollback(skill_name)
 
-        # Record failure for provider chain auto-degradation
+        # Record failure for provider chain
         if self.provider_chain and self.sm.provider_selector:
             provider = self.sm._active_provider(skill_name)
             if provider:
-                self.provider_chain.record_failure(skill_name, provider,
-                                                   error_info if 'error_info' in dir() else "")
+                self.provider_chain.record_failure(skill_name, provider, error_info)
 
         cpr(C.RED, f"[PIPE] Could not achieve goal after {attempt + 1} attempts")
         self.log.core("goal_failed", {"skill": skill_name, "goal": goal})
 
-        # Track failure for auto-reflection threshold
-        err_text = error_info if 'error_info' in dir() else "unknown"
-        threshold_hit = self.failure_tracker.record_failure(skill_name, err_text, goal)
-
-        # Trigger auto-reflection if 3 consecutive failures accumulated
+        # Track failure for auto-reflection
+        threshold_hit = self.failure_tracker.record_failure(skill_name, error_info, goal)
         if threshold_hit and self.reflection:
             self._run_auto_reflection(skill_name)
         elif self.reflection:

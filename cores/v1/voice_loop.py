@@ -118,6 +118,7 @@ def _speak_tts(sm, evo, text: str) -> None:
         evo.handle_request(
             part, sk,
             analysis={"action": "use", "skill": "tts",
+                      "provider": "piper",  # Force Piper TTS
                       "input": {"text": part, "lang": "pl"},
                       "goal": "voice_response"}
         )
@@ -327,12 +328,28 @@ def _run_voice_loop(sm, evo, llm, intent, logger, conv, identity, memory=None):
     _EXIT_KW = ("koniec", "stop", "wyjdź", "wyjedź", "quit", "exit", "zamknij", "zakończ", "zakończ program")
     _DISABLE_KW = ("wyłącz tryb", "wylacz tryb", "disable voice", "voice off")
     cpr(C.CYAN, "\n🎤 Tryb głosowy aktywny. Mów teraz! "
-                "(Ctrl+C lub powiedz 'wyłącz tryb głosowy' aby zakończyć)")
+                "(Ctrl+C: tryb tekstowy | Ctrl+\\: wyjście | 'wyłącz tryb głosowy': zakończ)")
     while True:
         cpr(C.CYAN, f"\n🎤 Słucham... (5s)")
         try:
             status, text = _run_stt_cycle(sm, evo, llm, intent, logger, conv, identity, memory=memory)
         except KeyboardInterrupt:
+            break
+        except EOFError:
+            # Terminal sent EOF (Ctrl+D or similar) - exit gracefully
+            cpr(C.DIM, "[VOICE] Przerwano wejście (EOF). Wychodzę.")
+            break
+        except RuntimeError as e:
+            # STT skill errors (interrupted recording, etc.)
+            err_msg = str(e).lower()
+            if "interrupted" in err_msg or "przerwano" in err_msg:
+                cpr(C.DIM, f"[VOICE] Nagrywanie przerwane. Wznawiam...")
+                continue
+            cpr(C.RED, f"[VOICE] Błąd STT: {e}. Kończę.")
+            break
+        except Exception as e:
+            # Catch-all for unexpected errors during STT
+            cpr(C.RED, f"[VOICE] Nieoczekiwany błąd: {e}. Kończę.")
             break
         if status == "got_text":
             silence_count = 0

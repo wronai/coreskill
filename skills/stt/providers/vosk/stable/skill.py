@@ -1,6 +1,7 @@
 import json
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -132,7 +133,27 @@ class STTSkill:
             "1",
             wav_path,
         ]
-        subprocess.run(cmd, check=True)
+        try:
+            subprocess.run(cmd, check=True)
+        except subprocess.CalledProcessError as e:
+            # Clean up temp file on error
+            try:
+                Path(wav_path).unlink(missing_ok=True)
+            except Exception:
+                pass
+            # Check if interrupted by signal (Ctrl+T or other)
+            if e.returncode == -signal.SIGINT or e.returncode == -signal.SIGTERM:
+                raise RuntimeError("Recording interrupted by user")
+            if e.returncode < 0:
+                raise RuntimeError(f"Recording interrupted (signal {-e.returncode})")
+            raise RuntimeError(f"Recording failed (exit {e.returncode})")
+        except KeyboardInterrupt:
+            # Clean up temp file
+            try:
+                Path(wav_path).unlink(missing_ok=True)
+            except Exception:
+                pass
+            raise RuntimeError("Recording interrupted by user (Ctrl+C)")
         return wav_path
 
     def _ensure_wav(self, input_path: str, sample_rate: int = 16000) -> str:
