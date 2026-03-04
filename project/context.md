@@ -4,9 +4,9 @@
 
 - **Project**: .
 - **Analysis Mode**: static
-- **Total Functions**: 1440
-- **Total Classes**: 181
-- **Modules**: 153
+- **Total Functions**: 1538
+- **Total Classes**: 192
+- **Modules**: 160
 - **Entry Points**: 0
 
 ## Architecture by Module
@@ -70,15 +70,15 @@
 - **Classes**: 3
 - **File**: `drift_detector.py`
 
+### skills.social_media_manager.v1.skill
+- **Functions**: 21
+- **Classes**: 1
+- **File**: `skill.py`
+
 ### cores.v1.evo_journal
 - **Functions**: 20
 - **Classes**: 2
 - **File**: `evo_journal.py`
-
-### cores.v1.self_reflection
-- **Functions**: 20
-- **Classes**: 3
-- **File**: `self_reflection.py`
 
 ### cores.v1.smart_intent
 - **Functions**: 20
@@ -135,11 +135,6 @@ Flow per task:
 - **Methods**: 22
 - **Key Methods**: cores.v1.auto_repair.AutoRepair.__init__, cores.v1.auto_repair.AutoRepair._init_learned_strategy, cores.v1.auto_repair.AutoRepair.run_boot_repair, cores.v1.auto_repair.AutoRepair.repair_skill, cores.v1.auto_repair.AutoRepair.on_repair_requested, cores.v1.auto_repair.AutoRepair._scan_all_skills, cores.v1.auto_repair.AutoRepair._list_all_skills, cores.v1.auto_repair.AutoRepair._diagnose_skill, cores.v1.auto_repair.AutoRepair._get_skill_path, cores.v1.auto_repair.AutoRepair._execute_repair_task
 
-### cores.v1.self_reflection.SelfReflection
-> Autonomiczny silnik autorefleksji systemu evo-engine.
-- **Methods**: 22
-- **Key Methods**: cores.v1.self_reflection.SelfReflection.__init__, cores.v1.self_reflection.SelfReflection.journal, cores.v1.self_reflection.SelfReflection.snapshot, cores.v1.self_reflection.SelfReflection.start_operation, cores.v1.self_reflection.SelfReflection.end_operation, cores.v1.self_reflection.SelfReflection.record_skill_outcome, cores.v1.self_reflection.SelfReflection.check_stall, cores.v1.self_reflection.SelfReflection._trigger_event, cores.v1.self_reflection.SelfReflection.run_diagnostic, cores.v1.self_reflection.SelfReflection._check_llm_health
-
 ### cores.v1.skill_manager.SkillManager
 - **Methods**: 22
 - **Key Methods**: cores.v1.skill_manager.SkillManager.__init__, cores.v1.skill_manager.SkillManager._collect_versions, cores.v1.skill_manager.SkillManager.list_skills, cores.v1.skill_manager.SkillManager._is_rolled_back, cores.v1.skill_manager.SkillManager.latest_v, cores.v1.skill_manager.SkillManager._active_provider, cores.v1.skill_manager.SkillManager.skill_path, cores.v1.skill_manager.SkillManager.create_skill, cores.v1.skill_manager.SkillManager.diagnose_skill, cores.v1.skill_manager.SkillManager._raw_test
@@ -148,6 +143,11 @@ Flow per task:
 > Engine that evaluates and executes declarative reflection rules.
 - **Methods**: 19
 - **Key Methods**: cores.v1.reflection_engine.ReflectionRuleEngine.__init__, cores.v1.reflection_engine.ReflectionRuleEngine._load_rules, cores.v1.reflection_engine.ReflectionRuleEngine._register_default_actions, cores.v1.reflection_engine.ReflectionRuleEngine.reload_rules, cores.v1.reflection_engine.ReflectionRuleEngine.record_failure, cores.v1.reflection_engine.ReflectionRuleEngine.record_success, cores.v1.reflection_engine.ReflectionRuleEngine.evaluate_rules, cores.v1.reflection_engine.ReflectionRuleEngine._match_trigger, cores.v1.reflection_engine.ReflectionRuleEngine._get_priority, cores.v1.reflection_engine.ReflectionRuleEngine.execute_action
+
+### skills.social_media_manager.v1.skill.SocialMediaManagerSkill
+> Social media content management and scheduling.
+- **Methods**: 18
+- **Key Methods**: skills.social_media_manager.v1.skill.SocialMediaManagerSkill.__init__, skills.social_media_manager.v1.skill.SocialMediaManagerSkill._ensure_defaults, skills.social_media_manager.v1.skill.SocialMediaManagerSkill._load_posts, skills.social_media_manager.v1.skill.SocialMediaManagerSkill._save_posts, skills.social_media_manager.v1.skill.SocialMediaManagerSkill._load_templates, skills.social_media_manager.v1.skill.SocialMediaManagerSkill.create_post, skills.social_media_manager.v1.skill.SocialMediaManagerSkill.schedule_post, skills.social_media_manager.v1.skill.SocialMediaManagerSkill._parse_relative_time, skills.social_media_manager.v1.skill.SocialMediaManagerSkill.generate_content, skills.social_media_manager.v1.skill.SocialMediaManagerSkill._generate_key_points
 
 ### cores.v1.evo_journal.EvolutionJournal
 > Persistent journal for evolutionary cycles.
@@ -213,6 +213,11 @@ Replaces all hardcoded _KW_* tuples with learnable embed
 - **Methods**: 15
 - **Key Methods**: skills.benchmark.v2.skill.BenchmarkSkill.__init__, skills.benchmark.v2.skill.BenchmarkSkill._load_config, skills.benchmark.v2.skill.BenchmarkSkill._get_models_from_tier, skills.benchmark.v2.skill.BenchmarkSkill._get_api_key, skills.benchmark.v2.skill.BenchmarkSkill._get_cached_recommendations, skills.benchmark.v2.skill.BenchmarkSkill.execute, skills.benchmark.v2.skill.BenchmarkSkill._recommend_models_live, skills.benchmark.v2.skill.BenchmarkSkill._get_model_param_size, skills.benchmark.v2.skill.BenchmarkSkill.BENCHMARK_PROFILES, skills.benchmark.v2.skill.BenchmarkSkill._call_model_for_benchmark
 
+### cores.v1.self_reflection.SelfReflection
+> Autonomiczny silnik autorefleksji systemu evo-engine.
+- **Methods**: 14
+- **Key Methods**: cores.v1.self_reflection.SelfReflection.__init__, cores.v1.self_reflection.SelfReflection.journal, cores.v1.self_reflection.SelfReflection.snapshot, cores.v1.self_reflection.SelfReflection.start_operation, cores.v1.self_reflection.SelfReflection.end_operation, cores.v1.self_reflection.SelfReflection.record_skill_outcome, cores.v1.self_reflection.SelfReflection.check_stall, cores.v1.self_reflection.SelfReflection._trigger_event, cores.v1.self_reflection.SelfReflection.run_diagnostic, cores.v1.self_reflection.SelfReflection._print_report
+
 ### cores.v1.stable_snapshot.StableSnapshot
 > Manages stable/bugfix/feature versions of skills.
 
@@ -235,13 +240,6 @@ Key principles:
 Each check contributes a weight to the final score.
 - **Methods**: 13
 - **Key Methods**: cores.v1.quality_gate.SkillQualityGate.__init__, cores.v1.quality_gate.SkillQualityGate.evaluate, cores.v1.quality_gate.SkillQualityGate.should_register, cores.v1.quality_gate.SkillQualityGate.compare, cores.v1.quality_gate.SkillQualityGate._check_preflight, cores.v1.quality_gate.SkillQualityGate._check_manifest_schema, cores.v1.quality_gate.SkillQualityGate._check_drift, cores.v1.quality_gate.SkillQualityGate._check_health, cores.v1.quality_gate.SkillQualityGate._check_test_exec, cores.v1.quality_gate.SkillQualityGate._check_output
-
-### cores.v1.provider_selector.ProviderChain
-> Ordered provider fallback chain with auto-degradation.
-
-Tracks failures per provider and automatical
-- **Methods**: 13
-- **Key Methods**: cores.v1.provider_selector.ProviderChain.__init__, cores.v1.provider_selector.ProviderChain._key, cores.v1.provider_selector.ProviderChain._get_stats, cores.v1.provider_selector.ProviderChain.build_chain, cores.v1.provider_selector.ProviderChain._reorder_by_fallback, cores.v1.provider_selector.ProviderChain.select_with_fallback, cores.v1.provider_selector.ProviderChain.select_best, cores.v1.provider_selector.ProviderChain.record_failure, cores.v1.provider_selector.ProviderChain.record_success, cores.v1.provider_selector.ProviderChain._cooldown_expired
 
 ## Data Transformation Functions
 
@@ -315,16 +313,20 @@ Returns (valid: bool, reason: str).
 > Quick validation of a manifest.json file.
 - **Output to**: SkillSchemaValidator, validator.validate_file
 
-### cores.v1.evo_engine.EvoEngine._validate_result
-> Validate whether the skill result actually achieved the goal.
-Returns {verdict: success|partial|fail
-- **Output to**: result.get, result.get, isinstance, inner.get, inner.get
+### cores.v1.base_skill.SkillManifest.validate_input
+> Validate params against manifest input schema. Returns list of errors.
+- **Output to**: errors.append, inp.type.rstrip, TYPE_MAP.get, errors.append, isinstance
 
 ### cores.v1.stable_snapshot.StableSnapshot.validate_against_stable
 > Compare current version against stable reference.
 
 Returns: {"matches": bool, "diff_lines": int, "he
 - **Output to**: self._find_current_version, stable_skill.read_text, current_skill.read_text, cores.v1.prompts.PromptManager.list, self._check_health
+
+### cores.v1.evo_engine.EvoEngine._validate_result
+> Validate whether the skill result actually achieved the goal.
+Returns {verdict: success|partial|fail
+- **Output to**: result.get, result.get, isinstance, inner.get, inner.get
 
 ### cores.v1.session_config.SessionConfig.format_change_feedback
 > Format configuration change for user feedback.
@@ -350,10 +352,6 @@ Returns: {"matches": bool, "diff_lines": int, "he
 > Convert between units.
 - **Output to**: self.UNITS.items, round, str
 
-### skills.converter.v1.skill.ConverterSkill.convert_temperature
-> Convert temperature (special handling).
-- **Output to**: round, str
-
 ## Public API Surface
 
 Functions exposed as public API (no underscore prefix):
@@ -362,42 +360,42 @@ Functions exposed as public API (no underscore prefix):
 - `seeds.core_v1.main` - 108 calls
 - `scripts.benchmark_system.run_all_benchmarks` - 63 calls
 - `cores.v1.self_reflection.SelfReflection.run_diagnostic` - 53 calls
+- `cores.v1.evo_engine.EvoEngine.handle_request` - 49 calls
 - `cores.v1.intent_engine.IntentEngine.analyze` - 48 calls
 - `cores.v1.core.main` - 48 calls
 - `scripts.simulate.Simulator.run_scenario` - 47 calls
 - `cores.v1.skill_logger.get_markdown_logs` - 44 calls
-- `cores.v1.evo_engine.EvoEngine.handle_request` - 43 calls
 - `cores.v1.skill_manager.SkillManager.smart_evolve` - 43 calls
 - `cores.v1.intent.SmartIntentClassifier.classify` - 43 calls
 - `cores.v1.metrics_collector.MetricsCollector.compute_system_health` - 41 calls
 - `cores.v1.llm_client.LLMClient.chat` - 37 calls
+- `skills.document_editor.v1.skill.DocumentEditorSkill.execute` - 37 calls
 - `cli.cmd_cache_reset` - 36 calls
 - `cores.v1.resource_monitor.ResourceMonitor.can_run` - 36 calls
 - `skills.shell.v3.skill.ShellSkill.execute` - 36 calls
 - `skills.web_automation.v1.skill.WebAutomationSkill.execute` - 36 calls
 - `scripts.generate_manifests.main` - 34 calls
 - `main.bootstrap` - 33 calls
+- `cores.v1.skill_manager.SkillManager.create_skill` - 33 calls
 - `skills.shell.v2.skill.ShellSkill.execute` - 33 calls
 - `examples.skills.01_create.main` - 33 calls
 - `cores.v1.evo_engine.EvoEngine.evolve_skill` - 32 calls
 - `examples.advanced.01_pipeline.main` - 32 calls
 - `cores.v1.system_identity.SystemIdentity.build_system_prompt` - 31 calls
-- `cores.v1.skill_manager.SkillManager.create_skill` - 31 calls
 - `cli.cmd_status` - 30 calls
+- `cores.v1.base_skill.SkillManifest.from_dict` - 30 calls
 - `skills.task_manager.v1.skill.TaskManagerSkill.execute` - 30 calls
+- `skills.account_creator.v1.skill.AccountCreatorSkill.execute` - 30 calls
 - `cli.cmd_logs_reset` - 29 calls
 - `skills.text_summarizer.v1.skill.TextSummarizerSkill.summarize` - 29 calls
+- `skills.document_editor.v1.skill.DocumentEditorSkill.find_replace` - 29 calls
 - `cores.v1.repair_journal.RepairJournal.ask_llm_and_try` - 28 calls
 - `scripts.simulate.Simulator.run_all` - 27 calls
 - `cores.v1.preflight.SkillPreflight.check_imports` - 27 calls
+- `skills.document_search.v1.skill.DocumentSearchSkill.search_by_content` - 27 calls
 - `skills.email_client.v1.skill.EmailClientSkill.execute` - 27 calls
 - `cores.v1.preflight.SkillPreflight.auto_fix_imports` - 26 calls
-- `seeds.core_v1.SkillManager.exec_skill` - 26 calls
-- `skills.benchmark.v3.skill.BenchmarkSkill.execute` - 26 calls
-- `skills.local_computer_discovery.v3.skill.LocalComputerDiscovery.execute` - 26 calls
-- `skills.benchmark.v2.skill.BenchmarkSkill.execute` - 26 calls
-- `scripts.generate_manifests.generate_manifest_for_skill` - 25 calls
-- `cores.v1.skill_logger.get_health_markdown` - 25 calls
+- `skills.document_editor.v1.skill.DocumentEditorSkill.format_text` - 26 calls
 
 ## System Interactions
 

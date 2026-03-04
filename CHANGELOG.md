@@ -4,7 +4,7 @@
 
 feat(docs): Complete documentation, CLI, API testing, and packaging updates
 feat(skills): Add 5 utility skills (file_manager, process_manager, clipboard, qr_generator, url_codec)
-feat(skills): Add 7 office worker skills (document_reader, notes, converter, task_manager, text_summarizer, calculator_advanced, network_tools)
+feat(skills): Add 12 office worker skills (document_reader, notes, converter, task_manager, text_summarizer, calculator_advanced, network_tools, document_search, document_editor, social_media_manager, account_creator, document_publisher)
 feat(pipeline): Add 4 complex multi-step pipelines with variable substitution
 feat(automation): Add web_automation (Playwright), email_client (IMAP/SMTP), openrouter_automation
 feat(integration): Add ksef_integration for Polish KSeF system
@@ -26,6 +26,11 @@ feat(integration): Add ksef_integration for Polish KSeF system
 - **text_summarizer**: Summarize long texts using extractive methods with keyword extraction
 - **calculator_advanced**: Advanced calculator with variables, formulas, scientific functions, equation solver
 - **network_tools**: Network diagnostics (ping, DNS lookup, port check, HTTP status)
+- **document_search**: Search documents by content, name, metadata, find duplicates
+- **document_editor**: Edit documents: find/replace, insert, delete, merge, split, templates
+- **social_media_manager**: Create posts, schedule content, generate hashtags, analyze text
+- **account_creator**: Generate passwords, validate emails/usernames, create account data
+- **document_publisher**: Generate HTML from docs, create indexes, version control, share links
 
 ### New Automation Skills
 

@@ -56,7 +56,7 @@ from .bandit_selector import UCB1BanditSelector
 from .resilience import retry_llm, retry_skill, retry_io, with_retry, get_struct_logger
 from .quality_gate import SkillQualityGate, QualityReport
 from .skill_validator import SkillValidator, ValidationResult
-from .base_skill import BaseSkill, SkillManifest, generate_scaffold, generate_manifest_yaml
+from .base_skill import BaseSkill, SkillManifest, generate_scaffold, generate_manifest_yaml, InputField
 from .skill_forge import SkillForge, ErrorBudget, SkillMatch, is_conversational
 from .skill_schema import (
     SKILL_MANIFEST_SCHEMA,

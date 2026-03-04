@@ -456,6 +456,163 @@ code = evo.generate_skill(
 sm.save_skill("calculator", code)
 ```
 
+## SkillForge API
+
+### Inicjalizacja
+
+```python
+from cores.v1.skill_forge import SkillForge
+from cores.v1.smart_intent import EmbeddingEngine
+
+# Z embedding engine (dla semantic search)
+embedder = EmbeddingEngine()
+forge = SkillForge(embedding_engine=embedder)
+
+# Bez embedding (keyword fallback)
+forge = SkillForge()
+```
+
+### Metody
+
+#### `index_skills(skills: dict)`
+
+Buduje indeks embeddingów dla istniejących skillów.
+
+```python
+skills = sm.list_skills()  # {name: [versions]}
+forge.index_skills(skills)
+```
+
+#### `should_create(query: str, existing_skills: dict) -> Tuple[bool, str]`
+
+Decyduje czy tworzyć nowy skill.
+
+```python
+should_create, reason = forge.should_create(
+    "policz 2+2",
+    sm.list_skills()
+)
+
+# reason values:
+# - "reuse:kalkulator"  -> użyj istniejącego skillu
+# - "chat"              -> konwersacja, nie twórz skillu
+# - "budget_exceeded"   -> za dużo błędów (max 10/h)
+# - "new_skill_needed"  -> stwórz nowy skill
+
+if reason.startswith("reuse:"):
+    skill_name = reason.split(":")[1]
+    result = sm.exec_skill(skill_name, params={"text": "2+2"})
+```
+
+#### `search(query: str, top_k=3) -> List[SkillMatch]`
+
+Wyszukiwanie semantyczne skillów.
+
+```python
+matches = forge.search("obliczanie matematyczne", top_k=3)
+for match in matches:
+    print(f"{match.name}: {match.similarity:.2f}")
+```
+
+## BaseSkill API
+
+### Tworzenie skillu
+
+```python
+from cores.v1.base_skill import BaseSkill, _make_module_functions
+
+class CalculatorSkill(BaseSkill):
+    name = "calculator"
+    version = "v1"
+    description = "Simple calculator supporting + - * /"
+
+    def execute(self, params: dict) -> dict:
+        # Get input with fallback to text parsing
+        expression = params.get("expression",
+                                params.get("text", ""))
+
+        # Business logic
+        try:
+            result = eval(expression)  # Safe: only math
+            return {"success": True, "result": result}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+# Generate module-level functions
+execute, get_info, health_check = _make_module_functions(CalculatorSkill)
+
+if __name__ == "__main__":
+    import json
+    print(json.dumps(execute({"text": "2+2"}), indent=2))
+```
+
+### Auto-provided methods
+
+```python
+# get_info() - zwraca metadane z atrybutów klasy
+info = skill.get_info()
+# {"name": "calculator", "version": "v1", "description": "..."}
+
+# health_check() - domyślnie zwraca {"status": "ok"}
+health = skill.health_check()
+
+# safe_execute() - wrapper z obsługą błędów
+result = skill.safe_execute(params)  # Zawsze zwraca dict z success
+```
+
+## SkillManifest API
+
+### Inicjalizacja
+
+```python
+from cores.v1.base_skill import SkillManifest, InputField
+
+manifest = SkillManifest(
+    name="camera_scanner",
+    version="v1",
+    description="Scans network for IP cameras",
+    inputs=[
+        InputField(name="network", type="string",
+                  default="192.168.1.0/24",
+                  description="Network CIDR to scan"),
+        InputField(name="timeout", type="integer",
+                  default=30, required=False),
+    ],
+    requires_commands=["nmap"],
+    tags=["network", "security"]
+)
+```
+
+### Metody
+
+#### `from_file(path) -> SkillManifest`
+
+Ładuje manifest z YAML/JSON.
+
+```python
+manifest = SkillManifest.from_file(Path("skills/my_skill/manifest.yaml"))
+```
+
+#### `validate_input(params) -> List[str]`
+
+Waliduje parametry wejściowe.
+
+```python
+errors = manifest.validate_input({"network": 123})  # type error
+# ["network: expected string, got int"]
+```
+
+#### `generate_scaffold(manifest) -> str`
+
+Generuje kod scaffold dla LLM.
+
+```python
+from cores.v1.base_skill import generate_scaffold
+
+code = generate_scaffold(manifest)
+# Returns complete Python skill template
+```
+
 ## Constants
 
 ### W `cores/v1/config.py`

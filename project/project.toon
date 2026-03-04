@@ -1,22 +1,23 @@
-# coreskill | 159f 42479L | python:159
+# coreskill | 168f 46439L | python:168
 # Keys: M=modules, D=details, i=imports, c=classes, f=functions, m=methods
-M[159]:
-  skills/content_search/providers/default/stable/skill.py,157
-  skills/deps/providers/default/stable/skill.py,164
+M[168]:
+  skills/account_creator/v1/skill.py,350
+  skills/document_publisher/v1/skill.py,436
   __init__.py,19
   build_core.py,525
   cli.py,248
   core.py,515
-  cores/v1/__init__.py,94
+  cores/v1/__init__.py,96
   cores/v1/adaptive_monitor.py,188
   cores/v1/auto_repair.py,499
   cores/v1/bandit_selector.py,136
+  cores/v1/base_skill.py,295
   cores/v1/config.py,196
   cores/v1/config_generator.py,221
   cores/v1/core.py,1328
   cores/v1/drift_detector.py,451
   cores/v1/event_bus.py,94
-  cores/v1/evo_engine.py,731
+  cores/v1/evo_engine.py,747
   cores/v1/evo_journal.py,350
   cores/v1/fuzzy_router.py,57
   cores/v1/garbage_collector.py,277
@@ -31,7 +32,7 @@ M[159]:
   cores/v1/llm_client.py,347
   cores/v1/logger.py,121
   cores/v1/metrics_collector.py,307
-  cores/v1/pipeline_manager.py,86
+  cores/v1/pipeline_manager.py,172
   cores/v1/preflight.py,339
   cores/v1/proactive_scheduler.py,195
   cores/v1/prompts/__init__.py,130
@@ -42,10 +43,12 @@ M[159]:
   cores/v1/resilience.py,147
   cores/v1/resource_monitor.py,155
   cores/v1/self_healing/__init__.py,294
-  cores/v1/self_reflection.py,509
+  cores/v1/self_healing/diagnostics.py,176
+  cores/v1/self_reflection.py,365
   cores/v1/session_config.py,394
+  cores/v1/skill_forge.py,257
   cores/v1/skill_logger.py,245
-  cores/v1/skill_manager.py,530
+  cores/v1/skill_manager.py,537
   cores/v1/skill_schema.py,386
   cores/v1/skill_validator.py,132
   cores/v1/smart_intent.py,497
@@ -76,15 +79,19 @@ M[159]:
   skills/calculator_advanced/v1/skill.py,282
   skills/chat/v1/skill.py,101
   skills/clipboard/v1/skill.py,197
+  skills/content_search/providers/default/stable/skill.py,157
   skills/converter/v1/skill.py,319
   skills/core_loader/v1/skill.py,68
+  skills/deps/providers/default/stable/skill.py,164
   skills/deps/v2/skill.py,84
   skills/deps/v3/skill.py,164
   skills/devops/providers/default/stable/skill.py,211
   skills/devops/v3/skill.py,211
   skills/devops/v4/skill.py,211
   skills/diagnostic_runner/v1/skill.py,114
+  skills/document_editor/v1/skill.py,392
   skills/document_reader/v1/skill.py,375
+  skills/document_search/v1/skill.py,363
   skills/echo/providers/default/stable/skill.py,67
   skills/echo/v8/skill.py,67
   skills/echo/v9/skill.py,79
@@ -128,6 +135,7 @@ M[159]:
   skills/separator_line/v1/skill.py,39
   skills/shell/v2/skill.py,155
   skills/shell/v3/skill.py,162
+  skills/social_media_manager/v1/skill.py,350
   skills/stt/providers/vosk/archive/v6/skill.py,131
   skills/stt/providers/vosk/archive/v7/skill.py,173
   skills/stt/providers/vosk/latest/skill.py,4
@@ -160,22 +168,22 @@ M[159]:
   tests/__init__.py,0
   tests/test_auto_create_e2e.py,202
   tests/test_e2e.py,1985
+  tests/test_sprint0.py,562
 D:
-  skills/content_search/providers/default/stable/skill.py:
-    i: subprocess,json,re,html.parser.HTMLParser,urllib.{error,parse,request}
-    e: ContentSearchSkill,DuckDuckGoParser,get_info,health_check,execute
-    ContentSearchSkill: __init__(0),execute(1),_search_duckduckgo(1)
-    DuckDuckGoParser: __init__(0),handle_starttag(2),handle_endtag(1),handle_data(1)
-    get_info()->dict
-    health_check()->dict
-    execute(params:dict)->dict
-  skills/deps/providers/default/stable/skill.py:
-    i: subprocess,sys,os,json,importlib.util
-    e: DepsSkill,get_info,health_check,execute
-    DepsSkill: __init__(0),check_system(1),check_python_module(1),pip_install(2),execute(1)
+  skills/account_creator/v1/skill.py:
+    i: json,secrets,string,re,hashlib,datetime,pathlib.Path
+    e: get_info,health_check,AccountCreatorSkill,execute
+    AccountCreatorSkill: __init__(0),generate_password(5),_calculate_password_strength(1),check_password_strength(1),validate_email(1)  # Account creation and credential manag...
     get_info()
     health_check()
-    execute(params:dict)->dict
+    execute(input_data:dict)->dict
+  skills/document_publisher/v1/skill.py:
+    i: json,base64,hashlib,datetime,pathlib.Path,urllib.{error,parse,request}
+    e: get_info,health_check,DocumentPublisherSkill,execute
+    DocumentPublisherSkill: __init__(0),_load_index(0),_save_index(1),_read_file(1),generate_html(4)  # Document publishing and sharing system.
+    get_info()
+    health_check()
+    execute(input_data:dict)->dict
   cli.py:
     i: argparse,os,sys,shutil,json,cores.v1.config.{LOGS_DIR,ROOT,STATE_FILE,load_state},pathlib.Path
     e: print_color,cmd_logs_reset,cmd_cache_reset,cmd_state_reset,cmd_status,cmd_shell,main_cli
@@ -215,6 +223,15 @@ D:
     e: ArmStats,UCB1BanditSelector
     ArmStats: mean_reward(0),success_rate(0)  # Stats for a single UCB1 arm (provider).
     UCB1BanditSelector: __init__(0),_key(2),_get_arm(2),select(3),_ucb1_score(3)  # UCB1-based provider selection overlay.
+  cores/v1/base_skill.py:
+    i: json,traceback,dataclasses.{dataclass,field},pathlib.Path,typing.{Any,Dict,List,Optional}
+    e: InputField,SkillManifest,BaseSkill,generate_scaffold,generate_manifest_yaml
+    InputField:   # Single input field from manifest.
+    SkillManifest: from_dict(1),from_file(1),to_dict(0),validate_input(1),get_defaults(0)  # Parsed skill manifest (from YAML or J...
+    BaseSkill: execute(1),get_info(0),health_check(0),safe_execute(1),_get_manifest(0)  # Base class eliminating 55% of boilerp...
+    _make_module_functions(skill_class)
+    generate_scaffold(manifest:SkillManifest)->str
+    generate_manifest_yaml(name:str;description:str='';inputs:dict=None;tags:list=None)->str
   cores/v1/config.py:
     i: os,json,datetime,datetime.timezone,pathlib.Path
     e: ROOT,SKILLS_DIR,PIPELINES_DIR,LOGS_DIR,STATE_FILE,CONFIG_FILE,SYSTEM_CONFIG_FILE,_SYSTEM_CONFIG
@@ -263,7 +280,7 @@ D:
     RepairCompletedEvent: 
     DiagnosisReadyEvent: 
   cores/v1/evo_engine.py:
-    i: sys,nfo,time,config.{C,MAX_EVO_ITERATIONS,cpr},evo_journal.EvolutionJournal,preflight.EvolutionGuard,self_reflection.SelfReflection
+    i: sys,nfo,time,config.{C,MAX_EVO_ITERATIONS,cpr},evo_journal.EvolutionJournal,preflight.EvolutionGuard,self_reflection.SelfReflection,skill_forge.SkillForge
     e: FailureTracker,EvoEngine
     FailureTracker: __init__(0),record_failure(3),record_unhandled(2),record_success(0),should_reflect(0)  # Tracks consecutive failures and unhan...
     EvoEngine: __init__(5),set_reflection(1),handle_request(3),_run_auto_reflection(1),_execute_with_validation(5)  # Generic evolutionary algorithm:
@@ -338,7 +355,7 @@ D:
     get_system_health_summary()->dict
     compute_and_save_system_health(skills_dir:Path)->SystemHealthSnapshot
   cores/v1/pipeline_manager.py:
-    i: json,re,datetime,config.{C,PIPELINES_DIR,cpr},datetime.timezone,utils.{clean_code,clean_json}
+    i: json,re,time,datetime,config.{C,PIPELINES_DIR,cpr},datetime.timezone,utils.{clean_code,clean_json}
     e: PipelineManager
     PipelineManager: __init__(3),list_p(0),create_p(2),_get_nested_value(2),_substitute_vars(2)
   cores/v1/preflight.py:
@@ -411,8 +428,12 @@ D:
     ErrorFingerprint: create(2)  # Tworzy unikalny odcisk palca błędu.
     SelfReflectionEngine: __init__(1),reflect(2),_learn_rule(3),_update_strategy_stats(2),get_best_strategy(2)  # Silnik autorefleksji i uczenia się z...
     heal_skill(skill_name:str;error_info:Dict;llm_client;skill_manager;state:Dict)->HealingResult
+  cores/v1/self_healing/diagnostics.py:
+    i: json,shutil,subprocess,time,pathlib.Path,typing.{Dict,List,Optional,TYPE_CHECKING}
+    e: DiagnosticEngine
+    DiagnosticEngine: __init__(3),check_llm_health(0),check_system_commands(0),check_microphone(0),check_skills_health(0)  # Engine for running system diagnostic...
   cores/v1/self_reflection.py:
-    i: time,json,shutil,dataclasses.{dataclass,field},pathlib.Path,typing.{Any,Dict,List,Optional}
+    i: time,datetime,dataclasses.{dataclass,field},datetime.timezone,pathlib.Path,typing.{Any,Dict,List,Optional}
     e: ReflectionEvent,DiagnosisReport,SelfReflection
     ReflectionEvent:   # Zdarzenie wymagające autorefleksji.
     DiagnosisReport:   # Raport diagnostyczny.
@@ -422,6 +443,13 @@ D:
     e: ConfigChange,SessionConfig
     ConfigChange:   # Represents a single configuration cha...
     SessionConfig: __init__(2),CATEGORIES(0),PROVIDER_TIERS(0),get(3),set(3)  # User-facing configuration manager.
+  cores/v1/skill_forge.py:
+    i: time,re,json,config.SKILLS_DIR,dataclasses.{dataclass,field},pathlib.Path,typing.{List,Optional,Tuple}
+    e: ErrorBudget,SkillMatch,_CONVERSATIONAL_PATTERNS_PL,_CONVERSATIONAL_PATTERNS_EN,_CONVERSATIONAL_RE,_CREATE_KEYWORDS,is_conversational,SkillForge
+    ErrorBudget: __init__(2),record_error(0),exhausted(0),time_until_reset(0)  # Prevents runaway skill creation after...
+    SkillMatch:   # Result of semantic skill search.
+    SkillForge: __init__(1),index_skills(1),_load_skill_description(1),search(2),_search_embedding(2)  # Gated skill creation with semantic de...
+    is_conversational(query:str)->bool
   cores/v1/skill_logger.py:
     i: nfo,config.LOGS_DIR,pathlib.Path
     e: _NFO_DIR,_SQLITE_PATH,_JSON_PATH,init_nfo,inject_logging,get_skill_logger,query_skill_errors,query_slow_calls
@@ -656,6 +684,14 @@ D:
     get_info()
     health_check()
     execute(input_data:dict)->dict
+  skills/content_search/providers/default/stable/skill.py:
+    i: subprocess,json,re,html.parser.HTMLParser,urllib.{error,parse,request}
+    e: ContentSearchSkill,DuckDuckGoParser,get_info,health_check,execute
+    ContentSearchSkill: __init__(0),execute(1),_search_duckduckgo(1)
+    DuckDuckGoParser: __init__(0),handle_starttag(2),handle_endtag(1),handle_data(1)
+    get_info()->dict
+    health_check()->dict
+    execute(params:dict)->dict
   skills/converter/v1/skill.py:
     i: json,re,datetime,datetime.{timedelta,timezone},decimal.{Decimal,ROUND_HALF_UP}
     e: get_info,health_check,ConverterSkill,execute
@@ -669,6 +705,13 @@ D:
     CoreLoaderSkill: execute(1)
     get_info()->dict
     health_check()->dict
+    execute(params:dict)->dict
+  skills/deps/providers/default/stable/skill.py:
+    i: subprocess,sys,os,json,importlib.util
+    e: DepsSkill,get_info,health_check,execute
+    DepsSkill: __init__(0),check_system(1),check_python_module(1),pip_install(2),execute(1)
+    get_info()
+    health_check()
     execute(params:dict)->dict
   skills/deps/v2/skill.py:
     i: subprocess,sys,os,json,importlib.util
@@ -711,10 +754,24 @@ D:
     get_info()
     health_check()
     execute(input_data:dict)->dict
+  skills/document_editor/v1/skill.py:
+    i: json,re,datetime,difflib.unified_diff,pathlib.Path
+    e: get_info,health_check,DocumentEditorSkill,execute
+    DocumentEditorSkill: __init__(0),_read_file(1),_write_file(3),find_replace(6),insert_text(5)  # Document editing and manipulation.
+    get_info()
+    health_check()
+    execute(input_data:dict)->dict
   skills/document_reader/v1/skill.py:
     i: subprocess,json,shutil,re,pathlib.Path
     e: get_info,health_check,DocumentReaderSkill,execute
     DocumentReaderSkill: _detect_file_type(1),_read_text_file(3),_read_pdf(2),_read_pdf_basic(2),_read_docx(1)  # Extract text from various document fo...
+    get_info()
+    health_check()
+    execute(input_data:dict)->dict
+  skills/document_search/v1/skill.py:
+    i: os,re,json,datetime,fnmatch,datetime.timedelta,pathlib.Path
+    e: get_info,health_check,DocumentSearchSkill,execute
+    DocumentSearchSkill: __init__(0),search_by_name(4),search_by_content(5),_read_file_content(2),_find_matches(4)  # Document search and indexing system.
     get_info()
     health_check()
     execute(input_data:dict)->dict
@@ -1021,6 +1078,13 @@ D:
     get_info()
     health_check()
     execute(params:dict)->dict
+  skills/social_media_manager/v1/skill.py:
+    i: json,datetime,re,datetime.timedelta,pathlib.Path,urllib.{error,request}
+    e: get_info,health_check,SocialMediaManagerSkill,execute
+    SocialMediaManagerSkill: __init__(0),_ensure_defaults(0),_load_posts(0),_save_posts(1),_load_templates(0)  # Social media content management and s...
+    get_info()
+    health_check()
+    execute(input_data:dict)->dict
   skills/stt/providers/vosk/archive/v6/skill.py:
     i: json,os,shutil,subprocess,tempfile,sys,pathlib.Path
     e: get_info,health_check,STTSkill,execute
@@ -1252,3 +1316,11 @@ D:
     TestIntentEngineTopics: setUp(0),test_topic_from_stt_result(0),test_topic_from_web_result(0),test_topic_from_git_result(0),test_topic_from_shell_result(0)
     TestProviderSelector: setUp(0),test_list_capabilities(0),test_tts_has_multiple_providers(0),test_stt_has_providers(0),test_espeak_is_lite_tier(0)
     TestProviderChain: setUp(0),test_build_chain_returns_list(0),test_chain_includes_espeak(0),test_chain_espeak_first_for_quality(0),test_select_best_returns_string(0)
+  tests/test_sprint0.py:
+    i: json,os,sys,tempfile,time,unittest,cores.v1.base_skill.BaseSkill,pathlib.Path,unittest.mock.{MagicMock,patch}
+    e: ROOT,TestBaseSkill,TestMakeModuleFunctions,TestSkillManifest,TestScaffoldGeneration,TestIsConversational,TestErrorBudget,TestSkillForge
+    TestBaseSkill: test_baseskill_execute_not_implemented(0),test_baseskill_safe_execute_catches_errors(0),test_baseskill_safe_execute_normalizes_output(0),test_baseskill_safe_execute_non_dict_input(0),test_baseskill_safe_execute_non_dict_result(0)  # Tests for BaseSkill class.
+    TestMakeModuleFunctions: test_make_module_functions(0),test_make_module_functions_error_handling(0)  # Tests for _make_module_functions helper.
+    TestSkillManifest: test_from_dict_basic(0),test_from_dict_simple_types(0),test_validate_input_required(0),test_validate_input_type_mismatch(0),test_validate_input_passes(0)  # Tests for SkillManifest YAML/JSON man...
+    TestScaffoldGeneration: test_generate_scaffold_basic(0),test_generate_scaffold_with_inputs(0),test_generate_manifest_yaml(0)  # Tests for generate_scaffold and gener...
+    TestIsConversational: test_greetings_are_conversational(0),test_questions_are_conversational(0),test_farewells_are_conversational(0),test_action_queries_are_not_conversational(0),test_empty_is_conversational(0)  # Tests for conversational query detect...

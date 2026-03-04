@@ -99,6 +99,7 @@ Skille są ewoluujące i mogą być tworzone automatycznie:
 - [Tworzenie skillów](docs/creating_skills.md)
 - [Konfiguracja](docs/configuration.md)
 - [Rozwiązywanie problemów](docs/troubleshooting.md)
+- [**Porównanie z konkurencją**](docs/comparisons/README.md) — CoreSkill vs LangGraph, CrewAI, AutoGPT, Rasa i inne
 
 ## 💡 Przykłady użycia
 

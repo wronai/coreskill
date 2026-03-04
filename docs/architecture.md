@@ -95,7 +95,57 @@ load → preflight check → execute → validate → evolve
 - Import check
 - Interface compliance
 
-### 5. ProviderSelector (`cores/v1/provider_selector.py`)
+**BaseSkill Integration:**
+- Automatic `safe_execute()` wrapper with error handling
+- Manifest-driven input validation
+- Type normalization for params/results
+
+### 5. SkillForge (`cores/v1/skill_forge.py`)
+
+**Semantic deduplication + gated creation:**
+```
+user_query → should_create(query, skills) → decision
+```
+
+**Decision outcomes:**
+- `"reuse:<skill>"` - istniejący skill pasuje (embedding similarity > 0.85)
+- `"chat"` - konwersacyjne zapytanie, LLM obsługuje bezpośrednio
+- `"budget_exceeded"` - zbyt wiele błędów tworzenia (max 10/h)
+- `"new_skill_needed"` - tworzymy nowy skill
+
+**Conversational detection:**
+- Patterns PL/EN: greetings, questions, short responses
+- Action verb detection for short queries
+- Explicit creation keywords override
+
+### 6. BaseSkill (`cores/v1/base_skill.py`)
+
+**Abstract base class eliminating 55% boilerplate errors:**
+
+```python
+class MySkill(BaseSkill):
+    name = "my_skill"
+    version = "v1"
+    description = "Does something useful"
+
+    def execute(self, params: dict) -> dict:
+        # Only implement business logic
+        return {"success": True, "result": ...}
+```
+
+**Auto-provided:**
+- `get_info()` - metadata from class attributes
+- `health_check()` - default ok status
+- `safe_execute()` - error handling + type normalization
+- Manifest loading for defaults/validation
+
+**SkillManifest:**
+- YAML/JSON manifest loader
+- Input schema validation
+- Default value injection
+- Scaffold generator for LLM prompts
+
+### 7. ProviderSelector (`cores/v1/provider_selector.py`)
 
 **ProviderChain:**
 ```python
