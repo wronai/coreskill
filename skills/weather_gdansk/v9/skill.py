@@ -1,120 +1,141 @@
 import subprocess
 import re
 import urllib.request
-import html
+import urllib.error
 from html.parser import HTMLParser
 
 
-class WeatherGdanskSkill:
+class WeatherGdanskParser(HTMLParser):
     def __init__(self):
-        self.name = "weather_gdansk"
-        self.version = "v9"
-        self.description = "Searches for current weather in Gdańsk online"
+        super().__init__()
+        self.in_temp = False
+        self.in_condition = False
+        self.in_location = False
+        self.temp = None
+        self.condition = None
+        self.location = None
+        self._current_tag = None
+        self._data_buffer = ""
 
-    def execute(self, params: dict) -> dict:
-        try:
-            text = params.get('text', '').strip().lower()
-            if 'gda' in text and ('pogo' in text or 'pogoda' in text or 'pogod' in text):
-                # Search for weather in Gdańsk using DuckDuckGo HTML search
-                query = "pogoda w Gdańsku"
-                url = f"https://duckduckgo.com/html/?q={urllib.parse.quote(query)}"
-                
-                headers = {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-                }
-                req = urllib.request.Request(url, headers=headers)
-                
-                with urllib.request.urlopen(req, timeout=10) as response:
-                    html_content = response.read().decode('utf-8', errors='ignore')
-                
-                # Extract weather info using regex patterns
-                # Look for weather widget or result snippet
-                weather_patterns = [
-                    r'class="[^"]*weather[^"]*"[^>]*>([^<]*?)(?:<|&nbsp;)',
-                    r'data-text="([^"]*?pogoda[^"]*?)"',
-                    r'class="[^"]*result__snippet[^"]*"[^>]*>([^<]*?pogoda[^<]*?)<',
-                    r'<div[^>]*class="[^"]*[^"]*weather[^"]*[^"]*"[^>]*>([^<]*?)(?:<|&nbsp;)',
-                    r'<span[^>]*class="[^"]*[^"]*temp[^"]*[^"]*"[^>]*>([^<]*?)</span>',
-                ]
-                
-                # Try to find weather info in the page
-                weather_info = ""
-                for pattern in weather_patterns:
-                    match = re.search(pattern, html_content, re.IGNORECASE)
-                    if match:
-                        weather_info = match.group(1)
-                        break
-                
-                # If no direct weather found, try to find a link to a weather site
-                if not weather_info:
-                    # Look for links to weather services
-                    links = re.findall(r'<a[^>]*href="([^"]*gda[^"]*pogo[^"]*|pogo[^"]*gda[^"]*)"[^>]*>', html_content, re.IGNORECASE)
-                    if links:
-                        # Try first link that seems relevant
-                        weather_info = "Znaleziono link do pogody w Gdańsku: " + html.unescape(links[0])
-                    else:
-                        # Use espeak to say we're searching for weather
-                        weather_info = "Nie znaleziono bezpośrednich wyników pogody w Gdańsku. Sprawdź https://www.meteo.pl"
-                
-                # Clean up the result
-                weather_info = re.sub(r'<[^>]+>', '', weather_info)
-                weather_info = html.unescape(weather_info).strip()
-                
-                if not weather_info:
-                    weather_info = "Nie udało się pobrać aktualnej pogody w Gdańsku. Sprawdź https://www.meteo.pl"
-                
-                # Speak the result
-                try:
-                    subprocess.run(['espeak', '-v', 'pl', f"Pogoda w Gdańsku: {weather_info[:150]}"], 
-                                 capture_output=True, timeout=5)
-                except Exception:
-                    pass  # Ignore TTS errors
-                
-                return {
-                    'success': True,
-                    'text': f"Pogoda w Gdańsku: {weather_info[:200]}",
-                    'result': weather_info[:200]
-                }
-            else:
-                return {
-                    'success': False,
-                    'text': "To nie jest zapytanie o pogodę w Gdańsku.",
-                    'error': 'No weather query for Gdańsk'
-                }
-        except Exception as e:
-            return {
-                'success': False,
-                'text': f"Błąd podczas pobierania pogody: {str(e)}",
-                'error': str(e)
-            }
+    def handle_starttag(self, tag, attrs):
+        self._current_tag = tag
+        attrs_dict = dict(attrs)
+        # Look for temperature (e.g., <span class="temp">12°</span>)
+        if tag == "span" and "class" in attrs_dict:
+            cls = attrs_dict["class"]
+            if "temp" in cls.lower():
+                self.in_temp = True
+            if "condition" in cls.lower() or "weather" in cls.lower():
+                self.in_condition = True
+        if tag == "h1" and "class" in attrs_dict:
+            if "location" in attrs_dict["class"].lower() or "city" in attrs_dict["class"].lower():
+                self.in_location = True
 
-    def get_info(self) -> dict:
-        return {
-            'name': self.name,
-            'version': self.version,
-            'description': self.description
-        }
+    def handle_endtag(self, tag):
+        self._current_tag = None
+        if tag == "span":
+            self.in_temp = False
+            self.in_condition = False
+        if tag == "h1":
+            self.in_location = False
 
-    def health_check(self) -> dict:
-        try:
-            # Test if espeak is available
-            result = subprocess.run(['espeak', '--version'], 
-                                  capture_output=True, timeout=2)
-            return {'status': 'ok', 'espeak_available': True}
-        except FileNotFoundError:
-            return {'status': 'ok', 'espeak_available': False, 'message': 'espeak not installed, TTS will be disabled'}
-        except Exception as e:
-            return {'status': 'error', 'message': str(e)}
+    def handle_data(self, data):
+        data = data.strip()
+        if not data:
+            return
+        if self.in_temp and self.temp is None:
+            # Extract numeric temp (e.g., "12°", "12° C")
+            match = re.search(r"-?\d+\.?\d*", data)
+            if match:
+                self.temp = match.group(0)
+        elif self.in_condition and self.condition is None:
+            self.condition = data
+        elif self.in_location and self.location is None:
+            self.location = data
 
 
 def get_info() -> dict:
-    skill = WeatherGdanskSkill()
-    return skill.get_info()
+    return {
+        "name": "weather_gdansk",
+        "version": "v9",
+        "description": "Searches the web for current weather in Gdańsk"
+    }
 
 
 def health_check() -> dict:
-    skill = WeatherGdanskSkill()
-    return skill.health_check()
+    try:
+        # Test network connectivity with a HEAD request to a reliable host
+        req = urllib.request.Request("https://www.google.com", method="HEAD")
+        with urllib.request.urlopen(req, timeout=5) as response:
+            if response.status == 200:
+                return {"status": "ok"}
+            else:
+                return {"status": "error", "message": f"Unexpected status: {response.status}"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+class WeatherGdanskSkill:
+    def execute(self, params: dict) -> dict:
+        try:
+            text = params.get("text", "").strip().lower()
+            if "gdańsk" not in text and "gdansk" not in text:
+                return {
+                    "success": False,
+                    "message": "Query does not mention Gdańsk"
+                }
+
+            # Use espeak to announce search
+            try:
+                subprocess.run(
+                    ["espeak", "-v", "pl", "Wyszukuję pogodę w Gdańsku"],
+                    check=True,
+                    capture_output=True
+                )
+            except Exception:
+                pass  # Non-critical if TTS fails
+
+            # Search for weather using Google search (HTML parsing)
+            query = "pogoda w Gdańsku"
+            url = f"https://www.google.com/search?q={urllib.parse.quote(query)}&hl=pl"
+            
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+            }
+            req = urllib.request.Request(url, headers=headers)
+            
+            with urllib.request.urlopen(req, timeout=10) as response:
+                html = response.read().decode("utf-8", errors="ignore")
+            
+            parser = WeatherGdanskParser()
+            parser.feed(html)
+            
+            # Extract weather info
+            temp = parser.temp or "brak danych"
+            condition = parser.condition or "brak danych"
+            location = parser.location or "Gdańsk"
+            
+            # Construct response
+            result_text = f"Pogoda w {location}: {condition}, temperatura {temp}°C"
+            
+            return {
+                "success": True,
+                "result": result_text,
+                "raw_temp": temp,
+                "raw_condition": condition,
+                "raw_location": location
+            }
+            
+        except urllib.error.URLError as e:
+            return {
+                "success": False,
+                "message": f"Network error: {str(e)}"
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "message": f"Unexpected error: {str(e)}"
+            }
 
 
 def execute(params: dict) -> dict:
@@ -122,16 +143,19 @@ def execute(params: dict) -> dict:
     return skill.execute(params)
 
 
-if __name__ == '__main__':
-    # Test the skill
-    test_params = {'text': 'wyszukaj w internecie pogodę w Gdańsku'}
-    result = execute(test_params)
-    print(f"Result: {result}")
+if __name__ == "__main__":
+    # Test block
+    print("Testing weather_gdansk skill...")
+    
+    # Test health check
+    health = health_check()
+    print(f"Health check: {health}")
     
     # Test info
     info = get_info()
-    print(f"Info: {info}")
+    print(f"Skill info: {info}")
     
-    # Test health
-    health = health_check()
-    print(f"Health: {health}")
+    # Test execution
+    test_params = {"text": "wyszukaj w internecie pogodę w Gdańsku"}
+    result = execute(test_params)
+    print(f"Execution result: {result}")
