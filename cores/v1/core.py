@@ -74,9 +74,10 @@ HELP = """
   /models refresh    Auto-discover       /core           A/B status
   /switch            Switch core         /log [skill]    Recent logs
   /learn [skill]     Show learnings      /state          System state
-  /autotune [goal] [profile] [--live]  Benchmark & wybierz najlepszy model
+  /autotune [goal] [profile] [--static]  Benchmark z LIVE testami API (domyślnie)
                        Profile: fastest, best_quality, ignore_cost, free_only, balanced
-                       Przykład: /autotune coding fastest --live
+                       --static = szybki ale mniej dokładny (bez wywołań API)
+                       Przykład: /autotune coding fastest
   /config            Show session config /config <cat> <set> <val>  Change setting
   /correct <wrong> <right>  Correct last intent (teaches the system)
   /profile           Show learned user profile & preferences
@@ -763,7 +764,7 @@ def _cmd_apikey(a1, a2, **ctx):
 
 
 def _cmd_autotune(a1, **ctx):
-    """Auto-tune: benchmark models and select optimal one: /autotune [goal] [profile] [--live]"""
+    """Auto-tune: benchmark models with LIVE tests and select optimal: /autotune [goal] [profile] [--static]"""
     from skills.benchmark.v1.skill import execute as benchmark_execute
 
     llm = ctx["llm"]
@@ -771,45 +772,34 @@ def _cmd_autotune(a1, **ctx):
     logger = ctx["logger"]
     api_key = state.get("openrouter_api_key", "")
 
-    # Parse args - support: /autotune [goal] [profile] [--live]
+    # Parse args - support: /autotune [goal] [profile] [--static]
     args = (a1 or "").split()
     goal = "coding"
-    profile = "balanced"  # default profile
-    live_mode = False
+    profile = "balanced"
+    use_static = False  # Default is LIVE benchmark
     
     valid_profiles = ["fastest", "best_quality", "ignore_cost", "free_only", "balanced", "large_context"]
     valid_goals = ["coding", "chat", "reasoning", "summarization", "creative", "general"]
     
     for arg in args:
         if arg.startswith("--"):
-            if arg == "--live":
-                live_mode = True
+            if arg == "--static":
+                use_static = True
         elif arg in valid_profiles:
             profile = arg
         elif arg in valid_goals:
             goal = arg
         elif arg:
-            # If unrecognized, treat as goal
             goal = arg
 
-    cpr(C.CYAN, f"🔬 Auto-tune: benchmark dla celu '{goal}' [profile: {profile}]...")
-    if live_mode:
-        cpr(C.DIM, "   (live mode - testing real latency/quality)")
-
-    if live_mode:
-        # Run LIVE benchmark with real API calls
-        result = benchmark_execute({
-            "action": "run_benchmark",
-            "goal": goal,
-            "budget": "any",
-            "profile": profile,
-            "models": None,
-            "tests": ["speed", "coding", "json"],
-            "timeout_per_model": 25,
-            "api_key": api_key,
-        })
+    cpr(C.CYAN, f"🔬 Auto-tune: LIVE benchmark dla celu '{goal}' [profile: {profile}]...")
+    if use_static:
+        cpr(C.DIM, "   (static mode - fast but less accurate)")
     else:
-        # Run static benchmark (fast)
+        cpr(C.DIM, "   (live mode - testing real latency/quality via API)")
+
+    if use_static:
+        # Static benchmark (fast, hardcoded scores)
         result = benchmark_execute({
             "action": "recommend",
             "goal": goal,
@@ -817,6 +807,27 @@ def _cmd_autotune(a1, **ctx):
             "profile": profile,
             "limit": 5
         })
+    else:
+        # LIVE benchmark with real API calls - the default
+        # Check if API key is available
+        if not api_key:
+            cpr(C.YELLOW, "⚠️ Brak API key - używam statycznego benchmarku")
+            result = benchmark_execute({
+                "action": "recommend",
+                "goal": goal,
+                "budget": "any",
+                "profile": profile,
+                "limit": 5
+            })
+        else:
+            result = benchmark_execute({
+                "action": "recommend_live",
+                "goal": goal,
+                "budget": "any",
+                "profile": profile,
+                "limit": 5,
+                "api_key": api_key,
+            })
 
     if not result.get("success"):
         cpr(C.RED, f"❌ Benchmark nie powiódł się: {result.get('error', 'unknown')}")
@@ -827,38 +838,29 @@ def _cmd_autotune(a1, **ctx):
     if profile_desc:
         cpr(C.DIM, f"   Profil: {profile_desc}")
 
-    # Handle both live and static results
-    if live_mode:
-        results = result.get("results", [])
-        if not results:
-            cpr(C.YELLOW, "⚠️ Brak wyników z live benchmark")
-            return
+    # Handle results (both live and static use same format now)
+    recommendations = result.get("recommendations", [])
+    if not recommendations:
+        cpr(C.YELLOW, "⚠️ Brak rekomendacji z benchmark")
+        return
 
-        cpr(C.GREEN, f"\n📊 Live benchmark dla '{goal}':")
-        for i, r in enumerate(results[:3], 1):
-            model_short = r['model_id'].split('/')[-1]
-            marker = "★" if i == 1 else " "
-            cpr(C.DIM if i > 1 else C.GREEN,
-                f"{marker} {i}. {model_short} (score: {r['combined_score']}) [q={r['avg_quality']}, lat={r['avg_latency_ms']:.0f}ms]")
-
-        best = results[0]
-        best_model = best['model_id']
+    is_live = result.get("live_tested", False) or not use_static
+    
+    if is_live:
+        cpr(C.GREEN, f"\n📊 LIVE benchmark dla '{goal}' (rzeczywiste testy API):")
     else:
-        recommendations = result.get("recommendations", [])
-        if not recommendations:
-            cpr(C.YELLOW, "⚠️ Brak rekomendacji z benchmark")
-            return
+        cpr(C.GREEN, f"\n📊 Statyczny benchmark dla '{goal}':")
+    
+    for r in recommendations[:3]:
+        model_short = r['model_id'].split('/')[-1]
+        tier = r['tier']
+        marker = "★" if r['rank'] == 1 else " "
+        lat_info = f", lat={r.get('avg_latency_ms', 'N/A'):.0f}ms" if 'avg_latency_ms' in r else ""
+        cpr(C.DIM if r['rank'] > 1 else C.GREEN,
+            f"{marker} {r['rank']}. {model_short} (score: {r['overall_score']}) [{tier}]{lat_info}")
 
-        cpr(C.GREEN, f"\n📊 Wyniki benchmark dla '{goal}':")
-        for r in recommendations[:3]:
-            model_short = r['model_id'].split('/')[-1]
-            tier = r['tier']
-            marker = "★" if r['rank'] == 1 else " "
-            cpr(C.DIM if r['rank'] > 1 else C.GREEN,
-                f"{marker} {r['rank']}. {model_short} (score: {r['overall_score']}) [{tier}]")
-
-        best = recommendations[0]
-        best_model = best['model_id']
+    best = recommendations[0]
+    best_model = best['model_id']
 
     cpr(C.CYAN, f"\n🏆 Najlepszy model: {best_model.split('/')[-1]}")
 
@@ -892,8 +894,8 @@ def _cmd_autotune(a1, **ctx):
         "to": best_model,
         "goal": goal,
         "profile": profile,
-        "score": best.get('combined_score') or best.get('overall_score'),
-        "live_mode": live_mode
+        "score": best.get('overall_score'),
+        "live_mode": not use_static
     })
 
     cpr(C.GREEN, f"✅ Model zmieniony na: {best_model.split('/')[-1]}")

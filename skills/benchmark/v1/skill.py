@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 """
-Benchmark skill — analyzes LLM models and recommends the best for specific goals.
-Usage: execute({"goal": "coding", "budget": "free", "constraints": ["fast", "polish"]})
 """
 import json
 import time
@@ -234,21 +232,45 @@ class BenchmarkSkill:
         Main entry point.
         
         params:
-            - goal: "coding" | "chat" | "reasoning" | "summarization" | "translation" | "creative" | "general"
             - budget: "free" | "cheap" | "any" (default: free)
-            - constraints: list of "fast", "reliable", "large_context", "polish", "english"
-            - profile: "fastest" | "best_quality" | "ignore_cost" | "free_only" | "balanced" | "large_context"
             - available_models: list of model IDs to consider (optional)
             - limit: max recommendations (default: 3)
+            - text: user message for natural language parsing (optional)
         """
         try:
+            # Parse natural language from text if provided
+            text = params.get("text", "")
+            if text:
+                # Detect "płatny" / "paid" in text -> set budget to any
+                if any(word in text.lower() for word in ["płatny", "platny", "paid", "płatne", "platne"]):
+                    params["budget"] = "any"
+                    params["profile"] = "ignore_cost"
+                # Detect goal from text
+                if "kodowania" in text.lower() or "kodowanie" in text.lower() or "coding" in text.lower():
+                    params["goal"] = "coding"
+                elif "chat" in text.lower() or "czat" in text.lower():
+                    params["goal"] = "chat"
+                elif "reasoning" in text.lower() or "wnioskowanie" in text.lower():
+                    params["goal"] = "reasoning"
+                # Detect profile from text
+                if any(word in text.lower() for word in ["najszybszy", "fastest", "szybki"]):
+                    params["profile"] = "fastest"
+                elif any(word in text.lower() for word in ["najlepszy", "best", "jakość", "quality"]):
+                    params["profile"] = "best_quality"
+            
             goal_str = params.get("goal", "general")
             goal = GoalType(goal_str) if goal_str in [g.value for g in GoalType] else GoalType.GENERAL
             
             action = params.get("action", "recommend")
             
+            # Default to LIVE benchmark if API key is available and no specific action requested
+            if action == "recommend" and os.environ.get("OPENROUTER_API_KEY"):
+                action = "recommend_live"
+            
             if action == "recommend":
                 return self._recommend_models(params, goal)
+            elif action == "recommend_live":
+                return self._recommend_models_live(params, goal)
             elif action == "compare":
                 return self._compare_models(params)
             elif action == "analyze":
@@ -354,6 +376,134 @@ class BenchmarkSkill:
             "recommendations": recommendations,
             "summary": self._generate_summary(recommendations, goal),
         }
+
+    def _recommend_models_live(self, params: Dict, goal: GoalType) -> Dict[str, Any]:
+        """Recommend models based on LIVE API tests (real latency + quality)."""
+        budget = params.get("budget", "free")
+        constraints = params.get("constraints", [])
+        available_models = params.get("available_models", None)
+        limit = params.get("limit", 3)
+        profile_name = params.get("profile", "balanced")
+        api_key = params.get("api_key", os.environ.get("OPENROUTER_API_KEY", ""))
+        
+        # Get profile weights
+        benchmark_profile = self.BENCHMARK_PROFILES.get(profile_name, self.BENCHMARK_PROFILES["balanced"])
+        if "budget" in benchmark_profile:
+            budget = benchmark_profile["budget"]
+        
+        # Get candidate models
+        candidates = self._get_candidate_models(budget, available_models)
+        # Limit to top 5 for speed
+        candidates = candidates[:5]
+        
+        print(f"[Benchmark LIVE] Testing {len(candidates)} models with real API calls...")
+        
+        # Test each model with real API calls
+        test_prompts = {
+            "coding": "Write a Python function that reverses a string without slicing. Include docstring.",
+            "json": 'Return ONLY JSON with keys: "name", "age", "city".',
+            "speed": "Say 'hello' and nothing else.",
+        }
+        
+        live_results = []
+        for model_id in candidates:
+            print(f"[Benchmark LIVE] Testing {model_id.split('/')[-1]}...")
+            
+            scores = {}
+            latencies = []
+            errors = []
+            
+            # Run tests
+            for test_type, prompt in test_prompts.items():
+                start = time.time()
+                try:
+                    response = self._call_model_for_benchmark(model_id, api_key, prompt, timeout=20)
+                    latency = time.time() - start
+                    latencies.append(latency)
+                    
+                    quality = self._score_benchmark_response(response, [], test_type)
+                    scores[test_type] = {
+                        "latency_ms": round(latency * 1000, 1),
+                        "quality": round(quality, 2),
+                    }
+                except Exception as e:
+                    latencies.append(20)  # timeout
+                    errors.append(str(e)[:50])
+                    scores[test_type] = {"latency_ms": 20000, "quality": 0.0}
+            
+            # Calculate metrics
+            avg_latency = sum(latencies) / len(latencies) if latencies else 20
+            avg_quality = sum(s["quality"] for s in scores.values()) / len(scores) if scores else 0
+            
+            # Convert to speed score (inverse of latency)
+            # < 1s = excellent, > 5s = poor
+            speed_score = max(0, 1 - (avg_latency / 5.0))
+            
+            # Cost score
+            cost_score = 1.0 if ":free" in model_id else 0.5
+            
+            # Weighted overall score using profile weights
+            weights = benchmark_profile
+            overall = (
+                avg_quality * weights.get("quality_weight", 0.35) +
+                speed_score * weights.get("speed_weight", 0.35) +
+                cost_score * weights.get("cost_weight", 0.15)
+            )
+            
+            tier = "paid"
+            if ":free" in model_id:
+                tier = "free"
+            elif model_id.startswith("ollama/"):
+                tier = "local"
+            
+            provider = model_id.split("/")[1] if "/" in model_id else "unknown"
+            
+            live_results.append({
+                "model_id": model_id,
+                "provider": provider,
+                "overall_score": round(overall, 3),
+                "quality_score": round(avg_quality, 2),
+                "speed_score": round(speed_score, 2),
+                "cost_score": cost_score,
+                "avg_latency_ms": round(avg_latency * 1000, 1),
+                "tier": tier,
+                "live_tests": scores,
+                "errors": errors if errors else None,
+            })
+        
+        # Sort by live score
+        live_results.sort(key=lambda x: x["overall_score"], reverse=True)
+        
+        # Build recommendations
+        recommendations = []
+        for i, r in enumerate(live_results[:limit], 1):
+            rec = {
+                "rank": i,
+                "model_id": r["model_id"],
+                "provider": r["provider"],
+                "overall_score": r["overall_score"],
+                "breakdown": {
+                    "quality": r["quality_score"],
+                    "speed": r["speed_score"],
+                    "cost": r["cost_score"],
+                },
+                "tier": r["tier"],
+                "avg_latency_ms": r["avg_latency_ms"],
+                "why": f"Live tested: q={r['quality_score']:.2f}, lat={r['avg_latency_ms']:.0f}ms",
+            }
+            recommendations.append(rec)
+        
+        return {
+            "success": True,
+            "goal": goal.value,
+            "budget": budget,
+            "profile": profile_name,
+            "profile_description": benchmark_profile.get("description", "live testing"),
+            "constraints": constraints,
+            "recommendations": recommendations,
+            "summary": f"Best (LIVE): {recommendations[0]['model_id'].split('/')[-1]} (score: {recommendations[0]['overall_score']}, lat: {recommendations[0]['avg_latency_ms']:.0f}ms)" if recommendations else "No models tested",
+            "live_tested": True,
+        }
     
     def _get_candidate_models(self, budget: str, available_models: Optional[List[str]]) -> List[str]:
         """Get list of models to evaluate from JSON config."""
@@ -429,7 +579,6 @@ class BenchmarkSkill:
         overall = (
             quality_score * profile["quality_weight"] +
             speed_score * profile["speed_weight"] +
-            reliability_score * 0.10 +  # reliability is always important
             cost_score * profile["cost_weight"]
         )
         
@@ -683,7 +832,6 @@ class BenchmarkSkill:
         best = results[0] if results else None
 
         summary_lines = [
-            f"Best: {best['model_id'].split('/')[-1] if best else 'none'} (score: {best['combined_score'] if best else 0})",
             "Top 3:",
         ]
         for i, r in enumerate(results[:3], 1):

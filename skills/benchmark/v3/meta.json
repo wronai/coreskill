@@ -1,8 +1,0 @@
-{
-  "name": "benchmark",
-  "version": "v3",
-  "parent": "v2",
-  "phase": "syntax",
-  "created_at": "2026-03-04T10:53:23.842124+00:00",
-  "rolled_back": true
-}
