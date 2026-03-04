@@ -6,6 +6,9 @@ oferteo_firmy.txt
 .idea
 .gguf
 *.gguf
+.models/
+logs
+models/
 .projektor
 test-env
 push-e

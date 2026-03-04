@@ -103,5 +103,8 @@ if __name__ == "__main__":
         b = ROOT / "build_core.py"
         if b.exists(): subprocess.run([sys.executable, str(b)])
         print("Reset done")
+    elif "--verbose" in sys.argv:
+        os.environ["EVO_VERBOSE"] = "1"
+        bootstrap()
     else:
         bootstrap()

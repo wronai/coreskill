@@ -1,5 +1,7 @@
 # evo-engine - text2pipeline Evolutionary AI
 
+![img.png](img.png)
+
 Dual-core self-healing system with TTS, auto-skill creation, and LLM pipelines.
 
 ## Quick Start
