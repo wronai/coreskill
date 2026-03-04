@@ -4,9 +4,9 @@
 
 - **Project**: .
 - **Analysis Mode**: static
-- **Total Functions**: 1386
-- **Total Classes**: 176
-- **Modules**: 149
+- **Total Functions**: 1440
+- **Total Classes**: 181
+- **Modules**: 153
 - **Entry Points**: 0
 
 ## Architecture by Module
@@ -390,6 +390,7 @@ Functions exposed as public API (no underscore prefix):
 - `cores.v1.repair_journal.RepairJournal.ask_llm_and_try` - 28 calls
 - `scripts.simulate.Simulator.run_all` - 27 calls
 - `cores.v1.preflight.SkillPreflight.check_imports` - 27 calls
+- `skills.email_client.v1.skill.EmailClientSkill.execute` - 27 calls
 - `cores.v1.preflight.SkillPreflight.auto_fix_imports` - 26 calls
 - `seeds.core_v1.SkillManager.exec_skill` - 26 calls
 - `skills.benchmark.v3.skill.BenchmarkSkill.execute` - 26 calls
@@ -397,7 +398,6 @@ Functions exposed as public API (no underscore prefix):
 - `skills.benchmark.v2.skill.BenchmarkSkill.execute` - 26 calls
 - `scripts.generate_manifests.generate_manifest_for_skill` - 25 calls
 - `cores.v1.skill_logger.get_health_markdown` - 25 calls
-- `skills.notes.v1.skill.NotesSkill.execute` - 24 calls
 
 ## System Interactions
 

@@ -4,24 +4,24 @@
 HEALTH[20]:
   🔴 DUP   17 classes duplicated
   🔴 GOD   core.py = 609L, 6 classes, 29m, max CC=74
-  🟡 CC    main CC=74 (limit:15)
-  🟡 CC    analyze CC=57 (limit:15)
-  🟡 CC    main CC=54 (limit:15)
-  🟡 CC    classify CC=47 (limit:15)
-  🟡 CC    classify CC=32 (limit:15)
-  🟡 CC    _diagnose_skill CC=30 (limit:15)
-  🟡 CC    _run_voice_loop CC=28 (limit:15)
-  🟡 CC    run_diagnostic CC=28 (limit:15)
-  🟡 CC    execute CC=28 (limit:15)
-  🟡 CC    execute CC=28 (limit:15)
-  🟡 CC    _handle_chat CC=27 (limit:15)
+  🟡 CC    cmd_logs_reset CC=20 (limit:15)
+  🟡 CC    cmd_cache_reset CC=23 (limit:15)
+  🟡 CC    cmd_status CC=19 (limit:15)
+  🟡 CC    generate_manifest_for_skill CC=23 (limit:15)
+  🟡 CC    run_scenario CC=21 (limit:15)
+  🟡 CC    _final_report CC=22 (limit:15)
+  🟡 CC    count_skills_and_versions CC=15 (limit:15)
+  🟡 CC    _check_code_quality CC=17 (limit:15)
   🟡 CC    can_run CC=26 (limit:15)
-  🟡 CC    build_system_prompt CC=26 (limit:15)
-  🟡 CC    handle_request CC=26 (limit:15)
-  🟡 CC    execute CC=26 (limit:15)
-  🟡 CC    execute CC=26 (limit:15)
-  🟡 CC    compute_system_health CC=25 (limit:15)
-  🟡 CC    auto_fix_imports CC=25 (limit:15)
+  🟡 CC    _suggest_strategy CC=18 (limit:15)
+  🟡 CC    _extract_stt_text CC=15 (limit:15)
+  🟡 CC    _run_stt_cycle CC=18 (limit:15)
+  🟡 CC    _run_file_input_loop CC=24 (limit:15)
+  🟡 CC    _run_voice_loop CC=28 (limit:15)
+  🟡 CC    _diagnose_skill CC=30 (limit:15)
+  🟡 CC    analyze CC=57 (limit:15)
+  🟡 CC    _extract_shell_command CC=18 (limit:15)
+  🟡 CC    _match_existing_skill CC=18 (limit:15)
 
 REFACTOR[3]:
   1. rm duplicates  (-17 dup classes)
@@ -29,18 +29,18 @@ REFACTOR[3]:
   3. split 18 high-CC methods  (CC>15)
 
 COUPLING:
-                                                          cores.v1                            skill                             main                             core                          scripts                            seeds            skills.web_automation                    skills.devops                      skills.echo                              cli                    skills.health       skills.interior_inspection  skills.local_computer_discovery                 skills.benchmark                 skills.converter
-                         cores.v1                               ──                                                                18                               ←4                               ←7                               ←2                                6                               ←3                                                                                                                                                                   ←2                                                                ←2  hub
-                            skill                                                                ──                                                                                                                                  ←1                                                                ←3                               ←6                                                                ←4                               ←4                               ←2                               ←2                                   hub
-                             main                              ←18                                                                ──                               ←1                               ←1                               ←2                                                                                                                                  ←3                                                                                                                                                                       hub
-                             core                                4                                                                 1                               ──                                                                 4                                                                                                                                                                                                                                                                                                           !! fan-out
-                          scripts                                7                                                                 1                                                                ──                                                                                                                                                                   ←1                                                                                                                                                                       !! fan-out
-                            seeds                                2                                1                                2                               ←4                                                                ──                                                                                                                                                                                                                                                                                                         
+                                                          cores.v1                            skill                             main                            seeds                             core                          scripts            skills.web_automation                    skills.devops                      skills.echo                              cli                    skills.health       skills.interior_inspection  skills.local_computer_discovery                 skills.benchmark                 skills.converter
+                         cores.v1                               ──                                                                18                               ←2                               ←4                               ←7                                6                               ←3                                                                                                                                                                   ←2                                                                ←2  hub
+                            skill                                                                ──                                                                                                                                                                                                    ←3                               ←3                                                                ←1                               ←4                               ←2                               ←2                                   hub
+                             main                              ←18                                                                ──                               ←2                               ←1                               ←1                                                                                                                                  ←3                                                                                                                                                                       hub
+                            seeds                                2                                                                 2                               ──                                8                                                                                                                                  ←3                                                                ←3                                                                                                                                      hub
+                             core                                4                                                                 1                               ←8                               ──                                                                                                                                                                                                                                                                                                                                            hub
+                          scripts                                7                                                                 1                                                                                                 ──                                                                                                                                  ←1                                                                                                                                                                       !! fan-out
             skills.web_automation                               ←6                                                                                                                                                                                                    ──                                                                                                                                                                                                                                                                          hub
                     skills.devops                                3                                3                                                                                                                                                                                                    ──                                                                                                                                                                                                                                       
-                      skills.echo                                                                 6                                                                                                                                                                                                                                     ──                                                                                                                                                                                                      
-                              cli                                                                                                  3                                                                 1                                                                                                                                                                   ──                                                                                                                                                                     
-                    skills.health                                                                 4                                                                                                                                                                                                                                                                                                       ──                                                                                                                                    
+                      skills.echo                                                                 3                                                                 3                                                                                                                                                                   ──                                                                                                                                                                                                      
+                              cli                                                                                                  3                                                                                                  1                                                                                                                                  ──                                                                                                                                                                     
+                    skills.health                                                                 1                                                                 3                                                                                                                                                                                                                                     ──                                                                                                                                    
        skills.interior_inspection                                                                 4                                                                                                                                                                                                                                                                                                                                        ──                                                                                                   
   skills.local_computer_discovery                                2                                2                                                                                                                                                                                                                                                                                                                                                                         ──                                                                  
                  skills.benchmark                                                                 2                                                                                                                                                                                                                                                                                                                                                                                                          ──                                 
@@ -48,10 +48,12 @@ COUPLING:
   CYCLES: none
   HUB: main/ (fan-in=25)
   HUB: skills.web_automation/ (fan-in=7)
+  HUB: core/ (fan-in=8)
+  HUB: seeds/ (fan-in=6)
   HUB: cores.v1/ (fan-in=27)
-  HUB: skill/ (fan-in=41)
-  SMELL: core/ fan-out=9 → split needed
+  HUB: skill/ (fan-in=34)
   SMELL: scripts/ fan-out=8 → split needed
+  SMELL: seeds/ fan-out=12 → split needed
   SMELL: cores.v1/ fan-out=24 → split needed
 
 LAYERS:
@@ -61,10 +63,10 @@ LAYERS:
   │ !! generate_manifests         199L  0C    4m  CC=23     ←1
   │
   ./                              CC̄=5.8    ←in:0  →out:0
-  │ !! core                       609L  6C   29m  CC=74     ←0  ×DUP
+  │ !! core                       609L  6C   29m  CC=74     ←1  ×DUP
   │ !! cli                        329L  0C    7m  CC=23     ←0
   │ !  main                       110L  0C    5m  CC=10     ←12
-  │ skill                       88L  1C    8m  CC=5      ←34
+  │ skill                       88L  1C    8m  CC=5      ←32
   │ setup                       45L  0C    0m  CC=0.0    ←0
   │ __init__                    24L  0C    0m  CC=0.0    ←0
   │
@@ -118,9 +120,9 @@ LAYERS:
   │ supervisor                  82L  1C   10m  CC=6      ←0
   │ fuzzy_router                80L  1C    4m  CC=8      ←0
   │
-  seeds/                          CC̄=4.5    ←in:4  →out:5  ×DUP
-  │ !! core_v1                    357L  5C   27m  CC=54     ←1  ×DUP
-  │ echo_skill_v1               25L  1C    4m  CC=1      ←0
+  seeds/                          CC̄=4.5    ←in:6  →out:12  !! split  ×DUP
+  │ !! core_v1                    357L  5C   27m  CC=54     ←0  ×DUP
+  │ echo_skill_v1               25L  1C    4m  CC=1      ←5
   │
   skills/                         CC̄=4.2    ←in:0  →out:0  ×DUP
   │ !  skill                      478L  1C   18m  CC=12     ←0
@@ -462,8 +464,8 @@ CLASSES:
   LLMExecutor                    ██                         2m  CC̄=5.5   max=10  
   ShellSkill                     ██                         2m  CC̄=15.0  max=28    !!
   ShellSkill                     ██                         2m  CC̄=15.0  max=28    !!
-  TTSSkill                       █                          1m  CC̄=4.0   max=4   
   EchoSkill                      █                          1m  CC̄=1.0   max=1   
+  TTSSkill                       █                          1m  CC̄=4.0   max=4   
   QualityReport                  █                          1m  CC̄=4.0   max=4   
   IntentResult                   █                          1m  CC̄=4.0   max=4   
   ProviderInfo                   █                          1m  CC̄=1.0   max=1   
@@ -525,44 +527,6 @@ CLASSES:
   C                                                         0m  CC̄=0.0   max=0.0 
 
 D:
-  core.py:
-    e: C,LLM,SkillLoader,SkillCreator,PipelineEngine,Supervisor,cpr,load_state,save_state,log_ev,gen_compose,main
-    C
-    LLM
-      __init__(2)  CC=1.0
-    SkillLoader  # Load and execute skills dynamically....
-      list_skills(-1)  CC=9.0
-    SkillCreator
-      __init__(1)  CC=1.0
-    PipelineEngine  # text2pipeline: natural language -> skill chain -> execute...
-      __init__(1)  CC=1.0
-    Supervisor  ×DUP
-      __init__(1)  CC=1.0
-    cpr(c,m)
-    load_state()
-    save_state(s)
-    log_ev(event,data)
-    gen_compose(skills,state)
-    main()
-  core.py:
-    e: C,LLM,SkillLoader,SkillCreator,PipelineEngine,Supervisor,cpr,load_state,save_state,log_ev,gen_compose,main
-    C
-    LLM
-      __init__(2)  CC=1.0
-    SkillLoader  # Load and execute skills dynamically....
-      list_skills(-1)  CC=9.0
-    SkillCreator
-      __init__(1)  CC=1.0
-    PipelineEngine  # text2pipeline: natural language -> skill chain -> execute...
-      __init__(1)  CC=1.0
-    Supervisor  ×DUP
-      __init__(1)  CC=1.0
-    cpr(c,m)
-    load_state()
-    save_state(s)
-    log_ev(event,data)
-    gen_compose(skills,state)
-    main()
   core.py:
     e: C,LLM,SkillLoader,SkillCreator,PipelineEngine,Supervisor,cpr,load_state,save_state,log_ev,gen_compose,main
     C
@@ -857,24 +821,6 @@ Track...
     get_info()
     health_check()
     execute(params)
-  cli.py:
-    e: print_color,cmd_logs_reset,cmd_cache_reset,cmd_state_reset,cmd_status,cmd_shell,main_cli
-    print_color(color,message)
-    cmd_logs_reset(args)
-    cmd_cache_reset(args)
-    cmd_state_reset(args)
-    cmd_status(args)
-    cmd_shell(args)
-    main_cli()
-  cli.py:
-    e: print_color,cmd_logs_reset,cmd_cache_reset,cmd_state_reset,cmd_status,cmd_shell,main_cli
-    print_color(color,message)
-    cmd_logs_reset(args)
-    cmd_cache_reset(args)
-    cmd_state_reset(args)
-    cmd_status(args)
-    cmd_shell(args)
-    main_cli()
   scripts/simulate.py:
     e: SimulationResult,Simulator,main
     SimulationResult  # Result of a single scenario execution....
@@ -1329,20 +1275,6 @@ Us...
     get_info()
     health_check()
     execute(input_data)
-  main.py:
-    e: log,load_state,save_state,check,bootstrap
-    log(msg,lvl)
-    load_state()
-    save_state(s)
-    check(version)
-    bootstrap()
-  main.py:
-    e: log,load_state,save_state,check,bootstrap
-    log(msg,lvl)
-    load_state()
-    save_state(s)
-    check(version)
-    bootstrap()
   cores/v1/intent/embedding.py:
     e: EmbeddingEngine
     EmbeddingEngine  # Sentence-transformers based embedding for intent similarity....
@@ -1599,9 +1531,6 @@ Usage:
     get_info()
     health_check()
     execute(params)
-  examples/advanced/01_pipeline.py:
-    e: main
-    main()
   cores/v1/utils.py:
     e: _quiet_print,_quiet_warning,setup_litellm,clean_code,clean_json
     _quiet_print()
@@ -1609,6 +1538,9 @@ Usage:
     setup_litellm()
     clean_code(code)
     clean_json(text)
+  examples/advanced/01_pipeline.py:
+    e: main
+    main()
   skill.py:
     e: TTSSkill,get_info,health_check,_pip,_speak_pyttsx3,_speak_gtts,_speak_espeak,execute
     TTSSkill
@@ -1686,28 +1618,6 @@ U...
     health_check()
     execute(params)
     execute_module(params)
-  skill.py:
-    e: TTSSkill,get_info,health_check,_pip,_speak_pyttsx3,_speak_gtts,_speak_espeak,execute
-    TTSSkill
-      execute(1)  CC=4.0
-    get_info()
-    health_check()
-    _pip(pkg)
-    _speak_pyttsx3(text,lang)
-    _speak_gtts(text,lang)
-    _speak_espeak(text,lang)
-    execute(input_data)
-  skill.py:
-    e: TTSSkill,get_info,health_check,_pip,_speak_pyttsx3,_speak_gtts,_speak_espeak,execute
-    TTSSkill
-      execute(1)  CC=4.0
-    get_info()
-    health_check()
-    _pip(pkg)
-    _speak_pyttsx3(text,lang)
-    _speak_gtts(text,lang)
-    _speak_espeak(text,lang)
-    execute(input_data)
   skills/git_ops/v1/skill.py:
     e: GitOpsSkill,get_info,health_check
     GitOpsSkill  # Manage local git repos for skill development and versioning....
@@ -1792,7 +1702,3 @@ U...
   __init__.py:
   cores/v1/__init__.py:
   cores/v1/intent/training.py:
-  setup.py:
-  __init__.py:
-  setup.py:
-  __init__.py:

@@ -20,6 +20,7 @@ from .preflight import SkillPreflight
 from .skill_logger import inject_logging
 from .prompts import prompt_manager
 from .quality_gate import SkillQualityGate, QualityReport
+from .base_skill import BaseSkill, SkillManifest, generate_scaffold
 
 
 def _load_bootstrap_skill(name):
@@ -347,8 +348,12 @@ class SkillManager:
         def _execute_skill():
             for a in dir(mod):
                 o = getattr(mod, a)
-                if isinstance(o, type) and hasattr(o, "execute"):
-                    return o().execute(inp_data)
+                if isinstance(o, type) and hasattr(o, "execute") and a != "type":
+                    inst = o()
+                    # Use safe_execute for BaseSkill subclasses
+                    if isinstance(inst, BaseSkill):
+                        return inst.safe_execute(inp_data)
+                    return inst.execute(inp_data)
             if hasattr(mod, "execute"):
                 return mod.execute(inp_data)
             return info

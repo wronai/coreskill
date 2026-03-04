@@ -1,9 +1,8 @@
-# coreskill | 155f 41345L | python:156
+# coreskill | 159f 42479L | python:159
 # Keys: M=modules, D=details, i=imports, c=classes, f=functions, m=methods
-M[155]:
+M[159]:
   skills/content_search/providers/default/stable/skill.py,157
-  skills/email_client/v1/skill.py,294
-  skills/web_automation/v1/skill.py,257
+  skills/deps/providers/default/stable/skill.py,164
   __init__.py,19
   build_core.py,525
   cli.py,248
@@ -81,6 +80,7 @@ M[155]:
   skills/core_loader/v1/skill.py,68
   skills/deps/v2/skill.py,84
   skills/deps/v3/skill.py,164
+  skills/devops/providers/default/stable/skill.py,211
   skills/devops/v3/skill.py,211
   skills/devops/v4/skill.py,211
   skills/diagnostic_runner/v1/skill.py,114
@@ -88,6 +88,7 @@ M[155]:
   skills/echo/providers/default/stable/skill.py,67
   skills/echo/v8/skill.py,67
   skills/echo/v9/skill.py,79
+  skills/email_client/v1/skill.py,294
   skills/evo_engine_bootstrap/v1/skill.py,55
   skills/evo_engine_bootstrap/v2/skill.py,62
   skills/file_manager/v1/skill.py,251
@@ -106,6 +107,7 @@ M[155]:
   skills/json_validator/v9/skill.py,114
   skills/kalkulator/v47/skill.py,106
   skills/kalkulator/v48/skill.py,105
+  skills/ksef_integration/v1/skill.py,288
   skills/llm/v1/skill.py,100
   skills/llm/v2/skill.py,113
   skills/llm_router/v1/skill.py,113
@@ -116,6 +118,7 @@ M[155]:
   skills/notes/v1/skill.py,263
   skills/openrouter/v1/skill.py,224
   skills/openrouter_api_test/v1/skill.py,179
+  skills/openrouter_automation/v1/skill.py,258
   skills/password_generator/v5/skill.py,70
   skills/password_generator/v6/skill.py,66
   skills/pound_to_yen_converter/v3/skill.py,80
@@ -148,6 +151,7 @@ M[155]:
   skills/weather/v3/skill.py,90
   skills/weather_gdansk/v8/skill.py,166
   skills/weather_gdansk/v9/skill.py,123
+  skills/web_automation/v1/skill.py,257
   skills/web_search/providers/duckduckgo/archive/v1/skill.py,131
   skills/web_search/providers/duckduckgo/latest/skill.py,151
   skills/web_search/providers/duckduckgo/stable/skill.py,135
@@ -165,20 +169,13 @@ D:
     get_info()->dict
     health_check()->dict
     execute(params:dict)->dict
-  skills/email_client/v1/skill.py:
-    i: json,re,email,datetime,datetime.timezone,email.header.decode_header
-    e: get_info,health_check,EmailClientSkill,execute
-    EmailClientSkill: __init__(0),connect(6),_list_folders(0),list_folders(0),search(3)  # Email client for IMAP/SMTP operations.
+  skills/deps/providers/default/stable/skill.py:
+    i: subprocess,sys,os,json,importlib.util
+    e: DepsSkill,get_info,health_check,execute
+    DepsSkill: __init__(0),check_system(1),check_python_module(1),pip_install(2),execute(1)
     get_info()
     health_check()
-    execute(input_data:dict)->dict
-  skills/web_automation/v1/skill.py:
-    i: json,subprocess,shutil,time,pathlib.Path
-    e: get_info,health_check,WebAutomationSkill,execute
-    WebAutomationSkill: __init__(0),_ensure_playwright(0),_get_page(1),navigate(3),click(2)  # Browser automation using Playwright.
-    get_info()
-    health_check()
-    execute(input_data:dict)->dict
+    execute(params:dict)->dict
   cli.py:
     i: argparse,os,sys,shutil,json,cores.v1.config.{LOGS_DIR,ROOT,STATE_FILE,load_state},pathlib.Path
     e: print_color,cmd_logs_reset,cmd_cache_reset,cmd_state_reset,cmd_status,cmd_shell,main_cli
@@ -686,6 +683,13 @@ D:
     get_info()
     health_check()
     execute(params:dict)->dict
+  skills/devops/providers/default/stable/skill.py:
+    i: subprocess,sys,os,json,ast,importlib.util,pathlib.Path
+    e: DevOpsSkill,get_info,health_check,execute
+    DevOpsSkill: check_syntax(1),detect_imports(1),check_deps(1),find_system_alternatives(1),test_skill(2)  # Test, validate and deploy skills in i...
+    get_info()
+    health_check()
+    execute(params:dict)->dict
   skills/devops/v3/skill.py:
     i: subprocess,sys,os,json,ast,importlib.util,pathlib.Path
     e: DevOpsSkill,get_info,health_check,execute
@@ -735,6 +739,13 @@ D:
     get_info()
     health_check()
     execute(params:dict)->dict
+  skills/email_client/v1/skill.py:
+    i: json,re,email,datetime,datetime.timezone,email.header.decode_header
+    e: get_info,health_check,EmailClientSkill,execute
+    EmailClientSkill: __init__(0),connect(6),_list_folders(0),list_folders(0),search(3)  # Email client for IMAP/SMTP operations.
+    get_info()
+    health_check()
+    execute(input_data:dict)->dict
   skills/evo_engine_bootstrap/v1/skill.py:
     i: subprocess,re,datetime
     e: get_info,health_check,EvoEngineBootstrapSkill,execute
@@ -870,6 +881,13 @@ D:
     get_info()
     health_check()
     execute(params:dict)->dict
+  skills/ksef_integration/v1/skill.py:
+    i: json,ssl,datetime,datetime.timezone,pathlib.Path,urllib.{error,request}
+    e: get_info,health_check,KSeFIntegrationSkill,execute
+    KSeFIntegrationSkill: __init__(0),_load_config(0),_save_config(1),_get_base_url(1),_make_request(5)  # Integration with Polish KSeF system.
+    get_info()
+    health_check()
+    execute(input_data:dict)->dict
   skills/llm/v1/skill.py:
     i: subprocess,json,re,os,urllib.{error,request}
     e: get_info,health_check,execute,execute_wrapper
@@ -1176,6 +1194,13 @@ D:
     get_info()->dict
     health_check()->dict
     execute(params:dict)->dict
+  skills/web_automation/v1/skill.py:
+    i: json,subprocess,shutil,time,pathlib.Path
+    e: get_info,health_check,WebAutomationSkill,execute
+    WebAutomationSkill: __init__(0),_ensure_playwright(0),_get_page(1),navigate(3),click(2)  # Browser automation using Playwright.
+    get_info()
+    health_check()
+    execute(input_data:dict)->dict
   skills/web_search/providers/duckduckgo/archive/v1/skill.py:
     i: subprocess,json,re,html.parser,urllib.{parse,request}
     e: SimpleHTMLTextExtractor,WebSearchSkill,get_info,health_check

@@ -4,24 +4,24 @@
 HEALTH[20]:
   🔴 DUP   17 classes duplicated
   🔴 GOD   core.py = 609L, 6 classes, 29m, max CC=74
-  🟡 CC    main CC=74 (limit:15)
-  🟡 CC    analyze CC=57 (limit:15)
-  🟡 CC    main CC=54 (limit:15)
-  🟡 CC    classify CC=47 (limit:15)
-  🟡 CC    classify CC=32 (limit:15)
-  🟡 CC    _diagnose_skill CC=30 (limit:15)
-  🟡 CC    _run_voice_loop CC=28 (limit:15)
-  🟡 CC    run_diagnostic CC=28 (limit:15)
-  🟡 CC    execute CC=28 (limit:15)
-  🟡 CC    execute CC=28 (limit:15)
-  🟡 CC    _handle_chat CC=27 (limit:15)
+  🟡 CC    generate_manifest_for_skill CC=23 (limit:15)
+  🟡 CC    cmd_logs_reset CC=20 (limit:15)
+  🟡 CC    cmd_cache_reset CC=23 (limit:15)
+  🟡 CC    cmd_status CC=19 (limit:15)
+  🟡 CC    run_scenario CC=21 (limit:15)
+  🟡 CC    _final_report CC=22 (limit:15)
+  🟡 CC    count_skills_and_versions CC=15 (limit:15)
+  🟡 CC    _check_code_quality CC=17 (limit:15)
   🟡 CC    can_run CC=26 (limit:15)
-  🟡 CC    build_system_prompt CC=26 (limit:15)
-  🟡 CC    handle_request CC=26 (limit:15)
-  🟡 CC    execute CC=26 (limit:15)
-  🟡 CC    execute CC=26 (limit:15)
-  🟡 CC    compute_system_health CC=25 (limit:15)
-  🟡 CC    auto_fix_imports CC=25 (limit:15)
+  🟡 CC    _suggest_strategy CC=18 (limit:15)
+  🟡 CC    _extract_stt_text CC=15 (limit:15)
+  🟡 CC    _run_stt_cycle CC=18 (limit:15)
+  🟡 CC    _run_file_input_loop CC=24 (limit:15)
+  🟡 CC    _run_voice_loop CC=28 (limit:15)
+  🟡 CC    _diagnose_skill CC=30 (limit:15)
+  🟡 CC    analyze CC=57 (limit:15)
+  🟡 CC    _extract_shell_command CC=18 (limit:15)
+  🟡 CC    _match_existing_skill CC=18 (limit:15)
 
 REFACTOR[3]:
   1. rm duplicates  (-17 dup classes)
@@ -236,10 +236,10 @@ DUPLICATES[17]:
     A: 3m  __init__ _extract_content execute
     B: 3m  __init__ _extract_content execute
     DIFF: IDENTICAL → rm B
-  Supervisor  core.py ↔ seeds/core_v1.py
-    A: 3m  __init__ active switch
-    B: 5m  __init__ active health recover switch
-    DIFF: B has +health,recover → keep B
+  Supervisor  seeds/core_v1.py ↔ core.py
+    A: 5m  __init__ active health recover switch
+    B: 3m  __init__ active switch
+    DIFF: A has +health,recover → keep A
   BenchmarkSkill  skills/benchmark/v3/skill.py ↔ skills/benchmark/v2/skill.py
     A: 14m  __init__ _analyze_current_model _call_model_for_benchmark _compare_models _get_api_key _get_cached_recommendations _get_model_param_size _get_models_from_tier
     B: 15m  BENCHMARK_PROFILES __init__ _analyze_current_model _call_model_for_benchmark _compare_models _get_api_key _get_cached_recommendations _get_model_param_size
@@ -296,8 +296,8 @@ FUNCTIONS (CC≥10, 183 of 1436):
    24.0  IntentEngine._extract_config_target        43n  12exit  loops+cond+ret  !! split
    24.0  LLMClient.chat                             29n   3exit  loops+cond+ret  !! split
    24.0  LLMClient.analyze_need                     31n   8exit  loops+cond+ret  !! split
-   23.0  cmd_cache_reset                            19n   2exit  loops+cond+ret  !! split
    23.0  generate_manifest_for_skill                19n   2exit  loops+cond+ret  !! split
+   23.0  cmd_cache_reset                            19n   2exit  loops+cond+ret  !! split
    23.0  SkillSchemaValidator._validate_against_schema   20n   2exit  loops+cond+ret  !! split
    23.0  _cmd_autotune                              35n   4exit  loops+cond+ret  !! split
    23.0  ChatSkill._generate_response               21n   6exit  cond+ret  !! split
@@ -435,10 +435,10 @@ CLASSES:
   WeatherGdanskParser            ████                       4m  CC̄=6.5   max=11    ×1
   Kalkulator                     ████                       4m  CC̄=5.2   max=9     ×1
   Kalkulator                     ████                       4m  CC̄=5.2   max=9     ×1
-  LLM                            ████                       4m  CC̄=2.0   max=4   
-  SkillCreator                   ████                       4m  CC̄=3.0   max=6   
   LLMClient                      ████                       4m  CC̄=1.5   max=2   
   PipelineManager                ████                       4m  CC̄=2.8   max=6   
+  LLM                            ████                       4m  CC̄=2.0   max=4   
+  SkillCreator                   ████                       4m  CC̄=3.0   max=6   
   ZarzadzaniaSkill               ████                       4m  CC̄=5.2   max=8   
   FileManagerSkill               ████                       4m  CC̄=5.2   max=8   
   DuckDuckGoParser               ████                       4m  CC̄=7.8   max=15    !!
@@ -525,44 +525,6 @@ CLASSES:
   C                                                         0m  CC̄=0.0   max=0.0 
 
 D:
-  core.py:
-    e: C,LLM,SkillLoader,SkillCreator,PipelineEngine,Supervisor,cpr,load_state,save_state,log_ev,gen_compose,main
-    C
-    LLM
-      __init__(2)  CC=1.0
-    SkillLoader  # Load and execute skills dynamically....
-      list_skills(-1)  CC=9.0
-    SkillCreator
-      __init__(1)  CC=1.0
-    PipelineEngine  # text2pipeline: natural language -> skill chain -> execute...
-      __init__(1)  CC=1.0
-    Supervisor  ×DUP
-      __init__(1)  CC=1.0
-    cpr(c,m)
-    load_state()
-    save_state(s)
-    log_ev(event,data)
-    gen_compose(skills,state)
-    main()
-  core.py:
-    e: C,LLM,SkillLoader,SkillCreator,PipelineEngine,Supervisor,cpr,load_state,save_state,log_ev,gen_compose,main
-    C
-    LLM
-      __init__(2)  CC=1.0
-    SkillLoader  # Load and execute skills dynamically....
-      list_skills(-1)  CC=9.0
-    SkillCreator
-      __init__(1)  CC=1.0
-    PipelineEngine  # text2pipeline: natural language -> skill chain -> execute...
-      __init__(1)  CC=1.0
-    Supervisor  ×DUP
-      __init__(1)  CC=1.0
-    cpr(c,m)
-    load_state()
-    save_state(s)
-    log_ev(event,data)
-    gen_compose(skills,state)
-    main()
   core.py:
     e: C,LLM,SkillLoader,SkillCreator,PipelineEngine,Supervisor,cpr,load_state,save_state,log_ev,gen_compose,main
     C
@@ -803,6 +765,12 @@ Track...
       __init__(4)  CC=7.0
     _detect_ollama_models()
     discover_models()
+  scripts/generate_manifests.py:
+    e: infer_interface_from_skill,infer_constraints_from_skill,generate_manifest_for_skill,main
+    infer_interface_from_skill(skill_path)
+    infer_constraints_from_skill(skill_path)
+    generate_manifest_for_skill(skill_dir,registry)
+    main()
   cli.py:
     e: print_color,cmd_logs_reset,cmd_cache_reset,cmd_state_reset,cmd_status,cmd_shell,main_cli
     print_color(color,message)
@@ -812,12 +780,6 @@ Track...
     cmd_status(args)
     cmd_shell(args)
     main_cli()
-  scripts/generate_manifests.py:
-    e: infer_interface_from_skill,infer_constraints_from_skill,generate_manifest_for_skill,main
-    infer_interface_from_skill(skill_path)
-    infer_constraints_from_skill(skill_path)
-    generate_manifest_for_skill(skill_dir,registry)
-    main()
   cores/v1/skill_schema.py:
     e: ValidationResult,SkillSchemaValidator,BlueprintRegistry,validate_manifest_file,generate_skill_manifest,get_schema_validation_stats
     ValidationResult  # Result of schema validation....
@@ -857,24 +819,6 @@ Track...
     get_info()
     health_check()
     execute(params)
-  cli.py:
-    e: print_color,cmd_logs_reset,cmd_cache_reset,cmd_state_reset,cmd_status,cmd_shell,main_cli
-    print_color(color,message)
-    cmd_logs_reset(args)
-    cmd_cache_reset(args)
-    cmd_state_reset(args)
-    cmd_status(args)
-    cmd_shell(args)
-    main_cli()
-  cli.py:
-    e: print_color,cmd_logs_reset,cmd_cache_reset,cmd_state_reset,cmd_status,cmd_shell,main_cli
-    print_color(color,message)
-    cmd_logs_reset(args)
-    cmd_cache_reset(args)
-    cmd_state_reset(args)
-    cmd_status(args)
-    cmd_shell(args)
-    main_cli()
   scripts/simulate.py:
     e: SimulationResult,Simulator,main
     SimulationResult  # Result of a single scenario execution....
@@ -1329,20 +1273,6 @@ Us...
     get_info()
     health_check()
     execute(input_data)
-  main.py:
-    e: log,load_state,save_state,check,bootstrap
-    log(msg,lvl)
-    load_state()
-    save_state(s)
-    check(version)
-    bootstrap()
-  main.py:
-    e: log,load_state,save_state,check,bootstrap
-    log(msg,lvl)
-    load_state()
-    save_state(s)
-    check(version)
-    bootstrap()
   cores/v1/intent/embedding.py:
     e: EmbeddingEngine
     EmbeddingEngine  # Sentence-transformers based embedding for intent similarity....
@@ -1599,9 +1529,6 @@ Usage:
     get_info()
     health_check()
     execute(params)
-  examples/advanced/01_pipeline.py:
-    e: main
-    main()
   cores/v1/utils.py:
     e: _quiet_print,_quiet_warning,setup_litellm,clean_code,clean_json
     _quiet_print()
@@ -1609,6 +1536,9 @@ Usage:
     setup_litellm()
     clean_code(code)
     clean_json(text)
+  examples/advanced/01_pipeline.py:
+    e: main
+    main()
   skill.py:
     e: TTSSkill,get_info,health_check,_pip,_speak_pyttsx3,_speak_gtts,_speak_espeak,execute
     TTSSkill
@@ -1686,28 +1616,6 @@ U...
     health_check()
     execute(params)
     execute_module(params)
-  skill.py:
-    e: TTSSkill,get_info,health_check,_pip,_speak_pyttsx3,_speak_gtts,_speak_espeak,execute
-    TTSSkill
-      execute(1)  CC=4.0
-    get_info()
-    health_check()
-    _pip(pkg)
-    _speak_pyttsx3(text,lang)
-    _speak_gtts(text,lang)
-    _speak_espeak(text,lang)
-    execute(input_data)
-  skill.py:
-    e: TTSSkill,get_info,health_check,_pip,_speak_pyttsx3,_speak_gtts,_speak_espeak,execute
-    TTSSkill
-      execute(1)  CC=4.0
-    get_info()
-    health_check()
-    _pip(pkg)
-    _speak_pyttsx3(text,lang)
-    _speak_gtts(text,lang)
-    _speak_espeak(text,lang)
-    execute(input_data)
   skills/git_ops/v1/skill.py:
     e: GitOpsSkill,get_info,health_check
     GitOpsSkill  # Manage local git repos for skill development and versioning....
@@ -1792,7 +1700,3 @@ U...
   __init__.py:
   cores/v1/__init__.py:
   cores/v1/intent/training.py:
-  setup.py:
-  __init__.py:
-  setup.py:
-  __init__.py:
