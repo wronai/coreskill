@@ -45,7 +45,7 @@ class WeatherSkill:
         """Główna funkcja wykonawcza skilla pogodowego."""
         try:
             location = ""
-            # Always parse location from 'text' key as required
+            # Parse location from free text (e.g. "jaka jest pogoda w Warszawie")
             text = params.get("text", "")
             location = _extract_location(text)
             
