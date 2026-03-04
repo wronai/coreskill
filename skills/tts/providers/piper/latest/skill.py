@@ -14,14 +14,14 @@ from pathlib import Path
 # Pre-configured models - Polish + fallback
 DEFAULT_MODELS = {
     "pl": {
-        "url": "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/pl/pl_PL_marcin_medium-3.0.0.onnx",
-        "json_url": "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/pl/pl_PL_marcin_medium-3.0.0.onnx.json",
-        "name": "pl_PL_marcin_medium",
+        "url": "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/pl/pl_PL-gosia-medium.onnx",
+        "json_url": "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/pl/pl_PL-gosia-medium.onnx.json",
+        "name": "pl_PL-gosia-medium",
     },
     "en": {
-        "url": "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US_amy_medium-3.0.0.onnx",
-        "json_url": "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US_amy_medium-3.0.0.onnx.json",
-        "name": "en_US_amy_medium",
+        "url": "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US-amy-medium.onnx",
+        "json_url": "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US-amy-medium.onnx.json",
+        "name": "en_US-amy-medium",
     },
 }
 
@@ -101,18 +101,34 @@ def _download_file(url: str, dest: Path, timeout: int = 120) -> bool:
 
 
 def _ensure_model(lang: str = "pl") -> Path:
-    """Ensure model exists - download if needed."""
+    """Ensure model exists - download if needed using piper's built-in downloader."""
     existing = _get_model_path(lang)
     if existing:
         return existing
 
-    # Need to download
+    # Use piper's built-in voice downloader
+    try:
+        from piper.download_voices import download_voice
+        info = DEFAULT_MODELS.get(lang, DEFAULT_MODELS["pl"])
+        cache = _get_cache_dir()
+        
+        # Download using piper's official downloader
+        download_voice(info["name"], cache)
+        
+        # Check if downloaded
+        model_file = cache / f"{info['name']}.onnx"
+        if model_file.exists():
+            return model_file
+    except Exception as e:
+        # Fallback: try direct URL with proper headers
+        pass
+
+    # Fallback: direct download
     info = DEFAULT_MODELS.get(lang, DEFAULT_MODELS["pl"])
     cache = _get_cache_dir()
     model_file = cache / f"{info['name']}.onnx"
     json_file = cache / f"{info['name']}.onnx.json"
 
-    # Download both .onnx and .json
     if not model_file.exists():
         ok = _download_file(info["url"], model_file)
         if not ok:
