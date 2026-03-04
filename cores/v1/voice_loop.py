@@ -73,7 +73,7 @@ def _run_voice_loop(sm, evo, llm, intent, logger, conv, identity, memory=None):
     'wyłącz tryb głosowy' also disables the persistent preference."""
     MAX_SILENCE = 3
     silence_count = 0
-    _EXIT_KW = ("koniec", "stop", "wyjdź", "wyjedź", "quit", "exit", "zamknij")
+    _EXIT_KW = ("koniec", "stop", "wyjdź", "wyjedź", "quit", "exit", "zamknij", "zakończ", "zakończ program")
     _DISABLE_KW = ("wyłącz tryb", "wylacz tryb", "disable voice", "voice off")
     cpr(C.CYAN, "\n🎤 Tryb głosowy aktywny. Mów teraz! "
                 "(Ctrl+C lub powiedz 'wyłącz tryb głosowy' aby zakończyć)")

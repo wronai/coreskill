@@ -31,7 +31,14 @@ from pathlib import Path
 from typing import Optional, List, Dict, Tuple
 
 # Import ROOT for config file access
-from .config import ROOT, get_config_value
+try:
+    from .config import ROOT, get_config_value
+    from .prompts import prompt_manager
+except ImportError:
+    # Fallback for standalone usage
+    ROOT = Path(__file__).resolve().parent.parent.parent
+    def get_config_value(k, d=None): return d
+    prompt_manager = None
 
 
 # Load intent configuration from system.json
@@ -678,10 +685,32 @@ class SmartIntentClassifier:
             f"Return ONLY JSON: "
             f'{{"action":"use|create|evolve|chat","skill":"name","goal":"..."}}'
         )
+        # Use prompt template from external configuration
+        if prompt_manager:
+            user_prompt = prompt_manager.render("intent_classification", {
+                "skills": skills_str,
+                "user_msg": user_msg
+            }, "template")
+            system_prompt = prompt_manager.get("intent_classification", "system")
+        else:
+            user_prompt = None
+            system_prompt = None
+        
+        # Fallback if prompt file is missing
+        if not user_prompt:
+            user_prompt = (
+                f"Classify intent. Skills: [{skills_str}]\n"
+                f"Message: \"{user_msg}\"\n"
+                f"Return ONLY JSON: "
+                f'{{"action":"use|create|evolve|chat","skill":"name","goal":"..."}}'
+            )
+        if not system_prompt:
+            system_prompt = "Intent classifier. Return ONLY JSON."
+        
         try:
             raw = self._llm.chat(
-                [{"role": "system", "content": "Intent classifier. Return ONLY JSON."},
-                 {"role": "user", "content": prompt}],
+                [{"role": "system", "content": system_prompt},
+                 {"role": "user", "content": user_prompt}],
                 temperature=0.1, max_tokens=100
             )
             import re

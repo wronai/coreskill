@@ -228,6 +228,24 @@ class IntentEngine:
             if any(w in ul for w in _listen) and "stt" in skills_list:
                 return {"action": "use", "skill": "stt",
                         "input": {"duration_s": 4, "lang": "pl"}, "goal": "listen"}
+            
+            # Voice configuration: better/worse/faster voice quality defaults to TTS
+            # when in voice loop and no clear LLM model mentioned
+            _quality_words = ("lepszy", "lepsza", "gorszy", "gorsza", "szybszy", "szybsza",
+                           "better", "worse", "faster", "slower", "quality", "jakość")
+            if any(w in ul for w in _quality_words):
+                # Check if it's clearly about LLM (model name mentioned)
+                _llm_indicators = ("model", "gemini", "gpt", "claude", "llama", "qwen", 
+                                  "llm", "nai", "mozgo", "mózgo")
+                if not any(m in ul for m in _llm_indicators):
+                    # Default to TTS config when in voice loop and no LLM indicator
+                    return {
+                        "action": "configure",
+                        "category": "tts",
+                        "target": self._extract_config_target(user_msg, "tts"),
+                        "original_msg": user_msg,
+                        "_conf": 0.75,  # High confidence due to context
+                    }
 
         # Stage 3: Unhandled
         self.record_unhandled(user_msg)

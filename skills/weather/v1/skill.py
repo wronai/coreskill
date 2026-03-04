@@ -51,3 +51,8 @@ if __name__ == "__main__":
     print("Testing weather skill...")
     result = execute({"location": "Warsaw", "format": "text"})
     print(f"Result: {result}")
+
+
+def get_info():
+    return {"name": "weather", "version": "v1", "description": "weather skill"}
+
