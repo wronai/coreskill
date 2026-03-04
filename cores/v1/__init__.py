@@ -16,7 +16,7 @@ from .logger import Logger
 from .llm_client import LLMClient, _detect_ollama_models, discover_models
 from .intent_engine import IntentEngine
 from .skill_manager import SkillManager, _load_bootstrap_skill
-from .evo_engine import EvoEngine
+from .evo_engine import EvoEngine, FailureTracker
 from .pipeline_manager import PipelineManager
 from .supervisor import Supervisor
 from .resource_monitor import ResourceMonitor

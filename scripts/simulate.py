@@ -218,6 +218,7 @@ class Simulator:
         from cores.v1.system_identity import SystemIdentity
         from cores.v1.config import SKILLS_DIR
         from cores.v1.skill_logger import init_nfo
+        from cores.v1.self_reflection import SelfReflection
 
         init_nfo()
 
@@ -245,10 +246,16 @@ class Simulator:
         self.evo = EvoEngine(self.sm, self.llm, self.logger, provider_chain=chain)
         self.intent = IntentEngine(self.llm, self.logger, self.state)
         self.identity = SystemIdentity(skill_manager=self.sm, resource_monitor=resource_mon)
+
+        # Wire SelfReflection for auto-diagnosis on 3 consecutive failures
+        reflection = SelfReflection(self.llm, self.sm, self.logger, self.state)
+        self.evo.set_reflection(reflection)
+
         self.conv = []
 
         print(f"[SIM] System initialized. Model: {self.llm.model}")
         print(f"[SIM] Tiers: {self.llm.tier_info()}")
+        print(f"[SIM] SelfReflection: active (auto-reflection after 3 failures)")
         sk = self.sm.list_skills()
         print(f"[SIM] Skills: {', '.join(sk.keys()) if sk else 'none'}")
 

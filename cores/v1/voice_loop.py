@@ -1,4 +1,5 @@
 """Voice loop module - STT/TTS voice conversation handling."""
+import sys
 import time
 
 from .config import C, cpr
@@ -70,137 +71,342 @@ def _run_stt_cycle(sm, evo, llm, intent, logger, conv, identity, duration=5, mem
 
 
 def _run_stt_autotest(sm, logger) -> dict:
-    """Run quick STT hardware and audio auto-test. Returns diagnostic dict."""
-    from .self_reflection import SelfReflection
+    """Run STT hardware/audio auto-test with auto-repair at each stage.
     
-    cpr(C.CYAN, "\n[REFLECT] === Autotest STT po 3 ciszach ===")
+    Flow per stage: DETECT → AUTO-FIX → RE-TEST → VERIFY
+    Never just reports — always tries to fix first.
+    Returns diagnostic dict with fix results.
+    """
+    import shutil, subprocess, tempfile, os
+    from pathlib import Path
+    
+    cpr(C.CYAN, "\n[REFLECT] === Autotest STT (detect → fix → verify) ===")
     
     diagnostics = {
         "microphone": {"ok": False},
         "audio_level": {"ok": False},
         "transcription": {"ok": False},
+        "fixes_applied": [],
     }
-    
-    # 1. Check microphone hardware
-    import shutil, subprocess
+
+    # ── Helper: record test wav ─────────────────────────────────────
+    def _record_test(path, duration=2):
+        try:
+            r = subprocess.run(
+                ["arecord", "-q", "-d", str(duration), "-f", "S16_LE",
+                 "-r", "16000", "-c", "1", path],
+                capture_output=True, timeout=duration + 8)
+            return r.returncode == 0
+        except Exception:
+            return False
+
+    # ── Helper: measure audio level ─────────────────────────────────
+    def _measure_db(path):
+        """Returns (has_sound, db_level). Uses sox → ffmpeg → file size."""
+        if shutil.which("sox"):
+            try:
+                sr = subprocess.run(
+                    ["sox", path, "-n", "stat"],
+                    capture_output=True, text=True, timeout=10)
+                for line in sr.stderr.split('\n'):
+                    if 'RMS amplitude' in line:
+                        parts = line.split(':')
+                        if len(parts) >= 2:
+                            amp = float(parts[1].strip())
+                            if amp > 0:
+                                db = 20 * (amp ** 0.5) - 60
+                                return db > -40.0, db
+            except Exception:
+                pass
+        if shutil.which("ffmpeg"):
+            try:
+                sr = subprocess.run(
+                    ["ffmpeg", "-i", path, "-af", "volumedetect",
+                     "-f", "null", "-"],
+                    capture_output=True, text=True, timeout=10)
+                for line in sr.stderr.split('\n'):
+                    if 'mean_volume' in line and 'dB' in line:
+                        db = float(line.split(':')[1].split('dB')[0].strip())
+                        return db > -40.0, db
+            except Exception:
+                pass
+        try:
+            sz = Path(path).stat().st_size
+            return sz > 10000, -999.0 if sz <= 10000 else 0.0
+        except Exception:
+            return False, -999.0
+
+    # ── Helper: test vosk transcription ─────────────────────────────
+    def _test_vosk(wav_path):
+        if not shutil.which("vosk-transcriber"):
+            return False, "vosk-transcriber not found"
+        fd2, out_path = tempfile.mkstemp(suffix=".txt", prefix="stt_autotest_out_")
+        os.close(fd2)
+        try:
+            tr = subprocess.run(
+                ["vosk-transcriber", "--input", wav_path,
+                 "--output", out_path, "--output-type", "txt"],
+                capture_output=True, text=True, timeout=30)
+            return tr.returncode == 0, (tr.stderr or "")[:200]
+        except Exception as e:
+            return False, str(e)
+        finally:
+            try: Path(out_path).unlink(missing_ok=True)
+            except: pass
+
+    # ═══════════════════════════════════════════════════════════════
+    # STAGE 1: MICROPHONE HARDWARE
+    # ═══════════════════════════════════════════════════════════════
+    cpr(C.DIM, "  [1/3] Sprawdzam mikrofon...")
     if not shutil.which("arecord"):
-        cpr(C.RED, "  ✗ arecord: nie zainstalowany")
-        diagnostics["microphone"] = {"ok": False, "error": "arecord missing"}
-    else:
+        cpr(C.YELLOW, "  ✗ arecord brak — próbuję zainstalować alsa-utils...")
+        try:
+            subprocess.run(["sudo", "apt-get", "install", "-y", "alsa-utils"],
+                           capture_output=True, timeout=30)
+            if shutil.which("arecord"):
+                cpr(C.GREEN, "  ✓ alsa-utils zainstalowane!")
+                diagnostics["fixes_applied"].append("installed alsa-utils")
+            else:
+                cpr(C.RED, "  ✗ Nie udało się zainstalować alsa-utils")
+        except Exception:
+            cpr(C.RED, "  ✗ Nie udało się zainstalować alsa-utils")
+    
+    if shutil.which("arecord"):
         try:
             r = subprocess.run(["arecord", "-l"], capture_output=True, text=True, timeout=5)
             lines = r.stdout.strip().split('\n')
             devices = [l for l in lines if l.strip().startswith('card') and 'device' in l]
             if devices:
                 cpr(C.GREEN, f"  ✓ Mikrofon: {len(devices)} urządzenie(a)")
-                diagnostics["microphone"] = {"ok": True, "devices": len(devices)}
+                diagnostics["microphone"] = {"ok": True, "devices": len(devices),
+                                             "device_list": [d.strip() for d in devices]}
             else:
-                cpr(C.RED, "  ✗ Mikrofon: brak urządzeń capture")
+                cpr(C.RED, "  ✗ Brak urządzeń capture — sprzętowy problem")
                 diagnostics["microphone"] = {"ok": False, "error": "no capture devices"}
         except Exception as e:
             cpr(C.RED, f"  ✗ Mikrofon: {e}")
             diagnostics["microphone"] = {"ok": False, "error": str(e)}
+
+    if not diagnostics["microphone"]["ok"]:
+        # Can't proceed without mic
+        cpr(C.RED, "[REFLECT] Brak mikrofonu — nie mogę naprawić sprzętowego problemu")
+        logger.core("stt_autotest", diagnostics)
+        return diagnostics
+
+    # ═══════════════════════════════════════════════════════════════
+    # STAGE 2: AUDIO LEVEL — detect silence → try amixer fixes → re-test
+    # ═══════════════════════════════════════════════════════════════
+    cpr(C.DIM, "  [2/3] Testuję poziom audio...")
+    fd, test_wav = tempfile.mkstemp(suffix=".wav", prefix="stt_autotest_")
+    os.close(fd)
     
-    # 2. Quick 2s recording + audio level test
-    if diagnostics["microphone"]["ok"]:
-        import tempfile, os
-        fd, test_wav = tempfile.mkstemp(suffix=".wav", prefix="stt_autotest_")
-        os.close(fd)
-        try:
-            cpr(C.DIM, "  Nagrywam 2s testu...")
-            r = subprocess.run(
-                ["arecord", "-q", "-d", "2", "-f", "S16_LE", "-r", "16000", "-c", "1", test_wav],
-                capture_output=True, timeout=10
-            )
-            if r.returncode != 0:
-                cpr(C.RED, f"  ✗ Nagrywanie: błąd (exit {r.returncode})")
-                diagnostics["audio_level"] = {"ok": False, "error": f"arecord exit {r.returncode}"}
+    try:
+        if not _record_test(test_wav):
+            cpr(C.RED, "  ✗ Nagrywanie testowe nie powiodło się")
+            diagnostics["audio_level"] = {"ok": False, "error": "arecord failed"}
+        else:
+            has_sound, db_level = _measure_db(test_wav)
+            fsize = Path(test_wav).stat().st_size
+            
+            if has_sound:
+                cpr(C.GREEN, f"  ✓ Audio level: {db_level:.1f}dB (OK)")
+                diagnostics["audio_level"] = {"ok": True, "db": db_level}
             else:
-                from pathlib import Path
-                fsize = Path(test_wav).stat().st_size
+                cpr(C.YELLOW, f"  ✗ Audio level: {db_level:.1f}dB (cisza, {fsize}b)")
+                cpr(C.CYAN, "  [AUTOFIX] Próbuję naprawić ustawienia audio...")
                 
-                # Check audio level with sox or ffmpeg
-                db_level = -999.0
-                has_sound = False
+                # ── AUTO-FIX: Try multiple amixer strategies ────────
+                amixer_fixes = [
+                    # Generic capture unmute + max volume
+                    (["amixer", "set", "Capture", "unmute"], "Capture unmute"),
+                    (["amixer", "set", "Capture", "100%"], "Capture 100%"),
+                    # Try specific card 0
+                    (["amixer", "-c", "0", "set", "Capture", "unmute"], "Card0 Capture unmute"),
+                    (["amixer", "-c", "0", "set", "Capture", "100%"], "Card0 Capture 100%"),
+                    # Try Mic control (some cards use 'Mic' instead of 'Capture')
+                    (["amixer", "set", "Mic", "unmute"], "Mic unmute"),
+                    (["amixer", "set", "Mic", "100%"], "Mic 100%"),
+                    # Try 'Input Source' and other common names
+                    (["amixer", "set", "Capture", "cap"], "Capture cap"),
+                    (["amixer", "-c", "0", "set", "Capture", "cap"], "Card0 Capture cap"),
+                    # Try card 1 (USB mics often on card 1)
+                    (["amixer", "-c", "1", "set", "Capture", "unmute"], "Card1 Capture unmute"),
+                    (["amixer", "-c", "1", "set", "Capture", "100%"], "Card1 Capture 100%"),
+                ]
                 
-                if shutil.which("sox"):
+                fixes_tried = []
+                for cmd, desc in amixer_fixes:
                     try:
-                        sr = subprocess.run(
-                            ["sox", test_wav, "-n", "stat"],
-                            capture_output=True, text=True, timeout=10
-                        )
-                        for line in sr.stderr.split('\n'):
-                            if 'RMS amplitude' in line:
-                                parts = line.split(':')
-                                if len(parts) >= 2:
-                                    amplitude = float(parts[1].strip())
-                                    if amplitude > 0:
-                                        db_level = 20 * (amplitude ** 0.5) - 60
-                                        has_sound = db_level > -40.0
+                        r = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+                        if r.returncode == 0:
+                            fixes_tried.append(desc)
+                            cpr(C.DIM, f"    ✓ {desc}")
                     except Exception:
                         pass
                 
-                if has_sound:
-                    cpr(C.GREEN, f"  ✓ Audio level: {db_level:.1f}dB (OK)")
-                    diagnostics["audio_level"] = {"ok": True, "db": db_level}
-                else:
-                    cpr(C.YELLOW, f"  ✗ Audio level: {db_level:.1f}dB (cisza, file={fsize}b)")
-                    diagnostics["audio_level"] = {"ok": False, "db": db_level, "file_size": fsize}
+                if fixes_tried:
+                    diagnostics["fixes_applied"].extend(fixes_tried)
+                    cpr(C.CYAN, f"  [AUTOFIX] Zastosowano {len(fixes_tried)} poprawek. Weryfikuję...")
                     
-                # 3. Quick transcription test
-                if shutil.which("vosk-transcriber"):
-                    fd2, out_path = tempfile.mkstemp(suffix=".txt", prefix="stt_autotest_out_")
+                    # ── RE-TEST after fixes ─────────────────────────
+                    time.sleep(0.5)
+                    fd2, test_wav2 = tempfile.mkstemp(suffix=".wav", prefix="stt_retest_")
                     os.close(fd2)
                     try:
-                        tr = subprocess.run(
-                            ["vosk-transcriber", "--input", test_wav, "--output", out_path, "--output-type", "txt"],
-                            capture_output=True, text=True, timeout=15
-                        )
-                        if tr.returncode == 0:
-                            cpr(C.GREEN, "  ✓ vosk-transcriber: działa")
-                            diagnostics["transcription"] = {"ok": True}
+                        if _record_test(test_wav2):
+                            has_sound2, db_level2 = _measure_db(test_wav2)
+                            if has_sound2:
+                                cpr(C.GREEN, f"  ✓ NAPRAWIONE! Audio level: {db_level2:.1f}dB (było {db_level:.1f}dB)")
+                                diagnostics["audio_level"] = {"ok": True, "db": db_level2,
+                                                              "fixed_from": db_level}
+                            else:
+                                cpr(C.YELLOW, f"  ✗ Nadal cisza ({db_level2:.1f}dB) po amixer fix")
+                                diagnostics["audio_level"] = {"ok": False, "db": db_level2,
+                                                              "attempted_fixes": fixes_tried}
+                                # ── Try pulseaudio as last resort ───
+                                if shutil.which("pactl"):
+                                    cpr(C.DIM, "  [AUTOFIX] Próbuję PulseAudio...")
+                                    _try_pulseaudio_fix(diagnostics)
                         else:
-                            cpr(C.RED, f"  ✗ vosk-transcriber: exit {tr.returncode}")
-                            diagnostics["transcription"] = {"ok": False, "error": tr.stderr[:100]}
-                    except Exception as e:
-                        cpr(C.RED, f"  ✗ vosk-transcriber: {e}")
-                        diagnostics["transcription"] = {"ok": False, "error": str(e)}
+                            diagnostics["audio_level"] = {"ok": False, "db": db_level,
+                                                          "error": "retest recording failed"}
                     finally:
-                        try: Path(out_path).unlink(missing_ok=True)
+                        try: Path(test_wav2).unlink(missing_ok=True)
                         except: pass
-        except Exception as e:
-            cpr(C.RED, f"  ✗ Test nagrywania: {e}")
-            diagnostics["audio_level"] = {"ok": False, "error": str(e)}
-        finally:
-            try:
-                from pathlib import Path
-                Path(test_wav).unlink(missing_ok=True)
-            except: pass
+                else:
+                    cpr(C.YELLOW, "  ✗ Żaden amixer fix nie zadziałał")
+                    diagnostics["audio_level"] = {"ok": False, "db": db_level,
+                                                  "error": "no amixer fixes worked"}
+    finally:
+        try: Path(test_wav).unlink(missing_ok=True)
+        except: pass
+
+    # ═══════════════════════════════════════════════════════════════
+    # STAGE 3: VOSK TRANSCRIPTION — test → fix model → re-test
+    # ═══════════════════════════════════════════════════════════════
+    cpr(C.DIM, "  [3/3] Testuję transkrypcję vosk...")
     
-    # Summary
-    all_ok = all(d.get("ok") for d in diagnostics.values())
-    if all_ok:
-        cpr(C.GREEN, "[REFLECT] STT autotest: WSZYSTKO OK — problem może być w otoczeniu (cisza w pokoju)")
+    if not shutil.which("vosk-transcriber"):
+        cpr(C.YELLOW, "  ✗ vosk-transcriber brak — próbuję zainstalować...")
+        try:
+            subprocess.run([sys.executable, "-m", "pip", "install", "vosk"],
+                           capture_output=True, timeout=60)
+            if shutil.which("vosk-transcriber"):
+                cpr(C.GREEN, "  ✓ vosk zainstalowany!")
+                diagnostics["fixes_applied"].append("pip install vosk")
+        except Exception:
+            pass
+    
+    if shutil.which("vosk-transcriber"):
+        # Record fresh audio for transcription test
+        fd3, test_wav3 = tempfile.mkstemp(suffix=".wav", prefix="stt_vosk_test_")
+        os.close(fd3)
+        try:
+            if _record_test(test_wav3, duration=2):
+                vosk_ok, vosk_err = _test_vosk(test_wav3)
+                if vosk_ok:
+                    cpr(C.GREEN, "  ✓ vosk-transcriber: działa")
+                    diagnostics["transcription"] = {"ok": True}
+                else:
+                    cpr(C.YELLOW, f"  ✗ vosk-transcriber błąd: {vosk_err[:80]}")
+                    
+                    # ── AUTO-FIX: check/download vosk model ─────────
+                    cpr(C.CYAN, "  [AUTOFIX] Sprawdzam model vosk...")
+                    model_paths = [
+                        Path.home() / ".cache" / "vosk",
+                        Path.home() / ".local" / "share" / "vosk",
+                    ]
+                    model_found = False
+                    for mp in model_paths:
+                        if mp.exists():
+                            models = [d for d in mp.iterdir() if d.is_dir() 
+                                      and "model" in d.name.lower()]
+                            if models:
+                                cpr(C.DIM, f"    Model znaleziony: {models[0].name}")
+                                model_found = True
+                                break
+                    
+                    if not model_found:
+                        cpr(C.CYAN, "  [AUTOFIX] Pobieram model vosk-model-small-pl-0.22...")
+                        try:
+                            cache_dir = Path.home() / ".cache" / "vosk"
+                            cache_dir.mkdir(parents=True, exist_ok=True)
+                            dl_cmd = (
+                                f"cd {cache_dir} && "
+                                "curl -L -o model.zip "
+                                "'https://alphacephei.com/vosk/models/vosk-model-small-pl-0.22.zip' && "
+                                "unzip -q -o model.zip && rm -f model.zip"
+                            )
+                            r = subprocess.run(dl_cmd, shell=True,
+                                               capture_output=True, timeout=120)
+                            if r.returncode == 0:
+                                cpr(C.GREEN, "  ✓ Model pobrany!")
+                                diagnostics["fixes_applied"].append("downloaded vosk-model-small-pl-0.22")
+                            else:
+                                cpr(C.YELLOW, f"  ✗ Pobieranie modelu: exit {r.returncode}")
+                        except Exception as e:
+                            cpr(C.YELLOW, f"  ✗ Pobieranie modelu: {e}")
+                    
+                    # ── RE-TEST vosk after fix ──────────────────────
+                    cpr(C.DIM, "  [AUTOFIX] Ponowny test vosk...")
+                    vosk_ok2, vosk_err2 = _test_vosk(test_wav3)
+                    if vosk_ok2:
+                        cpr(C.GREEN, "  ✓ NAPRAWIONE! vosk-transcriber działa")
+                        diagnostics["transcription"] = {"ok": True, "fixed": True}
+                    else:
+                        cpr(C.YELLOW, f"  ✗ vosk nadal nie działa: {vosk_err2[:80]}")
+                        diagnostics["transcription"] = {"ok": False, "error": vosk_err2[:200]}
+        finally:
+            try: Path(test_wav3).unlink(missing_ok=True)
+            except: pass
     else:
-        failed = [k for k, v in diagnostics.items() if not v.get("ok")]
-        cpr(C.YELLOW, f"[REFLECT] STT autotest: PROBLEM — {', '.join(failed)}")
-        
-        # Recommendations
-        if not diagnostics["microphone"]["ok"]:
-            cpr(C.YELLOW, "  → Sprawdź podłączenie mikrofonu: arecord -l")
-            cpr(C.YELLOW, "  → Sprawdź uprawnienia: groups | grep audio")
-        elif not diagnostics["audio_level"]["ok"]:
-            cpr(C.YELLOW, "  → Mikrofon działa, ale nagrywa ciszę")
-            cpr(C.YELLOW, "  → Sprawdź: alsamixer (zwiększ capture)")
-            cpr(C.YELLOW, "  → Sprawdź czy mikrofon nie jest wyciszony (mute)")
-        elif not diagnostics["transcription"]["ok"]:
-            cpr(C.YELLOW, "  → vosk-transcriber nie działa")
-            cpr(C.YELLOW, "  → Sprawdź model: ls ~/.cache/vosk/")
+        diagnostics["transcription"] = {"ok": False, "error": "vosk-transcriber unavailable"}
+
+    # ═══════════════════════════════════════════════════════════════
+    # SUMMARY
+    # ═══════════════════════════════════════════════════════════════
+    all_ok = all(diagnostics[k].get("ok") for k in ("microphone", "audio_level", "transcription"))
+    fixes = diagnostics["fixes_applied"]
+    
+    if all_ok:
+        if fixes:
+            cpr(C.GREEN, f"[REFLECT] STT autotest: NAPRAWIONO ({len(fixes)} fix(ów)) ✓")
+        else:
+            cpr(C.GREEN, "[REFLECT] STT autotest: WSZYSTKO OK — problem w otoczeniu (cisza w pokoju)")
+    else:
+        failed = [k for k, v in diagnostics.items() 
+                  if isinstance(v, dict) and not v.get("ok")]
+        cpr(C.YELLOW, f"[REFLECT] STT autotest: nadal problemy — {', '.join(failed)}")
+        if fixes:
+            cpr(C.DIM, f"  Zastosowano {len(fixes)} fix(ów): {', '.join(fixes)}")
     
     cpr(C.CYAN, "[REFLECT] === Koniec autotestu ===\n")
-    
     logger.core("stt_autotest", diagnostics)
     return diagnostics
+
+
+def _try_pulseaudio_fix(diagnostics: dict):
+    """Last resort: try PulseAudio source adjustments."""
+    import subprocess, shutil
+    if not shutil.which("pactl"):
+        return
+    try:
+        # List sources
+        r = subprocess.run(["pactl", "list", "sources", "short"],
+                           capture_output=True, text=True, timeout=5)
+        sources = [l.split('\t') for l in r.stdout.strip().split('\n') if l.strip()]
+        for parts in sources:
+            if len(parts) >= 2:
+                src_name = parts[1]
+                # Unmute and set volume to 100%
+                subprocess.run(["pactl", "set-source-mute", src_name, "0"],
+                               capture_output=True, timeout=3)
+                subprocess.run(["pactl", "set-source-volume", src_name, "100%"],
+                               capture_output=True, timeout=3)
+                cpr(C.DIM, f"    PulseAudio: unmute + 100% → {src_name}")
+                diagnostics.setdefault("fixes_applied", []).append(f"pactl unmute {src_name}")
+    except Exception:
+        pass
 
 
 def _run_voice_loop(sm, evo, llm, intent, logger, conv, identity, memory=None):
