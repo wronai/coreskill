@@ -1231,5 +1231,232 @@ class TestNfoDecoratorLogging(unittest.TestCase):
             self.assertTrue(hasattr(mod, "ShellSkill"))
 
 
+class TestTTSSTTPipeline(unittest.TestCase):
+    """E2E tests: TTS generates audio file, STT transcribes it, verify round-trip."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.espeak = shutil.which("espeak-ng") or shutil.which("espeak")
+        cls.vosk_transcriber = shutil.which("vosk-transcriber")
+        vosk_cache = Path.home() / ".cache" / "vosk"
+        cls.vosk_model = None
+        if vosk_cache.is_dir():
+            for d in sorted(vosk_cache.iterdir(), reverse=True):
+                if d.is_dir() and "model" in d.name.lower() and (d / "graph").is_dir():
+                    cls.vosk_model = str(d)
+                    break
+        cls.stt_skill_path = ROOT / "skills" / "stt" / "providers" / "vosk" / "v7" / "skill.py"
+        cls.tts_skill_path = ROOT / "skills" / "tts" / "providers" / "espeak" / "v1" / "skill.py"
+
+    def _generate_wav(self, text, path):
+        """Use espeak to generate a WAV file with the given text."""
+        if not self.espeak:
+            self.skipTest("espeak/espeak-ng not installed")
+        import subprocess
+        r = subprocess.run(
+            [self.espeak, "-v", "pl", "-w", path, "--", text],
+            capture_output=True, timeout=10
+        )
+        self.assertEqual(r.returncode, 0, f"espeak failed: {r.stderr}")
+
+    def _transcribe_wav(self, wav_path):
+        """Transcribe WAV file using vosk-transcriber, return text."""
+        if not self.vosk_transcriber:
+            self.skipTest("vosk-transcriber not installed")
+        import subprocess
+        cmd = [self.vosk_transcriber, "--input", wav_path]
+        if self.vosk_model:
+            cmd += ["--model", self.vosk_model]
+        else:
+            cmd += ["--lang", "pl"]
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        return r.stdout.strip()
+
+    # ── TTS skill unit tests ──────────────────────────────────────────
+
+    def test_tts_espeak_skill_loads(self):
+        """TTS espeak v1 skill loads without errors (no nfo dependency)."""
+        import importlib.util
+        if not self.tts_skill_path.exists():
+            self.skipTest(f"TTS skill not found: {self.tts_skill_path}")
+        spec = importlib.util.spec_from_file_location("tts_v1", str(self.tts_skill_path))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        self.assertTrue(hasattr(mod, "TTSSkill"))
+        self.assertTrue(hasattr(mod, "get_info"))
+        self.assertTrue(hasattr(mod, "health_check"))
+
+    def test_tts_espeak_produces_audio(self):
+        """TTS espeak v1 executes and reports success."""
+        if not self.espeak:
+            self.skipTest("espeak not installed")
+        import importlib.util
+        if not self.tts_skill_path.exists():
+            self.skipTest(f"TTS skill not found: {self.tts_skill_path}")
+        spec = importlib.util.spec_from_file_location("tts_v1", str(self.tts_skill_path))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        result = mod.TTSSkill().execute({"text": "test"})
+        self.assertTrue(result.get("success"), f"TTS failed: {result.get('error')}")
+
+    def test_tts_espeak_generates_wav_file(self):
+        """espeak-ng -w generates a valid WAV file."""
+        if not self.espeak:
+            self.skipTest("espeak not installed")
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+            wav_path = f.name
+        try:
+            self._generate_wav("test jeden dwa", wav_path)
+            self.assertTrue(Path(wav_path).exists(), "WAV file not created")
+            self.assertGreater(Path(wav_path).stat().st_size, 1000, "WAV file too small")
+        finally:
+            Path(wav_path).unlink(missing_ok=True)
+
+    # ── STT skill unit tests ──────────────────────────────────────────
+
+    def test_stt_skill_loads(self):
+        """STT vosk v7 skill loads without errors (no nfo dependency)."""
+        import importlib.util
+        if not self.stt_skill_path.exists():
+            self.skipTest(f"STT skill not found: {self.stt_skill_path}")
+        spec = importlib.util.spec_from_file_location("stt_v7", str(self.stt_skill_path))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        self.assertTrue(hasattr(mod, "STTSkill"))
+        self.assertTrue(hasattr(mod, "get_info"))
+        self.assertTrue(hasattr(mod, "health_check"))
+
+    def test_stt_skill_transcribes_wav_file(self):
+        """STT skill transcribes a WAV file passed via audio_path."""
+        if not self.vosk_transcriber or not self.espeak:
+            self.skipTest("vosk-transcriber or espeak not installed")
+        import importlib.util
+        if not self.stt_skill_path.exists():
+            self.skipTest(f"STT skill not found: {self.stt_skill_path}")
+
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+            wav_path = f.name
+        try:
+            self._generate_wav("test jeden dwa trzy", wav_path)
+            spec = importlib.util.spec_from_file_location("stt_v7", str(self.stt_skill_path))
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            result = mod.STTSkill().execute({"audio_path": wav_path, "lang": "pl"})
+            # Must not crash
+            self.assertIsInstance(result, dict, "Result must be a dict")
+            self.assertTrue(result.get("success"), f"STT failed: {result.get('error')}")
+        finally:
+            Path(wav_path).unlink(missing_ok=True)
+
+    # ── TTS→STT round-trip E2E ────────────────────────────────────────
+
+    def test_tts_to_stt_roundtrip_pipeline(self):
+        """Generate audio via espeak, transcribe via vosk — verify words appear in output."""
+        if not self.vosk_transcriber or not self.espeak:
+            self.skipTest("vosk-transcriber or espeak not installed")
+        if not self.vosk_model:
+            self.skipTest("No vosk model found in ~/.cache/vosk/")
+
+        test_text = "jeden dwa trzy"
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+            wav_path = f.name
+        try:
+            self._generate_wav(test_text, wav_path)
+            transcript = self._transcribe_wav(wav_path)
+            self.assertTrue(
+                transcript,
+                "vosk returned empty transcription for espeak audio"
+            )
+            # Check at least one word from the test text appears
+            words_found = [w for w in test_text.split() if w in transcript.lower()]
+            self.assertGreater(
+                len(words_found), 0,
+                f"No words from '{test_text}' found in transcript: '{transcript}'"
+            )
+        finally:
+            Path(wav_path).unlink(missing_ok=True)
+
+    def test_tts_to_stt_via_skill_interface(self):
+        """Full pipeline: espeak WAV → STT skill execute() → non-empty spoken text."""
+        if not self.vosk_transcriber or not self.espeak:
+            self.skipTest("vosk-transcriber or espeak not installed")
+        if not self.vosk_model:
+            self.skipTest("No vosk model found in ~/.cache/vosk/")
+        import importlib.util
+        if not self.stt_skill_path.exists():
+            self.skipTest(f"STT skill not found: {self.stt_skill_path}")
+
+        test_text = "cześć jak się masz"
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+            wav_path = f.name
+        try:
+            self._generate_wav(test_text, wav_path)
+            spec = importlib.util.spec_from_file_location("stt_v7", str(self.stt_skill_path))
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            result = mod.STTSkill().execute({"audio_path": wav_path, "lang": "pl"})
+            self.assertTrue(result.get("success"), f"STT skill failed: {result.get('error')}")
+            spoken = result.get("spoken", "")
+            self.assertIsInstance(spoken, str, "spoken field must be a string")
+            # Should produce some transcription (not empty) from espeak audio
+            self.assertTrue(
+                spoken.strip(),
+                f"STT returned empty transcription for espeak audio. Result: {result}"
+            )
+        finally:
+            Path(wav_path).unlink(missing_ok=True)
+
+
+class TestIntentVoiceConversation(unittest.TestCase):
+    """Test intent classification for voice conversation phrases."""
+
+    @classmethod
+    def setUpClass(cls):
+        state = {"user_profile": {}}
+        logger = Logger("test")
+        cls.intent = IntentEngine(MockLLM(), logger, state)
+        cls.intent._fast_model = None  # force keyword fallback
+
+    def _classify(self, msg):
+        skills = {"stt": {}, "tts": {}}
+        return self.intent._kw_classify(msg, skills, topic=None)
+
+    def test_mowmy_glosowo_triggers_stt(self):
+        """'mówmy głosowo' should route to STT voice conversation, not TTS."""
+        r = self._classify("mówmy głosowo")
+        self.assertEqual(r.get("action"), "use")
+        self.assertEqual(r.get("skill"), "stt",
+                         f"Expected stt, got: {r}")
+
+    def test_mowmy_glosowo_no_diacritics(self):
+        """'mowmy glosowo' (without diacritics) should route to STT."""
+        r = self._classify("mowmy glosowo")
+        self.assertEqual(r.get("action"), "use")
+        self.assertEqual(r.get("skill"), "stt",
+                         f"Expected stt, got: {r}")
+
+    def test_pogadajmy_glosowo_triggers_stt(self):
+        """'pogadajmy głosowo' should route to STT."""
+        r = self._classify("pogadajmy głosowo")
+        self.assertEqual(r.get("action"), "use")
+        self.assertEqual(r.get("skill"), "stt")
+
+    def test_rozmawiac_glosowo_triggers_stt(self):
+        """'chcę rozmawiać głosowo' should route to STT."""
+        r = self._classify("chcę rozmawiać głosowo")
+        self.assertEqual(r.get("action"), "use")
+        self.assertEqual(r.get("skill"), "stt")
+
+    def test_powiedz_cos_triggers_tts(self):
+        """'powiedz coś' should still route to TTS."""
+        r = self._classify("powiedz cześć")
+        self.assertEqual(r.get("skill"), "tts")
+
+    def test_mikrofon_triggers_stt(self):
+        """'włącz mikrofon' should route to STT."""
+        r = self._classify("włącz mikrofon")
+        self.assertEqual(r.get("skill"), "stt")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

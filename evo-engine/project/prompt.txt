@@ -10,6 +10,11 @@ Files for analysis:
 - project/project.toon  (Project logic - compact module view from code2logic, file sizes, dependencies overview)
 - project/README.md  (Documentation - complete guide to all generated files, usage examples, interpretation)
 
+Subproject Analysis Files (hierarchical chunking for large repository):
+- project/root/  [root] ~6KB - Contains: analysis.toon, evolution.toon
+- project/cores/  [L1] ~48KB - Contains: analysis.toon, evolution.toon
+- project/skills_TODO_TODO1/  [L1] ~363KB - Contains: analysis.toon, evolution.toon
+
 Task:
 - Summarize the architecture and main flows.
 - Identify the highest-risk areas and propose a refactoring plan.
@@ -18,3 +23,7 @@ Task:
 Constraints:
 - Prefer minimal, incremental changes.
 - If uncertain, ask clarifying questions.
+
+Note: This repository was analyzed using hierarchical chunking due to its size.
+      Start with the main files (analysis.toon, context.md) for overview,
+      then examine specific subproject directories as needed.

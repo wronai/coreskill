@@ -18,6 +18,41 @@ def health_check():
     has_vosk = shutil.which("vosk-transcriber") is not None
     return bool(has_vosk and has_arecord)
 
+def check_readiness():
+    """Multi-level readiness check: deps, hardware, resources."""
+    deps = {
+        "arecord": shutil.which("arecord") is not None,
+        "vosk-transcriber": shutil.which("vosk-transcriber") is not None,
+        "ffmpeg": shutil.which("ffmpeg") is not None,
+    }
+    # Hardware: probe mic via arecord -l
+    mic_ok = False
+    mic_info = ""
+    if deps["arecord"]:
+        try:
+            r = subprocess.run(["arecord", "-l"], capture_output=True, text=True, timeout=3)
+            mic_ok = "card" in r.stdout.lower()
+            mic_info = r.stdout.strip().split("\n")[0][:80] if r.stdout else r.stderr[:80]
+        except Exception as e:
+            mic_info = str(e)
+    hardware = {"microphone": mic_ok, "mic_info": mic_info}
+    # Resources: vosk model
+    vosk_cache = Path.home() / ".cache" / "vosk"
+    model_path = None
+    if vosk_cache.is_dir():
+        for d in sorted(vosk_cache.iterdir(), reverse=True):
+            if d.is_dir() and "model" in d.name.lower() and (d / "graph").is_dir():
+                model_path = str(d)
+                break
+    resources = {"vosk_model": model_path}
+    issues = []
+    if not deps["arecord"]: issues.append("arecord not installed (apt install alsa-utils)")
+    if not deps["vosk-transcriber"]: issues.append("vosk-transcriber not installed (pip install vosk)")
+    if not mic_ok: issues.append(f"No microphone detected: {mic_info}")
+    if not model_path: issues.append("No vosk model in ~/.cache/vosk/ (run: vosk-transcriber --list-models)")
+    ok = deps["arecord"] and deps["vosk-transcriber"] and mic_ok and bool(model_path)
+    return {"ok": ok, "deps": deps, "hardware": hardware, "resources": resources, "issues": issues}
+
 class STTSkill:
     def __init__(self):
         self._has_arecord = shutil.which("arecord") is not None
@@ -94,28 +129,20 @@ class STTSkill:
         if not self._has_vosk:
             raise RuntimeError("Missing system command: vosk-transcriber")
 
-        fd, out_path = tempfile.mkstemp(suffix=".json", prefix="evo_stt_out_")
-        os.close(fd)
-
-        cmd = ["vosk-transcriber", "--input", wav_path, "--output", out_path, "--output-type", "json"]
+        cmd = ["vosk-transcriber", "--input", wav_path]
         model_path = self._find_model_path(lang)
         if model_path:
             cmd += ["--model", model_path]
         elif lang:
             cmd += ["--lang", lang]
 
-        subprocess.run(cmd, check=True, capture_output=True, text=True)
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        text = (r.stdout or "").strip()
+        if r.returncode != 0 and not text:
+            stderr_snippet = (r.stderr or "")[-200:]
+            raise RuntimeError(f"vosk-transcriber failed (exit {r.returncode}): {stderr_snippet}")
 
-        try:
-            raw = Path(out_path).read_text(encoding="utf-8", errors="replace").strip()
-            data = json.loads(raw) if raw else {}
-        finally:
-            try:
-                Path(out_path).unlink(missing_ok=True)
-            except Exception:
-                pass
-
-        return data if isinstance(data, dict) else {"raw": data}
+        return {"text": text}
 
     def execute(self, params: dict) -> dict:
         duration_s = int(params.get("duration_s", 4))

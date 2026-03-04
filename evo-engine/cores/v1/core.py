@@ -419,6 +419,7 @@ COMMANDS = {
     "/resources": _cmd_resources,
     "/stt": _cmd_stt,
     "/fix": _cmd_fix,
+    "/voice": _cmd_voice,
 }
 
 
@@ -564,6 +565,66 @@ def _check_proactive_learning(intent):
             cpr(C.DIM, "  Napisz 'stwórz <name>' lub /create <name> aby zbudować.")
 
 
+def _run_stt_cycle(sm, evo, llm, intent, logger, conv, identity, duration=5):
+    """Single STT→LLM cycle. Returns ('got_text', text) or ('silence', '') or ('error', msg)."""
+    sk = sm.list_skills()
+    outcome = evo.handle_request(
+        "[voice]", sk,
+        analysis={"action": "use", "skill": "stt",
+                  "input": {"duration_s": duration, "lang": "pl"},
+                  "goal": "voice_conversation"}
+    )
+    if not outcome or outcome.get("type") != "success":
+        return "error", outcome.get("goal", "stt failed") if outcome else "stt failed"
+    stt_text = _extract_stt_text(outcome)
+    if not stt_text:
+        return "silence", ""
+    cpr(C.GREEN, f"[STT] Usłyszałem: \"{stt_text}\"")
+    mprint(f"### 🎤 *{stt_text}*")
+    conv.append({"role": "user", "content": f"[głosowo] {stt_text}"})
+    _handle_chat(llm, sm, logger, conv, identity=identity)
+    intent.record_skill_use("stt")
+    return "got_text", stt_text
+
+
+def _run_voice_loop(sm, evo, llm, intent, logger, conv, identity):
+    """Continuous voice conversation: record→transcribe→respond→repeat.
+    Exits on: 3 consecutive silences, KeyboardInterrupt, or /quit spoken."""
+    MAX_SILENCE = 3
+    silence_count = 0
+    cpr(C.CYAN, "\n🎤 Tryb głosowy aktywny. Mów teraz! (Ctrl+C aby zakończyć)")
+    while True:
+        cpr(C.CYAN, f"\n🎤 Słucham... (5s)")
+        try:
+            status, text = _run_stt_cycle(sm, evo, llm, intent, logger, conv, identity)
+        except KeyboardInterrupt:
+            break
+        if status == "got_text":
+            silence_count = 0
+            # Check if user wants to exit voice mode
+            if any(w in text.lower() for w in ("koniec", "stop", "wyjdź", "wyjedź", "quit", "exit", "zamknij")):
+                cpr(C.DIM, "[VOICE] Wychodzę z trybu głosowego.")
+                break
+        elif status == "silence":
+            silence_count += 1
+            cpr(C.YELLOW, f"[VOICE] Nie usłyszałem ({silence_count}/{MAX_SILENCE}). Mów głośniej lub Ctrl+C.")
+            if silence_count >= MAX_SILENCE:
+                cpr(C.YELLOW, "[VOICE] Zbyt wiele ciszy — wychodzę z trybu głosowego.")
+                break
+        else:
+            cpr(C.RED, f"[VOICE] Błąd: {text}. Kończę tryb głosowy.")
+            break
+    cpr(C.DIM, "🎤 Tryb głosowy zakończony. Możesz pisać normalnie.")
+
+
+def _cmd_voice(a1, **ctx):
+    """Start continuous voice conversation mode: /voice"""
+    _run_voice_loop(
+        ctx["sm"], ctx["evo"], ctx["llm"], ctx["intent"],
+        ctx["logger"], ctx["conv"], ctx.get("identity")
+    )
+
+
 # ─── Main ────────────────────────────────────────────────────────────
 def main():
     init_nfo()
@@ -657,7 +718,15 @@ def main():
             "action": analysis.get("action"), "skill": analysis.get("skill",""),
             "goal": analysis.get("goal","")})
 
-        # Show feedback before STT/TTS execution
+        # Voice conversation mode: enter continuous listen loop
+        if (analysis.get("action") == "use" and analysis.get("skill") == "stt"
+                and analysis.get("goal") in ("voice_conversation", "enable_voice", "enable_stt")):
+            _run_voice_loop(sm, evo, llm, intent, logger, conv, identity)
+            _check_proactive_learning(intent)
+            intent.save()
+            continue
+
+        # Show feedback before single-shot STT/TTS execution
         if analysis.get("action") == "use" and analysis.get("skill") == "stt":
             cpr(C.CYAN, "\n🎤 Nagrywam... (mów teraz)")
 

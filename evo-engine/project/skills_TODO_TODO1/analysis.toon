@@ -3,25 +3,25 @@
 
 HEALTH[20]:
   🔴 DUP   11 classes duplicated
-  🟡 CC    _extract_shell_command CC=29 (limit:15)
-  🟡 CC    auto_fix_imports CC=25 (limit:15)
-  🟡 CC    main CC=25 (limit:15)
-  🟡 CC    auto_fix_imports CC=25 (limit:15)
-  🟡 CC    _execute_with_validation CC=23 (limit:15)
-  🟡 CC    analyze_need CC=22 (limit:15)
-  🟡 CC    is_stub_skill CC=21 (limit:15)
   🟡 CC    check_imports CC=20 (limit:15)
-  🟡 CC    check_imports CC=20 (limit:15)
-  🟡 CC    _autonomous_stt_repair CC=20 (limit:15)
-  🟡 CC    _detect_fast_model CC=18 (limit:15)
-  🟡 CC    execute CC=18 (limit:15)
-  🟡 CC    _handle_outcome CC=17 (limit:15)
-  🟡 CC    get_skill_path CC=16 (limit:15)
-  🟡 CC    latest_v CC=16 (limit:15)
-  🟡 CC    handle_request CC=16 (limit:15)
+  🟡 CC    auto_fix_imports CC=25 (limit:15)
   🟡 CC    _score CC=15 (limit:15)
+  🟡 CC    get_skill_path CC=16 (limit:15)
   🟡 CC    _report_fail CC=15 (limit:15)
+  🟡 CC    analyze_need CC=22 (limit:15)
+  🟡 CC    _handle_outcome CC=17 (limit:15)
+  🟡 CC    main CC=25 (limit:15)
+  🟡 CC    check_imports CC=20 (limit:15)
+  🟡 CC    auto_fix_imports CC=25 (limit:15)
+  🟡 CC    is_stub_skill CC=21 (limit:15)
+  🟡 CC    latest_v CC=16 (limit:15)
+  🟡 CC    _detect_fast_model CC=18 (limit:15)
   🟡 CC    _classify_fast CC=15 (limit:15)
+  🟡 CC    _extract_shell_command CC=29 (limit:15)
+  🟡 CC    handle_request CC=16 (limit:15)
+  🟡 CC    _execute_with_validation CC=23 (limit:15)
+  🟡 CC    _autonomous_stt_repair CC=20 (limit:15)
+  🟡 CC    execute CC=18 (limit:15)
 
 REFACTOR[2]:
   1. rm duplicates  (-11 dup classes)
@@ -202,19 +202,11 @@ DUPLICATES[11]:
     A: 7m  __init__ build_evolution_prompt_context fingerprint get_error_summary is_repeating record_error suggest_strategy
     B: 9m  __init__ build_evolution_prompt_context check_execution_result fingerprint get_error_summary is_repeating is_stub_skill record_error
     DIFF: B has +check_execution_result,is_stub_skill → keep B
-  DepsSkill  skills/deps/v3/skill.py ↔ skills/deps/v2/skill.py
-    A: 5m  __init__ check_system execute get_info health_check
-    B: 7m  __init__ check_python_module check_system execute get_info health_check pip_install
-    DIFF: B has +check_python_module,pip_install → keep B
-  STTSkill  skills/stt/providers/vosk/v6/skill.py ↔ skills/stt/providers/vosk/v3/skill.py
-    A: 5m  __init__ _ensure_wav _record_wav _transcribe_vosk execute
-    B: 5m  __init__ _ensure_wav _record_wav _transcribe_vosk execute
-    DIFF: IDENTICAL → rm B
-  STTSkill  skills/stt/providers/vosk/v6/skill.py ↔ skills/stt/providers/vosk/v7/skill.py
-    A: 5m  __init__ _ensure_wav _record_wav _transcribe_vosk execute
-    B: 6m  __init__ _ensure_wav _find_model_path _record_wav _transcribe_vosk execute
-    DIFF: B has +_find_model_path → keep B
-  STTSkill  skills/stt/providers/vosk/v6/skill.py ↔ skills/stt/providers/vosk/v1/skill.py
+  DepsSkill  skills/deps/v2/skill.py ↔ skills/deps/v3/skill.py
+    A: 7m  __init__ check_python_module check_system execute get_info health_check pip_install
+    B: 5m  __init__ check_system execute get_info health_check
+    DIFF: A has +check_python_module,pip_install → keep A
+  STTSkill  skills/stt/providers/vosk/v3/skill.py ↔ skills/stt/providers/vosk/v6/skill.py
     A: 5m  __init__ _ensure_wav _record_wav _transcribe_vosk execute
     B: 5m  __init__ _ensure_wav _record_wav _transcribe_vosk execute
     DIFF: IDENTICAL → rm B
@@ -223,6 +215,14 @@ DUPLICATES[11]:
     B: 6m  __init__ _ensure_wav _find_model_path _record_wav _transcribe_vosk execute
     DIFF: B has +_find_model_path → keep B
   STTSkill  skills/stt/providers/vosk/v3/skill.py ↔ skills/stt/providers/vosk/v1/skill.py
+    A: 5m  __init__ _ensure_wav _record_wav _transcribe_vosk execute
+    B: 5m  __init__ _ensure_wav _record_wav _transcribe_vosk execute
+    DIFF: IDENTICAL → rm B
+  STTSkill  skills/stt/providers/vosk/v6/skill.py ↔ skills/stt/providers/vosk/v7/skill.py
+    A: 5m  __init__ _ensure_wav _record_wav _transcribe_vosk execute
+    B: 6m  __init__ _ensure_wav _find_model_path _record_wav _transcribe_vosk execute
+    DIFF: B has +_find_model_path → keep B
+  STTSkill  skills/stt/providers/vosk/v6/skill.py ↔ skills/stt/providers/vosk/v1/skill.py
     A: 5m  __init__ _ensure_wav _record_wav _transcribe_vosk execute
     B: 5m  __init__ _ensure_wav _record_wav _transcribe_vosk execute
     DIFF: IDENTICAL → rm B
@@ -262,8 +262,8 @@ FUNCTIONS (CC≥10, 41 of 655):
    12.0  migrate_skill                              22n   3exit  loops+cond+ret
    12.0  _cmd_models                                12n   1exit  loops+cond
    12.0  SkillManager.smart_evolve                  25n   4exit  cond+ret
-   12.0  EvoEngine._validate_result                 27n   8exit  cond+ret
    12.0  IntentEngine.analyze                       15n   6exit  cond+ret
+   12.0  EvoEngine._validate_result                 27n   8exit  cond+ret
    11.0  LLMClient.chat                             16n   3exit  loops+cond+ret
    11.0  LLMClient._try_model                        6n   2exit  loops+cond+ret
    11.0  _extract_stt_text                          14n   5exit  cond+ret
@@ -427,8 +427,8 @@ CLASSES:
   TestSkill                                                 1m  CC̄=1.0   max=1   
   TestSkill                                                 1m  CC̄=1.0   max=1   
   TestSkill                                                 1m  CC̄=1.0   max=1   
-  TestSkill                                                 1m  CC̄=1.0   max=1   
   Pyttsx3Skill                                              1m  CC̄=1.0   max=1   
+  TestSkill                                                 1m  CC̄=1.0   max=1   
   CoquiSkill                                                1m  CC̄=1.0   max=1   
   C                                                         0m  CC̄=0.0   max=0.0 
 
@@ -540,14 +540,14 @@ Track...
     e: ResourceMonitor
     ResourceMonitor  # Detects CPU, RAM, GPU, disk, installed packages....
       __init__(0)  CC=1.0
-  skills/stt/providers/vosk/v6/skill.py:
+  skills/stt/providers/vosk/v3/skill.py:
     e: STTSkill,get_info,health_check,execute
     STTSkill  ×DUP
       __init__(0)  CC=1.0
     get_info()
     health_check()
     execute(input_data)
-  skills/stt/providers/vosk/v3/skill.py:
+  skills/stt/providers/vosk/v6/skill.py:
     e: STTSkill,get_info,health_check,execute
     STTSkill  ×DUP
       __init__(0)  CC=1.0
@@ -592,20 +592,6 @@ Track...
     save_state(s)
     _parse_models_override(raw)
     get_models_from_config(state)
-  main.py:
-    e: log,load_state,save_state,check,bootstrap
-    log(msg,lvl)
-    load_state()
-    save_state(s)
-    check(version)
-    bootstrap()
-  main.py:
-    e: log,load_state,save_state,check,bootstrap
-    log(msg,lvl)
-    load_state()
-    save_state(s)
-    check(version)
-    bootstrap()
   cores/v1/system_identity.py:
     e: SkillStatus,SystemIdentity
     SkillStatus  # Runtime status of a single capability....
@@ -786,13 +772,13 @@ Track...
       execute(1)  CC=1.0
     get_info()
     health_check()
-  skills/kalkulator/v28/skill.py:
+  skills/kalkulator/v31/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill
       execute(1)  CC=1.0
     get_info()
     health_check()
-  skills/kalkulator/v31/skill.py:
+  skills/kalkulator/v28/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill
       execute(1)  CC=1.0
@@ -822,13 +808,13 @@ Track...
       execute(1)  CC=1.0
     get_info()
     health_check()
-  skills/kalkulator/v25/skill.py:
+  skills/kalkulator/v3/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill
       execute(1)  CC=1.0
     get_info()
     health_check()
-  skills/kalkulator/v3/skill.py:
+  skills/kalkulator/v25/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill
       execute(1)  CC=1.0
@@ -864,13 +850,13 @@ Track...
       execute(1)  CC=1.0
     get_info()
     health_check()
-  skills/kalkulator/v27/skill.py:
+  skills/kalkulator/v18/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill
       execute(1)  CC=1.0
     get_info()
     health_check()
-  skills/kalkulator/v18/skill.py:
+  skills/kalkulator/v27/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill
       execute(1)  CC=1.0
@@ -888,12 +874,6 @@ Track...
       execute(1)  CC=1.0
     get_info()
     health_check()
-  skills/kalkulator/v8/skill.py:
-    e: TestSkill,get_info,health_check
-    TestSkill
-      execute(1)  CC=1.0
-    get_info()
-    health_check()
   skills/kalkulator/v19/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill
@@ -901,6 +881,12 @@ Track...
     get_info()
     health_check()
   skills/kalkulator/v33/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill
+      execute(1)  CC=1.0
+    get_info()
+    health_check()
+  skills/kalkulator/v8/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill
       execute(1)  CC=1.0
@@ -936,13 +922,13 @@ Track...
       execute(1)  CC=1.0
     get_info()
     health_check()
-  skills/kalkulator/v4/skill.py:
+  skills/kalkulator/v22/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill
       execute(1)  CC=1.0
     get_info()
     health_check()
-  skills/kalkulator/v22/skill.py:
+  skills/kalkulator/v4/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill
       execute(1)  CC=1.0
@@ -990,13 +976,13 @@ Track...
       execute(1)  CC=1.0
     get_info()
     health_check()
-  skills/tts/providers/espeak/v35/skill.py:
+  skills/tts/providers/espeak/v15/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill
       execute(1)  CC=1.0
     get_info()
     health_check()
-  skills/tts/providers/espeak/v15/skill.py:
+  skills/tts/providers/espeak/v35/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill
       execute(1)  CC=1.0
@@ -1020,25 +1006,25 @@ Track...
       execute(1)  CC=1.0
     get_info()
     health_check()
-  skills/tts/providers/espeak/v46/skill.py:
-    e: TestSkill,get_info,health_check
-    TestSkill
-      execute(1)  CC=1.0
-    get_info()
-    health_check()
   skills/tts/providers/espeak/v9/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill
       execute(1)  CC=1.0
     get_info()
     health_check()
-  skills/tts/providers/espeak/v30/skill.py:
+  skills/tts/providers/espeak/v46/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill
       execute(1)  CC=1.0
     get_info()
     health_check()
   skills/tts/providers/espeak/v44/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill
+      execute(1)  CC=1.0
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v30/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill
       execute(1)  CC=1.0
@@ -1056,19 +1042,13 @@ Track...
       execute(1)  CC=1.0
     get_info()
     health_check()
-  skills/tts/providers/espeak/v14/skill.py:
-    e: TestSkill,get_info,health_check
-    TestSkill
-      execute(1)  CC=1.0
-    get_info()
-    health_check()
   skills/tts/providers/espeak/v28/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill
       execute(1)  CC=1.0
     get_info()
     health_check()
-  skills/tts/providers/espeak/v2/skill.py:
+  skills/tts/providers/espeak/v14/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill
       execute(1)  CC=1.0
@@ -1080,7 +1060,19 @@ Track...
       execute(1)  CC=1.0
     get_info()
     health_check()
+  skills/tts/providers/espeak/v2/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill
+      execute(1)  CC=1.0
+    get_info()
+    health_check()
   skills/tts/providers/espeak/v23/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill
+      execute(1)  CC=1.0
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v32/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill
       execute(1)  CC=1.0
@@ -1092,7 +1084,7 @@ Track...
       execute(1)  CC=1.0
     get_info()
     health_check()
-  skills/tts/providers/espeak/v32/skill.py:
+  skills/tts/providers/espeak/v25/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill
       execute(1)  CC=1.0
@@ -1105,12 +1097,6 @@ Track...
     get_info()
     health_check()
   skills/tts/providers/espeak/v3/skill.py:
-    e: TestSkill,get_info,health_check
-    TestSkill
-      execute(1)  CC=1.0
-    get_info()
-    health_check()
-  skills/tts/providers/espeak/v25/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill
       execute(1)  CC=1.0
@@ -1134,25 +1120,25 @@ Track...
       execute(1)  CC=1.0
     get_info()
     health_check()
-  skills/tts/providers/espeak/v7/skill.py:
-    e: TestSkill,get_info,health_check
-    TestSkill
-      execute(1)  CC=1.0
-    get_info()
-    health_check()
   skills/tts/providers/espeak/v20/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill
       execute(1)  CC=1.0
     get_info()
     health_check()
-  skills/tts/providers/espeak/v34/skill.py:
+  skills/tts/providers/espeak/v7/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill
       execute(1)  CC=1.0
     get_info()
     health_check()
   skills/tts/providers/espeak/v62/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill
+      execute(1)  CC=1.0
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v34/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill
       execute(1)  CC=1.0
@@ -1206,6 +1192,12 @@ Track...
       execute(1)  CC=1.0
     get_info()
     health_check()
+  skills/tts/providers/espeak/v58/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill
+      execute(1)  CC=1.0
+    get_info()
+    health_check()
   skills/tts/providers/espeak/v8/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill
@@ -1218,19 +1210,7 @@ Track...
       execute(1)  CC=1.0
     get_info()
     health_check()
-  skills/tts/providers/espeak/v58/skill.py:
-    e: TestSkill,get_info,health_check
-    TestSkill
-      execute(1)  CC=1.0
-    get_info()
-    health_check()
   skills/tts/providers/espeak/v55/skill.py:
-    e: TestSkill,get_info,health_check
-    TestSkill
-      execute(1)  CC=1.0
-    get_info()
-    health_check()
-  skills/tts/providers/espeak/v11/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill
       execute(1)  CC=1.0
@@ -1242,13 +1222,13 @@ Track...
       execute(1)  CC=1.0
     get_info()
     health_check()
-  skills/tts/providers/espeak/v36/skill.py:
+  skills/tts/providers/espeak/v11/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill
       execute(1)  CC=1.0
     get_info()
     health_check()
-  skills/tts/providers/espeak/v52/skill.py:
+  skills/tts/providers/espeak/v36/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill
       execute(1)  CC=1.0
@@ -1266,6 +1246,12 @@ Track...
       execute(1)  CC=1.0
     get_info()
     health_check()
+  skills/tts/providers/espeak/v52/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill
+      execute(1)  CC=1.0
+    get_info()
+    health_check()
   skills/tts/providers/espeak/v48/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill
@@ -1278,13 +1264,13 @@ Track...
       execute(1)  CC=1.0
     get_info()
     health_check()
-  skills/tts/providers/espeak/v41/skill.py:
+  skills/tts/providers/espeak/v51/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill
       execute(1)  CC=1.0
     get_info()
     health_check()
-  skills/tts/providers/espeak/v51/skill.py:
+  skills/tts/providers/espeak/v41/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill
       execute(1)  CC=1.0
@@ -1308,12 +1294,6 @@ Track...
       execute(1)  CC=1.0
     get_info()
     health_check()
-  skills/tts/providers/espeak/v22/skill.py:
-    e: TestSkill,get_info,health_check
-    TestSkill
-      execute(1)  CC=1.0
-    get_info()
-    health_check()
   skills/tts/providers/espeak/v4/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill
@@ -1323,6 +1303,12 @@ Track...
   skills/tts/providers/pyttsx3/v1/skill.py:
     e: Pyttsx3Skill,get_info,health_check
     Pyttsx3Skill
+      execute(1)  CC=1.0
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v22/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill
       execute(1)  CC=1.0
     get_info()
     health_check()

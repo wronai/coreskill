@@ -1,90 +1,149 @@
-# evo-engine | 84f 8964L | python:84
+# evo-engine | 143f 9511L | python:143
 # Keys: M=modules, D=details, i=imports, c=classes, f=functions, m=methods
-M[84]:
+M[143]:
   build_core.py,525
   main.py,86
   TODO/migrate_skills.py,191
   TODO1/system_identity.py,294
   TODO1/preflight.py,455
   tests/__init__.py,0
-  tests/test_e2e.py,899
-  skills/llm_router/v1/skill.py,107
+  tests/test_e2e.py,961
+  skills/llm_router/v1/skill.py,109
   skills/tts/providers/coqui/v1/skill.py,7
   skills/tts/providers/pyttsx3/v1/skill.py,7
+  skills/tts/providers/espeak/v43/skill.py,4
+  skills/tts/providers/espeak/v29/skill.py,4
   skills/tts/providers/espeak/v13/skill.py,4
+  skills/tts/providers/espeak/v50/skill.py,4
+  skills/tts/providers/espeak/v37/skill.py,4
+  skills/tts/providers/espeak/v63/skill.py,17
+  skills/tts/providers/espeak/v60/skill.py,4
+  skills/tts/providers/espeak/v35/skill.py,4
   skills/tts/providers/espeak/v15/skill.py,4
+  skills/tts/providers/espeak/v47/skill.py,4
+  skills/tts/providers/espeak/v26/skill.py,4
   skills/tts/providers/espeak/v16/skill.py,4
+  skills/tts/providers/espeak/v46/skill.py,4
   skills/tts/providers/espeak/v9/skill.py,4
+  skills/tts/providers/espeak/v30/skill.py,4
+  skills/tts/providers/espeak/v44/skill.py,4
+  skills/tts/providers/espeak/v39/skill.py,4
   skills/tts/providers/espeak/v6/skill.py,4
   skills/tts/providers/espeak/v14/skill.py,4
+  skills/tts/providers/espeak/v28/skill.py,4
+  skills/tts/providers/espeak/v31/skill.py,4
   skills/tts/providers/espeak/v2/skill.py,4
+  skills/tts/providers/espeak/v23/skill.py,4
+  skills/tts/providers/espeak/v24/skill.py,4
+  skills/tts/providers/espeak/v32/skill.py,4
+  skills/tts/providers/espeak/v25/skill.py,4
+  skills/tts/providers/espeak/v54/skill.py,4
   skills/tts/providers/espeak/v3/skill.py,4
   skills/tts/providers/espeak/v17/skill.py,4
+  skills/tts/providers/espeak/v59/skill.py,4
   skills/tts/providers/espeak/v10/skill.py,4
   skills/tts/providers/espeak/v20/skill.py,4
   skills/tts/providers/espeak/v7/skill.py,4
+  skills/tts/providers/espeak/v34/skill.py,4
+  skills/tts/providers/espeak/v62/skill.py,4
+  skills/tts/providers/espeak/v40/skill.py,4
+  skills/tts/providers/espeak/v27/skill.py,4
+  skills/tts/providers/espeak/v56/skill.py,4
   skills/tts/providers/espeak/v18/skill.py,4
   skills/tts/providers/espeak/v5/skill.py,4
+  skills/tts/providers/espeak/v53/skill.py,4
   skills/tts/providers/espeak/v12/skill.py,4
   skills/tts/providers/espeak/v19/skill.py,4
   skills/tts/providers/espeak/v8/skill.py,4
+  skills/tts/providers/espeak/v33/skill.py,4
+  skills/tts/providers/espeak/v58/skill.py,4
+  skills/tts/providers/espeak/v55/skill.py,4
   skills/tts/providers/espeak/v11/skill.py,4
   skills/tts/providers/espeak/v21/skill.py,4
+  skills/tts/providers/espeak/v36/skill.py,4
+  skills/tts/providers/espeak/v42/skill.py,4
+  skills/tts/providers/espeak/v52/skill.py,4
+  skills/tts/providers/espeak/v38/skill.py,4
+  skills/tts/providers/espeak/v48/skill.py,4
+  skills/tts/providers/espeak/v57/skill.py,4
+  skills/tts/providers/espeak/v41/skill.py,4
+  skills/tts/providers/espeak/v51/skill.py,4
   skills/tts/providers/espeak/v1/test_enhanced.py,65
-  skills/tts/providers/espeak/v1/skill.py,30
+  skills/tts/providers/espeak/v1/skill.py,32
   skills/tts/providers/espeak/v1/test.py,41
+  skills/tts/providers/espeak/v49/skill.py,4
+  skills/tts/providers/espeak/v45/skill.py,4
+  skills/tts/providers/espeak/v61/skill.py,4
   skills/tts/providers/espeak/v22/skill.py,4
   skills/tts/providers/espeak/v4/skill.py,4
-  skills/devops/v1/skill.py,208
-  skills/stt/providers/vosk/v9/skill.py,33
+  skills/devops/v1/skill.py,210
   skills/stt/providers/vosk/v6/skill.py,131
   skills/stt/providers/vosk/v3/skill.py,131
-  skills/stt/providers/vosk/v10/skill.py,33
-  skills/stt/providers/vosk/v7/skill.py,131
-  skills/stt/providers/vosk/v8/skill.py,34
+  skills/stt/providers/vosk/v7/skill.py,147
   skills/stt/providers/vosk/v1/skill.py,131
   skills/stt/providers/whisper/v1/skill.py,7
-  skills/shell/v1/skill.py,106
+  skills/shell/v1/skill.py,108
   skills/deps/v2/skill.py,84
   skills/deps/v3/skill.py,67
-  skills/deps/v1/skill.py,144
+  skills/deps/v1/skill.py,146
+  skills/kalkulator/v29/skill.py,4
   skills/kalkulator/v13/skill.py,4
+  skills/kalkulator/v37/skill.py,4
+  skills/kalkulator/v35/skill.py,4
   skills/kalkulator/v15/skill.py,4
+  skills/kalkulator/v26/skill.py,4
   skills/kalkulator/v16/skill.py,4
   skills/kalkulator/v9/skill.py,4
+  skills/kalkulator/v30/skill.py,4
+  skills/kalkulator/v39/skill.py,4
   skills/kalkulator/v6/skill.py,4
   skills/kalkulator/v14/skill.py,4
+  skills/kalkulator/v28/skill.py,4
+  skills/kalkulator/v31/skill.py,4
   skills/kalkulator/v2/skill.py,4
+  skills/kalkulator/v23/skill.py,4
+  skills/kalkulator/v24/skill.py,4
+  skills/kalkulator/v32/skill.py,4
+  skills/kalkulator/v25/skill.py,4
   skills/kalkulator/v3/skill.py,4
   skills/kalkulator/v17/skill.py,4
   skills/kalkulator/v10/skill.py,4
+  skills/kalkulator/v20/skill.py,4
   skills/kalkulator/v7/skill.py,4
+  skills/kalkulator/v34/skill.py,4
+  skills/kalkulator/v27/skill.py,4
   skills/kalkulator/v18/skill.py,4
   skills/kalkulator/v5/skill.py,4
   skills/kalkulator/v12/skill.py,4
   skills/kalkulator/v19/skill.py,4
   skills/kalkulator/v8/skill.py,4
+  skills/kalkulator/v33/skill.py,4
   skills/kalkulator/v11/skill.py,4
+  skills/kalkulator/v21/skill.py,4
+  skills/kalkulator/v36/skill.py,4
+  skills/kalkulator/v38/skill.py,4
   skills/kalkulator/v1/skill.py,4
+  skills/kalkulator/v22/skill.py,4
   skills/kalkulator/v4/skill.py,4
   skills/web_search/providers/duckduckgo/v1/skill.py,131
-  skills/echo/v1/skill.py,19
-  skills/git_ops/v1/skill.py,114
+  skills/echo/v1/skill.py,22
+  skills/git_ops/v1/skill.py,116
   cores/v1/config.py,70
   cores/v1/resource_monitor.py,129
-  cores/v1/intent_engine.py,429
+  cores/v1/skill_logger.py,123
+  cores/v1/intent_engine.py,432
   cores/v1/system_identity.py,157
   cores/v1/supervisor.py,69
-  cores/v1/__init__.py,24
+  cores/v1/__init__.py,25
   cores/v1/provider_selector.py,192
   cores/v1/llm_client.py,272
-  cores/v1/evo_engine.py,205
+  cores/v1/evo_engine.py,280
   cores/v1/utils.py,100
-  cores/v1/core.py,569
+  cores/v1/core.py,589
   cores/v1/pipeline_manager.py,39
   cores/v1/preflight.py,324
   cores/v1/logger.py,48
-  cores/v1/skill_manager.py,336
+  cores/v1/skill_manager.py,351
 D:
   main.py:
     i: os,sys,json,subprocess,datetime,datetime.timezone,importlib.util,pathlib.Path
@@ -124,7 +183,7 @@ D:
     TestProviderSelector: setUp(0),test_list_capabilities(0),test_tts_has_multiple_providers(0),test_stt_has_providers(0),test_espeak_is_lite_tier(0)
     TestResourceMonitor: setUp(0),test_snapshot_has_required_fields(0),test_cpu_count_positive(0),test_ram_positive(0),test_disk_positive(0)
   skills/llm_router/v1/skill.py:
-    i: subprocess,json,shutil,time,urllib.request
+    i: subprocess,json,shutil,time,nfo,urllib.request
     e: LLMRouterSkill,get_info,health_check
     LLMRouterSkill: execute(1),_discover_local(0),_discover_remote(0),_health_check(2),_full_status(1)  # Model discovery & health checking ski...
     get_info()
@@ -139,7 +198,43 @@ D:
     Pyttsx3Skill: execute(1)
     get_info()
     health_check()
+  skills/tts/providers/espeak/v43/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v29/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
   skills/tts/providers/espeak/v13/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v50/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v37/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v63/skill.py:
+    i: subprocess
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v60/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v35/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill: execute(1)
     get_info()
@@ -149,12 +244,42 @@ D:
     TestSkill: execute(1)
     get_info()
     health_check()
+  skills/tts/providers/espeak/v47/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v26/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
   skills/tts/providers/espeak/v16/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill: execute(1)
     get_info()
     health_check()
+  skills/tts/providers/espeak/v46/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
   skills/tts/providers/espeak/v9/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v30/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v44/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v39/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill: execute(1)
     get_info()
@@ -169,7 +294,42 @@ D:
     TestSkill: execute(1)
     get_info()
     health_check()
+  skills/tts/providers/espeak/v28/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v31/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
   skills/tts/providers/espeak/v2/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v23/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v24/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v32/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v25/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v54/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill: execute(1)
     get_info()
@@ -180,6 +340,11 @@ D:
     get_info()
     health_check()
   skills/tts/providers/espeak/v17/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v59/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill: execute(1)
     get_info()
@@ -199,12 +364,42 @@ D:
     TestSkill: execute(1)
     get_info()
     health_check()
+  skills/tts/providers/espeak/v34/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v62/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v40/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v27/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v56/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
   skills/tts/providers/espeak/v18/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill: execute(1)
     get_info()
     health_check()
   skills/tts/providers/espeak/v5/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v53/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill: execute(1)
     get_info()
@@ -224,12 +419,67 @@ D:
     TestSkill: execute(1)
     get_info()
     health_check()
+  skills/tts/providers/espeak/v33/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v58/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v55/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
   skills/tts/providers/espeak/v11/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill: execute(1)
     get_info()
     health_check()
   skills/tts/providers/espeak/v21/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v36/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v42/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v52/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v38/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v48/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v57/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v41/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v51/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill: execute(1)
     get_info()
@@ -242,7 +492,7 @@ D:
     health_check()
     execute(input_data=None)
   skills/tts/providers/espeak/v1/skill.py:
-    i: subprocess,shutil
+    i: subprocess,shutil,nfo
     e: TTSSkill,get_info,health_check
     TTSSkill: __init__(0),execute(1)  # Text-to-Speech using espeak (stdlib +...
     get_info()
@@ -254,6 +504,21 @@ D:
     get_info()
     health_check()
     execute(input_data=None)
+  skills/tts/providers/espeak/v49/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v45/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/tts/providers/espeak/v61/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
   skills/tts/providers/espeak/v22/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill: execute(1)
@@ -265,18 +530,11 @@ D:
     get_info()
     health_check()
   skills/devops/v1/skill.py:
-    i: subprocess,sys,os,json,ast,importlib.util,pathlib.Path
+    i: subprocess,sys,os,json,ast,nfo,importlib.util,pathlib.Path
     e: DevOpsSkill,get_info,health_check
     DevOpsSkill: check_syntax(1),detect_imports(1),check_deps(1),find_system_alternatives(1),test_skill(2)  # Test, validate and deploy skills in i...
     get_info()
     health_check()
-  skills/stt/providers/vosk/v9/skill.py:
-    i: json,os,subprocess,shutil,sys
-    e: get_info,health_check,TTSkill,execute
-    TTSkill: __init__(0),execute(1)
-    get_info()
-    health_check()
-    execute(input_data:dict)->dict
   skills/stt/providers/vosk/v6/skill.py:
     i: json,os,shutil,subprocess,tempfile,sys,pathlib.Path
     e: get_info,health_check,STTSkill,execute
@@ -291,24 +549,10 @@ D:
     get_info()
     health_check()
     execute(input_data:dict)->dict
-  skills/stt/providers/vosk/v10/skill.py:
-    i: json,os,subprocess,shutil,sys
-    e: get_info,health_check,TTSkill,execute
-    TTSkill: __init__(0),execute(1)
-    get_info()
-    health_check()
-    execute(input_data:dict)->dict
   skills/stt/providers/vosk/v7/skill.py:
     i: json,os,shutil,subprocess,tempfile,sys,pathlib.Path
     e: get_info,health_check,STTSkill,execute
-    STTSkill: __init__(0),_record_wav(2),_ensure_wav(2),_transcribe_vosk(2),execute(1)
-    get_info()
-    health_check()
-    execute(input_data:dict)->dict
-  skills/stt/providers/vosk/v8/skill.py:
-    i: json,os,subprocess,shutil,sys,pathlib.Path
-    e: get_info,health_check,TTSkill,execute
-    TTSkill: __init__(0),execute(1)
+    STTSkill: __init__(0),_record_wav(2),_ensure_wav(2),_find_model_path(1),_transcribe_vosk(2)
     get_info()
     health_check()
     execute(input_data:dict)->dict
@@ -325,7 +569,7 @@ D:
     get_info()
     health_check()
   skills/shell/v1/skill.py:
-    i: json,os,shutil,subprocess,shlex,sys
+    i: json,os,shutil,subprocess,shlex,sys,nfo
     e: DANGEROUS_PREFIXES,BLOCKED_COMMANDS,MAX_OUTPUT_LINES,MAX_TIMEOUT,get_info,health_check,ShellSkill,execute
     ShellSkill: _is_interactive(1),execute(1)
     get_info()
@@ -344,9 +588,14 @@ D:
     get_info()
     health_check()
   skills/deps/v1/skill.py:
-    i: subprocess,sys,os,json,importlib.util
+    i: subprocess,sys,os,json,nfo,importlib.util
     e: DepsSkill,get_info,health_check
     DepsSkill: check_python_module(1),check_system_command(1),pip_install(2),scan_system(0),suggest_alternatives(1)  # Detect, install and manage Python and...
+    get_info()
+    health_check()
+  skills/kalkulator/v29/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
     get_info()
     health_check()
   skills/kalkulator/v13/skill.py:
@@ -354,7 +603,22 @@ D:
     TestSkill: execute(1)
     get_info()
     health_check()
+  skills/kalkulator/v37/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/kalkulator/v35/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
   skills/kalkulator/v15/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/kalkulator/v26/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill: execute(1)
     get_info()
@@ -369,6 +633,16 @@ D:
     TestSkill: execute(1)
     get_info()
     health_check()
+  skills/kalkulator/v30/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/kalkulator/v39/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
   skills/kalkulator/v6/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill: execute(1)
@@ -379,7 +653,37 @@ D:
     TestSkill: execute(1)
     get_info()
     health_check()
+  skills/kalkulator/v28/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/kalkulator/v31/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
   skills/kalkulator/v2/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/kalkulator/v23/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/kalkulator/v24/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/kalkulator/v32/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/kalkulator/v25/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill: execute(1)
     get_info()
@@ -399,7 +703,22 @@ D:
     TestSkill: execute(1)
     get_info()
     health_check()
+  skills/kalkulator/v20/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
   skills/kalkulator/v7/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/kalkulator/v34/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/kalkulator/v27/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill: execute(1)
     get_info()
@@ -429,12 +748,37 @@ D:
     TestSkill: execute(1)
     get_info()
     health_check()
+  skills/kalkulator/v33/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
   skills/kalkulator/v11/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill: execute(1)
     get_info()
     health_check()
+  skills/kalkulator/v21/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/kalkulator/v36/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/kalkulator/v38/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
   skills/kalkulator/v1/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/kalkulator/v22/skill.py:
     e: TestSkill,get_info,health_check
     TestSkill: execute(1)
     get_info()
@@ -452,14 +796,14 @@ D:
     get_info()
     health_check()
   skills/echo/v1/skill.py:
-    i: json,datetime,datetime.timezone
+    i: json,datetime,nfo,datetime.timezone
     e: get_info,health_check,EchoSkill,execute
     EchoSkill: execute(1)
     get_info()
     health_check()
     execute(input_data)
   skills/git_ops/v1/skill.py:
-    i: subprocess,os,json,pathlib.Path
+    i: subprocess,os,json,nfo,pathlib.Path
     e: GitOpsSkill,get_info,health_check
     GitOpsSkill: __init__(1),_run(2),init(1),status(1),add(2)  # Manage local git repos for skill deve...
     get_info()
@@ -477,8 +821,17 @@ D:
     i: os,shutil,subprocess,pathlib.Path
     e: ResourceMonitor
     ResourceMonitor: __init__(0),snapshot(0),_cpu_count(0),_ram_total(0),_ram_available(0)  # Detects CPU, RAM, GPU, disk, installe...
+  cores/v1/skill_logger.py:
+    i: nfo,config.LOGS_DIR,pathlib.Path
+    e: _NFO_DIR,_SQLITE_PATH,_JSON_PATH,init_nfo,inject_logging,get_skill_logger,query_skill_errors,query_slow_calls
+    init_nfo()
+    inject_logging(mod;skill_name=None)
+    get_skill_logger(skill_name)
+    query_skill_errors(skill_name=None;last_n=20)
+    query_slow_calls(threshold_ms=2000;last_n=10)
+    skill_health_summary(skill_name)
   cores/v1/intent_engine.py:
-    i: json,re,datetime,config.{C,INTENT_MODEL_MAX_PARAMS,SKILLS_DIR,cpr,save_state},datetime.timezone,utils.litellm
+    i: json,re,datetime,nfo,config.{C,INTENT_MODEL_MAX_PARAMS,SKILLS_DIR,cpr,save_state},datetime.timezone
     e: IntentEngine
     IntentEngine: __init__(3),_detect_fast_model(0),_build_intent_prompt(1),_classify_fast(3),save(0)  # Multi-stage intent detection with con...
   cores/v1/system_identity.py:
@@ -502,9 +855,9 @@ D:
     _detect_ollama_models()
     discover_models()
   cores/v1/evo_engine.py:
-    i: config.{C,MAX_EVO_ITERATIONS,cpr},preflight.EvolutionGuard
+    i: nfo,config.{C,MAX_EVO_ITERATIONS,cpr},preflight.EvolutionGuard
     e: EvoEngine
-    EvoEngine: __init__(3),handle_request(3),_execute_with_validation(4),_validate_result(4),evolve_skill(2)  # Generic evolutionary algorithm:
+    EvoEngine: __init__(3),handle_request(3),_execute_with_validation(4),_validate_result(4),_autonomous_stt_repair(3)  # Generic evolutionary algorithm:
   cores/v1/utils.py:
     i: os,sys,subprocess,warnings,builtins,logging,rich.console.Console,rich.markdown.RichMarkdown,rich.theme.Theme
     e: _SPAM,setup_litellm,clean_code,clean_json
@@ -541,6 +894,6 @@ D:
   cores/v1/skill_manager.py:
     i: json,hashlib,shutil,subprocess,sys,traceback,datetime,datetime.timezone,importlib.util,pathlib.Path
     e: SkillManager
-    SkillManager: __init__(3),_collect_versions(1),list_skills(0),latest_v(1),_active_provider(1)
+    SkillManager: __init__(3),_collect_versions(1),list_skills(0),_is_rolled_back(1),latest_v(1)
     _load_bootstrap_skill(name)
     _load_skill_from_path(p;mod_name='skill')

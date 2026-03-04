@@ -305,6 +305,74 @@ class SkillManager:
         except Exception:
             return False
 
+    def readiness_check(self, name):
+        """Run multi-level check_readiness() for a skill. Returns structured dict."""
+        p = self.skill_path(name)
+        if not p or not p.exists():
+            return {"ok": False, "issues": [f"Skill '{name}' not found"]}
+        try:
+            spec = importlib.util.spec_from_file_location(f"rd_{name}", str(p))
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            if hasattr(mod, "check_readiness"):
+                return mod.check_readiness()
+            elif hasattr(mod, "health_check"):
+                ok = bool(mod.health_check())
+                return {"ok": ok, "deps": {}, "hardware": {}, "resources": {},
+                        "issues": [] if ok else [f"{name} health_check() returned False"]}
+            return {"ok": True, "deps": {}, "hardware": {}, "resources": {}, "issues": []}
+        except Exception as e:
+            return {"ok": False, "issues": [f"check_readiness error: {e}"]}
+
+    def boot_health_check(self):
+        """Run readiness checks for all skills at boot. Logs results and caches them."""
+        skills = self.list_skills()
+        report = {}
+        any_issue = False
+        for name in sorted(skills):
+            r = self.readiness_check(name)
+            report[name] = r
+            ok = r.get("ok", True)
+            issues = r.get("issues", [])
+            if not ok or issues:
+                any_issue = True
+                status = "⚠" if not ok else "✓"
+                cpr(C.YELLOW if not ok else C.DIM,
+                    f"[HEALTH] {status} {name}: {'; '.join(issues) if issues else 'ok'}")
+                for issue in issues:
+                    self.log.skill(name, "health_issue", {"issue": issue})
+            else:
+                cpr(C.DIM, f"[HEALTH] ✓ {name}: ok")
+        self._health_cache = report
+        if any_issue:
+            cpr(C.YELLOW, "[HEALTH] Niektóre skille mają problemy. /health aby zobaczyć szczegóły.")
+        return report
+
+    def get_health_context(self):
+        """Return cached health report as context string for LLM/repair."""
+        cache = getattr(self, "_health_cache", {})
+        if not cache:
+            return "Brak danych o stanie skilli."
+        lines = []
+        for name, r in cache.items():
+            ok = r.get("ok", True)
+            issues = r.get("issues", [])
+            deps = r.get("deps", {})
+            hw = r.get("hardware", {})
+            res = r.get("resources", {})
+            status = "OK" if ok else "PROBLEM"
+            lines.append(f"[{name}] {status}")
+            for dep, present in deps.items():
+                lines.append(f"  dep:{dep}={'✓' if present else '✗'}")
+            for hw_item, hw_ok in hw.items():
+                if isinstance(hw_ok, bool):
+                    lines.append(f"  hw:{hw_item}={'✓' if hw_ok else '✗'}")
+            for res_k, res_v in res.items():
+                lines.append(f"  res:{res_k}={res_v or 'missing'}")
+            for issue in issues:
+                lines.append(f"  ⚠ {issue}")
+        return "\n".join(lines)
+
     def _preflight_and_fix(self, p, name):
         """Run preflight on skill, auto-fix imports if possible. Returns PreflightResult."""
         pf = self.preflight.check_all(p)

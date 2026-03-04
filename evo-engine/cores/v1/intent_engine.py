@@ -53,7 +53,9 @@ class IntentEngine:
                "dyktuj", "dictate", "nasłuch", "nasluch")
     _KW_VOICE = ("glos", "głos", "voice", "tts", "glosow", "głosow")
     _KW_CONV = ("pogad", "rozmaw", "rozmow", "rozmawiać", "porozmaw",
-                "gadaj", "gadac", "gadać")
+                "gadaj", "gadac", "gadać",
+                "mowmy", "mówmy", "porozm", "gloso", "glosow",
+                "głoso", "głosow", "rozmawiajmy")
     _KW_SHELL = ("uruchom", "wykonaj", "odpal", "wlacz", "włącz",
                  "run ", "exec ", "shell", "komend", "command",
                  "sudo ", "apt ", "pip ", "systemctl", "bash",
