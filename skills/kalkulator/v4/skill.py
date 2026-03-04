@@ -31,13 +31,21 @@ class Kalkulator:
                 "__builtins__": None,
                 "math": math
             }
-            # Ensure only allowed functions are used
-            # This is a basic check, a more robust solution would involve AST parsing
-            if any(keyword in expression for keyword in ['import', 'exec', 'eval', 'open', '__']):
+            # Basic check for potentially harmful keywords. A more robust solution would involve AST parsing.
+            disallowed_keywords = ['import', 'exec', 'eval', 'open', '__', 'os', 'sys']
+            if any(keyword in expression for keyword in disallowed_keywords):
                  return {'success': False, 'error': 'Niedozwolone operacje w wyrażeniu.'}
 
+            # Evaluate the expression
             result = eval(expression, allowed_globals)
-            return {'success': True, 'result': result}
+
+            # Format the result for potential TTS
+            if isinstance(result, (int, float)):
+                spoken_result = f"Wynik to {result}"
+            else:
+                spoken_result = f"Wynik to {str(result)}"
+
+            return {'success': True, 'result': result, 'spoken': spoken_result}
         except (SyntaxError, NameError, TypeError, ZeroDivisionError) as e:
             return {'success': False, 'error': f'Błąd składni lub wykonania: {e}'}
         except Exception as e:
@@ -58,10 +66,10 @@ if __name__ == '__main__':
         "10 / 2",
         "math.sqrt(16)",
         "2 ** 3",
+        "math.pow(2, 3)",
         "10 / 0", # Test division by zero
         "invalid syntax", # Test syntax error
         "print('hello')", # Test disallowed function
-        "math.pow(2, 3)"
     ]
 
     for expr in test_expressions:
