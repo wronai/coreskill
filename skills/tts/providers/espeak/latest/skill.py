@@ -20,12 +20,17 @@ class TTSSkill:
         if not self._backend:
             return {"success": False, "error": "espeak not installed (apt install espeak)"}
         try:
-            # Use espeak to speak the text and capture any output/errors
             result = subprocess.run(
                 [self._backend, "-v", "pl", "--", text],
                 check=True, capture_output=True, timeout=30
             )
-            return {"success": True, "spoken": True, "text": text, "backend": self._backend}
+            return {
+                "success": True,
+                "spoken": True,
+                "text": text,
+                "backend": self._backend,
+                "stderr": result.stderr.decode().strip() if result.stderr else ""
+            }
         except subprocess.TimeoutExpired:
             return {"success": False, "error": "TTS timeout"}
         except Exception as e:
@@ -37,17 +42,17 @@ def get_info():
 
 
 def health_check():
-    return {"status": "ok" if (shutil.which("espeak-ng") or shutil.which("espeak")) else "error"}
+    espeak_available = shutil.which("espeak-ng") is not None or shutil.which("espeak") is not None
+    return {"status": "ok" if espeak_available else "error", "message": "espeak not found" if not espeak_available else ""}
 
 
 def execute(params: dict) -> dict:
-    """Module-level execute function that creates class instance and calls .execute(params)."""
     skill = TTSSkill()
     return skill.execute(params)
 
 
 if __name__ == "__main__":
     # Test block
-    test_params = {"text": "Witaj w systemie TTS. To jest test mowy na język polski."}
+    test_params = {"text": "Witaj w Evo-Engine. Rozmiar instalacji: ~150–300 MB."}
     result = execute(test_params)
     print(result)
