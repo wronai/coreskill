@@ -1,4 +1,4 @@
-# code2llm/evolution | 1064 func | 103f | 2026-03-04
+# code2llm/evolution | 1105 func | 106f | 2026-03-04
 
 NEXT[10] (ranked by impact):
   [1] !! SPLIT-FUNC      main  CC=74  fan=55
@@ -48,11 +48,11 @@ RISKS[3]:
   ⚠ Splitting cores/v1/core.py may break 0 import paths
 
 METRICS-TARGET:
-  CC̄:          5.2 → ≤3.6
+  CC̄:          5.1 → ≤3.6
   max-CC:      74 → ≤20
   god-modules: 15 → 0
   high-CC(≥15): 71 → ≤35
   hub-types:   0 → ≤0
 
 HISTORY:
-  prev CC̄=5.2 → now CC̄=5.2
+  prev CC̄=5.2 → now CC̄=5.1

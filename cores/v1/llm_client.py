@@ -159,7 +159,7 @@ class LLMClient:
             self._cooldowns[model] = (time.time() + COOLDOWN_SERVER_ERR, "unknown")
 
     # ── Core chat with tiered fallback ──
-    def chat(self, messages, temperature=0.7, max_tokens=4096):
+    def chat(self, messages, temperature=0.7, max_tokens=16384):
         # Verbose logging
         if os.environ.get("EVO_VERBOSE") == "1":
             model_short = self.model.split('/')[-1] if '/' in self.model else self.model

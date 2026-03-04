@@ -4,9 +4,9 @@
 
 - **Project**: .
 - **Analysis Mode**: static
-- **Total Functions**: 1064
-- **Total Classes**: 145
-- **Modules**: 113
+- **Total Functions**: 1105
+- **Total Classes**: 151
+- **Modules**: 116
 - **Entry Points**: 0
 
 ## Architecture by Module
@@ -34,6 +34,11 @@
 - **Functions**: 29
 - **Classes**: 6
 - **File**: `core.py`
+
+### cores.v1.reflection_engine
+- **Functions**: 27
+- **Classes**: 4
+- **File**: `reflection_engine.py`
 
 ### seeds.core_v1
 - **Functions**: 27
@@ -105,11 +110,6 @@
 - **Classes**: 3
 - **File**: `skill_schema.py`
 
-### cores.v1.intent
-- **Functions**: 16
-- **Classes**: 1
-- **File**: `__init__.py`
-
 ## Key Entry Points
 
 Main execution flows into the system:
@@ -148,6 +148,11 @@ Flow per task:
 ### cores.v1.skill_manager.SkillManager
 - **Methods**: 22
 - **Key Methods**: cores.v1.skill_manager.SkillManager.__init__, cores.v1.skill_manager.SkillManager._collect_versions, cores.v1.skill_manager.SkillManager.list_skills, cores.v1.skill_manager.SkillManager._is_rolled_back, cores.v1.skill_manager.SkillManager.latest_v, cores.v1.skill_manager.SkillManager._active_provider, cores.v1.skill_manager.SkillManager.skill_path, cores.v1.skill_manager.SkillManager.create_skill, cores.v1.skill_manager.SkillManager.diagnose_skill, cores.v1.skill_manager.SkillManager._raw_test
+
+### cores.v1.reflection_engine.ReflectionRuleEngine
+> Engine that evaluates and executes declarative reflection rules.
+- **Methods**: 19
+- **Key Methods**: cores.v1.reflection_engine.ReflectionRuleEngine.__init__, cores.v1.reflection_engine.ReflectionRuleEngine._load_rules, cores.v1.reflection_engine.ReflectionRuleEngine._register_default_actions, cores.v1.reflection_engine.ReflectionRuleEngine.reload_rules, cores.v1.reflection_engine.ReflectionRuleEngine.record_failure, cores.v1.reflection_engine.ReflectionRuleEngine.record_success, cores.v1.reflection_engine.ReflectionRuleEngine.evaluate_rules, cores.v1.reflection_engine.ReflectionRuleEngine._match_trigger, cores.v1.reflection_engine.ReflectionRuleEngine._get_priority, cores.v1.reflection_engine.ReflectionRuleEngine.execute_action
 
 ### cores.v1.evo_journal.EvolutionJournal
 > Persistent journal for evolutionary cycles.
@@ -244,11 +249,6 @@ Directives are short text notes th
 - **Methods**: 12
 - **Key Methods**: cores.v1.llm_client.LLMClient.__init__, cores.v1.llm_client.LLMClient.tier_info, cores.v1.llm_client.LLMClient._is_available, cores.v1.llm_client.LLMClient._report_ok, cores.v1.llm_client.LLMClient._report_fail, cores.v1.llm_client.LLMClient.chat, cores.v1.llm_client.LLMClient._build_error_msg, cores.v1.llm_client.LLMClient._try_model, cores.v1.llm_client.LLMClient._get_unavailable_reason, cores.v1.llm_client.LLMClient.gen_code
 
-### cores.v1.garbage_collector.EvolutionGarbageCollector
-> Cleans up failed evolution stubs, promotes stable versions.
-- **Methods**: 11
-- **Key Methods**: cores.v1.garbage_collector.EvolutionGarbageCollector.__init__, cores.v1.garbage_collector.EvolutionGarbageCollector.is_stub, cores.v1.garbage_collector.EvolutionGarbageCollector.is_broken, cores.v1.garbage_collector.EvolutionGarbageCollector.scan_versions, cores.v1.garbage_collector.EvolutionGarbageCollector.cleanup_provider, cores.v1.garbage_collector.EvolutionGarbageCollector.cleanup_legacy, cores.v1.garbage_collector.EvolutionGarbageCollector.migrate_to_stable_latest, cores.v1.garbage_collector.EvolutionGarbageCollector._copy_version, cores.v1.garbage_collector.EvolutionGarbageCollector.trim_archive, cores.v1.garbage_collector.EvolutionGarbageCollector.cleanup_all
-
 ## Data Transformation Functions
 
 Key functions that process and transform data:
@@ -301,6 +301,10 @@ Returns (valid: bool, reason: str).
 3. Run s
 - **Output to**: result.get, ValidationResult, result.get, ValidationResult, isinstance
 
+### cores.v1.smart_intent.EmbeddingEngine.encode
+> Encode texts to vectors.
+- **Output to**: self._try_init, self._model.encode, None.toarray, TfidfVectorizer, None.toarray
+
 ### cores.v1.skill_schema.SkillSchemaValidator.validate_manifest
 > Validate a skill manifest against schema.
 - **Output to**: self._validate_against_schema
@@ -321,20 +325,16 @@ Returns (valid: bool, reason: str).
 > Quick validation of a manifest.json file.
 - **Output to**: SkillSchemaValidator, validator.validate_file
 
-### cores.v1.smart_intent.EmbeddingEngine.encode
-> Encode texts to vectors.
-- **Output to**: self._try_init, self._model.encode, None.toarray, TfidfVectorizer, None.toarray
+### cores.v1.evo_engine.EvoEngine._validate_result
+> Validate whether the skill result actually achieved the goal.
+Returns {verdict: success|partial|fail
+- **Output to**: result.get, result.get, isinstance, inner.get, inner.get
 
 ### cores.v1.stable_snapshot.StableSnapshot.validate_against_stable
 > Compare current version against stable reference.
 
 Returns: {"matches": bool, "diff_lines": int, "he
 - **Output to**: self._find_current_version, stable_skill.read_text, current_skill.read_text, cores.v1.prompts.PromptManager.list, self._check_health
-
-### cores.v1.evo_engine.EvoEngine._validate_result
-> Validate whether the skill result actually achieved the goal.
-Returns {verdict: success|partial|fail
-- **Output to**: result.get, result.get, isinstance, inner.get, inner.get
 
 ### cores.v1.session_config.SessionConfig.format_change_feedback
 > Format configuration change for user feedback.

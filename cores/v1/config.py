@@ -38,7 +38,7 @@ def _load_system_config():
         "cooldowns": {"rate_limit": 60, "demotion": 300},
         "llm": {
             "default_temperature": 0.7,
-            "default_max_tokens": 4096,
+            "default_max_tokens": 16384,
             "intent_temperature": 0.3
         },
         "filters": {

@@ -180,6 +180,7 @@ class PiperTTSSkill:
     def execute(self, params: dict) -> dict:
         text = params.get("text", "")
         lang = params.get("lang", "pl")[:2].lower()  # "pl_PL" -> "pl"
+        speed = float(params.get("speed", 1.5))  # Default 150% speed
 
         if not text:
             return {"success": False, "error": "No text provided"}
@@ -206,9 +207,19 @@ class PiperTTSSkill:
             with tempfile.TemporaryDirectory(prefix="piper_tts_") as td:
                 wav_path = Path(td) / "out.wav"
 
+                # Build piper command with speed control
+                # length_scale < 1 = faster, > 1 = slower
+                length_scale = 1.0 / speed
+                cmd = [
+                    self._piper,
+                    "--model", str(model_path),
+                    "--output_file", str(wav_path),
+                    "--length-scale", str(length_scale),
+                ]
+
                 # Generate speech (streaming to file)
                 r = subprocess.run(
-                    [self._piper, "--model", str(model_path), "--output_file", str(wav_path)],
+                    cmd,
                     input=clean,
                     text=True,
                     capture_output=True,
@@ -239,6 +250,7 @@ class PiperTTSSkill:
                     "method": "piper-neural",
                     "model": model_path.name,
                     "lang": lang,
+                    "speed": speed,
                 }
 
         except subprocess.TimeoutExpired:

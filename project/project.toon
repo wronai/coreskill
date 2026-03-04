@@ -1,17 +1,18 @@
-# coreskill | 127f 34784L | python:133
+# coreskill | 130f 35604L | python:130
 # Keys: M=modules, D=details, i=imports, c=classes, f=functions, m=methods
-M[127]:
+M[130]:
   __init__.py,19
   build_core.py,525
   cli.py,248
   core.py,515
-  cores/v1/__init__.py,78
+  cores/v1/__init__.py,94
   cores/v1/adaptive_monitor.py,188
   cores/v1/auto_repair.py,473
   cores/v1/bandit_selector.py,136
   cores/v1/config.py,196
   cores/v1/config_generator.py,221
   cores/v1/core.py,1276
+  cores/v1/drift_detector.py,259
   cores/v1/event_bus.py,94
   cores/v1/evo_engine.py,686
   cores/v1/evo_journal.py,350
@@ -32,6 +33,7 @@ M[127]:
   cores/v1/prompts/__init__.py,130
   cores/v1/provider_selector.py,363
   cores/v1/quality_gate.py,277
+  cores/v1/reflection_engine.py,252
   cores/v1/repair_journal.py,356
   cores/v1/resilience.py,147
   cores/v1/resource_monitor.py,155
@@ -79,6 +81,7 @@ M[127]:
   skills/git_ops/v1/skill.py,120
   skills/hw_test/v2/skill.py,439
   skills/hw_test/v3/skill.py,1367
+  skills/interior_inspection/v1/skill.py,78
   skills/invalid_input_handler/v1/skill.py,88
   skills/json_validator/v8/skill.py,115
   skills/json_validator/v9/skill.py,114
@@ -196,6 +199,14 @@ D:
     _cmd_test(a1)
     _cmd_run(a1;a2)
     _cmd_evolve(a1;a2='')
+  cores/v1/drift_detector.py:
+    i: json,config.SKILLS_DIR,dataclasses.{dataclass,field},pathlib.Path,preflight.SkillPreflight,quality_gate.SkillQualityGate,skill_schema.{SkillSchemaValidator,get_schema_validation_stats},typing.Optional
+    e: DriftReport,DriftDetector,detect_drift,detect_all_drift,get_drift_summary
+    DriftReport: summary(0)  # Report of detected drift for a capabi...
+    DriftDetector: __init__(0),detect(1),detect_all(0),_check_interface_drift(2),_check_version_drift(2)  # Detects drift between manifest declar...
+    detect_drift(capability:str)->DriftReport
+    detect_all_drift()->list[DriftReport]
+    get_drift_summary()->dict
   cores/v1/event_bus.py:
     i: blinker.Signal,dataclasses.{dataclass,field},typing.{Any,Optional}
     e: SkillFailedEvent,ReflectionNeededEvent,RepairRequestedEvent,RepairCompletedEvent,DiagnosisReadyEvent,EventBus
@@ -306,6 +317,16 @@ D:
     e: QualityReport,SkillQualityGate
     QualityReport: ok(0),summary(0)  # Structured quality assessment of a sk...
     SkillQualityGate: __init__(1),evaluate(3),should_register(1),compare(2),_check_preflight(2)  # Validates skill quality before regist...
+  cores/v1/reflection_engine.py:
+    i: time,config.{SKILLS_DIR,get_config_value},dataclasses.{dataclass,field},pathlib.Path,skill_schema.get_schema_validation_stats,typing.{Any,Callable,Optional}
+    e: SystemState,RuleMatch,ReflectionRuleEngine,ProactiveReflection,get_rule_engine,evaluate_reflection_rules,run_reflection_cycle
+    SystemState: to_dict(0)  # Current system state for rule matching.
+    RuleMatch:   # Matched rule with resolved action.
+    ReflectionRuleEngine: __init__(0),_load_rules(0),_register_default_actions(0),reload_rules(0),record_failure(1)  # Engine that evaluates and executes de...
+    ProactiveReflection: __init__(2),check_and_reflect(1),_build_state(0),summary(0)  # High-level integration that wires rul...
+    get_rule_engine()->ReflectionRuleEngine
+    evaluate_reflection_rules(state:SystemState)->list[RuleMatch]
+    run_reflection_cycle()->list[dict]
   cores/v1/repair_journal.py:
     i: json,time,dataclasses.{asdict,dataclass,field},pathlib.Path,typing.{Any,Dict,List,Optional}
     e: RepairAttempt,KnownFix,RepairJournal
@@ -650,6 +671,13 @@ D:
     get_info()
     health_check()
     execute(input_data:dict)->dict
+  skills/interior_inspection/v1/skill.py:
+    i: subprocess,re,json,html.parser.HTMLParser,urllib.request
+    e: InteriorInspectionSkill,get_info,health_check,execute
+    InteriorInspectionSkill: __init__(0),execute(1),_extract_content(1)
+    get_info()->dict
+    health_check()->dict
+    execute(params:dict)->dict
   skills/invalid_input_handler/v1/skill.py:
     i: subprocess,re,json,typing.{Any,Dict},urllib.{error,request}
     e: get_info,health_check,InvalidInputHandler,execute
