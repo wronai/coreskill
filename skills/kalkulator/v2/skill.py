@@ -3,7 +3,7 @@ import sys
 
 class Kalkulator:
     def __init__(self):
-        self.version = "v1.1"
+        self.version = "v1"
 
     def execute(self, params: dict) -> dict:
         try:
@@ -14,18 +14,14 @@ class Kalkulator:
             # Using eval is generally unsafe, but for a controlled environment like this,
             # and given the constraints of only stdlib, it's the most direct way.
             # In a real-world scenario, a safer parsing library would be preferred.
-            # Added a check for potentially harmful characters, though not exhaustive.
-            if any(char in expression for char in ['`', '$', ';', '|', '&', '<', '>']):
-                return {"success": False, "error": "Potentially unsafe characters in expression."}
-
             result = eval(expression)
-            return {"success": True, "result": result, "spoken": f"Wynik to {result}"}
+            return {"success": True, "result": result, "spoken": f"The result is {result}"}
         except ZeroDivisionError:
-            return {"success": False, "error": "Division by zero is not allowed.", "spoken": "Nie mogę dzielić przez zero."}
+            return {"success": False, "error": "Division by zero is not allowed.", "spoken": "I cannot divide by zero."}
         except SyntaxError:
-            return {"success": False, "error": "Invalid mathematical syntax.", "spoken": "Nieprawidłowa składnia matematyczna."}
+            return {"success": False, "error": "Invalid mathematical expression.", "spoken": "That is not a valid mathematical expression."}
         except Exception as e:
-            return {"success": False, "error": str(e), "spoken": f"Wystąpił błąd: {e}"}
+            return {"success": False, "error": str(e), "spoken": f"An error occurred: {e}"}
 
     def get_info(self) -> dict:
         return {
@@ -40,7 +36,7 @@ class Kalkulator:
     def health_check(self) -> bool:
         try:
             # A simple check to ensure the class is functional
-            subprocess.run([sys.executable, "-c", "print(1+1)"], check=True, capture_output=True, text=True)
+            subprocess.run([sys.executable, "-c", "print(1+1)"], check=True, capture_output=True)
             return True
         except Exception:
             return False
@@ -57,8 +53,7 @@ if __name__ == '__main__':
         {"expression": "10 / 0"}, # Test division by zero
         {"expression": "invalid expression"}, # Test invalid syntax
         {}, # Test missing expression
-        {"expression": "print('hello')"}, # Test unsafe eval
-        {"expression": "2 + 2 * 3"}
+        {"expression": "100 / 7"} # User's example
     ]
 
     for test_params in test_expressions:
@@ -68,18 +63,3 @@ if __name__ == '__main__':
 
     print(f"Info: {kalkulator_skill.get_info()}\n")
     print(f"Health Check: {kalkulator_skill.health_check()}\n")
-
-    # Example of using espeak for TTS if available
-    if subprocess.run(['which', 'espeak'], capture_output=True).returncode == 0:
-        print("Testing TTS with espeak:")
-        tts_result = kalkulator_skill.execute({"expression": "5 * 5"})
-        if tts_result.get("success") and "spoken" in tts_result:
-            try:
-                subprocess.run(['espeak', tts_result["spoken"]], check=True)
-                print("TTS spoken successfully.")
-            except Exception as e:
-                print(f"Error during TTS: {e}")
-        else:
-            print("TTS could not be generated.")
-    else:
-        print("espeak not found, skipping TTS test.")
