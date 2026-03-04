@@ -121,6 +121,10 @@
       "whisper": {"tier": "premium", "quality": 9, "speed": 5}
     }
   },
+  "defaults": {
+    "tts": "pyttsx3",
+    "stt": "vosk"
+  },
   "tier_order": {
     "lite": 0,
     "standard": 1,

@@ -1460,6 +1460,14 @@ def main():
         try:
             # Explicitly print and flush prompt for non-tty stdout (pipes)
             print(f"{C.GREEN}you> {C.R}", end='', flush=True)
+            
+            # Use select to check if stdin has data (non-blocking for pipes)
+            import select
+            if not select.select([sys.stdin], [], [], 0.1)[0]:
+                # No data available, continue loop (don't block on input())
+                time.sleep(0.1)
+                continue
+            
             ui = input().strip()
         except (EOFError, KeyboardInterrupt):
             cpr(C.DIM, "\nBye!")

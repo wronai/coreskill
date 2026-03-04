@@ -616,6 +616,30 @@ class EvoEngine:
             if inner.get("error"):
                 return {"verdict": "fail", "reason": inner["error"]}
 
+        # web_search: empty results for local network queries should trigger new skill suggestion
+        if skill_name == "web_search":
+            results = inner.get("results", [])
+            query = inner.get("query", "").lower()
+            # Check if query is about local network (cameras, devices, scanning)
+            _local_net_keywords = (
+                "kamer", "camera", "rtsp", "onvif", "sieć lokal", "local network",
+                "lan ", "lan:", "skanuj", "scan", "urządzenia w sieci", "devices in network",
+                "ip w sieci", "ip in network", "drukark", "printer", "router",
+            )
+            is_local_net_query = any(kw in query for kw in _local_net_keywords)
+            if is_local_net_query and (not results or len(results) == 0):
+                return {
+                    "verdict": "partial",
+                    "reason": f"web_search: no results for local network query '{query[:50]}'. "
+                              f"Requires dedicated network scanner skill."
+                }
+            # Generic empty results - still partial but less urgent
+            if not results or len(results) == 0:
+                return {
+                    "verdict": "partial",
+                    "reason": f"web_search: empty results for '{query[:50]}'"
+                }
+
         return {"verdict": "success", "reason": "skill reports success"}
 
     def _autonomous_stt_repair(self, skill_name, result, user_msg):
