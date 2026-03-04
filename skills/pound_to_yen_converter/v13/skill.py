@@ -31,15 +31,14 @@ class PoundToYenConverter:
             # Extract amount and currencies from the text
             amount = 1  # default
             
+            # Handle Polish number words
             if 'milion' in text or 'miliony' in text:
                 amount = 1000000
-                # Adjust for multiple millions
                 match = re.search(r'(\d+)\s*milion', text)
                 if match:
                     amount = int(match.group(1)) * 1000000
             elif 'tysiąc' in text or 'tysiące' in text:
                 amount = 1000
-                # Adjust for multiple thousands
                 match = re.search(r'(\d+)\s*tysiąc', text)
                 if match:
                     amount = int(match.group(1)) * 1000
