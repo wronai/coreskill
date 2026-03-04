@@ -1,0 +1,7 @@
+{
+  "name": "shell",
+  "version": "v5",
+  "parent": "v4",
+  "phase": "runtime",
+  "created_at": "2026-03-04T07:36:22.769096+00:00"
+}

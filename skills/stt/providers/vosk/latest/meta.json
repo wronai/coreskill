@@ -1,0 +1,7 @@
+{
+  "name": "stt",
+  "version": "latest",
+  "parent": "stable",
+  "phase": "runtime",
+  "created_at": "2026-03-04T08:25:25.281955+00:00"
+}

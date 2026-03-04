@@ -1,0 +1,13 @@
+{
+  "name": "openrouter",
+  "version": "v1",
+  "description": "OpenRouter API client for discovering free LLM models",
+  "author": "evo-engine",
+  "type": "api_client",
+  "entry": "skill.py",
+  "tags": ["openrouter", "llm", "models", "api", "free_models"],
+  "deps": [],
+  "health_check": {
+    "command": "python3 -c 'import urllib.request; print(\"urllib available\")'"
+  }
+}

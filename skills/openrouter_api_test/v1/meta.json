@@ -1,0 +1,30 @@
+{
+  "name": "openrouter_api_test",
+  "version": "v1",
+  "description": "Test OpenRouter API connectivity and validate API key",
+  "author": "CoreSkill",
+  "actions": ["test", "validate", "ping"],
+  "parameters": {
+    "action": {
+      "type": "string",
+      "enum": ["test", "validate", "ping"],
+      "default": "test",
+      "description": "Action to perform"
+    },
+    "api_key": {
+      "type": "string",
+      "description": "OpenRouter API key (optional, uses env if not provided)"
+    },
+    "model": {
+      "type": "string",
+      "default": "openrouter/meta-llama/llama-3.3-70b-instruct:free",
+      "description": "Model to test with"
+    }
+  },
+  "returns": {
+    "success": "boolean",
+    "response_time_ms": "number (for test action)",
+    "api_key_valid": "boolean",
+    "error": "string (if failed)"
+  }
+}
