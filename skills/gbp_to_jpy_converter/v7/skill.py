@@ -90,6 +90,7 @@ class GBPToJPYConverter:
                 return {
                     'success': True,
                     'result': result_text,
+                    'spoken': result_text,
                     'amount_gbp': amount_gbp,
                     'amount_jpy': amount_jpy,
                     'rate': rate
@@ -98,13 +99,15 @@ class GBPToJPYConverter:
                 return {
                     'success': False,
                     'error': 'Query not recognized as GBP to JPY conversion request',
-                    'result': 'Nie rozpoznano zapytania o przeliczenie funtów szterlingów na jeny japońskie.'
+                    'result': 'Nie rozpoznano zapytania o przeliczenie funtów szterlingów na jeny japońskie.',
+                    'spoken': 'Nie rozpoznano zapytania o przeliczenie funtów szterlingów na jeny japońskie.'
                 }
         except Exception as e:
             return {
                 'success': False,
                 'error': str(e),
-                'result': 'Wystąpił błąd podczas przetwarzania zapytania.'
+                'result': 'Wystąpił błąd podczas przetwarzania zapytania.',
+                'spoken': 'Wystąpił błąd podczas przetwarzania zapytania.'
             }
 
 def execute(params: dict) -> dict:
