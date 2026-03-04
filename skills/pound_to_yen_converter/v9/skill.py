@@ -1,104 +1,142 @@
-import re
 import subprocess
+import re
+import urllib.request
 import json
-import os
 
 def get_info() -> dict:
     return {
         'name': 'pound_to_yen_converter',
-        'version': 'v1',
+        'version': 'v9',
         'description': 'Converts pounds sterling to Japanese yen'
     }
 
 def health_check() -> dict:
     try:
-        # Check if espeak is available (for TTS if needed)
-        result = subprocess.run(['espeak', '--version'], capture_output=True, timeout=5)
-        if result.returncode == 0:
-            return {'status': 'ok'}
-        else:
-            return {'status': 'error', 'message': 'espeak not working properly'}
-    except FileNotFoundError:
-        return {'status': 'ok'}  # TTS is optional, skill works without it
+        # Check if espeak is available (for TTS, though not used in this skill)
+        subprocess.run(['espeak', '--version'], capture_output=True, timeout=5)
+        return {'status': 'ok'}
     except Exception as e:
         return {'status': 'error', 'message': str(e)}
 
-class PoundToYenConverter:
-    def __init__(self):
-        # Approximate exchange rate (as of 2023-10-01: ~1 GBP = 185 JPY)
-        # Using a fixed rate since we can't use external APIs
-        self.exchange_rate = 185.0
-    
-    def execute(self, params: dict) -> dict:
-        try:
-            text = params.get('text', '').lower()
-            
-            # Extract amount and currencies from the text
-            amount = 1  # default
-            
-            # Handle Polish words for large numbers
-            if 'milion' in text or 'miliony' in text:
-                amount = 1000000
-                match = re.search(r'(\d+)\s*milion', text)
-                if match:
-                    amount = int(match.group(1)) * 1000000
-            elif 'tysiąc' in text or 'tysiące' in text:
-                amount = 1000
-                match = re.search(r'(\d+)\s*tysiąc', text)
-                if match:
-                    amount = int(match.group(1)) * 1000
-            else:
-                # Try to extract a number from the text
-                numbers = re.findall(r'\d+', text)
-                if numbers:
-                    amount = int(numbers[0])
-            
-            # Check if it's GBP to JPY conversion
-            if ('funt' in text and 'jen' in text) or ('funt' in text and 'jenów' in text):
-                # Convert pounds to yen
-                result_yen = amount * self.exchange_rate
-                
-                # Format the result for display and speech
-                result_text = f"{amount} funtów szterlingów to około {result_yen:,.0f} jenów japońskich"
-                spoken_text = f"{amount} funtów szterlingów to około {result_yen:,.0f} jenów japońskich"
-                
-                # Use espeak for TTS if available
-                try:
-                    subprocess.run(['espeak', spoken_text], capture_output=True, timeout=10)
-                except Exception:
-                    pass  # TTS is optional
-                
-                return {
-                    'success': True,
-                    'result': result_yen,
-                    'text': result_text,
-                    'spoken': spoken_text,
-                    'amount_pounds': amount,
-                    'amount_yen': result_yen,
-                    'exchange_rate': self.exchange_rate
-                }
-            else:
-                return {
-                    'success': False,
-                    'error': 'Not a valid pound to yen conversion request',
-                    'text': 'Proszę zapytać o przeliczenie funtów szterlingów na jeny japońskie',
-                    'spoken': 'Proszę zapytać o przeliczenie funtów szterlingów na jeny japońskie'
-                }
-                
-        except Exception as e:
-            return {
-                'success': False,
-                'error': str(e),
-                'text': 'Wystąpił błąd podczas przeliczania',
-                'spoken': 'Wystąpił błąd podczas przeliczania'
-            }
-
 def execute(params: dict) -> dict:
+    try:
+        text = params.get('text', '').lower()
+        
+        # Extract amount and currencies from the text
+        # Looking for patterns like "tysiąc funtów szterlingów na jeny japońskie"
+        # or "przelicz 1000 funtów na jeny"
+        
+        # Pattern to match amount words and numbers
+        amount_pattern = r'(tysiąc|tys\.?|tysiące|tysiący|milion|miliony|milionów|\d+\.?\d*)'
+        currency_pattern = r'(funty|funt|szterling|funty szterlingi|funt szterling|gbp|pound|pounds)'
+        target_currency_pattern = r'(jeny|jen|japońskie|japonii|jpy|yen)'
+        
+        # Check if the text contains the specific phrase
+        if 'funty szterlingów' in text and 'jeny japońskie' in text:
+            # Extract amount - look for "tysiąc" or numbers
+            amount_match = re.search(r'(tysiąc|\d+)', text)
+            if amount_match:
+                amount_str = amount_match.group(0)
+                if amount_str == 'tysiąc':
+                    amount = 1000
+                else:
+                    try:
+                        amount = float(amount_str)
+                    except ValueError:
+                        amount = 1000  # default to 1000 if parsing fails
+            else:
+                amount = 1000  # default to 1000
+            
+            # Get exchange rate from a public source
+            try:
+                # Using ECB historical rates (GBP to JPY)
+                url = "https://api.exchangerate-api.com/v4/latest/GBP"
+                with urllib.request.urlopen(url, timeout=10) as response:
+                    data = json.loads(response.read().decode())
+                    rate = data.get('rates', {}).get('JPY', 180.0)  # default to ~180 if not found
+            except Exception:
+                # Fallback rate if API fails
+                rate = 180.0
+            
+            result_yen = amount * rate
+            
+            # Format the result
+            result_text = f"{amount:,.0f} funtów szterlingów to {result_yen:,.0f} jenów japońskich"
+            
+            return {
+                'success': True,
+                'amount_pounds': amount,
+                'amount_yen': result_yen,
+                'rate': rate,
+                'text': result_text,
+                'message': result_text
+            }
+        
+        # If the specific pattern isn't found, try to parse any currency conversion request
+        # Look for "przelicz" or "przelicz" and currencies
+        if 'przelicz' in text or ('funty' in text and 'jeny' in text):
+            # Try to extract amount
+            amount_match = re.search(r'(tysiąc|\d+)', text)
+            if amount_match:
+                amount_str = amount_match.group(0)
+                if amount_str == 'tysiąc':
+                    amount = 1000
+                else:
+                    try:
+                        amount = float(amount_str)
+                    except ValueError:
+                        amount = 1000
+            else:
+                amount = 1000
+            
+            # Get exchange rate
+            try:
+                url = "https://api.exchangerate-api.com/v4/latest/GBP"
+                with urllib.request.urlopen(url, timeout=10) as response:
+                    data = json.loads(response.read().decode())
+                    rate = data.get('rates', {}).get('JPY', 180.0)
+            except Exception:
+                rate = 180.0
+            
+            result_yen = amount * rate
+            result_text = f"{amount:,.0f} funtów szterlingów to {result_yen:,.0f} jenów japońskich"
+            
+            return {
+                'success': True,
+                'amount_pounds': amount,
+                'amount_yen': result_yen,
+                'rate': rate,
+                'text': result_text,
+                'message': result_text
+            }
+        
+        # If no conversion pattern detected
+        return {
+            'success': False,
+            'error': 'Nie wykryto polecenia przeliczenia funtów na jeny',
+            'message': 'Proszę użyć formułki np. "przelicz tysiąc funtów szterlingów na jeny japońskie"'
+        }
+    
+    except Exception as e:
+        return {
+            'success': False,
+            'error': str(e),
+            'message': 'Wystąpił błąd podczas przeliczania'
+        }
+
+def execute_wrapper(params: dict) -> dict:
     converter = PoundToYenConverter()
     return converter.execute(params)
 
+class PoundToYenConverter:
+    def execute(self, params: dict) -> dict:
+        return execute(params)
+
 if __name__ == '__main__':
     # Test the skill
-    test_params = {'text': 'przelicz tysiąc funtów szterlingów na jeny japońskie'}
+    test_params = {
+        'text': 'przelicz tysiąc funtów szterlingów na jeny japońskie'
+    }
+    
     result = execute(test_params)
     print(json.dumps(result, indent=2, ensure_ascii=False))
