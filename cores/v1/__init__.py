@@ -47,3 +47,4 @@ from .self_reflection import SelfReflection, ReflectionEvent, DiagnosisReport
 from .repair_journal import RepairJournal, RepairAttempt, KnownFix
 from .stable_snapshot import StableSnapshot, SnapshotInfo
 from .fuzzy_router import FuzzyCommandRouter
+from .event_bus import EventBus

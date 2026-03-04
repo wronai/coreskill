@@ -18,6 +18,8 @@ from ..config import get_config_value
 from .training import DEFAULT_TRAINING
 from .embedding import EmbeddingEngine
 from .local_llm import LocalLLMClassifier
+from .knn_classifier import EmbeddingKNNClassifier
+from .ensemble import EnsembleIntentClassifier, Vote
 
 
 # Load intent configuration
@@ -89,6 +91,8 @@ class SmartIntentClassifier:
         self._training_file = self._state_dir / self.TRAINING_FILE
         self._training_data = []
         self._skill_vectors = {}  # skill_name -> embedding vector
+        self._knn = EmbeddingKNNClassifier()
+        self._ensemble = EnsembleIntentClassifier()
         
         self._load_training()
 
@@ -114,28 +118,41 @@ class SmartIntentClassifier:
         self._rebuild_skill_vectors()
 
     def _rebuild_skill_vectors(self):
-        """Precompute embeddings for training examples by (action, skill)."""
+        """Precompute embeddings for training examples by (action, skill).
+        Also fits KNN classifier on individual training vectors."""
         if not self._embedder.available:
             return
         
-        # Group by (action, skill)
+        import numpy as np
         from collections import defaultdict
         groups = defaultdict(list)
         for text, action, skill in self._training_data:
             key = (action, skill or "")
             groups[key].append(text)
         
-        # Average embedding per group
+        # Average embedding per group (kept for cosine fallback)
         self._skill_vectors = {}
+        all_vectors = []
+        all_labels = []
         for key, texts in groups.items():
             if texts:
                 try:
                     vecs = self._embedder.encode(texts)
-                    import numpy as np
                     avg = np.mean(vecs, axis=0)
                     self._skill_vectors[key] = avg
+                    # Collect individual vectors for KNN
+                    for v in vecs:
+                        all_vectors.append(v)
+                        all_labels.append(key)
                 except Exception:
                     pass
+        
+        # Fit KNN classifier on individual training vectors
+        if all_vectors:
+            try:
+                self._knn.fit(all_labels, np.array(all_vectors))
+            except Exception:
+                pass
 
     def classify(self, user_msg: str, skills: list = None,
                  context: str = "", record: bool = True, **kwargs) -> IntentResult:
@@ -195,20 +212,47 @@ class SmartIntentClassifier:
             self.CONFIDENCE_THRESHOLD
         )
         
+        # High-confidence embedding → return directly (fast path)
         if result and result.confidence >= threshold:
             if record:
                 self._record_use(result)
             return result
 
-        # Tier 2: Local LLM (if available)
+        # Ensemble voting: collect votes from all available classifiers
+        self._ensemble.reset()
+        
+        # Vote 1: Embedding result (KNN or cosine)
+        if result and result.action != "chat":
+            source = "knn" if "knn" in (result.tier or "") else "cosine"
+            self._ensemble.add_vote(Vote(
+                action=result.action, skill=result.skill,
+                confidence=result.confidence, source=source))
+        
+        # Vote 2: Local LLM (if available)
         if self._local_llm.available:
             result_local = self._local_llm.classify(user_msg, skills, context)
-            if result_local:
-                if record:
-                    self._record_use(result_local)
-                return result_local
+            if result_local and result_local.action != "chat":
+                self._ensemble.add_vote(Vote(
+                    action=result_local.action, skill=result_local.skill,
+                    confidence=result_local.confidence, source="local_llm"))
+        
+        # Decide via ensemble
+        ensemble_result = self._ensemble.decide()
+        if ensemble_result and ensemble_result.confidence >= _INTENT_CONFIG["min_threshold"]:
+            final = IntentResult(
+                action=ensemble_result.action,
+                skill=ensemble_result.skill,
+                confidence=ensemble_result.confidence,
+                tier=f"ensemble({ensemble_result.agreement:.0%})",
+                goal=user_msg,
+                all_scores={f"{v.source}:{v.action}:{v.skill}": v.confidence
+                            for v in ensemble_result.votes},
+            )
+            if record:
+                self._record_use(final)
+            return final
 
-        # Tier 3: Remote LLM fallback
+        # Tier 3: Remote LLM fallback (last resort)
         if self._llm_client:
             result_remote = self._llm_classify(user_msg, skills, context)
             if result_remote:
@@ -229,43 +273,55 @@ class SmartIntentClassifier:
         return IntentResult(action="chat", confidence=0.5, tier="fallback")
 
     def _embedding_classify(self, user_msg: str) -> Optional[IntentResult]:
-        """Classify using embeddings (sbert/tf-idf/bow)."""
+        """Classify using embeddings via KNN (preferred) or cosine fallback."""
         if not self._embedder.available or not self._skill_vectors:
             return None
 
         try:
-            import numpy as np
             user_vec = self._embedder.encode([user_msg])[0]
-            
-            # Cosine similarity to all skill vectors
-            scores = []
-            for key, vec in self._skill_vectors.items():
-                action, skill = key
-                sim = self._embedder.similarity(user_vec, vec)
-                scores.append((sim, action, skill))
-            
-            if not scores:
-                return None
-            
-            scores.sort(reverse=True)
-            top_sim, top_action, top_skill = scores[0]
-            
-            # Build all_scores dict
-            all_scores = {f"{a}:{s}": sim for sim, a, s in scores[:5]}
-            
-            # Normalize confidence based on embedding mode
-            conf = min(top_sim * 1.2, 0.95)  # Scale up slightly
-            
-            return IntentResult(
-                action=top_action,
-                skill=top_skill if top_action == "use" else "",
-                confidence=conf,
-                tier=f"embedding_{self._embedder._mode}",
-                goal=user_msg,
-                all_scores=all_scores,
-            )
+
+            # Prefer KNN classifier when fitted
+            if self._knn.available:
+                result = self._knn.predict(user_vec)
+                if result:
+                    return IntentResult(
+                        action=result["action"],
+                        skill=result["skill"],
+                        confidence=result["confidence"],
+                        tier=f"knn_{self._embedder._mode}",
+                        goal=user_msg,
+                        all_scores=result["all_scores"],
+                    )
+
+            # Cosine fallback (when KNN not available or failed)
+            return self._cosine_classify(user_vec, user_msg)
         except Exception:
             return None
+
+    def _cosine_classify(self, user_vec, user_msg: str) -> Optional[IntentResult]:
+        """Cosine similarity fallback classification."""
+        scores = []
+        for key, vec in self._skill_vectors.items():
+            action, skill = key
+            sim = self._embedder.similarity(user_vec, vec)
+            scores.append((sim, action, skill))
+
+        if not scores:
+            return None
+
+        scores.sort(reverse=True)
+        top_sim, top_action, top_skill = scores[0]
+        all_scores = {f"{a}:{s}": sim for sim, a, s in scores[:5]}
+        conf = min(top_sim * 1.2, 0.95)
+
+        return IntentResult(
+            action=top_action,
+            skill=top_skill if top_action == "use" else "",
+            confidence=conf,
+            tier=f"embedding_{self._embedder._mode}",
+            goal=user_msg,
+            all_scores=all_scores,
+        )
 
     def _llm_classify(self, user_msg: str, skills: list, context: str) -> Optional[IntentResult]:
         """Classify using remote LLM (last resort)."""

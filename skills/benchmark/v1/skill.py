@@ -361,8 +361,6 @@ class BenchmarkSkill:
         for m in working_models:
             cost_score = 1.0 if m["tier"] == "free" else 0.5
             m["overall_score"] = (
-                m["quality_score"] * benchmark_profile.get("quality_weight", 0.35) +
-                m["speed_score"] * benchmark_profile.get("speed_weight", 0.35) +
                 cost_score * benchmark_profile.get("cost_weight", 0.15)
             )
         
@@ -563,6 +561,67 @@ class BenchmarkSkill:
             "summary": self._generate_summary(recommendations, goal),
         }
 
+    def _get_model_param_size(self, model_id: str) -> int:
+        """Estimate model parameter size in billions from model ID. Returns 0 if unknown."""
+        name = model_id.lower()
+        # Extract explicit size markers like 70b, 120b, 671b
+        import re
+        match = re.search(r'[\-_](\d+)b', name)
+        if match:
+            return int(match.group(1))
+        # Known large models by name pattern
+        large_patterns = [
+            "gpt-5", "gpt-4o", "o1", "o3", "claude-3-opus", "claude-3-5-sonnet",
+            "deepseek-r1", "deepseek-v3", "llama-3.1-405b", "llama-3.3-70b",
+            "gpt-oss-120b", "glm-4.7", "kimi-k2.5", "grok-4", "gemini-2.5",
+            "qwen3-coder", "qwen3.5-plus", "mimo-v2",
+        ]
+        for pattern in large_patterns:
+            if pattern in name:
+                return 130  # treat as >120B
+        # Small model patterns
+        small_patterns = ["gemma-3-4b", "gemma-3-12b", "llama-3.2-3b", "qwen2.5:3b", "mistral:7b"]
+        for pattern in small_patterns:
+            if pattern in name:
+                return 12
+        # Default: medium (30B)
+        return 30
+
+    def _get_benchmark_prompt(self, model_id: str) -> tuple:
+        """Return (prompt, test_type) based on model size.
+        
+        - Default: 3-field simple JSON
+        """
+        param_size = self._get_model_param_size(model_id)
+        
+        if param_size >= 120:
+            prompt = (
+                'Jestes ekspertem refaktoryzacji. Odpowiedz TYLKO JSON:\n'
+                '{"czytelnosc":{"score":1-10,"issues":[],"fixes":[]},'
+                '"wydajnosc":{"score":1-10,"bigO":"O(?)→O(?)","optymalizacje":[]},'
+                '"bezpieczenstwo":{"score":1-10,"vulns":[]},'
+                '"architektura":{"score":1-10,"SOLID":{"S":bool,"O":bool,"L":bool,"I":bool,"D":bool}},'
+                '"overall":{"recommendation":"APPROVE|MAJOR|MINOR|REJECT","confidence":1-10}}\n'
+                'KOD:\n'
+                'def process(data):\n'
+                '    result=[]\n'
+                '    for i in range(len(data)):\n'
+                '        if data[i]>0: result.append(data[i]*2)\n'
+                '    return result'
+            )
+            return prompt, "refactor_advanced"
+        else:
+            prompt = (
+                'Analizuj kod. Odpowiedz TYLKO jednym JSON: {"czytelnosc": score_1_10, "wydajnosc": "tak/nie", "bezpieczenstwo": "tak/nie"}.\n'
+                'def process(data):\n'
+                '    result = []\n'
+                '    for i in range(len(data)):\n'
+                '        if data[i] > 0:\n'
+                '            result.append(data[i] * 2)\n'
+                '    return result'
+            )
+            return prompt, "refactor_json"
+
     def _recommend_models_live(self, params: Dict, goal: GoalType) -> Dict[str, Any]:
         """Recommend models based on LIVE API tests (real latency + quality)."""
         budget = params.get("budget", "free")
@@ -587,40 +646,45 @@ class BenchmarkSkill:
         
         print(f"[Benchmark LIVE] Testing {len(candidates)} models (timeout=10s)...")
         
-        # Test each model with SHORT intelligence-focused prompts
-        test_prompts = {
-            "reasoning": "2+3*4=? Explain in 1 sentence.",
-            "coding": "Fix: def add(a,b): return a-b",
-            "knowledge": "Capital of France in 2 words.",
-        }
+        # Single JSON-based refactoring quality prompt (per TODO spec)
+        # Model must respond with one JSON: {"czytelnosc": 1-10, "wydajnosc": "tak/nie", "bezpieczenstwo": "tak/nie"}
+        benchmark_prompt = (
+            'Analizuj kod. Odpowiedz TYLKO jednym JSON: {"czytelnosc": score_1_10, "wydajnosc": "tak/nie", "bezpieczenstwo": "tak/nie"}.\n'
+            'def process(data):\n'
+            '    result = []\n'
+            '    for i in range(len(data)):\n'
+            '        if data[i] > 0:\n'
+            '            result.append(data[i] * 2)\n'
+            '    return result'
+        )
         
         live_results = []
         failed_models = []
         
         for model_id in candidates:
-            print(f"[Benchmark LIVE] Testing {model_id.split('/')[-1]}...", end=" ")
+            prompt, test_type = self._get_benchmark_prompt(model_id)
+            size = self._get_model_param_size(model_id)
+            size_label = f"{size}B" if size else "?"
+            print(f"[Benchmark LIVE] Testing {model_id.split('/')[-1]} ({size_label})...", end=" ")
             
-            scores = {}
-            latencies = []
-            errors = []
-            
-            # Run tests with SHORT timeout (10s)
-            for test_type, prompt in test_prompts.items():
-                start = time.time()
-                try:
-                    response = self._call_model_for_benchmark(model_id, api_key, prompt, timeout=10)
-                    latency = time.time() - start
-                    latencies.append(latency)
-                    
-                    quality = self._score_benchmark_response(response, [], test_type)
-                    scores[test_type] = {
+            start = time.time()
+            try:
+                response = self._call_model_for_benchmark(model_id, api_key, prompt, timeout=10)
+                latency = time.time() - start
+                quality = self._score_benchmark_response(response, [], test_type)
+                scores = {
+                    test_type: {
                         "latency_ms": round(latency * 1000, 1),
                         "quality": round(quality, 2),
                     }
-                except Exception as e:
-                    latencies.append(10)  # timeout
-                    errors.append(str(e)[:30])
-                    scores[test_type] = {"latency_ms": 10000, "quality": 0.0}
+                }
+                latencies = [latency]
+                errors = []
+            except Exception as e:
+                latency = time.time() - start
+                latencies = [10.0]
+                errors = [str(e)[:30]]
+                scores = {test_type: {"latency_ms": 10000, "quality": 0.0}}
             
             # Calculate metrics
             avg_latency = sum(latencies) / len(latencies) if latencies else 10
@@ -721,7 +785,6 @@ class BenchmarkSkill:
             return free_models + paid_models
     
     def _calculate_model_score(
-        self, model_id: str, goal: GoalType, profile: Dict, constraints: List
     ) -> ModelScore:
         """Calculate comprehensive score for a model."""
         provider = model_id.split("/")[0] if "/" in model_id else "unknown"
@@ -850,7 +913,6 @@ class BenchmarkSkill:
         return uses
     
     def _apply_constraints(
-        self, models: List[ModelScore], constraints: List[str], profile: Dict
     ) -> List[ModelScore]:
         """Filter models based on constraints."""
         result = models
@@ -874,7 +936,6 @@ class BenchmarkSkill:
         return result
     
     def _explain_recommendation(
-        self, score: ModelScore, goal: GoalType, constraints: List[str]
     ) -> str:
         """Generate human-readable explanation."""
         parts = []
@@ -1062,30 +1123,78 @@ class BenchmarkSkill:
             raise Exception(f"Model call failed: {str(e)[:80]}")
 
     def _score_benchmark_response(self, response: str, criteria: List[str], test_type: str) -> float:
-        """Score benchmark response quality - optimized for short tests."""
+        """Score benchmark response quality.
+        
+        Higher score = model correctly follows JSON format with valid values.
+        """
         if not response:
             return 0.0
+        
+        if test_type == "refactor_json":
+            import json, re
+            score = 0.0
+            
+            # Try to extract JSON from response (some models wrap in markdown)
+            text = response.strip()
+            # Strip markdown code fences if present
+            text = re.sub(r"```(?:json)?\s*", "", text)
+            text = re.sub(r"```", "", text)
+            text = text.strip()
+            
+            # Find first JSON object in text
+            match = re.search(r'\{[^}]+\}', text, re.DOTALL)
+            if not match:
+                return 0.0  # No JSON found at all
+            
+            # +0.3 for having parseable JSON
+            score += 0.3
+            
+            try:
+                data = json.loads(match.group())
+            except Exception:
+                # JSON not parseable — partial credit for having braces
+                return 0.15
+            
+            # +0.3 for czytelnosc being a valid integer 1-10
+            czytelnosc = data.get("czytelnosc")
+            if isinstance(czytelnosc, (int, float)) and 1 <= czytelnosc <= 10:
+                score += 0.3
+            elif isinstance(czytelnosc, str) and re.match(r'^\d+$', czytelnosc.strip()):
+                val = int(czytelnosc.strip())
+                if 1 <= val <= 10:
+                    score += 0.25  # slightly less for string instead of int
+            
+            # +0.2 for wydajnosc being tak/nie
+            wydajnosc = str(data.get("wydajnosc", "")).lower().strip()
+            if wydajnosc in ("tak", "nie", "yes", "no"):
+                score += 0.2
+            
+            # +0.2 for bezpieczenstwo being tak/nie
+            bezp = str(data.get("bezpieczenstwo", "")).lower().strip()
+            if bezp in ("tak", "nie", "yes", "no"):
+                score += 0.2
+            
+            return min(1.0, score)
+        
+        # Legacy scoring for old test types (fallback)
         response_lower = response.lower().strip()
         score = 0.0
-        
         if test_type == "reasoning":
-            # Should contain "14" (correct answer) and explanation
             if "14" in response: score += 0.5
             if any(word in response_lower for word in ["multiply", "multiplication", "times", "*"]):
                 score += 0.3
-            if len(response) > 20: score += 0.2  # has explanation
+            if len(response) > 20: score += 0.2
         elif test_type == "coding":
-            # Should fix the bug (return a+b not a-b)
             if "a+b" in response or "a + b" in response: score += 0.5
             if "return" in response_lower: score += 0.3
             if "def " in response: score += 0.2
         elif test_type == "knowledge":
-            # Should contain "Paris" and be short
             if "paris" in response_lower: score += 0.7
-            if len(response) < 30: score += 0.3  # concise
+            if len(response) < 30: score += 0.3
         elif test_type == "speed":
             score = 1.0 if len(response) > 0 else 0.0
         return min(1.0, score)
+
     
     def _list_goal_profiles(self) -> Dict[str, Any]:
         """List available goal profiles."""
