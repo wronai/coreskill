@@ -233,12 +233,128 @@ Validation fail →
 
 ## Skalowalność
 
-### ResourceMonitor
+### ResourceMonitor + AdaptiveResourceMonitor (`cores/v1/resource_monitor.py`, `cores/v1/adaptive_monitor.py`)
 
-**Monitoruje:**
-- CPU/RAM/GPU/Disk
+**ResourceMonitor** — statyczne sprawdzanie zasobów:
+- GPU/RAM/CPU/Disk detection
+- Sprawdzanie wymagań modeli ML
 - Dostępność pakietów Python
-- Wymagania modeli ML
+
+**AdaptiveResourceMonitor** — dynamiczny monitoring (Sprint 4):
+- EWMA tracker (alpha=0.3, 60-sample window)
+- Background thread (5s interval)
+- `pressure_score()` 0.0-1.0 (CPU 0.3, RAM 0.5, disk 0.2)
+- Alert thresholds z hysteresis (CPU 85%/95%, RAM 80%/90%)
+- Trend detection (rising/falling/stable)
+
+### ProactiveScheduler (`cores/v1/proactive_scheduler.py`)
+
+Task scheduling bez zewnętrznych zależności:
+- Register/unregister/enable/disable tasks
+- Domyślne zadania: resource_alerts (30s), periodic_gc (3600s), health_check (300s)
+- 1s tick loop, error handling per task
+
+## Autonomia i samonaprawa
+
+### SelfReflection (`cores/v1/self_reflection.py`)
+
+Autonomiczny system diagnostyczny:
+- Aktywacja: skill failure, timeout (>30s), 3 consecutive failures
+- **ReflectionEvent** — anomalie (skill_fail, timeout, stall)
+- **DiagnosisReport** — findings, recommendations, auto_fixable
+- `record_skill_outcome()` — tracking per skill, auto-trigger po 3 failach
+- `run_diagnostic()` — 7 checks + LLM analysis
+- `attempt_auto_fix()` — apt install + AutoRepair
+
+### FailureTracker (`cores/v1/evo_engine.py`)
+
+Global tracking cross-skill:
+- THRESHOLD = 3 (consecutive failures OR unhandled events)
+- `record_failure()`, `record_unhandled()`, `record_success()`
+- `_run_auto_reflection()` — full diagnostic + auto-fix cycle
+
+### AutoRepair + RepairJournal (`cores/v1/auto_repair.py`, `cores/v1/repair_journal.py`)
+
+**AutoRepair** — 5-phase loop:
+```
+DIAGNOSE → PLAN → FIX → VERIFY → REFLECT
+```
+Strategie: strip_markdown, auto_fix_imports, add_interface, pip_install, rewrite_from_backup
+
+**RepairJournal** — uczenie się z napraw:
+- Storage: `logs/repair/repair_journal.jsonl`, `logs/repair/known_fixes.json`
+- `record_attempt()`, `get_known_fix()`, `ask_llm_and_try()`
+- KnownFix z confidence score (success/total ratio)
+
+### StableSnapshot (`cores/v1/stable_snapshot.py`)
+
+Wersjonowanie skilli:
+```
+skills/{cap}/providers/{prov}/
+  stable/     — SACRED known-good
+  latest/     — current working
+  branches/bugfix_*/feature_* — eksperymenty
+  archive/    — stare wersje
+```
+- `save_as_stable()`, `create_branch()`, `promote_branch()`, `restore_stable()`
+
+### EvolutionJournal (`cores/v1/evo_journal.py`)
+
+Tracking ewolucji:
+- Storage: `logs/evo/evo_journal.jsonl`, `logs/evo/evo_journal_summary.json`
+- `start_evolution()`, `finish_evolution()`, `reflect()`
+- Cross-iteration learning — consult history dla avoid-patterns
+- Quality scoring per iteration
+
+## Provider System
+
+### ProviderSelector + ProviderChain (`cores/v1/provider_selector.py`)
+
+**ProviderSelector** — wybór providera na podstawie:
+- ResourceMonitor.can_run(requirements)
+- Scoring: quality*10 + tier*5, speed bonus (lite=30)
+- Context: prefer_fast, prefer_quality, offline
+
+**ProviderChain** (Sprint 2) — fallback chain:
+- `build_chain()`, `select_with_fallback()`
+- Auto-degradation: 3 failures → demotion, 2 successes → recovery
+- Cooldown: 300s, FAILURE_THRESHOLD=3, SUCCESS_RECOVERY=2
+
+### UCB1BanditSelector (`cores/v1/bandit_selector.py`)
+
+ML-based provider selection (Sprint 4):
+- UCB1 = mean_reward*0.6 + exploration*0.3 + base_score*0.1
+- C=1.41 (sqrt(2)), MIN_PULLS=2 per arm
+- `select(capability, providers, base_scores)`
+- `record(capability, provider, reward, success)`
+
+## Resilience & Logging
+
+### Resilience Module (`cores/v1/resilience.py`)
+
+Retry decorators z `tenacity`:
+- `retry_llm()` — 3 attempts, exp backoff 1-8s
+- `retry_skill()` — 2 attempts, 0.5s
+- `retry_io()` — 3 attempts, 0.5-2s
+- `with_retry()` — custom decorator
+- Fallback no-op gdy tenacity missing
+
+### Structured Logging (`cores/v1/resilience.py`)
+
+`structlog` integration:
+- `configure_structlog()` — ISO timestamps, console renderer
+- `get_struct_logger()` — structlog lub stdlib fallback
+- `_log_retry()` — hooks tenacity retries into structlog
+
+### NFO Decorator Logging (`cores/v1/skill_logger.py`)
+
+Two-layer approach:
+1. Explicit `@nfo.logged` / `@nfo.log_call` na bootstrap skills
+2. Auto-injection via `inject_logging(mod)` dla LLM-generated skills
+
+Captured: function_name, args/kwargs, return_value, exception, duration_ms, traceback
+
+## Skalowalność
 
 ### A/B Core Management
 

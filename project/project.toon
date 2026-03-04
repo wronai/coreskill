@@ -1,9 +1,9 @@
-# coreskill | 151f 39951L | python:152
+# coreskill | 155f 41345L | python:156
 # Keys: M=modules, D=details, i=imports, c=classes, f=functions, m=methods
-M[151]:
-  skills/calculator_advanced/v1/skill.py,282
+M[155]:
   skills/content_search/providers/default/stable/skill.py,157
-  skills/text_summarizer/v1/skill.py,183
+  skills/email_client/v1/skill.py,294
+  skills/web_automation/v1/skill.py,257
   __init__.py,19
   build_core.py,525
   cli.py,248
@@ -15,15 +15,17 @@ M[151]:
   cores/v1/config.py,196
   cores/v1/config_generator.py,221
   cores/v1/core.py,1328
-  cores/v1/drift_detector.py,259
+  cores/v1/drift_detector.py,451
   cores/v1/event_bus.py,94
   cores/v1/evo_engine.py,731
   cores/v1/evo_journal.py,350
   cores/v1/fuzzy_router.py,57
   cores/v1/garbage_collector.py,277
-  cores/v1/intent/__init__.py,373
+  cores/v1/intent/__init__.py,402
+  cores/v1/intent/embedding.py,135
   cores/v1/intent/ensemble.py,80
   cores/v1/intent/knn_classifier.py,97
+  cores/v1/intent/local_llm.py,142
   cores/v1/intent/training.py,121
   cores/v1/intent_engine.py,433
   cores/v1/learned_repair.py,160
@@ -35,7 +37,7 @@ M[151]:
   cores/v1/proactive_scheduler.py,195
   cores/v1/prompts/__init__.py,130
   cores/v1/provider_selector.py,363
-  cores/v1/quality_gate.py,277
+  cores/v1/quality_gate.py,324
   cores/v1/reflection_engine.py,252
   cores/v1/repair_journal.py,356
   cores/v1/resilience.py,147
@@ -47,7 +49,7 @@ M[151]:
   cores/v1/skill_manager.py,530
   cores/v1/skill_schema.py,386
   cores/v1/skill_validator.py,132
-  cores/v1/smart_intent.py,722
+  cores/v1/smart_intent.py,497
   cores/v1/stable_snapshot.py,318
   cores/v1/stt_autotest.py,679
   cores/v1/supervisor.py,69
@@ -72,6 +74,7 @@ M[151]:
   skills/auto/v2/skill.py,254
   skills/benchmark/v2/skill.py,372
   skills/benchmark/v3/skill.py,384
+  skills/calculator_advanced/v1/skill.py,282
   skills/chat/v1/skill.py,101
   skills/clipboard/v1/skill.py,197
   skills/converter/v1/skill.py,319
@@ -104,11 +107,12 @@ M[151]:
   skills/kalkulator/v47/skill.py,106
   skills/kalkulator/v48/skill.py,105
   skills/llm/v1/skill.py,100
-  skills/llm/v2/skill.py,102
+  skills/llm/v2/skill.py,113
   skills/llm_router/v1/skill.py,113
   skills/local_computer_discovery/v2/skill.py,243
   skills/local_computer_discovery/v3/skill.py,257
   skills/network_info/v1/skill.py,58
+  skills/network_tools/v1/skill.py,293
   skills/notes/v1/skill.py,263
   skills/openrouter/v1/skill.py,224
   skills/openrouter_api_test/v1/skill.py,179
@@ -129,11 +133,11 @@ M[151]:
   skills/system_info/v3/skill.py,64
   skills/system_info/v4/skill.py,72
   skills/task_manager/v1/skill.py,386
-  skills/test_supervisor_probe/v10/skill.py,38
   skills/test_supervisor_probe/v8/skill.py,39
   skills/test_supervisor_probe/v9/skill.py,43
   skills/text_processor_/v6/skill.py,47
   skills/text_processor_/v7/skill.py,46
+  skills/text_summarizer/v1/skill.py,183
   skills/time/v1/skill.py,93
   skills/tts/providers/piper/latest/skill.py,191
   skills/tts/providers/piper/stable/skill.py,204
@@ -153,13 +157,6 @@ M[151]:
   tests/test_auto_create_e2e.py,202
   tests/test_e2e.py,1985
 D:
-  skills/calculator_advanced/v1/skill.py:
-    i: math,json,re,pathlib.Path
-    e: get_info,health_check,AdvancedCalculatorSkill,execute
-    AdvancedCalculatorSkill: __init__(0),_load_history(0),_save_history(0),calculate(2),set_variable(2)  # Advanced calculator with variables an...
-    get_info()
-    health_check()
-    execute(input_data:dict)->dict
   skills/content_search/providers/default/stable/skill.py:
     i: subprocess,json,re,html.parser.HTMLParser,urllib.{error,parse,request}
     e: ContentSearchSkill,DuckDuckGoParser,get_info,health_check,execute
@@ -168,10 +165,17 @@ D:
     get_info()->dict
     health_check()->dict
     execute(params:dict)->dict
-  skills/text_summarizer/v1/skill.py:
-    i: re,json,collections.Counter
-    e: get_info,health_check,TextSummarizerSkill,execute
-    TextSummarizerSkill: _tokenize_sentences(1),_tokenize_words(1),_score_sentences(2),summarize(3),extract_keywords(2)  # Text summarization using extractive m...
+  skills/email_client/v1/skill.py:
+    i: json,re,email,datetime,datetime.timezone,email.header.decode_header
+    e: get_info,health_check,EmailClientSkill,execute
+    EmailClientSkill: __init__(0),connect(6),_list_folders(0),list_folders(0),search(3)  # Email client for IMAP/SMTP operations.
+    get_info()
+    health_check()
+    execute(input_data:dict)->dict
+  skills/web_automation/v1/skill.py:
+    i: json,subprocess,shutil,time,pathlib.Path
+    e: get_info,health_check,WebAutomationSkill,execute
+    WebAutomationSkill: __init__(0),_ensure_playwright(0),_get_page(1),navigate(3),click(2)  # Browser automation using Playwright.
     get_info()
     health_check()
     execute(input_data:dict)->dict
@@ -243,13 +247,16 @@ D:
     _cmd_run(a1;a2)
     _cmd_evolve(a1;a2='')
   cores/v1/drift_detector.py:
-    i: json,config.SKILLS_DIR,dataclasses.{dataclass,field},pathlib.Path,preflight.SkillPreflight,quality_gate.SkillQualityGate,skill_schema.{SkillSchemaValidator,get_schema_validation_stats},typing.Optional
-    e: DriftReport,DriftDetector,detect_drift,detect_all_drift,get_drift_summary
+    i: json,config.SKILLS_DIR,dataclasses.{dataclass,field},pathlib.Path,preflight.SkillPreflight,skill_schema.{SkillSchemaValidator,get_schema_validation_stats},typing.Optional
+    e: DriftReport,RemediationResult,DriftDetector,detect_drift,detect_all_drift,get_drift_summary,auto_remediate,auto_remediate_all
     DriftReport: summary(0)  # Report of detected drift for a capabi...
-    DriftDetector: __init__(0),detect(1),detect_all(0),_check_interface_drift(2),_check_version_drift(2)  # Detects drift between manifest declar...
+    RemediationResult: summary(0)  # Result of auto-remediation attempt.
+    DriftDetector: __init__(0),quality_gate(0),detect(1),detect_all(0),_check_interface_drift(2)  # Detects drift between manifest declar...
     detect_drift(capability:str)->DriftReport
     detect_all_drift()->list[DriftReport]
     get_drift_summary()->dict
+    auto_remediate(capability:str;severity_threshold:str='medium')->RemediationResult
+    auto_remediate_all(severity_threshold:str='medium')->list[RemediationResult]
   cores/v1/event_bus.py:
     i: blinker.Signal,dataclasses.{dataclass,field},typing.{Any,Optional}
     e: SkillFailedEvent,ReflectionNeededEvent,RepairRequestedEvent,RepairCompletedEvent,DiagnosisReadyEvent,EventBus
@@ -278,9 +285,14 @@ D:
     EvolutionGarbageCollector: __init__(1),is_stub(1),is_broken(1),scan_versions(1),cleanup_provider(2)  # Cleans up failed evolution stubs, pro...
   cores/v1/intent/__init__.py:
     i: json,os,dataclasses.{dataclass,field},pathlib.Path,typing.{Any,Dict,List,Optional,Tuple}
-    e: _INTENT_CONFIG,SmartIntentClassifier,create_smart_classifier
+    e: IntentResult,_INTENT_CONFIG,SmartIntentClassifier,create_smart_classifier
+    IntentResult: to_analysis(0)  # Result of intent classification.
     SmartIntentClassifier: __init__(2),_load_training(0),_rebuild_skill_vectors(0),classify(4),_embedding_classify(1)  # 3-tier ML intent classifier:
     create_smart_classifier(state_dir:Path=None;llm_client=None)->SmartIntentClassifier
+  cores/v1/intent/embedding.py:
+    i: json,config.{ROOT,get_config_value},pathlib.Path,typing.{List,Optional}
+    e: _INTENT_CONFIG,EmbeddingEngine
+    EmbeddingEngine: __init__(1),available(0),_try_init(0),encode(1),similarity(2)  # Sentence-transformers based embedding...
   cores/v1/intent/ensemble.py:
     i: collections.defaultdict,dataclasses.{dataclass,field},typing.{Any,Dict,List,Optional,Tuple}
     e: Vote,EnsembleResult,DEFAULT_WEIGHTS,EnsembleIntentClassifier
@@ -291,6 +303,11 @@ D:
     i: numpy,sklearn.neighbors.KNeighborsClassifier,sklearn.preprocessing.LabelEncoder,typing.{Any,Dict,List,Optional,Tuple}
     e: EmbeddingKNNClassifier
     EmbeddingKNNClassifier: __init__(0),available(0),fit(2),predict(1),predict_with_distances(1)  # KNN classifier over embedding vectors...
+  cores/v1/intent/local_llm.py:
+    i: json,os,subprocess,config.get_config_value,typing.{Dict,Optional}
+    e: _INTENT_CONFIG,LocalLLMClassifier
+    LocalLLMClassifier: __init__(0),available(0),_detect(0),_build_skill_schema(1),classify(3)  # Uses local ollama model (Qwen 3B) for...
+    _get_intent_result_class()
   cores/v1/intent_engine.py:
     i: json,re,datetime,config.{SKILLS_DIR,get_config_value,save_state},datetime.timezone,smart_intent.SmartIntentClassifier,utils.clean_json
     e: _TOPIC_MAP,IntentEngine
@@ -445,11 +462,9 @@ D:
     _validate_web_search(result:dict;goal:str;user_msg:str)->Optional[ValidationResult]
   cores/v1/smart_intent.py:
     i: json,hashlib,time,os,subprocess,sys,dataclasses.{asdict,dataclass,field},pathlib.Path
-    e: _INTENT_CONFIG,IntentResult,TrainingExample,DEFAULT_TRAINING,EmbeddingEngine,LocalLLMClassifier,SmartIntentClassifier,create_smart_classifier
+    e: _INTENT_CONFIG,IntentResult,TrainingExample,DEFAULT_TRAINING,SmartIntentClassifier,create_smart_classifier
     IntentResult: to_analysis(0)  # Result of intent classification.
     TrainingExample: to_dict(0),from_dict(1)  # Single training example: phrase → int...
-    EmbeddingEngine: __init__(1),available(0),_try_init(0),encode(1),similarity(2)  # Sentence-transformers based embedding...
-    LocalLLMClassifier: __init__(0),available(0),_detect(0),_build_skill_schema(1),classify(3)  # Uses local ollama model (Qwen 3B) for...
     SmartIntentClassifier: __init__(2),_training_path(0),_load_training_data(0),_save_training_data(0),add_example(4)  # ML-based intent classifier for evo-en...
     _load_default_training()
     create_smart_classifier(state_dir:Path=None;llm_client=None)->SmartIntentClassifier
@@ -623,6 +638,13 @@ D:
     execute(params:Dict[str;Any])->Dict[str, Any]
     get_info()->dict
     health_check()->dict
+  skills/calculator_advanced/v1/skill.py:
+    i: math,json,re,pathlib.Path
+    e: get_info,health_check,AdvancedCalculatorSkill,execute
+    AdvancedCalculatorSkill: __init__(0),_load_history(0),_save_history(0),calculate(2),set_variable(2)  # Advanced calculator with variables an...
+    get_info()
+    health_check()
+    execute(input_data:dict)->dict
   skills/chat/v1/skill.py:
     i: subprocess,sys,re,os
     e: get_info,health_check,ChatSkill,execute
@@ -857,8 +879,8 @@ D:
     execute_wrapper(params:dict)->dict
   skills/llm/v2/skill.py:
     i: subprocess,json,re,os,urllib.{error,request}
-    e: LLM,get_info,health_check,execute
-    LLM: execute(1)
+    e: get_info,health_check,LLMExecutor,execute
+    LLMExecutor: __init__(0),execute(1)
     get_info()->dict
     health_check()->dict
     execute(params:dict)->dict
@@ -888,6 +910,13 @@ D:
     get_info()
     execute(params:dict)->dict
     health_check()
+  skills/network_tools/v1/skill.py:
+    i: subprocess,socket,json,re,urllib.parse.urlparse
+    e: get_info,health_check,NetworkToolsSkill,execute
+    NetworkToolsSkill: ping(3),dns_lookup(1),check_port(3),_common_port_service(1),check_http(2)  # Network diagnostic tools.
+    get_info()
+    health_check()
+    execute(input_data:dict)->dict
   skills/notes/v1/skill.py:
     i: json,os,re,datetime,uuid,datetime.timezone,pathlib.Path
     e: get_info,health_check,NotesSkill,execute
@@ -1029,13 +1058,6 @@ D:
     get_info()
     health_check()
     execute(input_data:dict)->dict
-  skills/test_supervisor_probe/v10/skill.py:
-    i: subprocess,sys,json
-    e: get_info,health_check,execute,TestSupervisorProbe
-    TestSupervisorProbe: execute(1)
-    get_info()
-    health_check()
-    execute(params:dict)->dict
   skills/test_supervisor_probe/v8/skill.py:
     i: subprocess,sys,json
     e: get_info,health_check,TestSupervisorProbe,execute
@@ -1064,6 +1086,13 @@ D:
     get_info()
     health_check()
     execute(params:dict)->dict
+  skills/text_summarizer/v1/skill.py:
+    i: re,json,collections.Counter
+    e: get_info,health_check,TextSummarizerSkill,execute
+    TextSummarizerSkill: _tokenize_sentences(1),_tokenize_words(1),_score_sentences(2),summarize(3),extract_keywords(2)  # Text summarization using extractive m...
+    get_info()
+    health_check()
+    execute(input_data:dict)->dict
   skills/time/v1/skill.py:
     i: datetime,typing.{Any,Dict}
     e: get_info,execute,health_check

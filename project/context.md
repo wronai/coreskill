@@ -4,9 +4,9 @@
 
 - **Project**: .
 - **Analysis Mode**: static
-- **Total Functions**: 1332
-- **Total Classes**: 172
-- **Modules**: 138
+- **Total Functions**: 1386
+- **Total Classes**: 176
+- **Modules**: 149
 - **Entry Points**: 0
 
 ## Architecture by Module
@@ -15,17 +15,17 @@
 - **Functions**: 60
 - **File**: `core.py`
 
-### cores.v1.smart_intent
-- **Functions**: 31
-- **Classes**: 5
-- **File**: `smart_intent.py`
-
 ### root.core
 - **Functions**: 29
 - **Classes**: 6
 - **File**: `core.py`
 
-### batch_1.core
+### scripts_cores_seeds.core
+- **Functions**: 29
+- **Classes**: 6
+- **File**: `core.py`
+
+### skills_examples.core
 - **Functions**: 29
 - **Classes**: 6
 - **File**: `core.py`
@@ -65,6 +65,11 @@
 - **Classes**: 2
 - **File**: `session_config.py`
 
+### cores.v1.drift_detector
+- **Functions**: 21
+- **Classes**: 3
+- **File**: `drift_detector.py`
+
 ### cores.v1.evo_journal
 - **Functions**: 20
 - **Classes**: 2
@@ -75,10 +80,20 @@
 - **Classes**: 3
 - **File**: `self_reflection.py`
 
+### cores.v1.smart_intent
+- **Functions**: 20
+- **Classes**: 3
+- **File**: `smart_intent.py`
+
 ### cores.v1.metrics_collector
 - **Functions**: 19
 - **Classes**: 4
 - **File**: `metrics_collector.py`
+
+### skills.web_automation.v1.skill
+- **Functions**: 19
+- **Classes**: 1
+- **File**: `skill.py`
 
 ### skills.task_manager.v1.skill
 - **Functions**: 18
@@ -94,21 +109,6 @@
 - **Functions**: 17
 - **Classes**: 3
 - **File**: `preflight.py`
-
-### cores.v1.self_healing
-- **Functions**: 17
-- **Classes**: 6
-- **File**: `__init__.py`
-
-### skills.auto.v2.skill
-- **Functions**: 17
-- **Classes**: 1
-- **File**: `skill.py`
-
-### skills.benchmark.v3.skill
-- **Functions**: 17
-- **Classes**: 1
-- **File**: `skill.py`
 
 ## Key Entry Points
 
@@ -179,12 +179,22 @@ Stores JSONL at logs/repair/re
 - **Methods**: 16
 - **Key Methods**: cores.v1.evo_engine.EvoEngine.__init__, cores.v1.evo_engine.EvoEngine.set_reflection, cores.v1.evo_engine.EvoEngine.handle_request, cores.v1.evo_engine.EvoEngine._run_auto_reflection, cores.v1.evo_engine.EvoEngine._execute_with_validation, cores.v1.evo_engine.EvoEngine._exec_prepare, cores.v1.evo_engine.EvoEngine._exec_attempt, cores.v1.evo_engine.EvoEngine._exec_handle_success, cores.v1.evo_engine.EvoEngine._exec_handle_partial, cores.v1.evo_engine.EvoEngine._exec_handle_failure
 
+### skills.web_automation.v1.skill.WebAutomationSkill
+> Browser automation using Playwright.
+- **Methods**: 16
+- **Key Methods**: skills.web_automation.v1.skill.WebAutomationSkill.__init__, skills.web_automation.v1.skill.WebAutomationSkill._ensure_playwright, skills.web_automation.v1.skill.WebAutomationSkill._get_page, skills.web_automation.v1.skill.WebAutomationSkill.navigate, skills.web_automation.v1.skill.WebAutomationSkill.click, skills.web_automation.v1.skill.WebAutomationSkill.type, skills.web_automation.v1.skill.WebAutomationSkill.fill, skills.web_automation.v1.skill.WebAutomationSkill.extract_text, skills.web_automation.v1.skill.WebAutomationSkill.get_attribute, skills.web_automation.v1.skill.WebAutomationSkill.screenshot
+
 ### cores.v1.smart_intent.SmartIntentClassifier
 > ML-based intent classifier for evo-engine.
 
 Replaces all hardcoded _KW_* tuples with learnable embed
 - **Methods**: 15
 - **Key Methods**: cores.v1.smart_intent.SmartIntentClassifier.__init__, cores.v1.smart_intent.SmartIntentClassifier._training_path, cores.v1.smart_intent.SmartIntentClassifier._load_training_data, cores.v1.smart_intent.SmartIntentClassifier._save_training_data, cores.v1.smart_intent.SmartIntentClassifier.add_example, cores.v1.smart_intent.SmartIntentClassifier.learn_from_correction, cores.v1.smart_intent.SmartIntentClassifier.learn_from_success, cores.v1.smart_intent.SmartIntentClassifier._generate_variations, cores.v1.smart_intent.SmartIntentClassifier._ensure_embeddings, cores.v1.smart_intent.SmartIntentClassifier.classify
+
+### cores.v1.drift_detector.DriftDetector
+> Detects drift between manifest declarations and runtime state.
+- **Methods**: 15
+- **Key Methods**: cores.v1.drift_detector.DriftDetector.__init__, cores.v1.drift_detector.DriftDetector.quality_gate, cores.v1.drift_detector.DriftDetector.detect, cores.v1.drift_detector.DriftDetector.detect_all, cores.v1.drift_detector.DriftDetector._check_interface_drift, cores.v1.drift_detector.DriftDetector._check_version_drift, cores.v1.drift_detector.DriftDetector._check_provider_drift, cores.v1.drift_detector.DriftDetector._check_quality_drift, cores.v1.drift_detector.DriftDetector._find_latest_version, cores.v1.drift_detector.DriftDetector._count_versions
 
 ### cores.v1.intent.SmartIntentClassifier
 > 3-tier ML intent classifier:
@@ -220,31 +230,18 @@ Key principles:
 - **Methods**: 14
 - **Key Methods**: skills.benchmark.v3.skill.BenchmarkSkill.__init__, skills.benchmark.v3.skill.BenchmarkSkill._load_config, skills.benchmark.v3.skill.BenchmarkSkill._get_models_from_tier, skills.benchmark.v3.skill.BenchmarkSkill._get_api_key, skills.benchmark.v3.skill.BenchmarkSkill._get_cached_recommendations, skills.benchmark.v3.skill.BenchmarkSkill._call_model_for_benchmark, skills.benchmark.v3.skill.BenchmarkSkill.execute, skills.benchmark.v3.skill.BenchmarkSkill._recommend_models_live, skills.benchmark.v3.skill.BenchmarkSkill._get_model_param_size, skills.benchmark.v3.skill.BenchmarkSkill._compare_models
 
+### cores.v1.quality_gate.SkillQualityGate
+> Validates skill quality before registration.
+Each check contributes a weight to the final score.
+- **Methods**: 13
+- **Key Methods**: cores.v1.quality_gate.SkillQualityGate.__init__, cores.v1.quality_gate.SkillQualityGate.evaluate, cores.v1.quality_gate.SkillQualityGate.should_register, cores.v1.quality_gate.SkillQualityGate.compare, cores.v1.quality_gate.SkillQualityGate._check_preflight, cores.v1.quality_gate.SkillQualityGate._check_manifest_schema, cores.v1.quality_gate.SkillQualityGate._check_drift, cores.v1.quality_gate.SkillQualityGate._check_health, cores.v1.quality_gate.SkillQualityGate._check_test_exec, cores.v1.quality_gate.SkillQualityGate._check_output
+
 ### cores.v1.provider_selector.ProviderChain
 > Ordered provider fallback chain with auto-degradation.
 
 Tracks failures per provider and automatical
 - **Methods**: 13
 - **Key Methods**: cores.v1.provider_selector.ProviderChain.__init__, cores.v1.provider_selector.ProviderChain._key, cores.v1.provider_selector.ProviderChain._get_stats, cores.v1.provider_selector.ProviderChain.build_chain, cores.v1.provider_selector.ProviderChain._reorder_by_fallback, cores.v1.provider_selector.ProviderChain.select_with_fallback, cores.v1.provider_selector.ProviderChain.select_best, cores.v1.provider_selector.ProviderChain.record_failure, cores.v1.provider_selector.ProviderChain.record_success, cores.v1.provider_selector.ProviderChain._cooldown_expired
-
-### cores.v1.proactive_scheduler.ProactiveScheduler
-> Thread-based periodic task scheduler.
-
-Usage:
-    scheduler = ProactiveScheduler()
-    scheduler.reg
-- **Methods**: 13
-- **Key Methods**: cores.v1.proactive_scheduler.ProactiveScheduler.__init__, cores.v1.proactive_scheduler.ProactiveScheduler.register, cores.v1.proactive_scheduler.ProactiveScheduler.unregister, cores.v1.proactive_scheduler.ProactiveScheduler.enable, cores.v1.proactive_scheduler.ProactiveScheduler.disable, cores.v1.proactive_scheduler.ProactiveScheduler.start, cores.v1.proactive_scheduler.ProactiveScheduler.stop, cores.v1.proactive_scheduler.ProactiveScheduler.is_running, cores.v1.proactive_scheduler.ProactiveScheduler._tick, cores.v1.proactive_scheduler.ProactiveScheduler._execute_task
-
-### skills.git_ops.v1.skill.GitOpsSkill
-> Manage local git repos for skill development and versioning.
-- **Methods**: 13
-- **Key Methods**: skills.git_ops.v1.skill.GitOpsSkill.__init__, skills.git_ops.v1.skill.GitOpsSkill._run, skills.git_ops.v1.skill.GitOpsSkill.init, skills.git_ops.v1.skill.GitOpsSkill.status, skills.git_ops.v1.skill.GitOpsSkill.add, skills.git_ops.v1.skill.GitOpsSkill.commit, skills.git_ops.v1.skill.GitOpsSkill.log, skills.git_ops.v1.skill.GitOpsSkill.diff, skills.git_ops.v1.skill.GitOpsSkill.tag, skills.git_ops.v1.skill.GitOpsSkill.checkout
-
-### skills.document_reader.v1.skill.DocumentReaderSkill
-> Extract text from various document formats.
-- **Methods**: 13
-- **Key Methods**: skills.document_reader.v1.skill.DocumentReaderSkill._detect_file_type, skills.document_reader.v1.skill.DocumentReaderSkill._read_text_file, skills.document_reader.v1.skill.DocumentReaderSkill._read_pdf, skills.document_reader.v1.skill.DocumentReaderSkill._read_pdf_basic, skills.document_reader.v1.skill.DocumentReaderSkill._read_docx, skills.document_reader.v1.skill.DocumentReaderSkill._read_docx_basic, skills.document_reader.v1.skill.DocumentReaderSkill._read_html, skills.document_reader.v1.skill.DocumentReaderSkill.read, skills.document_reader.v1.skill.DocumentReaderSkill.extract, skills.document_reader.v1.skill.DocumentReaderSkill.info
 
 ## Data Transformation Functions
 
@@ -318,20 +315,16 @@ Returns (valid: bool, reason: str).
 > Quick validation of a manifest.json file.
 - **Output to**: SkillSchemaValidator, validator.validate_file
 
-### cores.v1.smart_intent.EmbeddingEngine.encode
-> Encode texts to vectors.
-- **Output to**: self._try_init, self._model.encode, None.toarray, TfidfVectorizer, None.toarray
+### cores.v1.evo_engine.EvoEngine._validate_result
+> Validate whether the skill result actually achieved the goal.
+Returns {verdict: success|partial|fail
+- **Output to**: result.get, result.get, isinstance, inner.get, inner.get
 
 ### cores.v1.stable_snapshot.StableSnapshot.validate_against_stable
 > Compare current version against stable reference.
 
 Returns: {"matches": bool, "diff_lines": int, "he
 - **Output to**: self._find_current_version, stable_skill.read_text, current_skill.read_text, cores.v1.prompts.PromptManager.list, self._check_health
-
-### cores.v1.evo_engine.EvoEngine._validate_result
-> Validate whether the skill result actually achieved the goal.
-Returns {verdict: success|partial|fail
-- **Output to**: result.get, result.get, isinstance, inner.get, inner.get
 
 ### cores.v1.session_config.SessionConfig.format_change_feedback
 > Format configuration change for user feedback.
@@ -348,6 +341,10 @@ Returns {verdict: success|partial|fail
 ### cores.v1.proactive_scheduler.ProactiveScheduler.format_status
 > Human-readable status summary.
 - **Output to**: self.status, None.join, lines.append, len
+
+### cores.v1.intent.embedding.EmbeddingEngine.encode
+> Encode texts to vectors.
+- **Output to**: self._try_init, self._model.encode, None.toarray, TfidfVectorizer, None.toarray
 
 ### skills.converter.v1.skill.ConverterSkill.convert_unit
 > Convert between units.
@@ -377,6 +374,7 @@ Functions exposed as public API (no underscore prefix):
 - `cli.cmd_cache_reset` - 36 calls
 - `cores.v1.resource_monitor.ResourceMonitor.can_run` - 36 calls
 - `skills.shell.v3.skill.ShellSkill.execute` - 36 calls
+- `skills.web_automation.v1.skill.WebAutomationSkill.execute` - 36 calls
 - `scripts.generate_manifests.main` - 34 calls
 - `main.bootstrap` - 33 calls
 - `skills.shell.v2.skill.ShellSkill.execute` - 33 calls
@@ -400,7 +398,6 @@ Functions exposed as public API (no underscore prefix):
 - `scripts.generate_manifests.generate_manifest_for_skill` - 25 calls
 - `cores.v1.skill_logger.get_health_markdown` - 25 calls
 - `skills.notes.v1.skill.NotesSkill.execute` - 24 calls
-- `skills.file_manager.v1.skill.FileManagerSkill.execute` - 24 calls
 
 ## System Interactions
 

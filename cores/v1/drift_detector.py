@@ -15,7 +15,6 @@ from typing import Optional
 
 from .config import SKILLS_DIR
 from .skill_schema import get_schema_validation_stats, SkillSchemaValidator
-from .quality_gate import SkillQualityGate
 from .preflight import SkillPreflight
 
 
@@ -36,12 +35,36 @@ class DriftReport:
         return "\n".join(parts)
 
 
+@dataclass
+class RemediationResult:
+    """Result of auto-remediation attempt."""
+    capability: str
+    remediated: bool
+    action: str
+    previous_version: Optional[str] = None
+    rolled_back_to: Optional[str] = None
+    error: Optional[str] = None
+    
+    def summary(self) -> str:
+        if self.remediated:
+            return f"✅ {self.capability}: {self.action} → {self.rolled_back_to}"
+        return f"❌ {self.capability}: {self.action} failed — {self.error}"
+
+
 class DriftDetector:
     """Detects drift between manifest declarations and runtime state."""
     
     def __init__(self):
         self.schema_validator = SkillSchemaValidator()
-        self.quality_gate = SkillQualityGate(SkillPreflight())
+        # Lazy import to avoid circular dependency
+        self._quality_gate = None
+    
+    @property
+    def quality_gate(self):
+        if self._quality_gate is None:
+            from .quality_gate import SkillQualityGate
+            self._quality_gate = SkillQualityGate(SkillPreflight())
+        return self._quality_gate
     
     def detect(self, capability: str) -> DriftReport:
         """Detect drift for a specific capability."""
@@ -317,6 +340,204 @@ class DriftDetector:
                 if r.drift_detected
             ]
         }
+    
+    # ─── Auto-Remediation ─────────────────────────────────────────────────
+    
+    def auto_remediate(self, capability: str, 
+                       report: DriftReport = None) -> RemediationResult:
+        """Auto-remediate drift by rolling back to stable version."""
+        if report is None:
+            report = self.detect(capability)
+        
+        if not report.drift_detected:
+            return RemediationResult(
+                capability=capability,
+                remediated=False,
+                action="no_drift",
+                error="No drift detected"
+            )
+        
+        # Only auto-remediate high/medium severity
+        if report.severity == "low":
+            return RemediationResult(
+                capability=capability,
+                remediated=False,
+                action="skipped_low_severity",
+                error=f"Severity {report.severity} below auto-remediation threshold"
+            )
+        
+        skill_dir = SKILLS_DIR / capability
+        
+        # Try rollback to stable for each provider
+        prov_dir = skill_dir / "providers"
+        if prov_dir.exists():
+            for provider in prov_dir.iterdir():
+                if not provider.is_dir():
+                    continue
+                result = self._rollback_provider(provider, capability, provider.name)
+                if result.remediated:
+                    return result
+        else:
+            # Legacy structure - rollback v{N} to stable
+            result = self._rollback_legacy(skill_dir, capability)
+            if result.remediated:
+                return result
+        
+        return RemediationResult(
+            capability=capability,
+            remediated=False,
+            action="rollback_failed",
+            error="No stable version available for rollback"
+        )
+    
+    def _rollback_provider(self, provider_dir: Path, 
+                           capability: str, 
+                           provider: str) -> RemediationResult:
+        """Rollback a specific provider to stable version."""
+        stable_dir = provider_dir / "stable"
+        latest_dir = provider_dir / "latest"
+        
+        if not stable_dir.exists():
+            return RemediationResult(
+                capability=f"{capability}/{provider}",
+                remediated=False,
+                action="no_stable",
+                error="stable/ directory does not exist"
+            )
+        
+        # Find what was in latest/ before rollback
+        previous = None
+        if latest_dir.exists():
+            # Find current version in latest/
+            for item in latest_dir.iterdir():
+                if item.is_dir() and item.name.startswith("v"):
+                    previous = item.name
+                    break
+        
+        # Perform rollback: stable/ → latest/
+        try:
+            # Backup current latest if it exists
+            if latest_dir.exists():
+                backup_dir = provider_dir / f"archive/rollback_{__import__('time').time():.0f}"
+                backup_dir.parent.mkdir(parents=True, exist_ok=True)
+                # Move current latest to archive
+                import shutil
+                if latest_dir.exists():
+                    shutil.move(str(latest_dir), str(backup_dir))
+            
+            # Copy stable to latest
+            import shutil
+            shutil.copytree(str(stable_dir), str(latest_dir))
+            
+            return RemediationResult(
+                capability=f"{capability}/{provider}",
+                remediated=True,
+                action="rollback_to_stable",
+                previous_version=previous or "unknown",
+                rolled_back_to="stable"
+            )
+            
+        except Exception as e:
+            return RemediationResult(
+                capability=f"{capability}/{provider}",
+                remediated=False,
+                action="rollback_error",
+                error=str(e)
+            )
+    
+    def _rollback_legacy(self, skill_dir: Path, 
+                         capability: str) -> RemediationResult:
+        """Rollback legacy structure (no providers/) to v1 stable."""
+        v1_dir = skill_dir / "v1"
+        
+        if not v1_dir.exists():
+            return RemediationResult(
+                capability=capability,
+                remediated=False,
+                action="no_v1",
+                error="v1/ directory does not exist"
+            )
+        
+        # Find latest version
+        versions = []
+        for v in skill_dir.iterdir():
+            if v.is_dir() and v.name.startswith("v"):
+                try:
+                    num = int(v.name[1:])
+                    versions.append((num, v))
+                except ValueError:
+                    pass
+        
+        if not versions:
+            return RemediationResult(
+                capability=capability,
+                remediated=False,
+                action="no_versions",
+                error="No version directories found"
+            )
+        
+        versions.sort(reverse=True)
+        latest_num, latest_dir = versions[0]
+        
+        # Don't rollback if already at v1
+        if latest_num == 1:
+            return RemediationResult(
+                capability=capability,
+                remediated=False,
+                action="already_v1",
+                error="Already at v1 (stable)"
+            )
+        
+        # Archive current latest and symlink/copy v1
+        try:
+            import shutil
+            import time
+            
+            # Archive
+            archive_dir = skill_dir / f"archive/v{latest_num}_{time.time():.0f}"
+            archive_dir.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(latest_dir), str(archive_dir))
+            
+            # Create new latest as copy of v1
+            new_latest = skill_dir / f"v{latest_num}"
+            shutil.copytree(str(v1_dir), str(new_latest))
+            
+            return RemediationResult(
+                capability=capability,
+                remediated=True,
+                action="rollback_to_v1",
+                previous_version=f"v{latest_num}",
+                rolled_back_to="v1"
+            )
+            
+        except Exception as e:
+            return RemediationResult(
+                capability=capability,
+                remediated=False,
+                action="rollback_error",
+                error=str(e)
+            )
+    
+    def remediate_all(self, severity_threshold: str = "medium") -> list[RemediationResult]:
+        """Auto-remediate all drifting capabilities above threshold."""
+        severity_order = {"low": 0, "medium": 1, "high": 2}
+        threshold_level = severity_order.get(severity_threshold, 1)
+        
+        reports = self.detect_all()
+        results = []
+        
+        for report in reports:
+            if not report.drift_detected:
+                continue
+            
+            report_level = severity_order.get(report.severity, 0)
+            if report_level < threshold_level:
+                continue
+            
+            result = self.auto_remediate(report.capability, report)
+            results.append(result)
+        
+        return results
 
 
 # ─── Convenience Functions ─────────────────────────────────────────────
@@ -339,12 +560,41 @@ def get_drift_summary() -> dict:
     return detector.summary()
 
 
+def auto_remediate(capability: str, severity_threshold: str = "medium") -> RemediationResult:
+    """Auto-remediate a drifting capability."""
+    detector = DriftDetector()
+    report = detector.detect(capability)
+    
+    severity_order = {"low": 0, "medium": 1, "high": 2}
+    threshold_level = severity_order.get(severity_threshold, 1)
+    report_level = severity_order.get(report.severity, 0)
+    
+    if report.drift_detected and report_level >= threshold_level:
+        return detector.auto_remediate(capability, report)
+    
+    return RemediationResult(
+        capability=capability,
+        remediated=False,
+        action="skipped",
+        error=f"No drift or severity {report.severity} below threshold"
+    )
+
+
+def auto_remediate_all(severity_threshold: str = "medium") -> list[RemediationResult]:
+    """Auto-remediate all drifting capabilities."""
+    detector = DriftDetector()
+    return detector.remediate_all(severity_threshold)
+
+
 # ─── Exports ───────────────────────────────────────────────────────────
 
 __all__ = [
     "DriftDetector",
     "DriftReport",
+    "RemediationResult",
     "detect_drift",
     "detect_all_drift",
     "get_drift_summary",
+    "auto_remediate",
+    "auto_remediate_all",
 ]

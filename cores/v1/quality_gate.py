@@ -23,6 +23,7 @@ from pathlib import Path
 from .preflight import SkillPreflight, PreflightResult
 from .skill_schema import SkillSchemaValidator, ValidationResult
 from .metrics_collector import record_operation
+from .drift_detector import DriftDetector
 
 
 # ─── Quality Report ──────────────────────────────────────────────────
@@ -62,11 +63,12 @@ class SkillQualityGate:
 
     # Check weights (must sum to 1.0)
     WEIGHTS = {
-        "preflight": 0.25,
-        "manifest_valid": 0.10,   # NEW: schema validation
+        "preflight": 0.20,
+        "manifest_valid": 0.10,   # Schema validation
+        "drift_check": 0.10,    # NEW: manifest vs runtime drift
         "health_check": 0.15,
         "test_exec": 0.25,
-        "output_valid": 0.15,
+        "output_valid": 0.10,
         "code_quality": 0.10,
     }
 
@@ -84,8 +86,11 @@ class SkillQualityGate:
         # 1. Preflight
         scores["preflight"] = self._check_preflight(skill_path, report)
 
-        # 1.5. Manifest schema validation (NEW)
+        # 1.5. Manifest schema validation
         scores["manifest_valid"] = self._check_manifest_schema(skill_path, report)
+
+        # 1.6. Drift detection (NEW)
+        scores["drift_check"] = self._check_drift(skill_path, report)
 
         # 2-4 require loadable module — skip if preflight failed
         if scores["preflight"] > 0:
@@ -176,6 +181,61 @@ class SkillQualityGate:
         report.details["manifest_errors"] = result.errors[:5]  # First 5 errors
         report.details["manifest_path"] = str(manifest)
         return 0.0
+
+    def _check_drift(self, skill_path: Path,
+                     report: QualityReport) -> float:
+        """Check 1.6: Detect drift between manifest and runtime."""
+        # Find capability name from path
+        skill_dir = skill_path.parent
+        current = skill_dir
+        capability = None
+        
+        for _ in range(3):
+            if (current.parent / "manifest.json").exists():
+                capability = current.parent.name
+                break
+            if current.name == "skills" or current == current.parent:
+                break
+            current = current.parent
+        
+        if not capability:
+            # Try to infer from path structure
+            parts = skill_path.parts
+            if "skills" in parts:
+                idx = parts.index("skills")
+                if idx + 1 < len(parts):
+                    capability = parts[idx + 1]
+        
+        if not capability:
+            report.warnings.append("drift_check:no_capability")
+            return 0.5  # Partial credit
+        
+        # Run drift detection
+        try:
+            detector = DriftDetector()
+            drift_report = detector.detect(capability)
+            
+            report.details["drift_report"] = {
+                "capability": capability,
+                "drift_detected": drift_report.drift_detected,
+                "severity": drift_report.severity,
+                "drifts": drift_report.drifts[:3]
+            }
+            
+            if drift_report.drift_detected:
+                if drift_report.severity == "high":
+                    report.failed.append(f"drift_check:{drift_report.severity}")
+                    return 0.0
+                else:
+                    report.warnings.append(f"drift_check:{drift_report.severity}")
+                    return 0.5
+            else:
+                report.passed.append("drift_check")
+                return 1.0
+                
+        except Exception as e:
+            report.warnings.append(f"drift_check:error:{str(e)[:50]}")
+            return 0.5  # Don't fail on detection error
 
     def _check_health(self, skill_path: Path,
                       report: QualityReport) -> float:

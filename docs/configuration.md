@@ -205,6 +205,9 @@ LOG_LEVEL = "INFO"  # DEBUG, INFO, WARNING, ERROR
 | SQLite | `logs/nfo/skills.db` | Structured queryable logs |
 | JSONL | `logs/nfo/skills.jsonl` | Line-delimited JSON |
 | Text | `logs/*.log` | Human-readable logs |
+| **Evolution** | `logs/evo/evo_journal.jsonl` | Evolution tracking |
+| **Repair** | `logs/repair/repair_journal.jsonl` | Repair attempts |
+| **Repair** | `logs/repair/known_fixes.json` | Proven fix patterns |
 
 ## Konfiguracja sieci
 

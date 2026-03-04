@@ -105,18 +105,15 @@ class TrainingExample:
         return cls(**{k: v for k, v in d.items() if k in cls.__dataclass_fields__})
 
 
-# ── Default training data ─────────────────────────────────────────────
-# This replaces ALL _KW_* tuples. Each entry teaches the classifier.
-# Format: (phrase, action, skill)
-# Loaded from config/intent_training_default.json
+# Import engines from split modules
+from .intent.embedding import EmbeddingEngine
+from .intent.local_llm import LocalLLMClassifier
 
+
+# ── Default training data ─────────────────────────────────────────────
 
 def _load_default_training():
-    """Load default training data from config file.
-    
-    Falls back to minimal stub if config missing - will be auto-populated
-    by LLM on first run via ConfigManager.
-    """
+    """Load default training data from config file."""
     config_path = ROOT / "config" / "intent_training_default.json"
     
     if not config_path.exists():
@@ -126,290 +123,16 @@ def _load_default_training():
         with open(config_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
             examples = data.get("examples", [])
-            # Convert JSON format to tuple format
             return [
                 (ex["phrase"], ex["action"], ex.get("skill", ""))
                 for ex in examples
             ]
     except Exception as e:
-        print(f"[SmartIntent] Warning: Could not load training data from {config_path}: {e}")
+        print(f"[SmartIntent] Warning: Could not load training data: {e}")
         return []
 
 
 DEFAULT_TRAINING = _load_default_training()
-
-
-# ── Embedding Engine ──────────────────────────────────────────────────
-
-class EmbeddingEngine:
-    """
-    Sentence-transformers based embedding for intent similarity.
-    
-    Uses paraphrase-multilingual-MiniLM-L12-v2 (~120MB, supports PL+EN).
-    Falls back to TF-IDF if sentence-transformers not installed.
-    """
-
-    MODEL_NAME = _INTENT_CONFIG["embedding_model"]
-    TFIDF_FALLBACK = _INTENT_CONFIG["tfidf_fallback"]
-
-    def __init__(self, cache_dir: Path = None):
-        self._model = None
-        self._tfidf = None
-        self._mode = None  # "sbert", "tfidf", None
-        self._cache_dir = cache_dir or Path.home() / ".evo-engine" / "models"
-        self._embeddings_cache = {}  # text -> vector
-
-    @property
-    def available(self) -> bool:
-        if self._mode is not None:
-            return True
-        self._try_init()
-        return self._mode is not None
-
-    def _try_init(self):
-        """Try to initialize in order: sentence-transformers → TF-IDF."""
-        if self._mode:
-            return
-
-        # Try sentence-transformers
-        try:
-            from sentence_transformers import SentenceTransformer
-            self._cache_dir.mkdir(parents=True, exist_ok=True)
-            self._model = SentenceTransformer(
-                self.MODEL_NAME,
-                cache_folder=str(self._cache_dir)
-            )
-            self._mode = "sbert"
-            return
-        except ImportError:
-            pass
-        except Exception:
-            pass
-
-        # Fallback: TF-IDF (stdlib-compatible via sklearn or manual)
-        if self.TFIDF_FALLBACK:
-            try:
-                from sklearn.feature_extraction.text import TfidfVectorizer
-                from sklearn.metrics.pairwise import cosine_similarity
-                self._tfidf = {"vectorizer": None, "matrix": None, "fit": False}
-                self._mode = "tfidf"
-                return
-            except ImportError:
-                pass
-
-            # Ultimate fallback: bag-of-words cosine (zero deps)
-            self._mode = "bow"
-
-    def encode(self, texts: list) -> list:
-        """Encode texts to vectors."""
-        self._try_init()
-
-        if self._mode == "sbert":
-            return self._model.encode(texts, convert_to_numpy=True, normalize_embeddings=True)
-
-        elif self._mode == "tfidf":
-            from sklearn.feature_extraction.text import TfidfVectorizer
-            if self._tfidf["vectorizer"] is None or not self._tfidf["fit"]:
-                self._tfidf["vectorizer"] = TfidfVectorizer(
-                    analyzer="char_wb", ngram_range=(2, 5),
-                    max_features=8000, sublinear_tf=True,
-                    strip_accents="unicode",
-                )
-            v = self._tfidf["vectorizer"]
-            # Normalize Polish diacritics for better matching
-            normalized = [self._normalize_pl(t) + " " + t for t in texts]
-            if not self._tfidf["fit"]:
-                vecs = v.fit_transform(normalized).toarray()
-                self._tfidf["fit"] = True
-                self._tfidf["matrix"] = vecs
-                return vecs
-            return v.transform(normalized).toarray()
-
-        elif self._mode == "bow":
-            return [self._bow_vector(t) for t in texts]
-
-        return []
-
-    def similarity(self, vec_a, vec_b) -> float:
-        """Cosine similarity between two vectors."""
-        import numpy as np
-        if isinstance(vec_a, dict) and isinstance(vec_b, dict):
-            # BOW dict vectors
-            keys = set(vec_a) | set(vec_b)
-            a = [vec_a.get(k, 0) for k in keys]
-            b = [vec_b.get(k, 0) for k in keys]
-            vec_a, vec_b = a, b
-        a = np.array(vec_a, dtype=float)
-        b = np.array(vec_b, dtype=float)
-        norm = (np.linalg.norm(a) * np.linalg.norm(b))
-        if norm == 0:
-            return 0.0
-        return float(np.dot(a, b) / norm)
-
-    def _bow_vector(self, text: str) -> dict:
-        """Bag-of-character-ngrams (zero-dependency fallback)."""
-        text = self._normalize_pl(text.lower())
-        ngrams = {}
-        for n in (2, 3, 4):
-            for i in range(len(text) - n + 1):
-                ng = text[i:i+n]
-                ngrams[ng] = ngrams.get(ng, 0) + 1
-        return ngrams
-
-    @staticmethod
-    def _normalize_pl(text: str) -> str:
-        """Normalize Polish text: strip diacritics, lowercase."""
-        _PL_MAP = str.maketrans(
-            "ąćęłńóśźżĄĆĘŁŃÓŚŹŻ",
-            "acelnoszzACELNOSZZ"
-        )
-        return text.lower().translate(_PL_MAP)
-
-    def install_hint(self) -> str:
-        """Hint for installing sentence-transformers."""
-        return (
-            "pip install sentence-transformers  "
-            "# ~120MB, multilingual, najlepsza jakość\n"
-            "# albo: pip install scikit-learn  "
-            "# ~30MB, TF-IDF fallback, dobra jakość"
-        )
-
-
-# ── Local LLM Engine ──────────────────────────────────────────────────
-
-class LocalLLMClassifier:
-    """
-    Uses local ollama model (Qwen 3B) for intent classification.
-    
-    Only called when embedding confidence is too low (<0.75).
-    ~100-200ms via ollama API.
-    """
-
-    MODELS = _INTENT_CONFIG["local_llm_models"]
-
-    def __init__(self):
-        self._model = None
-        self._available = None
-
-    @property
-    def available(self) -> bool:
-        if self._available is not None:
-            return self._available
-        self._detect()
-        return self._available
-
-    def _detect(self):
-        """Find available local model."""
-        try:
-            r = subprocess.run(
-                ["ollama", "list"], capture_output=True, text=True, timeout=5
-            )
-            if r.returncode != 0:
-                self._available = False
-                return
-            installed = r.stdout.lower()
-            for m in self.MODELS:
-                base = m.split(":")[0]
-                if base in installed:
-                    self._model = m
-                    self._available = True
-                    return
-            self._available = False
-        except (FileNotFoundError, subprocess.TimeoutExpired):
-            self._available = False
-
-    def _build_skill_schema(self, skills: dict) -> str:
-        """Build rich schema from skills dict with descriptions and providers."""
-        if not skills:
-            return "- tts: synteza mowy (głos)\n- stt: rozpoznawanie mowy (słuchanie)"
-        
-        lines = []
-        for name, meta in skills.items():
-            if isinstance(meta, dict):
-                desc = meta.get("description", meta.get("desc", ""))
-                providers = meta.get("providers", meta.get("available_providers", []))
-                active = meta.get("active_provider", "")
-                if providers:
-                    prov_str = ", ".join(str(p) for p in providers[:3])
-                    if active:
-                        lines.append(f"- {name}: {desc[:60] if desc else 'skill'} (providers: {prov_str}, aktywny: {active})")
-                    else:
-                        lines.append(f"- {name}: {desc[:60] if desc else 'skill'} (providers: {prov_str})")
-                else:
-                    lines.append(f"- {name}: {desc[:60] if desc else 'skill'}")
-            else:
-                lines.append(f"- {name}: skill")
-        return "\n".join(lines)
-
-    def classify(self, user_msg: str, skills: dict = None,
-                 context: str = "") -> Optional[IntentResult]:
-        """Classify intent using local LLM with full skill schema."""
-        if not self.available or not self._model:
-            return None
-
-        # Build rich skill schema from skills dict
-        schema = self._build_skill_schema(skills or {})
-
-        prompt = (
-            f"Klasyfikuj intencję użytkownika.\n\n"
-            f"=== DOSTĘPNE NARZĘDZIA ===\n{schema}\n\n"
-            f"=== MOŻLIWE AKCJE ===\n"
-            f"- use [skill] (użyj istniejącego narzędzia)\n"
-            f"- create [skill] (stwórz nowy skill/program)\n"
-            f"- evolve [skill] (napraw/ulepsz istniejący skill)\n"
-            f"- configure [llm|tts|stt|voice] (zmień ustawienia)\n"
-            f"- chat (zwykła rozmowa)\n\n"
-            f"=== ZASADY PRIORYTETOW ===\n"
-            f"1. \"lepszy/gorszy GŁOS\" w kontekście voice → configure tts\n"
-            f"2. \"lepszy/gorszy MODEL\" → configure llm\n"
-            f"3. \"napraw skill X\" gdy X istnieje → evolve X\n"
-            f"4. \"napraw skill X\" gdy X nie istnieje → create X\n\n"
-            f"=== KONTEKST ===\n{context[:300] or 'Brak'}\n\n"
-            f"=== WIADOMOŚĆ ===\n\"{user_msg}\"\n\n"
-            f"Odpowiedz TYLKO JSON:\n"
-            f'{{"action":"use|create|evolve|configure|chat","skill":"nazwa","goal":"cel","reasoning":"krótkie uzasadnienie"}}'
-        )
-
-        try:
-            import requests
-            base = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
-            r = requests.post(
-                f"{base}/api/generate",
-                json={
-                    "model": self._model,
-                    "prompt": prompt,
-                    "stream": False,
-                    "options": {"temperature": 0.1, "num_predict": 100},
-                },
-                timeout=10,
-            )
-            if r.status_code != 200:
-                return None
-
-            text = r.json().get("response", "").strip()
-
-            # Extract JSON from response
-            import re
-            m = re.search(r'\{[^}]+\}', text)
-            if not m:
-                return None
-            d = json.loads(m.group())
-
-            action = d.get("action", "chat")
-            skill = d.get("skill", "")
-            goal = d.get("goal", "")
-            # reasoning = d.get("reasoning", "")  # Could log this for debugging
-
-            if action not in ("use", "create", "evolve", "configure", "chat"):
-                action = "chat"
-
-            return IntentResult(
-                action=action, skill=skill, confidence=0.85,
-                tier="local_llm_schema", goal=goal,
-                input={"text": user_msg} if skill else {},
-            )
-        except Exception:
-            return None
 
 
 # ── Main Classifier ───────────────────────────────────────────────────

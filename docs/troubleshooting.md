@@ -190,6 +190,8 @@ Pokazuje:
 - Liczbę logów
 - Rozmiar cache
 - Aktywne dyrektywy
+- AdaptiveResourceMonitor pressure score
+- ProviderChain status
 
 ### Sprawdź logi
 
@@ -209,7 +211,12 @@ c.execute('SELECT * FROM calls WHERE exception IS NOT NULL ORDER BY timestamp DE
 for row in c.fetchall():
     print(row)
 "
-```
+
+# Evolution journal - tracking ewolucji skilli
+tail -30 logs/evo/evo_journal.jsonl
+
+# Repair journal - historia napraw
+cat logs/repair/repair_journal.jsonl | jq '.'
 
 ### Sprawdź modele
 
@@ -229,11 +236,45 @@ for row in c.fetchall():
 # Status providerów
 /providers
 
+# ProviderChain status (fallback chain)
+/chain
+
 # Przykładowy output:
 # TTS: espeak (lite) ✓
 # STT: vosk (available) ✓
 #      whisper (needs GPU) ✗
 ```
+
+### Komendy diagnostyczne i naprawcze
+
+```bash
+# Diagnostyka konkretnego skillu
+/diagnose nazwa_skillu
+
+# Napraw skill
+/fix nazwa_skillu
+
+# Historia napraw dla skillu
+/repairs nazwa_skillu
+/repairs            # Wszystkie naprawy
+
+# Zarządzanie wersjami skilli
+/snapshot save nazwa_skillu       # Zapisz current jako stable
+/snapshot restore nazwa_skillu    # Przywróć stable
+/snapshot list nazwa_skillu       # Pokaż branche
+/snapshot compare nazwa_skillu    # Porównaj z stable
+
+# Journal ewolucji
+/journal            # Globalne statystyki
+/journal nazwa_skillu  # Historia konkretnego skillu
+
+# Garbage collector
+/gc                 # Pokaż co byłoby usunięte (dry-run)
+/gc --force         # Wykonaj cleanup
+
+# Health check
+/health             # Status wszystkich skilli
+/health nazwa_skillu # Szczegóły konkretnego
 
 ## Debugowanie
 

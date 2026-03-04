@@ -6,6 +6,8 @@ feat(docs): Complete documentation, CLI, API testing, and packaging updates
 feat(skills): Add 5 utility skills (file_manager, process_manager, clipboard, qr_generator, url_codec)
 feat(skills): Add 7 office worker skills (document_reader, notes, converter, task_manager, text_summarizer, calculator_advanced, network_tools)
 feat(pipeline): Add 4 complex multi-step pipelines with variable substitution
+feat(automation): Add web_automation (Playwright), email_client (IMAP/SMTP), openrouter_automation
+feat(integration): Add ksef_integration for Polish KSeF system
 
 ### New Utility Skills
 
@@ -24,6 +26,16 @@ feat(pipeline): Add 4 complex multi-step pipelines with variable substitution
 - **text_summarizer**: Summarize long texts using extractive methods with keyword extraction
 - **calculator_advanced**: Advanced calculator with variables, formulas, scientific functions, equation solver
 - **network_tools**: Network diagnostics (ping, DNS lookup, port check, HTTP status)
+
+### New Automation Skills
+
+- **web_automation**: Browser automation using Playwright (navigate, click, type, screenshot, extract)
+- **email_client**: Email IMAP/SMTP operations (read, search, send, extract links)
+- **openrouter_automation**: Automated OpenRouter login and API key retrieval via email + browser
+
+### New Integration Skills
+
+- **ksef_integration**: Integration with Polish KSeF (Krajowy System e-Faktur) for electronic invoices
 
 ### New Pipelines
 

@@ -16,9 +16,43 @@ import time
 
 from ..config import get_config_value
 from .training import DEFAULT_TRAINING
-from ..smart_intent import EmbeddingEngine, LocalLLMClassifier, IntentResult
+from .embedding import EmbeddingEngine
+from .local_llm import LocalLLMClassifier
 from .knn_classifier import EmbeddingKNNClassifier
 from .ensemble import EnsembleIntentClassifier, Vote
+
+
+# ── Result types ──────────────────────────────────────────────────────
+
+@dataclass
+class IntentResult:
+    """Result of intent classification."""
+    action: str          # "use", "create", "evolve", "chat", "configure"
+    skill: str = ""      # target skill name
+    confidence: float = 0.0
+    tier: str = ""       # which tier resolved: "embedding", "local_llm", "remote_llm", "fallback", "keyword_prefilter"
+    input: dict = field(default_factory=dict)
+    goal: str = ""
+    all_scores: dict = field(default_factory=dict)  # debug: all candidate scores
+    category: str = ""   # for configure action: "llm", etc.
+    target: str = ""     # for configure action: model name, etc.
+
+    def to_analysis(self) -> dict:
+        """Convert to IntentEngine-compatible analysis dict."""
+        d = {"action": self.action}
+        if self.skill:
+            d["skill"] = self.skill
+        if self.input:
+            d["input"] = self.input
+        if self.goal:
+            d["goal"] = self.goal
+        if self.category:
+            d["category"] = self.category
+        if self.target:
+            d["target"] = self.target
+        d["_conf"] = self.confidence
+        d["_tier"] = self.tier
+        return d
 
 
 # Load intent configuration
