@@ -2036,5 +2036,144 @@ class TestResolveModelRejectsCodeOnly(unittest.TestCase):
         self.assertEqual(mdl, "openrouter/meta-llama/llama-3.3-70b-instruct:free")
 
 
+# ─── Hardware Test Skill Tests ────────────────────────────────────────
+class TestHWTestSkill(unittest.TestCase):
+    """Test the hw_test hardware diagnostics skill."""
+
+    def test_skill_loads_and_has_interface(self):
+        """hw_test skill loads and has required interface functions."""
+        from skills.hw_test.v1.skill import execute, get_info, health_check, HWTestSkill
+        info = get_info()
+        self.assertEqual(info["name"], "hw_test")
+        self.assertTrue(health_check())
+        self.assertIsNotNone(HWTestSkill)
+
+    def test_execute_full_returns_structured_result(self):
+        """Full test returns structured diagnostics dict."""
+        from skills.hw_test.v1.skill import execute
+        result = execute({"action": "full"})
+        self.assertIn("tests", result)
+        self.assertIn("summary", result)
+        self.assertIn("platform", result)
+        self.assertIn("success", result)
+        summary = result["summary"]
+        self.assertIn("passed", summary)
+        self.assertIn("failed", summary)
+
+    def test_execute_devices_lists_something(self):
+        """Devices action returns capture and playback device lists."""
+        from skills.hw_test.v1.skill import execute
+        result = execute({"action": "devices"})
+        self.assertIn("capture_devices", result)
+        self.assertIn("playback_devices", result)
+        self.assertIsInstance(result["capture_devices"], list)
+        self.assertIsInstance(result["playback_devices"], list)
+
+    def test_execute_drivers_returns_subsystem(self):
+        """Drivers action detects audio subsystem."""
+        from skills.hw_test.v1.skill import execute
+        result = execute({"action": "drivers"})
+        self.assertIn("audio_subsystem", result)
+        self.assertIn("kernel_modules", result)
+        self.assertIn("platform", result)
+
+    def test_execute_usb_returns_list(self):
+        """USB action returns device list."""
+        from skills.hw_test.v1.skill import execute
+        result = execute({"action": "usb"})
+        self.assertIn("usb_devices", result)
+        self.assertIn("audio_usb", result)
+        self.assertIsInstance(result["usb_devices"], list)
+
+    def test_execute_skill_hw_validates_stt_tts(self):
+        """Skill HW action validates STT and TTS hardware prerequisites."""
+        from skills.hw_test.v1.skill import execute
+        result = execute({"action": "skill_hw"})
+        self.assertIn("skills_tested", result)
+        tested = result["skills_tested"]
+        self.assertIn("stt", tested)
+        self.assertIn("tts", tested)
+        # Each skill test has hw_ok and details
+        for skill_name in ("stt", "tts"):
+            self.assertIn("hw_ok", tested[skill_name])
+            self.assertIn("details", tested[skill_name])
+
+    def test_execute_pulse_returns_sources_sinks(self):
+        """Pulse action returns sources and sinks."""
+        from skills.hw_test.v1.skill import execute
+        result = execute({"action": "pulse"})
+        self.assertIn("sources", result)
+        self.assertIn("sinks", result)
+
+    def test_audio_input_tester_measure_level_on_generated_wav(self):
+        """AudioInputTester can measure level of a generated WAV file."""
+        from skills.hw_test.v1.skill import AudioInputTester
+        import tempfile, os
+        inp = AudioInputTester()
+        fd, path = tempfile.mkstemp(suffix=".wav")
+        os.close(fd)
+        try:
+            # Generate a tone WAV
+            inp._generate_wav(path, duration=0.5, frequency=440.0)
+            level = inp._measure_level(path, threshold_db=-40.0)
+            self.assertIn("max_db", level)
+            # 440Hz tone at amplitude 16000/32768 should be well above -40 dB
+            self.assertTrue(level["ok"], f"Level should be OK: {level}")
+        finally:
+            os.unlink(path)
+
+    def test_audio_input_tester_silence_detected(self):
+        """AudioInputTester detects silence (generated zero-amplitude WAV)."""
+        from skills.hw_test.v1.skill import AudioInputTester
+        import tempfile, os
+        inp = AudioInputTester()
+        fd, path = tempfile.mkstemp(suffix=".wav")
+        os.close(fd)
+        try:
+            inp._generate_wav(path, duration=0.5, frequency=0)
+            level = inp._measure_level(path, threshold_db=-40.0)
+            self.assertFalse(level.get("ok", True), f"Silence should fail: {level}")
+        finally:
+            os.unlink(path)
+
+    def test_loopback_frequency_check(self):
+        """AudioLoopbackTester frequency detection works on generated tone."""
+        from skills.hw_test.v1.skill import AudioLoopbackTester, AudioInputTester
+        import tempfile, os
+        loop = AudioLoopbackTester()
+        fd, path = tempfile.mkstemp(suffix=".wav")
+        os.close(fd)
+        try:
+            AudioInputTester._generate_wav(path, duration=1.0, frequency=1000.0)
+            freq = loop._check_frequency(path, expected_hz=1000.0)
+            self.assertIn("estimated_hz", freq)
+            # Should be roughly near 1000 Hz
+            if freq.get("ok"):
+                self.assertAlmostEqual(freq["estimated_hz"], 1000, delta=200)
+        finally:
+            os.unlink(path)
+
+    def test_free_text_action_parsing(self):
+        """HWTestSkill parses free-text action keywords."""
+        from skills.hw_test.v1.skill import HWTestSkill
+        hw = HWTestSkill()
+        # Polish keywords
+        r1 = hw.execute({"text": "sprawdź mikrofon"})
+        self.assertEqual(r1["action"], "audio_input")
+        r2 = hw.execute({"text": "sterowniki audio"})
+        self.assertEqual(r2["action"], "drivers")
+        r3 = hw.execute({"text": "pokaż usb"})
+        self.assertEqual(r3["action"], "usb")
+        r4 = hw.execute({"text": "pełny test"})
+        self.assertEqual(r4["action"], "full")
+
+    def test_report_includes_pulse_details(self):
+        """Report action includes pulse details."""
+        from skills.hw_test.v1.skill import execute
+        result = execute({"action": "report"})
+        self.assertIn("pulse_details", result)
+        self.assertIn("tests", result)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

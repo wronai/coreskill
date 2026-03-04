@@ -971,6 +971,63 @@ def _cmd_reflect(a1, **ctx):
     cpr(C.DIM, f"\n[REFLECT] Podsumowanie: {reflection.get_summary()}")
 
 
+def _cmd_hw(a1, **ctx):
+    """Hardware diagnostics: /hw [full|audio_input|audio_output|audio_loop|devices|drivers|pulse|usb|skill_hw]"""
+    from skills.hw_test.v1.skill import HWTestSkill
+    import json as _json
+    
+    action = a1.strip().lower() if a1 else "full"
+    cpr(C.CYAN, f"\n🔧 Diagnostyka sprzętowa [{action}]...")
+    
+    hw = HWTestSkill()
+    result = hw.execute({"action": action})
+    
+    # Pretty-print results
+    ok = result.get("ok", result.get("success", False))
+    cpr(C.GREEN if ok else C.RED,
+        f"\n{'✓' if ok else '✗'} Wynik: {'OK' if ok else 'PROBLEMY'}")
+    
+    # Show test results for full test
+    tests = result.get("tests", {})
+    if tests:
+        for name, data in tests.items():
+            tok = data.get("ok", False)
+            cpr(C.GREEN if tok else C.YELLOW,
+                f"  {'✓' if tok else '✗'} {name}")
+            for issue in data.get("issues", []):
+                cpr(C.YELLOW, f"      ⚠ {issue}")
+            for rec in data.get("recommendations", []):
+                cpr(C.DIM, f"      → {rec}")
+    
+    # Show issues for single tests
+    issues = result.get("issues", [])
+    for issue in issues:
+        cpr(C.YELLOW, f"  ⚠ {issue}")
+    recommendations = result.get("recommendations", [])
+    for rec in recommendations:
+        cpr(C.DIM, f"  → {rec}")
+    
+    # Show devices if present
+    devices = result.get("devices", result.get("capture_devices", []))
+    if devices:
+        cpr(C.DIM, f"\n  Urządzenia ({len(devices)}):")
+        for d in devices[:10]:
+            dtype = d.get("type", "")
+            dname = d.get("name", d.get("raw", "?"))
+            direction = d.get("direction", "")
+            if len(dname) > 80:
+                dname = dname[:80] + "..."
+            cpr(C.DIM, f"    [{dtype}] {dname} ({direction})")
+    
+    # Show summary
+    summary = result.get("summary", {})
+    if isinstance(summary, dict) and "passed" in summary:
+        cpr(C.CYAN, f"\n  Podsumowanie: {summary['passed']} ✓ / {summary['failed']} ✗ / {summary.get('warnings', 0)} ⚠")
+    
+    # Log
+    ctx["logger"].core("hw_test", {"action": action, "ok": ok})
+
+
 def _cmd_repairs(a1, **ctx):
     """Show repair journal: /repairs [skill_name]"""
     from .repair_journal import RepairJournal
@@ -1055,6 +1112,8 @@ COMMANDS = {
     "/reflect": _cmd_reflect,
     "/repairs": _cmd_repairs,
     "/snapshot": _cmd_snapshot,
+    "/hw": _cmd_hw,
+    "/hwtest": _cmd_hw,
 }
 
 

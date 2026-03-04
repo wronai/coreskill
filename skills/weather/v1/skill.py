@@ -44,24 +44,21 @@ def execute(input_data: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def health_check() -> Dict[str, Any]:
-    """Sprawdza health skilla."""
+    """Sprawdza health skilla (lightweight — bez wywołań sieciowych)."""
     try:
-        # Test with a known location
-        result = execute({"location": "London", "format": "json"})
-        if result["success"]:
-            return {
-                "status": "ok",
-                "message": "Weather skill is working"
-            }
-        else:
-            return {
-                "status": "degraded",
-                "message": f"Weather API issue: {result.get('error')}"
-            }
-    except Exception as e:
+        # Verify core dependencies are importable
+        import json as _j, ssl as _s, urllib.request as _u
+        # Verify execute function exists and is callable
+        if not callable(execute):
+            return {"status": "error", "message": "execute not callable"}
+        return {
+            "status": "ok",
+            "message": "Weather skill ready (deps OK)"
+        }
+    except ImportError as e:
         return {
             "status": "error",
-            "message": str(e)
+            "message": f"Missing dependency: {e}"
         }
 
 

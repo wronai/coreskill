@@ -35,6 +35,7 @@ class TestContext:
     journal: object = None
 
     diagnostics: dict = field(default_factory=lambda: {
+        "hw_diagnostics": {},
         "microphone": {"ok": False},
         "audio_level": {"ok": False},
         "transcription": {"ok": False},
@@ -179,6 +180,51 @@ class PipelineStep(ABC):
     @abstractmethod
     def execute(self, ctx: TestContext) -> TestContext:
         ...
+
+
+# ── Step 0: Deep Hardware Diagnostics ────────────────────────────────
+
+class HardwareDiagnosticsStep(PipelineStep):
+    name = "hw_diagnostics"
+
+    def execute(self, ctx: TestContext) -> TestContext:
+        cpr(C.DIM, "  [0/4] Diagnostyka sprzętowa (audio channels, drivers, devices)...")
+        try:
+            from skills.hw_test.v1.skill import HWTestSkill
+            hw = HWTestSkill()
+
+            # Run targeted audio + driver + skill_hw tests
+            hw_result = hw.execute({"action": "full"})
+            ctx.diagnostics["hw_diagnostics"] = hw_result
+
+            hw_tests = hw_result.get("tests", {})
+
+            # Show key findings
+            for test_name, test_data in hw_tests.items():
+                tok = test_data.get("ok", False)
+                if tok:
+                    cpr(C.GREEN, f"    ✓ {test_name}")
+                else:
+                    cpr(C.YELLOW, f"    ✗ {test_name}")
+                    for issue in test_data.get("issues", []):
+                        cpr(C.YELLOW, f"        ⚠ {issue}")
+
+            # If hw_test found default source is a monitor, fix it proactively
+            skill_hw = hw_tests.get("skill_hw", {})
+            stt_hw = skill_hw.get("skills_tested", {}).get("stt", {})
+            stt_details = stt_hw.get("details", {})
+            default_src = stt_details.get("default_source", {})
+            if default_src.get("is_monitor"):
+                cpr(C.YELLOW, "    ⚠ Domyślne źródło to monitor (nie mikrofon) — naprawiam...")
+                try_pulseaudio_fix(ctx.diagnostics)
+            elif default_src.get("muted"):
+                cpr(C.YELLOW, "    ⚠ Domyślne źródło jest wyciszone — naprawiam...")
+                try_pulseaudio_fix(ctx.diagnostics)
+
+        except Exception as e:
+            cpr(C.DIM, f"    [hw_test] niedostępny: {e}")
+
+        return ctx
 
 
 # ── Step 1: Check Microphone Hardware ────────────────────────────────
@@ -684,6 +730,7 @@ class STTAutoTestPipeline:
     """
 
     steps = [
+        HardwareDiagnosticsStep,
         CheckMicrophoneStep,
         CheckAudioLevelStep,
         CheckTranscriptionStep,

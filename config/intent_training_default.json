@@ -145,6 +145,20 @@
     {"phrase": "enable voice mode", "action": "configure", "skill": "voice", "lang": "en", "source": "default"},
     {"phrase": "disable voice", "action": "configure", "skill": "voice", "lang": "en", "source": "default"},
     {"phrase": "rozmawiaj głosowo", "action": "configure", "skill": "voice", "lang": "pl", "source": "default"},
-    {"phrase": "mute voice", "action": "configure", "skill": "voice", "lang": "en", "source": "default"}
+    {"phrase": "mute voice", "action": "configure", "skill": "voice", "lang": "en", "source": "default"},
+    {"phrase": "przetestuj sprzęt", "action": "use", "skill": "hw_test", "lang": "pl", "source": "default"},
+    {"phrase": "diagnostyka sprzętowa", "action": "use", "skill": "hw_test", "lang": "pl", "source": "default"},
+    {"phrase": "sprawdź sterowniki", "action": "use", "skill": "hw_test", "lang": "pl", "source": "default"},
+    {"phrase": "test karty dźwiękowej", "action": "use", "skill": "hw_test", "lang": "pl", "source": "default"},
+    {"phrase": "pokaż urządzenia USB", "action": "use", "skill": "hw_test", "lang": "pl", "source": "default"},
+    {"phrase": "test sprzętu komputera", "action": "use", "skill": "hw_test", "lang": "pl", "source": "default"},
+    {"phrase": "sprawdź hardware", "action": "use", "skill": "hw_test", "lang": "pl", "source": "default"},
+    {"phrase": "test hardware", "action": "use", "skill": "hw_test", "lang": "en", "source": "default"},
+    {"phrase": "hardware diagnostics", "action": "use", "skill": "hw_test", "lang": "en", "source": "default"},
+    {"phrase": "run hardware test", "action": "use", "skill": "hw_test", "lang": "en", "source": "default"},
+    {"phrase": "check system drivers", "action": "use", "skill": "hw_test", "lang": "en", "source": "default"},
+    {"phrase": "list usb devices", "action": "use", "skill": "hw_test", "lang": "en", "source": "default"},
+    {"phrase": "test sound card hardware", "action": "use", "skill": "hw_test", "lang": "en", "source": "default"},
+    {"phrase": "system hardware check", "action": "use", "skill": "hw_test", "lang": "en", "source": "default"}
   ]
 }

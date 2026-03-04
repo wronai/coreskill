@@ -417,8 +417,8 @@ class BenchmarkSkill:
             # Parse natural language from text if provided
             text = params.get("text", "")
             if text:
-                # Detect "płatny" / "paid" in text -> set budget to any
-                if any(word in text.lower() for word in ["płatny", "platny", "paid", "płatne", "platne"]):
+                # Detect "płatny" / "paid" or ignorance to cost in text -> set budget to any
+                if any(word in text.lower() for word in ["płatny", "platny", "paid", "płatne", "platne", "koszt", "koszty", "cost"]):
                     params["budget"] = "any"
                     params["profile"] = "ignore_cost"
                 # Detect goal from text
@@ -451,7 +451,7 @@ class BenchmarkSkill:
             
             if action == "recommend_live":
                 # Check if we should use cached results
-                use_cached = params.get("use_cached", True)
+                use_cached = params.get("use_cached", False)
                 if use_cached:
                     cached_result = self._get_cached_recommendations(params, goal)
                     if cached_result:
