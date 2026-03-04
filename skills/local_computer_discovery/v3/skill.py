@@ -12,7 +12,7 @@ def get_info() -> dict:
     return {
         'name': 'local_computer_discovery',
         'version': 'v1',
-        'description': 'Skill to discover local computers and cameras on the network'
+        'description': 'Skill to discover local computers on the network'
     }
 
 def health_check() -> dict:
@@ -205,7 +205,8 @@ class LocalComputerDiscovery:
                 return {
                     'success': False,
                     'message': 'Command not recognized for local computer discovery',
-                    'text': text
+                    'text': text,
+                    'spoken': 'Nie rozpoznałem polecenia. Użyj: znajdź komputery'
                 }
             
             # Get local IP and network
@@ -214,7 +215,8 @@ class LocalComputerDiscovery:
                 return {
                     'success': False,
                     'message': 'Could not determine local IP address',
-                    'local_ip': None
+                    'local_ip': None,
+                    'spoken': 'Nie mogę określić mojego adresu IP'
                 }
             
             network_range = self.get_network_range(local_ip)
@@ -222,7 +224,8 @@ class LocalComputerDiscovery:
                 return {
                     'success': False,
                     'message': 'Could not determine network range',
-                    'local_ip': local_ip
+                    'local_ip': local_ip,
+                    'spoken': 'Nie mogę określić zakresu sieci'
                 }
             
             # Try multiple discovery methods
@@ -265,13 +268,13 @@ class LocalComputerDiscovery:
             
             # Prepare spoken response
             if not unique_hosts:
-                spoken = "Nie znaleziono żadnych urządzeń w sieci lokalnej."
+                spoken = f'Nie znalazłem żadnych komputerów w sieci lokalnej. Moje IP: {local_ip}'
             else:
                 count = len(unique_hosts)
-                devices = ", ".join([h.get('hostname', h['ip']) for h in unique_hosts[:5]])
-                if count > 5:
-                    devices += f" i {count - 5} więcej"
-                spoken = f"Znaleziono {count} urządzenie(-eń) w sieci lokalnej: {devices}."
+                ips = ', '.join([h['ip'] for h in unique_hosts[:5]])  # Limit to 5 IPs
+                if len(unique_hosts) > 5:
+                    ips += f' i {len(unique_hosts) - 5} innych'
+                spoken = f'Znalazłem {count} komputer(y) w sieci: {ips}'
             
             if not unique_hosts:
                 return {
@@ -297,7 +300,7 @@ class LocalComputerDiscovery:
                 'success': False,
                 'message': f'Error during computer discovery: {str(e)}',
                 'error': str(e),
-                'spoken': 'Wystąpił błąd podczas wyszukiwania urządzeń w sieci.'
+                'spoken': f'Błąd podczas wyszukiwania komputerów: {str(e)}'
             }
 
 def execute(params: dict) -> dict:

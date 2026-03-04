@@ -3,6 +3,7 @@
   "version": "v3",
   "parent": "v2",
   "phase": "runtime",
-  "created_at": "2026-03-04T14:02:20.076734+00:00",
-  "rolled_back": true
+  "created_at": "2026-03-04T16:16:33.540561+00:00",
+  "quality_score": 0.815,
+  "is_regression": false
 }
