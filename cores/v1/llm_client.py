@@ -301,7 +301,10 @@ class LLMClient:
              "9. MUST include module-level functions: get_info() -> dict and health_check() -> dict.\n"
              "   get_info() returns {'name': '...', 'version': 'v1', 'description': '...'}.\n"
              "   health_check() returns {'status': 'ok'} or {'status': 'error', 'message': '...'}.\n"
-             "10. MUST include module-level execute(params) function that creates class instance and calls .execute(params).")
+             "10. MUST include module-level execute(params) function that creates class instance and calls .execute(params).\n"
+             "11. params dict ALWAYS has 'text' key with the user's raw message. Extract what you need from it.\n"
+             "    Example: for calculator, extract math expression from params.get('text','') using regex.\n"
+             "    NEVER require specific param names like 'expression' — always parse from 'text'.")
         if ctx: s += f"\nContext:\n{ctx}"
         if learning: s += f"\nLearnings from past attempts:\n{learning}"
         return self.chat([{"role":"system","content":s},

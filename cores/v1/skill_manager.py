@@ -469,7 +469,9 @@ class SkillManager:
                    "\nMUST include module-level functions: get_info() -> dict, health_check() -> dict."
                    "\nget_info() returns {'name': '...', 'version': 'v1', 'description': '...'}."
                    "\nhealth_check() returns {'status': 'ok'}."
-                   "\nMUST include module-level execute(params) that creates class instance and calls .execute(params).")
+                   "\nMUST include module-level execute(params) that creates class instance and calls .execute(params)."
+                   "\nparams dict ALWAYS has 'text' key with user's raw message. Extract what you need from it."
+                   "\nNEVER require specific param names — always parse from params.get('text','').")
 
         code = clean_code(self.llm.gen_code(prompt))
         if not code or "[ERROR]" in code:
