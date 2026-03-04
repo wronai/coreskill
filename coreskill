@@ -1,0 +1,280 @@
+#!/usr/bin/env python3
+"""
+coreskill-cli - Optimized command-line interface for coreskill.
+
+Usage:
+  coreskill <skill_name> <action> [params...] [--output-format=json|text|raw]
+  coreskill run <skill_name> <action> <json_input>
+  coreskill prompt "<natural language prompt>" [--output=<format>]
+  coreskill pipe < skill_input.json
+
+Examples:
+  # Run skill with JSON input (no logs, clean output)
+  coreskill document_search search_by_name '{"path": "/tmp", "pattern": "*.pdf"}'
+
+  # Run with natural language prompt
+  coreskill prompt "find all PDF files in /tmp"
+
+  # Pipe input from another command
+  echo '{"action": "ping", "host": "google.com"}' | coreskill pipe network_tools
+
+  # Get clean output for scripting
+  coreskill calculator calculate '{"expression": "2+2"}' --output=raw
+"""
+import sys
+import json
+import argparse
+import re
+from pathlib import Path
+
+# Add skills to path
+SKILLS_DIR = Path(__file__).parent / "skills"
+
+
+def load_skill(skill_name):
+    """Dynamically load a skill module."""
+    skill_path = SKILLS_DIR / skill_name / "v1" / "skill.py"
+    if not skill_path.exists():
+        return None, f"Skill not found: {skill_name}"
+
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(f"{skill_name}_skill", skill_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module, None
+
+
+def run_skill(skill_name, action, params):
+    """Execute a skill and return clean result."""
+    module, error = load_skill(skill_name)
+    if error:
+        return {"success": False, "error": error}
+
+    if not hasattr(module, 'execute'):
+        return {"success": False, "error": f"Skill {skill_name} has no execute function"}
+
+    input_data = {"action": action, **params}
+    return module.execute(input_data)
+
+
+def parse_prompt_to_skill(prompt):
+    """Parse natural language prompt to skill action."""
+    prompt_lower = prompt.lower()
+
+    # Document search patterns
+    if any(word in prompt_lower for word in ["find", "search", "szukaj", "znajdź"]):
+        if any(ext in prompt_lower for ext in [".pdf", "document", "file", "plik"]):
+            # Extract path
+            path_match = re.search(r'in\s+([/\w~.]+)', prompt)
+            path = path_match.group(1) if path_match else "."
+
+            # Extract pattern
+            pattern = "*.pdf"
+            if ".pdf" in prompt_lower:
+                pattern = "*.pdf"
+            elif ".txt" in prompt_lower:
+                pattern = "*.txt"
+            elif ".md" in prompt_lower:
+                pattern = "*.md"
+
+            return "document_search", "search_by_name", {"path": path, "pattern": pattern}
+
+    # Calculator patterns
+    if any(word in prompt_lower for word in ["calculate", "compute", "oblicz", " policz"]):
+        # Extract expression
+        expr_match = re.search(r'(?:calculate|compute|oblicz|policz)\s+(.+)', prompt_lower)
+        if expr_match:
+            expr = expr_match.group(1).strip()
+            return "calculator_advanced", "calculate", {"expression": expr}
+
+    # Network patterns
+    if any(word in prompt_lower for word in ["ping", "dns", "check port", "lookup"]):
+        if "ping" in prompt_lower:
+            host_match = re.search(r'ping\s+(\S+)', prompt_lower)
+            host = host_match.group(1) if host_match else "google.com"
+            return "network_tools", "ping", {"host": host, "count": 3}
+
+        if "dns" in prompt_lower or "lookup" in prompt_lower:
+            domain_match = re.search(r'(?:dns|lookup)\s+(\S+)', prompt_lower)
+            domain = domain_match.group(1) if domain_match else "google.com"
+            return "network_tools", "dns_lookup", {"domain": domain}
+
+    # Text summarization
+    if any(word in prompt_lower for word in ["summarize", "podsumuj", "streszczenie"]):
+        return "text_summarizer", "summarize", {
+            "text": prompt,
+            "ratio": 0.3
+        }
+
+    # Task management
+    if any(word in prompt_lower for word in ["add task", "new task", "nowe zadanie"]):
+        title_match = re.search(r'(?:add task|new task|nowe zadanie)[\s:]+(.+)', prompt, re.IGNORECASE)
+        title = title_match.group(1) if title_match else "New task"
+        return "task_manager", "add_task", {"title": title, "priority": "medium"}
+
+    # Password generation
+    if any(word in prompt_lower for word in ["password", "generate password", "hasło", "generuj hasło"]):
+        length = 16
+        length_match = re.search(r'(\d+)\s*(?:char|character|znak)', prompt_lower)
+        if length_match:
+            length = int(length_match.group(1))
+        memorable = "memorable" in prompt_lower or "łatwe" in prompt_lower
+        return "account_creator", "generate_password", {"length": length, "memorable": memorable}
+
+    # File operations
+    if any(word in prompt_lower for word in ["list files", "ls", "pokaż pliki", "listuj"]):
+        path_match = re.search(r'(?:in|w)\s+([/\w~.]+)', prompt)
+        path = path_match.group(1) if path_match else "."
+        return "file_manager", "list", {"path": path}
+
+    # Default: try text summarizer
+    return "text_summarizer", "summarize", {"text": prompt, "ratio": 0.3}
+
+
+def format_output(result, format_type="json", action=None):
+    """Format output based on type."""
+    if format_type == "json":
+        return json.dumps(result, indent=None, ensure_ascii=False)
+
+    elif format_type == "raw":
+        # Extract most relevant data
+        if not result.get("success"):
+            return str(result.get("error", "Unknown error"))
+
+        # Return specific fields based on action
+        if action == "ping":
+            stats = result.get("statistics", {})
+            return f"{stats.get('packets_received', 0)}/{stats.get('packets_sent', 0)} packets, {stats.get('packet_loss', 'N/A')} loss"
+
+        elif action == "dns_lookup":
+            ips = result.get("ip_addresses", [])
+            return ", ".join(ips) if ips else "No IPs found"
+
+        elif action == "check_port":
+            return "open" if result.get("is_open") else "closed"
+
+        elif action == "calculate":
+            return str(result.get("result", result.get("result_preview", "")))
+
+        elif action == "search_by_name" or action == "search_by_content":
+            results = result.get("results", [])
+            if not results:
+                return ""
+            lines = []
+            for r in results[:10]:
+                lines.append(f"{r.get('path', '')}")
+            return "\n".join(lines)
+
+        elif action == "generate_password":
+            return result.get("password", "")
+
+        elif action == "validate_email":
+            return "valid" if result.get("is_valid") else "invalid"
+
+        elif action == "summarize":
+            return result.get("summary", "")
+
+        elif action == "list":
+            items = result.get("items", [])
+            return "\n".join(item.get("name", "") for item in items[:20])
+
+        else:
+            # Default: return string representation of result
+            if isinstance(result.get("result"), (str, int, float)):
+                return str(result["result"])
+            return json.dumps(result, ensure_ascii=False)
+
+    elif format_type == "text":
+        # Human readable text
+        if not result.get("success"):
+            return f"Error: {result.get('error', 'Unknown error')}"
+
+        lines = []
+        for key, value in result.items():
+            if key != "success" and value is not None:
+                if isinstance(value, (list, dict)):
+                    lines.append(f"{key}: {json.dumps(value, ensure_ascii=False)}")
+                else:
+                    lines.append(f"{key}: {value}")
+        return "\n".join(lines)
+
+    return json.dumps(result)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="CoreSkill CLI - Run skills with clean output",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  coreskill document_search search_by_name '{"path": "/tmp", "pattern": "*.pdf"}'
+  coreskill calculator_advanced calculate '{"expression": "sin(45)"}' --output=raw
+  coreskill prompt "find all PDF files in /tmp"
+  echo '{"host": "google.com"}' | coreskill network_tools ping
+        """
+    )
+
+    parser.add_argument("skill", nargs="?", help="Skill name or 'prompt' for natural language")
+    parser.add_argument("action", nargs="?", help="Action to execute")
+    parser.add_argument("input_data", nargs="?", help="JSON input data")
+    parser.add_argument("--output", "-o", default="json",
+                       choices=["json", "raw", "text"],
+                       help="Output format (default: json)")
+    parser.add_argument("--quiet", "-q", action="store_true",
+                       help="Suppress all non-output messages")
+    parser.add_argument("--pipe", "-p", action="store_true",
+                       help="Read input from stdin")
+
+    args = parser.parse_args()
+
+    # Handle pipe mode
+    if args.pipe or (args.skill == "pipe" and args.action):
+        skill_name = args.action if args.skill == "pipe" else args.skill
+        try:
+            input_data = json.load(sys.stdin)
+            action = input_data.pop("action", "execute")
+        except json.JSONDecodeError:
+            if not args.quiet:
+                print("Error: Invalid JSON input", file=sys.stderr)
+            sys.exit(1)
+
+        result = run_skill(skill_name, action, input_data)
+        print(format_output(result, args.output, action))
+        sys.exit(0 if result.get("success") else 1)
+
+    # Handle prompt mode
+    if args.skill == "prompt":
+        prompt = args.action if args.action else " ".join(sys.argv[2:])
+        skill_name, action, params = parse_prompt_to_skill(prompt)
+
+        if not args.quiet:
+            print(f"# Parsed: {skill_name}.{action}", file=sys.stderr)
+
+        result = run_skill(skill_name, action, params)
+        print(format_output(result, args.output, action))
+        sys.exit(0 if result.get("success") else 1)
+
+    # Handle direct skill execution
+    if not args.skill:
+        parser.print_help()
+        sys.exit(1)
+
+    skill_name = args.skill
+    action = args.action or "execute"
+
+    # Parse input data
+    params = {}
+    if args.input_data:
+        try:
+            params = json.loads(args.input_data)
+        except json.JSONDecodeError:
+            # Try as string parameter
+            params = {"text": args.input_data}
+
+    result = run_skill(skill_name, action, params)
+    print(format_output(result, args.output, action))
+    sys.exit(0 if result.get("success") else 1)
+
+
+if __name__ == "__main__":
+    main()

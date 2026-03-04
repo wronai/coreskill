@@ -87,5 +87,5 @@ def execute(params: dict) -> dict:
 if __name__ == "__main__":
     # Simple test
     skill = TTSSkill()
-    result = execute({"text": "Witaj świecie!"})
+    result = skill.execute({"text": "Cześć! Sprzęt działa poprawnie."})
     print(result)
