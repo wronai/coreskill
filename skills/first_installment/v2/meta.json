@@ -1,0 +1,9 @@
+{
+  "name": "first_installment",
+  "version": "v2",
+  "parent": "v1",
+  "phase": "runtime",
+  "created_at": "2026-03-04T16:13:23.119379+00:00",
+  "quality_score": 0.815,
+  "is_regression": false
+}
