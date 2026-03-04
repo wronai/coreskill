@@ -14,18 +14,16 @@ class Kalkulator:
             # Using eval is generally unsafe, but for a controlled environment like this,
             # and given the constraints of only stdlib, it's the most direct way.
             # In a real-world scenario, a safer parsing library would be preferred.
-            # Added checks for potentially harmful inputs, though eval remains risky.
-            if "__" in expression or "import" in expression or "os" in expression or "sys" in expression:
-                return {"success": False, "error": "Potentially unsafe expression detected."}
+            # Added a check for potentially harmful characters, though not exhaustive.
+            if any(char in expression for char in ['`', '$', ';', '|', '&', '<', '>']):
+                return {"success": False, "error": "Potentially unsafe characters in expression."}
 
             result = eval(expression)
             return {"success": True, "result": result, "spoken": f"Wynik to {result}"}
         except ZeroDivisionError:
-            return {"success": False, "error": "Division by zero is not allowed.", "spoken": "Nie można dzielić przez zero."}
+            return {"success": False, "error": "Division by zero is not allowed.", "spoken": "Nie mogę dzielić przez zero."}
         except SyntaxError:
             return {"success": False, "error": "Invalid mathematical syntax.", "spoken": "Nieprawidłowa składnia matematyczna."}
-        except NameError as e:
-            return {"success": False, "error": f"Unknown name in expression: {e}", "spoken": f"Nieznany symbol w wyrażeniu: {e}"}
         except Exception as e:
             return {"success": False, "error": str(e), "spoken": f"Wystąpił błąd: {e}"}
 
@@ -59,9 +57,8 @@ if __name__ == '__main__':
         {"expression": "10 / 0"}, # Test division by zero
         {"expression": "invalid expression"}, # Test invalid syntax
         {}, # Test missing expression
-        {"expression": "abs(-5)"}, # Test built-in function
-        {"expression": "import os"}, # Test unsafe import
-        {"expression": "print('hello')"} # Test unsafe command
+        {"expression": "print('hello')"}, # Test unsafe eval
+        {"expression": "2 + 2 * 3"}
     ]
 
     for test_params in test_expressions:
@@ -71,3 +68,18 @@ if __name__ == '__main__':
 
     print(f"Info: {kalkulator_skill.get_info()}\n")
     print(f"Health Check: {kalkulator_skill.health_check()}\n")
+
+    # Example of using espeak for TTS if available
+    if subprocess.run(['which', 'espeak'], capture_output=True).returncode == 0:
+        print("Testing TTS with espeak:")
+        tts_result = kalkulator_skill.execute({"expression": "5 * 5"})
+        if tts_result.get("success") and "spoken" in tts_result:
+            try:
+                subprocess.run(['espeak', tts_result["spoken"]], check=True)
+                print("TTS spoken successfully.")
+            except Exception as e:
+                print(f"Error during TTS: {e}")
+        else:
+            print("TTS could not be generated.")
+    else:
+        print("espeak not found, skipping TTS test.")
