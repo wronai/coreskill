@@ -6,7 +6,11 @@ import shutil
 import subprocess
 import shlex
 import sys
-import nfo
+try:
+    import nfo
+    _logged = nfo.logged
+except (ImportError, AttributeError):
+    _logged = lambda cls: cls
 
 # Commands that require explicit confirmation (destructive)
 DANGEROUS_PREFIXES = (
@@ -37,7 +41,7 @@ def health_check():
     return shutil.which("bash") is not None
 
 
-@nfo.logged
+@_logged
 class ShellSkill:
     def _is_interactive(self, command):
         """Detect commands that need terminal stdin (sudo, passwd, etc.)."""

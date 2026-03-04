@@ -1,0 +1,90 @@
+{
+  "description": "CoreSkill System Configuration",
+  "version": "1.0.0",
+  "updated": "2026-03-04",
+  "system": {
+    "name": "CoreSkill",
+    "version": "1.0.0",
+    "debug": false,
+    "verbose": false
+  },
+  "limits": {
+    "max_evo_iterations": 5,
+    "max_skill_iterations": 3,
+    "request_timeout": 30,
+    "llm_timeout": 60,
+    "intent_timeout": 10
+  },
+  "cooldowns": {
+    "rate_limit": 60,
+    "demotion": 300,
+    "failure_threshold": 3,
+    "success_recovery": 2
+  },
+  "paths": {
+    "skills_dir": "skills",
+    "logs_dir": "logs",
+    "config_dir": "config",
+    "state_file": ".evo_state.json"
+  },
+  "features": {
+    "enable_voice": true,
+    "enable_auto_heal": true,
+    "enable_self_reflection": true,
+    "enable_pipeline_logging": true,
+    "enable_skill_logging": true
+  },
+  "llm": {
+    "default_temperature": 0.7,
+    "default_max_tokens": 4096,
+    "intent_temperature": 0.3,
+    "evolve_temperature": 0.3,
+    "chat_temperature": 0.7,
+    "intent_max_params": 3.0,
+    "min_params": 2.0
+  },
+  "intent": {
+    "confidence_threshold": 0.40,
+    "sbert_threshold": 0.70,
+    "enable_embeddings": true,
+    "enable_local_llm": true,
+    "enable_remote_llm": true
+  },
+  "blocking": {
+    "blocked_commands": [
+      "rm -rf /",
+      "mkfs",
+      "dd if=/dev/zero",
+      "format",
+      "fdisk",
+      ":(){ :|:& };:"
+    ],
+    "blocked_imports": [
+      "os.system",
+      "subprocess.call",
+      "eval",
+      "exec"
+    ]
+  },
+  "filters": {
+    "code_model_patterns": [
+      "deepseek-coder",
+      "starcoder",
+      "codellama",
+      "codegemma",
+      "qwen2.5-coder"
+    ],
+    "preferred_local_families": [
+      "qwen2.5",
+      "gemma",
+      "llama3",
+      "phi3"
+    ],
+    "excluded_code_models": [
+      "coder",
+      "starcoder",
+      "codellama",
+      "codegemma"
+    ]
+  }
+}

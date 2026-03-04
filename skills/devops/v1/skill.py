@@ -10,10 +10,14 @@ import json
 import ast
 import importlib.util
 from pathlib import Path
-import nfo
+try:
+    import nfo
+    _logged = nfo.logged
+except (ImportError, AttributeError):
+    _logged = lambda cls: cls
 
 
-@nfo.logged
+@_logged
 class DevOpsSkill:
     """Test, validate and deploy skills in isolated subprocess."""
 

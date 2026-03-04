@@ -178,5 +178,15 @@
     "70b": 0.55,
     "120b": 0.40
   },
+  "code_models": {
+    "description": "Models excluded from chat (code-only, not suitable for conversation)",
+    "patterns": [
+      "deepseek-coder",
+      "starcoder",
+      "codellama",
+      "codegemma",
+      "qwen2.5-coder"
+    ]
+  },
   "default": "openrouter/meta-llama/llama-3.3-70b-instruct:free"
 }

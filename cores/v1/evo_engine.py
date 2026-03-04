@@ -2,6 +2,8 @@
 """
 evo-engine EvoEngine — evolutionary skill building with diagnosis loop.
 """
+import sys
+
 try:
     import nfo
     _logged = nfo.logged
@@ -192,13 +194,28 @@ class EvoEngine:
                         self.log.skill(skill_name, "auto_fix_imports", {})
                         continue
 
-            # Diagnose → evolve
+            # Diagnose → auto-install deps → evolve
             cpr(C.DIM, f"[PIPE] Diagnose + evolve '{skill_name}'...")
             diag = self.sm.diagnose_skill(skill_name)
             phase = diag.get("phase", "?")
             missing = diag.get("missing", [])
             if missing:
                 cpr(C.YELLOW, f"[PIPE] Missing deps: {', '.join(missing)}")
+                # Auto-install missing Python packages
+                import subprocess as _sp
+                for pkg in missing:
+                    cpr(C.DIM, f"[PIPE] Auto-install: pip install {pkg}...")
+                    try:
+                        r = _sp.run(
+                            [sys.executable, "-m", "pip", "install", pkg, "-q"],
+                            capture_output=True, text=True, timeout=60)
+                        if r.returncode == 0:
+                            cpr(C.GREEN, f"[PIPE] ✓ Installed {pkg}")
+                            self.log.skill(skill_name, "auto_install_dep", {"pkg": pkg})
+                        else:
+                            cpr(C.DIM, f"[PIPE] pip install {pkg} failed: {r.stderr[:80]}")
+                    except Exception as e:
+                        cpr(C.DIM, f"[PIPE] pip install {pkg} error: {e}")
 
             ok, msg = self.sm.smart_evolve(skill_name, error_info, user_msg)
             if ok:

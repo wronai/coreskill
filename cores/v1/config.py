@@ -13,7 +13,71 @@ PIPELINES_DIR = ROOT / "pipelines"
 LOGS_DIR = ROOT / "logs"
 STATE_FILE = ROOT / ".evo_state.json"
 CONFIG_FILE = ROOT / "config" / "models.json"
-MAX_EVO_ITERATIONS = 5
+SYSTEM_CONFIG_FILE = ROOT / "config" / "system.json"
+
+# Load system configuration
+_SYSTEM_CONFIG = None
+
+def _load_system_config():
+    """Load system-wide configuration from config/system.json"""
+    global _SYSTEM_CONFIG
+    if _SYSTEM_CONFIG is not None:
+        return _SYSTEM_CONFIG
+        
+    if SYSTEM_CONFIG_FILE.exists():
+        try:
+            with open(SYSTEM_CONFIG_FILE, 'r') as f:
+                _SYSTEM_CONFIG = json.load(f)
+                return _SYSTEM_CONFIG
+        except Exception as e:
+            print(f"[Config] Error loading {SYSTEM_CONFIG_FILE}: {e}")
+    
+    # Fallback defaults
+    _SYSTEM_CONFIG = {
+        "limits": {"max_evo_iterations": 5},
+        "cooldowns": {"rate_limit": 60, "demotion": 300},
+        "llm": {
+            "default_temperature": 0.7,
+            "default_max_tokens": 4096,
+            "intent_temperature": 0.3
+        },
+        "filters": {
+            "code_model_patterns": [
+                "deepseek-coder", "starcoder", "codellama", 
+                "codegemma", "qwen2.5-coder"
+            ]
+        }
+    }
+    return _SYSTEM_CONFIG
+
+# Getters for system config
+def get_system_config():
+    """Get full system configuration"""
+    return _load_system_config()
+
+def get_config_value(key_path, default=None):
+    """Get config value by dot-path (e.g., 'limits.max_evo_iterations')"""
+    config = _load_system_config()
+    keys = key_path.split('.')
+    value = config
+    for key in keys:
+        if isinstance(value, dict) and key in value:
+            value = value[key]
+        else:
+            return default
+    return value
+
+def get_code_model_patterns():
+    """Get patterns for code-only models that should be excluded from chat"""
+    models_config = _load_model_config()
+    # First check models.json
+    if "code_models" in models_config and "patterns" in models_config["code_models"]:
+        return models_config["code_models"]["patterns"]
+    # Fallback to system.json
+    return get_config_value("filters.code_model_patterns", [])
+
+# Legacy constant for backward compatibility
+MAX_EVO_ITERATIONS = get_config_value("limits.max_evo_iterations", 5)
 
 def _load_model_config():
     """Load model configuration from config/models.json"""

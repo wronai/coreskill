@@ -20,6 +20,9 @@ from .utils import litellm, clean_code, clean_json
 
 def _detect_ollama_models():
     """Auto-detect available ollama models. Returns list of 'ollama/<name>' strings."""
+    from cores.v1.config import get_code_model_patterns
+    CODE_MODELS = set(get_code_model_patterns())
+    
     try:
         r = subprocess.run(["ollama", "list"], capture_output=True, text=True, timeout=5)
         if r.returncode != 0:
@@ -29,6 +32,10 @@ def _detect_ollama_models():
             if not line.strip():
                 continue
             name = line.split()[0]
+            # Skip code-only models for chat
+            model_base = name.split(":")[0].lower()
+            if any(code in model_base for code in CODE_MODELS):
+                continue
             found.append(f"ollama/{name}")
         # Sort: preferred first, then rest
         preferred = [m for m in LOCAL_PREFERRED if m in found]

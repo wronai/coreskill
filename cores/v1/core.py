@@ -31,6 +31,7 @@ from .provider_selector import ProviderSelector, ProviderChain
 from .system_identity import SystemIdentity
 from .skill_logger import init_nfo
 from .user_memory import UserMemory
+from .garbage_collector import EvolutionGarbageCollector
 
 
 # ─── Docker Compose Generator ────────────────────────────────────────
@@ -437,12 +438,19 @@ def _ensure_api_key(state):
     return ak
 
 def _resolve_model(state):
+    # Code-only models unsuitable for Polish chat — reject if persisted in state
+    _CODE_ONLY = ("deepseek-coder", "starcoder", "codellama", "codegemma",
+                  "stable-code", "codestral", "codeqwen")
     models = get_models_from_config(state)
     mdl = os.environ.get("EVO_MODEL") or state.get("model") or (models[0] if models else DEFAULT_MODEL)
-    if (not mdl) or "stepfun" in str(mdl):
+    mdl_lower = str(mdl).lower()
+    if (not mdl) or "stepfun" in mdl_lower or any(c in mdl_lower for c in _CODE_ONLY):
+        old = mdl
         mdl = models[0] if models else DEFAULT_MODEL
         state["model"] = mdl
         save_state(state)
+        if old and old != mdl:
+            cpr(C.YELLOW, f"[MODEL] Odrzucono '{old}' (code-only) → {mdl}")
     return mdl, models
 
 def _init_components(ak, mdl, models, logger, state):
@@ -988,6 +996,13 @@ def main():
     # Multi-level readiness check (deps/hw/api/resources)
     sm.boot_health_check()
 
+    # Auto-GC: clean stubs and broken versions on boot (silent)
+    gc = EvolutionGarbageCollector()
+    gc_reports = gc.cleanup_all(migrate=False, dry_run=False)
+    gc_deleted = sum(len(r.get("deleted", [])) for r in gc_reports)
+    if gc_deleted:
+        cpr(C.DIM, f"[GC] Auto-cleanup: usunięto {gc_deleted} stub(ów)/broken wersji")
+
     # Long-term user memory
     memory = UserMemory(state)
     if memory.directives:
@@ -1094,6 +1109,12 @@ def main():
         if outcome and outcome.get("skill") == "stt" and outcome.get("type") == "success":
             stt_text = _extract_stt_text(outcome)
             intent.record_skill_use("stt")
+            # Auto-retry once on silence before giving up
+            if not stt_text:
+                cpr(C.DIM, "[STT] Cisza — ponawiam automatycznie...")
+                retry_outcome = evo.handle_request(ui, sk, analysis=analysis)
+                if retry_outcome and retry_outcome.get("type") == "success":
+                    stt_text = _extract_stt_text(retry_outcome)
             if stt_text:
                 cpr(C.GREEN, f"[STT] Usłyszałem: \"{stt_text}\"")
                 mprint(f"### 🎤 Usłyszałem: *{stt_text}*")
@@ -1103,9 +1124,9 @@ def main():
                 if response:
                     _speak_tts(sm, evo, response)
             else:
-                cpr(C.YELLOW, "[STT] Nie usłyszałem nic. Spróbuj mówić głośniej lub bliżej mikrofonu.")
+                cpr(C.YELLOW, "[STT] Nie usłyszałem nic po 2 próbach. Sprawdź mikrofon.")
                 mprint("### 🎤 Nie usłyszałem nic\nSpróbuj powiedzieć coś głośniej lub użyj `/stt` ponownie.")
-                conv.append({"role": "assistant", "content": "Nie usłyszałem nic. Spróbuj ponownie."})
+                conv.append({"role": "assistant", "content": "Nie usłyszałem nic po 2 próbach. Sprawdź mikrofon."})
         elif not _handle_outcome(outcome, intent, conv, identity=identity):
             _handle_chat(llm, sm, logger, conv, identity=identity, memory=memory)
 

@@ -14,7 +14,10 @@ Usage in skills:
 Auto-injection (all skills, no code changes needed):
     Called from skill_manager._load_and_run() via inject_logging(mod)
 """
-import nfo
+try:
+    import nfo
+except ImportError:
+    nfo = None
 from pathlib import Path
 
 from .config import LOGS_DIR
@@ -33,6 +36,8 @@ def init_nfo():
     """Configure nfo logging for the entire evo-engine.
     Call once at startup. Idempotent."""
     global _configured
+    if nfo is None:
+        return None
     if _configured:
         return nfo.get_logger("evo")
     _configured = True
@@ -53,6 +58,8 @@ def inject_logging(mod, skill_name=None):
     """Inject nfo decorator logging into a dynamically loaded skill module.
     Wraps all public functions with @nfo.log_call automatically.
     Safe to call on any module — skips already-wrapped functions."""
+    if nfo is None:
+        return
     init_nfo()
     try:
         nfo.auto_log(mod, level="DEBUG", include_private=False)
@@ -62,6 +69,8 @@ def inject_logging(mod, skill_name=None):
 
 def get_skill_logger(skill_name):
     """Get a named nfo logger for a specific skill."""
+    if nfo is None:
+        return None
     init_nfo()
     return nfo.get_logger(f"evo.skill.{skill_name}")
 

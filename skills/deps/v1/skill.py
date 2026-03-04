@@ -7,10 +7,14 @@ import sys
 import os
 import json
 import importlib.util
-import nfo
+try:
+    import nfo
+    _logged = nfo.logged
+except (ImportError, AttributeError):
+    _logged = lambda cls: cls
 
 
-@nfo.logged
+@_logged
 class DepsSkill:
     """Detect, install and manage Python and system dependencies."""
 

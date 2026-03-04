@@ -1,7 +1,0 @@
-{
-  "name": "kalkulator",
-  "version": "v3",
-  "parent": "v2",
-  "phase": "runtime",
-  "created_at": "2026-03-04T08:00:53.439983+00:00"
-}

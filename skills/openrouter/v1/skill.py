@@ -265,6 +265,16 @@ class OpenRouterSkill:
             return "general purpose"
 
 
+def get_info():
+    """Return skill metadata."""
+    return {
+        "name": "openrouter",
+        "version": "v1",
+        "description": "Discover and search OpenRouter LLM models",
+        "actions": ["discover_free", "search", "get_info"]
+    }
+
+
 # Module-level execute for direct import
 def execute(params: Dict[str, Any]) -> Dict[str, Any]:
     """Execute OpenRouter skill with given parameters."""

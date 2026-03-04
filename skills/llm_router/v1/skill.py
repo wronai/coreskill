@@ -3,10 +3,14 @@ import json
 import urllib.request
 import shutil
 import time
-import nfo
+try:
+    import nfo
+    _logged = nfo.logged
+except (ImportError, AttributeError):
+    _logged = lambda cls: cls
 
 
-@nfo.logged
+@_logged
 class LLMRouterSkill:
     """
     Model discovery & health checking skill (evolvable).
