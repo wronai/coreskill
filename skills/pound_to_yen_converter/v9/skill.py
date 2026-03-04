@@ -6,15 +6,20 @@ import os
 def get_info() -> dict:
     return {
         'name': 'pound_to_yen_converter',
-        'version': 'v9',
+        'version': 'v1',
         'description': 'Converts pounds sterling to Japanese yen'
     }
 
 def health_check() -> dict:
     try:
         # Check if espeak is available (for TTS if needed)
-        subprocess.run(['espeak', '--version'], capture_output=True, timeout=5)
-        return {'status': 'ok'}
+        result = subprocess.run(['espeak', '--version'], capture_output=True, timeout=5)
+        if result.returncode == 0:
+            return {'status': 'ok'}
+        else:
+            return {'status': 'error', 'message': 'espeak not working properly'}
+    except FileNotFoundError:
+        return {'status': 'ok'}  # TTS is optional, skill works without it
     except Exception as e:
         return {'status': 'error', 'message': str(e)}
 
@@ -29,16 +34,19 @@ class PoundToYenConverter:
             text = params.get('text', '').lower()
             
             # Extract amount and currencies from the text
-            # Pattern: "przelicz [amount] [currency_from] na [currency_to]"
-            # Looking for "tysiąc funtów szterlingów na jeny japońskie"
+            amount = 1  # default
             
-            # Handle "tysiąc" (thousand) as 1000
-            amount = 1000  # default if "tysiąc" is mentioned
-            
-            if 'tysiąc' in text:
-                amount = 1000
-            elif 'milion' in text:
+            # Handle Polish words for large numbers
+            if 'milion' in text or 'miliony' in text:
                 amount = 1000000
+                match = re.search(r'(\d+)\s*milion', text)
+                if match:
+                    amount = int(match.group(1)) * 1000000
+            elif 'tysiąc' in text or 'tysiące' in text:
+                amount = 1000
+                match = re.search(r'(\d+)\s*tysiąc', text)
+                if match:
+                    amount = int(match.group(1)) * 1000
             else:
                 # Try to extract a number from the text
                 numbers = re.findall(r'\d+', text)
@@ -46,16 +54,17 @@ class PoundToYenConverter:
                     amount = int(numbers[0])
             
             # Check if it's GBP to JPY conversion
-            if 'funt' in text and 'jen' in text:
+            if ('funt' in text and 'jen' in text) or ('funt' in text and 'jenów' in text):
                 # Convert pounds to yen
                 result_yen = amount * self.exchange_rate
                 
-                # Format the result
+                # Format the result for display and speech
                 result_text = f"{amount} funtów szterlingów to około {result_yen:,.0f} jenów japońskich"
+                spoken_text = f"{amount} funtów szterlingów to około {result_yen:,.0f} jenów japońskich"
                 
                 # Use espeak for TTS if available
                 try:
-                    subprocess.run(['espeak', result_text], capture_output=True, timeout=10)
+                    subprocess.run(['espeak', spoken_text], capture_output=True, timeout=10)
                 except Exception:
                     pass  # TTS is optional
                 
@@ -63,6 +72,7 @@ class PoundToYenConverter:
                     'success': True,
                     'result': result_yen,
                     'text': result_text,
+                    'spoken': spoken_text,
                     'amount_pounds': amount,
                     'amount_yen': result_yen,
                     'exchange_rate': self.exchange_rate
@@ -71,14 +81,16 @@ class PoundToYenConverter:
                 return {
                     'success': False,
                     'error': 'Not a valid pound to yen conversion request',
-                    'text': 'Proszę zapytać o przeliczenie funtów szterlingów na jeny japońskie'
+                    'text': 'Proszę zapytać o przeliczenie funtów szterlingów na jeny japońskie',
+                    'spoken': 'Proszę zapytać o przeliczenie funtów szterlingów na jeny japońskie'
                 }
                 
         except Exception as e:
             return {
                 'success': False,
                 'error': str(e),
-                'text': 'Wystąpił błąd podczas przeliczania'
+                'text': 'Wystąpił błąd podczas przeliczania',
+                'spoken': 'Wystąpił błąd podczas przeliczania'
             }
 
 def execute(params: dict) -> dict:
