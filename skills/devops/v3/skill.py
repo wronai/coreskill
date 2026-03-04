@@ -1,7 +1,3 @@
-"""
-devops skill - Test, validate and deploy skills.
-Bootstrap skill for evo-engine. No external dependencies.
-"""
 import subprocess
 import sys
 import os
