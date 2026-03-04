@@ -252,6 +252,157 @@ class BenchmarkSkill:
         
         return ""
     
+    def _load_benchmark_results(self) -> Dict:
+        """Load benchmark results from config/benchmark_results.json"""
+        possible_paths = [
+            Path(__file__).parent.parent.parent.parent / "config" / "benchmark_results.json",
+            Path.cwd() / "config" / "benchmark_results.json",
+        ]
+        
+        for path in possible_paths:
+            if path.exists():
+                try:
+                    with open(path, 'r') as f:
+                        return json.load(f)
+                except Exception as e:
+                    print(f"[Benchmark] Error loading results from {path}: {e}")
+                    continue
+        
+        return {"results": {}}
+    
+    def _save_benchmark_results(self, results: Dict) -> None:
+        """Save benchmark results to config/benchmark_results.json"""
+        possible_paths = [
+            Path(__file__).parent.parent.parent.parent / "config" / "benchmark_results.json",
+            Path.cwd() / "config" / "benchmark_results.json",
+        ]
+        
+        for path in possible_paths:
+            try:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                with open(path, 'w') as f:
+                    json.dump(results, f, indent=2)
+                return
+            except Exception as e:
+                print(f"[Benchmark] Error saving results to {path}: {e}")
+                continue
+    
+    def _update_benchmark_results(self, live_results: List[Dict], failed_models: List[str]) -> None:
+        """Update benchmark results JSON with new test data."""
+        results_data = self._load_benchmark_results()
+        
+        # Update working models
+        for result in live_results:
+            model_id = result["model_id"]
+            results_data["results"][model_id] = {
+                "last_tested": time.strftime("%Y-%m-%d"),
+                "avg_quality": result["quality_score"],
+                "avg_latency_ms": result["avg_latency_ms"],
+                "speed_score": result["speed_score"],
+                "tier": result["tier"],
+                "working": True,
+            }
+        
+        # Update failed models
+        for model_short in failed_models:
+            # Find full model_id from candidates
+            full_id = None
+            for candidate in self._last_candidates if hasattr(self, '_last_candidates') else []:
+                if candidate.split('/')[-1] == model_short:
+                    full_id = candidate
+                    break
+            
+            if full_id:
+                results_data["results"][full_id] = {
+                    "last_tested": time.strftime("%Y-%m-%d"),
+                    "working": False,
+                    "reason": "timeout",
+                    "tier": "free" if ":free" in full_id else "paid",
+                }
+        
+        self._save_benchmark_results(results_data)
+    
+    def _get_cached_recommendations(self, params: Dict, goal: GoalType) -> Optional[Dict[str, Any]]:
+        """Get recommendations from cached benchmark results if available and recent."""
+        results_data = self._load_benchmark_results()
+        benchmark_results = results_data.get("results", {})
+        
+        if not benchmark_results:
+            return None
+        
+        budget = params.get("budget", "free")
+        profile_name = params.get("profile", "balanced")
+        limit = params.get("limit", 3)
+        
+        # Filter by budget
+        working_models = []
+        for model_id, result in benchmark_results.items():
+            if not result.get("working", False):
+                continue
+            
+            # Budget filter
+            if budget == "free" and result.get("tier") != "free":
+                continue
+            
+            working_models.append({
+                "model_id": model_id,
+                "quality_score": result.get("avg_quality", 0),
+                "speed_score": result.get("speed_score", 0),
+                "avg_latency_ms": result.get("avg_latency_ms", 99999),
+                "tier": result.get("tier", "paid"),
+            })
+        
+        if not working_models:
+            return None
+        
+        # Calculate overall scores using profile weights
+        benchmark_profile = self.BENCHMARK_PROFILES.get(profile_name, self.BENCHMARK_PROFILES["balanced"])
+        
+        for m in working_models:
+            cost_score = 1.0 if m["tier"] == "free" else 0.5
+            m["overall_score"] = (
+                m["quality_score"] * benchmark_profile.get("quality_weight", 0.35) +
+                m["speed_score"] * benchmark_profile.get("speed_weight", 0.35) +
+                cost_score * benchmark_profile.get("cost_weight", 0.15)
+            )
+        
+        # Sort by score
+        working_models.sort(key=lambda x: x["overall_score"], reverse=True)
+        
+        # Build recommendations
+        recommendations = []
+        for i, r in enumerate(working_models[:limit], 1):
+            rec = {
+                "rank": i,
+                "model_id": r["model_id"],
+                "provider": r["model_id"].split("/")[1] if "/" in r["model_id"] else "unknown",
+                "overall_score": round(r["overall_score"], 3),
+                "breakdown": {
+                    "quality": r["quality_score"],
+                    "speed": r["speed_score"],
+                    "cost": 1.0 if r["tier"] == "free" else 0.5,
+                },
+                "tier": r["tier"],
+                "avg_latency_ms": r["avg_latency_ms"],
+                "why": f"Cached: q={r['quality_score']:.2f}, lat={r['avg_latency_ms']:.0f}ms",
+            }
+            recommendations.append(rec)
+        
+        if not recommendations:
+            return None
+        
+        return {
+            "success": True,
+            "goal": goal.value,
+            "budget": budget,
+            "profile": profile_name,
+            "profile_description": f"{benchmark_profile.get('description', 'cached results')}",
+            "recommendations": recommendations,
+            "summary": f"Best (cached): {recommendations[0]['model_id'].split('/')[-1]} (score: {recommendations[0]['overall_score']}, lat: {recommendations[0]['avg_latency_ms']:.0f}ms)",
+            "live_tested": False,
+            "cached": True,
+        }
+    
     def execute(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """
         Main entry point.
@@ -299,6 +450,12 @@ class BenchmarkSkill:
                 action = "recommend_live"
             
             if action == "recommend_live":
+                # Check if we should use cached results
+                use_cached = params.get("use_cached", True)
+                if use_cached:
+                    cached_result = self._get_cached_recommendations(params, goal)
+                    if cached_result:
+                        return cached_result
                 return self._recommend_models_live(params, goal)
             elif action == "compare":
                 return self._compare_models(params)
@@ -425,6 +582,9 @@ class BenchmarkSkill:
         # Limit to reasonable number but test more models
         candidates = candidates[:15]  # Test up to 15 models
         
+        # Store for later use in _update_benchmark_results
+        self._last_candidates = candidates
+        
         print(f"[Benchmark LIVE] Testing {len(candidates)} models (timeout=10s)...")
         
         # Test each model with SHORT intelligence-focused prompts
@@ -526,6 +686,9 @@ class BenchmarkSkill:
             }
             recommendations.append(rec)
         
+        # Save results to JSON file
+        self._update_benchmark_results(live_results, failed_models)
+        
         return {
             "success": True,
             "goal": goal.value,
@@ -558,6 +721,7 @@ class BenchmarkSkill:
             return free_models + paid_models
     
     def _calculate_model_score(
+        self, model_id: str, goal: GoalType, profile: Dict, constraints: List
     ) -> ModelScore:
         """Calculate comprehensive score for a model."""
         provider = model_id.split("/")[0] if "/" in model_id else "unknown"
@@ -686,6 +850,7 @@ class BenchmarkSkill:
         return uses
     
     def _apply_constraints(
+        self, models: List[ModelScore], constraints: List[str], profile: Dict
     ) -> List[ModelScore]:
         """Filter models based on constraints."""
         result = models
@@ -709,6 +874,7 @@ class BenchmarkSkill:
         return result
     
     def _explain_recommendation(
+        self, score: ModelScore, goal: GoalType, constraints: List[str]
     ) -> str:
         """Generate human-readable explanation."""
         parts = []

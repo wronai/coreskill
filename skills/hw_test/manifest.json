@@ -1,0 +1,10 @@
+{
+  "capability": "hw_test",
+  "description": "Hardware diagnostics: audio channels, devices, drivers, cross-skill hardware validation",
+  "entry": "v1/skill.py",
+  "tags": ["hardware", "audio", "diagnostics", "testing", "system"],
+  "deps": [],
+  "health_check": {
+    "command": "python3 -c 'import platform; print(platform.system())'"
+  }
+}

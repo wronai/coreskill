@@ -2,10 +2,6 @@
 """
 Enhanced test script for TTS skill v1 with auto-installation
 """
-import pytest
-
-pytest.skip("Manual/integration test (archive). Do not run in pytest suite.", allow_module_level=True)
-
 import sys
 import os
 import subprocess

@@ -11,7 +11,9 @@
           "name": "Llama 3.3 70B Instruct",
           "provider": "meta-llama",
           "context_length": 128000,
-          "tags": ["coding", "chat", "polish"]
+          "tags": ["coding", "chat", "polish"],
+          "enabled": false,
+          "comment": "timeout during benchmark - temporarily disabled"
         },
         {
           "id": "openrouter/google/gemma-3-27b-it:free",
@@ -25,21 +27,27 @@
           "name": "Mistral Small 3.1 24B",
           "provider": "mistralai",
           "context_length": 32000,
-          "tags": ["chat", "fast"]
+          "tags": ["chat", "fast"],
+          "enabled": false,
+          "comment": "timeout during benchmark - temporarily disabled"
         },
         {
           "id": "openrouter/meta-llama/llama-3.2-3b-instruct:free",
           "name": "Llama 3.2 3B Instruct",
           "provider": "meta-llama",
           "context_length": 131072,
-          "tags": ["fast", "lightweight"]
+          "tags": ["fast", "lightweight"],
+          "enabled": false,
+          "comment": "timeout during benchmark - temporarily disabled"
         },
         {
           "id": "openrouter/openai/gpt-oss-120b:free",
           "name": "GPT-OSS 120B",
           "provider": "openai",
           "context_length": 131072,
-          "tags": ["large", "reasoning"]
+          "tags": ["large", "reasoning"],
+          "enabled": false,
+          "comment": "timeout during benchmark - temporarily disabled"
         },
         {
           "id": "openrouter/google/gemma-3-12b-it:free",
@@ -226,17 +234,6 @@
     "microsoft": 0.78,
     "perplexity": 0.75
   },
-  "speed_tiers": {
-    "3b": 0.95,
-    "4b": 0.93,
-    "7b": 0.88,
-    "8b": 0.86,
-    "14b": 0.78,
-    "27b": 0.70,
-    "32b": 0.65,
-    "70b": 0.55,
-    "120b": 0.40
-  },
   "code_models": {
     "description": "Models excluded from chat (code-only, not suitable for conversation)",
     "patterns": [
@@ -247,5 +244,5 @@
       "qwen2.5-coder"
     ]
   },
-  "default": "openrouter/meta-llama/llama-3.3-70b-instruct:free"
+  "default": "openrouter/google/gemma-3-12b-it:free"
 }

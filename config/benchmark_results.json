@@ -1,0 +1,85 @@
+{
+  "description": "Live benchmark results - actual measured performance from API tests",
+  "version": "1.0",
+  "updated": "2026-03-04",
+  "test_method": "Short intelligence tests (reasoning, coding, knowledge)",
+  "test_prompts": {
+    "reasoning": "2+3*4=? Explain in 1 sentence.",
+    "coding": "Fix: def add(a,b): return a-b",
+    "knowledge": "Capital of France in 2 words."
+  },
+  "results": {
+    "openrouter/google/gemma-3-27b-it:free": {
+      "last_tested": "2026-03-04",
+      "avg_quality": 0.33,
+      "avg_latency_ms": 7201,
+      "speed_score": 0.44,
+      "tier": "free",
+      "working": true
+    },
+    "openrouter/google/gemma-3-12b-it:free": {
+      "last_tested": "2026-03-04",
+      "avg_quality": 0.33,
+      "avg_latency_ms": 7958,
+      "speed_score": 0.41,
+      "tier": "free",
+      "working": true
+    },
+    "openrouter/qwen/qwen3-coder-next": {
+      "last_tested": "2026-03-04",
+      "avg_quality": 1.0,
+      "avg_latency_ms": 3228,
+      "speed_score": 0.85,
+      "tier": "paid",
+      "working": true
+    },
+    "openrouter/x-ai/grok-4.1-fast": {
+      "last_tested": "2026-03-04",
+      "avg_quality": 1.0,
+      "avg_latency_ms": 3944,
+      "speed_score": 0.79,
+      "tier": "paid",
+      "working": true
+    },
+    "openrouter/deepseek/deepseek-v3.2": {
+      "last_tested": "2026-03-04",
+      "avg_quality": 1.0,
+      "avg_latency_ms": 6643,
+      "speed_score": 0.47,
+      "tier": "paid",
+      "working": true
+    },
+    "openrouter/openai/gpt-5-mini": {
+      "last_tested": "2026-03-04",
+      "avg_quality": 1.0,
+      "avg_latency_ms": 6424,
+      "speed_score": 0.48,
+      "tier": "paid",
+      "working": true
+    },
+    "openrouter/meta-llama/llama-3.3-70b-instruct:free": {
+      "last_tested": "2026-03-04",
+      "working": false,
+      "reason": "timeout",
+      "tier": "free"
+    },
+    "openrouter/mistralai/mistral-small-3.1-24b-instruct:free": {
+      "last_tested": "2026-03-04",
+      "working": false,
+      "reason": "timeout",
+      "tier": "free"
+    },
+    "openrouter/meta-llama/llama-3.2-3b-instruct:free": {
+      "last_tested": "2026-03-04",
+      "working": false,
+      "reason": "timeout",
+      "tier": "free"
+    },
+    "openrouter/openai/gpt-oss-120b:free": {
+      "last_tested": "2026-03-04",
+      "working": false,
+      "reason": "timeout",
+      "tier": "free"
+    }
+  }
+}

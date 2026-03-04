@@ -1,59 +1,60 @@
-# code2llm | 102f 21388L | py:102 | 2026-03-04
-# CC̄=4.8 | critical:113/932 | dups:52 | cycles:0
+# code2llm | 103f 22914L | py:103 | 2026-03-04
+# CC̄=5.0 | critical:125/963 | dups:53 | cycles:0
 
 HEALTH[20]:
-  🔴 DUP   52 classes duplicated
-  🔴 GOD   cores/v1/smart_intent.py = 927L, 5 classes, 31m, max CC=27
+  🔴 DUP   53 classes duplicated
+  🔴 GOD   cores/v1/smart_intent.py = 928L, 5 classes, 31m, max CC=32
   🔴 GOD   core.py = 609L, 6 classes, 29m, max CC=74
   🟡 CC    _run_stt_autotest CC=74 (limit:15)
   🟡 CC    main CC=74 (limit:15)
   🟡 CC    _execute_with_validation CC=56 (limit:15)
   🟡 CC    main CC=54 (limit:15)
   🟡 CC    main CC=47 (limit:15)
-  🟡 CC    analyze CC=36 (limit:15)
+  🟡 CC    analyze CC=46 (limit:15)
+  🟡 CC    classify CC=32 (limit:15)
   🟡 CC    classify CC=32 (limit:15)
   🟡 CC    run_diagnostic CC=28 (limit:15)
   🟡 CC    execute CC=28 (limit:15)
   🟡 CC    _calculate_model_score CC=28 (limit:15)
-  🟡 CC    classify CC=27 (limit:15)
+  🟡 CC    _calculate_model_score CC=28 (limit:15)
+  🟡 CC    execute CC=26 (limit:15)
+  🟡 CC    execute CC=26 (limit:15)
   🟡 CC    execute CC=26 (limit:15)
   🟡 CC    auto_fix_imports CC=25 (limit:15)
   🟡 CC    chat CC=24 (limit:15)
-  🟡 CC    analyze_need CC=24 (limit:15)
-  🟡 CC    handle_request CC=24 (limit:15)
-  🟡 CC    cmd_cache_reset CC=23 (limit:15)
 
 REFACTOR[4]:
-  1. rm duplicates  (-52 dup classes)
+  1. rm duplicates  (-53 dup classes)
   2. split cores/v1/smart_intent.py  (god module)
   3. split core.py  (god module)
   4. split 17 high-CC methods  (CC>15)
 
 COUPLING:
-                                            cores.v1                      main                     skill                      core                     seeds               skills.echo                   scripts                       cli        skills.zarz_dzania         skills.kalkulator          skills.benchmark        skills.system_info             skills.devops  skills.diagnostic_runner         skills.openrouter
-                  cores.v1                        ──                        18                                                  ←4                        ←2                        ←4                        ←4                                                                                                      ←1                                                  ←1                        ←1                            hub
-                      main                       ←18                        ──                                                  ←1                        ←2                                                  ←1                        ←3                                                                                                                                                                                        hub
-                     skill                                                                            ──                                                  ←1                        ←7                                                                            ←4                        ←3                        ←1                        ←2                                                                            ←1  hub
+                                            cores.v1                      main                     skill                      core                     seeds               skills.echo          skills.benchmark                   scripts                       cli        skills.zarz_dzania         skills.kalkulator        skills.system_info             skills.devops  skills.diagnostic_runner         skills.openrouter
+                  cores.v1                        ──                        18                                                  ←4                        ←2                        ←4                        ←8                        ←4                                                                                                                                ←1                        ←1                            hub
+                      main                       ←18                        ──                                                  ←1                        ←2                                                                            ←1                        ←3                                                                                                                                                              hub
+                     skill                                                                            ──                                                  ←1                        ←7                        ←2                                                                            ←4                        ←3                        ←2                                                                            ←1  hub
                       core                         4                         1                                                  ──                        ←8                                                                                                                                                                                                                                                                      hub
                      seeds                         2                         2                         1                         8                        ──                                                                                                                                                                                                                                                                      !! fan-out
                skills.echo                         4                                                   7                                                                            ──                                                                                                                                                                                                                                            !! fan-out
-                   scripts                         4                         1                                                                                                                                ──                        ←1                                                                                                                                                                                      
-                       cli                                                   3                                                                                                                                 1                        ──                                                                                                                                                                                      
-        skills.zarz_dzania                                                                             4                                                                                                                                                          ──                                                                                                                                                            
-         skills.kalkulator                                                                             3                                                                                                                                                                                    ──                                                                                                                                  
-          skills.benchmark                         1                                                   1                                                                                                                                                                                                              ──                                                                                                        
+          skills.benchmark                         8                                                   2                                                                                                      ──                                                                                                                                                                                                                  !! fan-out
+                   scripts                         4                         1                                                                                                                                                          ──                        ←1                                                                                                                                                            
+                       cli                                                   3                                                                                                                                                           1                        ──                                                                                                                                                            
+        skills.zarz_dzania                                                                             4                                                                                                                                                                                    ──                                                                                                                                  
+         skills.kalkulator                                                                             3                                                                                                                                                                                                              ──                                                                                                        
         skills.system_info                                                                             2                                                                                                                                                                                                                                        ──                                                                              
              skills.devops                         1                                                                                                                                                                                                                                                                                                                      ──                                                    
   skills.diagnostic_runner                         1                                                                                                                                                                                                                                                                                                                                                ──                          
          skills.openrouter                                                                             1                                                                                                                                                                                                                                                                                                                      ──
   CYCLES: none
-  HUB: core/ (fan-in=8)
   HUB: skill/ (fan-in=20)
-  HUB: cores.v1/ (fan-in=17)
   HUB: main/ (fan-in=25)
-  SMELL: skills.echo/ fan-out=11 → split needed
+  HUB: core/ (fan-in=8)
+  HUB: cores.v1/ (fan-in=24)
+  SMELL: skills.benchmark/ fan-out=10 → split needed
   SMELL: seeds/ fan-out=13 → split needed
   SMELL: cores.v1/ fan-out=18 → split needed
+  SMELL: skills.echo/ fan-out=11 → split needed
 
 LAYERS:
   scripts/                        CC̄=7.7    ←in:1  →out:5
@@ -68,15 +69,15 @@ LAYERS:
   │ __init__                    24L  0C    0m  CC=0.0    ←0
   │
   cores/                          CC̄=5.8    ←in:0  →out:0  ×DUP
-  │ !! core                      1199L  0C   50m  CC=47     ←2
-  │ !! smart_intent               927L  5C   31m  CC=27     ←0  ×DUP
+  │ !! core                      1270L  0C   50m  CC=47     ←2
+  │ !! smart_intent               928L  5C   31m  CC=32     ←0  ×DUP
   │ !! evo_engine                 742L  2C   16m  CC=56     ←0
   │ !! voice_loop                 687L  0C    6m  CC=74     ←1
   │ !! auto_repair                600L  2C   22m  CC=14     ←0
   │ !! self_reflection            577L  3C   18m  CC=28     ←0
   │ !! skill_manager              553L  1C   24m  CC=18     ←0
-  │ !! intent_engine              502L  1C   16m  CC=36     ←0
-  │ !! session_config             494L  2C   23m  CC=15     ←14
+  │ !! intent_engine              517L  1C   16m  CC=46     ←0
+  │ !! session_config             494L  2C   23m  CC=15     ←16
   │ !! provider_selector          448L  3C   26m  CC=18     ←0
   │ !  repair_journal             423L  3C   16m  CC=11     ←0
   │ !! evo_journal                422L  2C   20m  CC=18     ←0
@@ -89,7 +90,7 @@ LAYERS:
   │ !  skill_logger               303L  0C    9m  CC=11     ←3
   │ !  config_generator           277L  1C   10m  CC=13     ←1
   │ !  config                     245L  1C   14m  CC=10     ←14
-  │ !  __init__                   184L  1C   11m  CC=11     ←18
+  │ !  __init__                   184L  1C   11m  CC=11     ←19
   │ system_identity            179L  2C    9m  CC=8      ←0
   │ user_memory                177L  1C   10m  CC=6      ←0
   │ !  resource_monitor           167L  1C   12m  CC=13     ←0
@@ -106,8 +107,9 @@ LAYERS:
   │ !! core_v1                    357L  5C   27m  CC=54     ←0  ×DUP
   │ echo_skill_v1               25L  1C    4m  CC=1      ←0
   │
-  skills/                         CC̄=3.4    ←in:0  →out:0  ×DUP
-  │ !! skill                      568L  3C   18m  CC=28     ←0
+  skills/                         CC̄=3.9    ←in:0  →out:0  ×DUP
+  │ !! skill                      994L  3C   24m  CC=28     ←0  ×DUP
+  │ !! skill                      994L  3C   24m  CC=28     ←0  ×DUP
   │ !  skill                      287L  1C   11m  CC=13     ←0
   │ !! skill                      278L  1C   10m  CC=18     ←0  ×DUP
   │ skill                      242L  1C   10m  CC=8      ←0
@@ -144,6 +146,7 @@ LAYERS:
   │ skill                       79L  1C    4m  CC=5      ←0
   │ skill                       78L  1C    4m  CC=5      ←0
   │ !  skill                       77L  1C    4m  CC=13     ←0
+  │ skill                       77L  0C    4m  CC=3      ←0
   │ skill                       77L  1C    4m  CC=8      ←0
   │ skill                       75L  1C    4m  CC=7      ←0
   │ skill                       75L  1C    4m  CC=7      ←0
@@ -163,13 +166,12 @@ LAYERS:
   │ skill                       64L  1C    5m  CC=8      ←0
   │ skill                       63L  1C    4m  CC=5      ←0
   │ skill                       61L  1C    4m  CC=5      ←0
-  │ skill                       58L  0C    3m  CC=3      ←0
   │ skill                       34L  1C    4m  CC=1      ←0
   │ skill                       29L  1C    3m  CC=4      ←0
   │ skill                       22L  1C    3m  CC=2      ←0
   │
 
-DUPLICATES[52]:
+DUPLICATES[53]:
   EmbeddingEngine  cores/v1/smart_intent.py ↔ cores/v1/intent/embedding.py
     A: 8m  __init__ _bow_vector _normalize_pl _try_init available encode install_hint similarity
     B: 8m  __init__ _bow_vector _normalize_pl _try_init available encode install_hint similarity
@@ -330,6 +332,10 @@ DUPLICATES[52]:
     A: 7m  __init__ check_python_module check_system execute get_info health_check pip_install
     B: 5m  __init__ check_system execute get_info health_check
     DIFF: A has +check_python_module,pip_install → keep A
+  Supervisor  seeds/core_v1.py ↔ core.py
+    A: 5m  __init__ active health recover switch
+    B: 3m  __init__ active switch
+    DIFF: A has +health,recover → keep A
   STTSkill  skills/stt/providers/vosk/stable/skill.py ↔ skills/stt/providers/vosk/archive/v6/skill.py
     A: 7m  __init__ _check_audio_level _ensure_wav _find_vosk_model _record_wav _transcribe_vosk execute
     B: 5m  __init__ _ensure_wav _record_wav _transcribe_vosk execute
@@ -358,6 +364,10 @@ DUPLICATES[52]:
     A: 5m  __init__ _ensure_wav _record_wav _transcribe_vosk execute
     B: 5m  __init__ _ensure_wav _record_wav _transcribe_vosk execute
     DIFF: IDENTICAL → rm B
+  BenchmarkSkill  skills/benchmark/v1/skill.py ↔ skills/benchmark/v3/skill.py
+    A: 21m  __init__ _analyze_current_model _apply_constraints _calculate_model_score _call_model_for_benchmark _compare_models _determine_use_cases _estimate_context_length
+    B: 21m  __init__ _analyze_current_model _apply_constraints _calculate_model_score _call_model_for_benchmark _compare_models _determine_use_cases _estimate_context_length
+    DIFF: IDENTICAL → rm B
   STTSkill  skills/stt/providers/vosk/archive/v3/skill.py ↔ skills/stt/providers/vosk/archive/v7/skill.py
     A: 5m  __init__ _ensure_wav _record_wav _transcribe_vosk execute
     B: 6m  __init__ _ensure_wav _find_model_path _record_wav _transcribe_vosk execute
@@ -374,33 +384,35 @@ DUPLICATES[52]:
     A: 4m  copy_file execute file_info list_directory
     B: 4m  copy_file execute file_info list_files
     DIFF: A has +list_directory → keep A
-  Supervisor  core.py ↔ seeds/core_v1.py
-    A: 3m  __init__ active switch
-    B: 5m  __init__ active health recover switch
-    DIFF: B has +health,recover → keep B
 
-FUNCTIONS (CC≥10, 113 of 928):
+FUNCTIONS (CC≥10, 125 of 959):
    74.0  _run_stt_autotest                          41n   3exit  loops+cond+ret  !! split
    74.0  main                                       29n   1exit  loops+cond  !! split
    56.0  EvoEngine._execute_with_validation         64n   4exit  loops+cond+ret  !! split
    54.0  main                                       21n   1exit  loops+cond  !! split
    47.0  main                                       53n   1exit  loops+cond  !! split
-   36.0  IntentEngine.analyze                       51n  10exit  cond+ret  !! split
+   46.0  IntentEngine.analyze                       55n  10exit  cond+ret  !! split
+   32.0  SmartIntentClassifier.classify             38n  13exit  cond+ret  !! split
    32.0  SmartIntentClassifier.classify             54n  15exit  cond+ret  !! split
    28.0  SelfReflection.run_diagnostic              37n   2exit  cond+ret  !! split
    28.0  ShellSkill.execute                         13n   4exit  loops+cond+ret  !! split
-   28.0  BenchmarkSkill._calculate_model_score      36n   2exit  loops+cond+ret  !! split
-   27.0  SmartIntentClassifier.classify             38n  13exit  cond+ret  !! split
+   28.0  BenchmarkSkill._calculate_model_score      36n   2exit  loops+cond+ret  ×DUP  !! split
+   28.0  BenchmarkSkill._calculate_model_score      36n   2exit  loops+cond+ret  ×DUP  !! split
+   26.0  BenchmarkSkill.execute                      2n   1exit    ×DUP  !! split
    26.0  ZarzadzaniaSkill.execute                    2n   1exit    !! split
+   26.0  BenchmarkSkill.execute                      2n   1exit    ×DUP  !! split
    25.0  SkillPreflight.auto_fix_imports            31n   3exit  loops+cond+ret  !! split
    24.0  LLMClient.chat                             29n   3exit  loops+cond+ret  !! split
    24.0  LLMClient.analyze_need                     31n   8exit  loops+cond+ret  !! split
    24.0  EvoEngine.handle_request                   47n  12exit  cond+ret  !! split
    23.0  cmd_cache_reset                            19n   2exit  loops+cond+ret  !! split
+   23.0  _cmd_autotune                              35n   4exit  loops+cond+ret  !! split
    22.0  Simulator._final_report                    21n   1exit  loops+cond  !! split
    22.0  IntentEngine._extract_config_target        38n  11exit  loops+cond+ret  !! split
    21.0  Simulator.run_scenario                      8n   2exit  loops+cond+ret  !! split
    21.0  EvolutionGuard.is_stub_skill               22n   7exit  cond+ret  !! split
+   21.0  BenchmarkSkill._recommend_models_live      17n   2exit  loops+cond+ret  ×DUP  !! split
+   21.0  BenchmarkSkill._recommend_models_live      17n   2exit  loops+cond+ret  ×DUP  !! split
    20.0  cmd_logs_reset                             21n   2exit  loops+cond+ret  !! split
    20.0  _run_voice_loop                            15n   1exit  loops+cond  !! split
    20.0  EvoEngine._autonomous_stt_repair           24n   5exit  cond+ret  !! split
@@ -419,21 +431,15 @@ FUNCTIONS (CC≥10, 113 of 928):
    17.0  EvoEngine._try_fallback_providers          15n   5exit  loops+cond+ret  !! split
    17.0  _handle_outcome                            25n   5exit  loops+cond+ret  !! split
    17.0  _cmd_health                                12n   1exit  loops+cond  !! split
+   17.0  BenchmarkSkill._score_benchmark_response   30n   3exit  cond+ret  ×DUP  !! split
+   17.0  BenchmarkSkill._score_benchmark_response   30n   3exit  cond+ret  ×DUP  !! split
    16.0  StableSnapshot.validate_against_stable     17n   6exit  cond+ret  !! split
    16.0  _cmd_snapshot                              13n   1exit  loops+cond  !! split
-   16.0  check_readiness                            18n   2exit  loops+cond+ret  !! split
-   15.0  ProviderSelector._score                    21n   2exit  cond+ret  !! split
-   15.0  LLMClient._report_fail                     12n   1exit  cond  !! split
-   15.0  SessionConfig.handle_configure_intent      25n   6exit  cond+ret  !! split
-   15.0  BenchmarkSkill._analyze_current_model       6n   3exit  cond+ret  !! split
-   14.0  _try_pulseaudio_fix                         5n   2exit  cond+ret
-   14.0  AutoRepair.run_boot_repair                 15n   3exit  loops+cond+ret
-   14.0  SelfReflection.record_skill_outcome        17n   5exit  loops+cond+ret
-   14.0  SelfReflection._print_report               14n   1exit  loops+cond
+   16.0  BenchmarkSkill._run_live_benchmark          8n   2exit  loops+cond+ret  ×DUP  !! split
 
   summary:
-    critical(≥10): 113 | high(5-10): 206 | medium(2-5): 294 | low(<2): 315
-    12% CC≥10  34% CC≥5
+    critical(≥10): 125 | high(5-10): 214 | medium(2-5): 301 | low(<2): 319
+    13% CC≥10  35% CC≥5
 
 HOTSPOTS:
   #1  main                                 fan=64   "calls 64 functions"
@@ -441,22 +447,23 @@ HOTSPOTS:
   #3  main                                 fan=55   "calls 55 functions"
   #4  EvoEngine._execute_with_validation   fan=47   "EvoEngine method, fan-out=47"
   #5  main                                 fan=40   "calls 40 functions"
-  #6  SkillManager.smart_evolve            fan=30   "SkillManager method, fan-out=30"
-  #7  SelfReflection.run_diagnostic        fan=26   "SelfReflection method, fan-out=26"
-  #8  IntentEngine.analyze                 fan=24   "analysis pipeline, 24 stages"
-  #9  ShellSkill.execute                   fan=23   "ShellSkill method, fan-out=23"
-  #10 SkillManager.exec_skill              fan=23   "SkillManager method, fan-out=23"
+  #6  BenchmarkSkill._recommend_models_live  fan=33   "BenchmarkSkill method, fan-out=33"
+  #7  BenchmarkSkill._recommend_models_live  fan=33   "BenchmarkSkill method, fan-out=33"
+  #8  SkillManager.smart_evolve            fan=30   "SkillManager method, fan-out=30"
+  #9  SelfReflection.run_diagnostic        fan=26   "SelfReflection method, fan-out=26"
+  #10 IntentEngine.analyze                 fan=25   "analysis pipeline, 25 stages"
 
 CLASSES:
   SessionConfig                  ████████████████████████  23m  CC̄=5.0   max=15    !!
   SkillManager                   ██████████████████████    22m  CC̄=7.5   max=18    !!
+  BenchmarkSkill                 █████████████████████     21m  CC̄=9.9   max=28    !!  ×1
+  BenchmarkSkill                 █████████████████████     21m  CC̄=9.9   max=28    !!  ×1
   AutoRepair                     ████████████████████      20m  CC̄=7.5   max=14  
   SelfReflection                 ██████████████████        18m  CC̄=7.4   max=28    !!
   EvolutionJournal               █████████████████         17m  CC̄=5.0   max=18    !!
   RepairJournal                  ████████████████          16m  CC̄=4.9   max=11  
-  IntentEngine                   ████████████████          16m  CC̄=8.1   max=36    !!
-  SmartIntentClassifier          ███████████████           15m  CC̄=5.7   max=27    !!
-  BenchmarkSkill                 ███████████████           15m  CC̄=7.9   max=28    !!
+  IntentEngine                   ████████████████          16m  CC̄=8.7   max=46    !!
+  SmartIntentClassifier          ███████████████           15m  CC̄=6.1   max=32    !!
   StableSnapshot                 ██████████████            14m  CC̄=6.5   max=16    !!
   ProviderChain                  █████████████             13m  CC̄=3.1   max=10  
   SmartIntentClassifier          █████████████             13m  CC̄=5.8   max=32    !!
@@ -479,25 +486,25 @@ CLASSES:
   FailureTracker                 ███████                    7m  CC̄=1.3   max=2   
   EmbeddingEngine                ███████                    7m  CC̄=4.0   max=9     ×1
   DepsSkill                      ███████                    7m  CC̄=2.6   max=7     ×1
-  STTSkill                       ███████                    7m  CC̄=8.7   max=18    !!  ×10
   SkillManager                   ███████                    7m  CC̄=6.6   max=19    !!
+  STTSkill                       ███████                    7m  CC̄=8.7   max=18    !!  ×10
   Simulator                      ██████                     6m  CC̄=11.0  max=22    !!
   DepsSkill                      ██████                     6m  CC̄=3.8   max=6     ×1
-  STTSkill                       ██████                     6m  CC̄=6.3   max=13    ×10
-  DiagnosticRunner               ██████                     6m  CC̄=5.2   max=11  
   SkillLoader                    ██████                     6m  CC̄=6.2   max=10  
   PipelineEngine                 ██████                     6m  CC̄=4.0   max=14  
+  STTSkill                       ██████                     6m  CC̄=6.3   max=13    ×10
+  DiagnosticRunner               ██████                     6m  CC̄=5.2   max=11  
   SkillPreflight                 █████                      5m  CC̄=13.0  max=25    !!
   SelfReflectionEngine           █████                      5m  CC̄=3.6   max=9   
   PromptManager                  █████                      5m  CC̄=1.0   max=1   
   SimpleHTMLTextExtractor        █████                      5m  CC̄=1.8   max=3   
   WebSearchSkill                 █████                      5m  CC̄=4.2   max=6   
   DepsSkill                      █████                      5m  CC̄=2.6   max=8     ×1
+  Supervisor                     █████                      5m  CC̄=1.6   max=3     ×1
   STTSkill                       █████                      5m  CC̄=5.2   max=13    ×10
   STTSkill                       █████                      5m  CC̄=5.2   max=13    ×10
   STTSkill                       █████                      5m  CC̄=5.2   max=13    ×10
   LLMRouterSkill                 █████                      5m  CC̄=4.4   max=7   
-  Supervisor                     █████                      5m  CC̄=1.6   max=3     ×1
   LocalLLMClassifier             ████                       4m  CC̄=6.5   max=10    ×1
   PipelineManager                ████                       4m  CC̄=2.8   max=6     ×1
   Kalkulator                     ████                       4m  CC̄=1.8   max=3     ×36
@@ -507,13 +514,13 @@ CLASSES:
   Kalkulator                     ████                       4m  CC̄=1.8   max=3     ×36
   Kalkulator                     ████                       4m  CC̄=1.8   max=3     ×36
   Kalkulator                     ████                       4m  CC̄=1.8   max=3     ×36
+  LLMClient                      ████                       4m  CC̄=1.5   max=2   
+  PipelineManager                ████                       4m  CC̄=2.8   max=6     ×1
+  LLM                            ████                       4m  CC̄=2.0   max=4   
+  SkillCreator                   ████                       4m  CC̄=3.0   max=6   
   FileManagerSkill               ████                       4m  CC̄=5.5   max=8     ×1
   ZarzadzaniaSkill               ████                       4m  CC̄=5.2   max=8   
   FileManagerSkill               ████                       4m  CC̄=5.2   max=8     ×1
-  LLM                            ████                       4m  CC̄=2.0   max=4   
-  SkillCreator                   ████                       4m  CC̄=3.0   max=6   
-  LLMClient                      ████                       4m  CC̄=1.5   max=2   
-  PipelineManager                ████                       4m  CC̄=2.8   max=6     ×1
   SimulationResult               ███                        3m  CC̄=1.0   max=1   
   EvolutionEntry                 ███                        3m  CC̄=2.0   max=4   
   PreflightResult                ███                        3m  CC̄=1.7   max=2   
@@ -570,10 +577,12 @@ CLASSES:
   HealingStage                                              0m  CC̄=0.0   max=0.0 
   HealingTask                                               0m  CC̄=0.0   max=0.0 
   HealingResult                                             0m  CC̄=0.0   max=0.0 
+  C                                                         0m  CC̄=0.0   max=0.0 
+  C                                                         0m  CC̄=0.0   max=0.0 
   GoalType                                                  0m  CC̄=0.0   max=0.0 
   ModelScore                                                0m  CC̄=0.0   max=0.0 
-  C                                                         0m  CC̄=0.0   max=0.0 
-  C                                                         0m  CC̄=0.0   max=0.0 
+  GoalType                                                  0m  CC̄=0.0   max=0.0 
+  ModelScore                                                0m  CC̄=0.0   max=0.0 
 
 D:
   cores/v1/voice_loop.py:
@@ -723,6 +732,25 @@ Triggers a...
     e: IntentEngine
     IntentEngine  # Context-aware intent detection with ML-based classification....
       __init__(3)  CC=1.0
+  cores/v1/smart_intent.py:
+    e: IntentResult,TrainingExample,EmbeddingEngine,LocalLLMClassifier,SmartIntentClassifier,_load_default_training,create_smart_classifier
+    IntentResult  # Result of intent classification....
+      to_analysis(0)  CC=4.0
+    TrainingExample  # Single training example: phrase → intent + skill....
+      to_dict(0)  CC=1.0
+    EmbeddingEngine  ×DUP  # Sentence-transformers based embedding for intent similarity....
+      __init__(1)  CC=2.0
+    LocalLLMClassifier  ×DUP  # Uses local ollama model (Qwen 3B) for intent classification....
+      __init__(0)  CC=1.0
+    SmartIntentClassifier  # ML-based intent classifier for evo-engine.
+
+Replaces all har...
+      __init__(2)  CC=2.0
+        → _load_training_data(0)  CC=7.0
+        → _training_path(0)  CC=3.0
+        → _save_training_data(0)  CC=2.0
+    _load_default_training()
+    create_smart_classifier(state_dir,llm_client)
   cores/v1/intent/__init__.py:
     e: IntentResult,SmartIntentClassifier,create_smart_classifier
     IntentResult  # Result of intent classification....
@@ -751,31 +779,22 @@ Triggers a...
     e: GoalType,ModelScore,BenchmarkSkill,execute,get_info,health_check
     GoalType
     ModelScore
-    BenchmarkSkill  # Analyzes and benchmarks LLM models for goal-based recommenda...
+    BenchmarkSkill  ×DUP  # Analyzes and benchmarks LLM models for goal-based recommenda...
       __init__(0)  CC=1.0
         → _load_config(0)  CC=4.0
     execute(params)
     get_info()
     health_check()
-  cores/v1/smart_intent.py:
-    e: IntentResult,TrainingExample,EmbeddingEngine,LocalLLMClassifier,SmartIntentClassifier,_load_default_training,create_smart_classifier
-    IntentResult  # Result of intent classification....
-      to_analysis(0)  CC=4.0
-    TrainingExample  # Single training example: phrase → intent + skill....
-      to_dict(0)  CC=1.0
-    EmbeddingEngine  ×DUP  # Sentence-transformers based embedding for intent similarity....
-      __init__(1)  CC=2.0
-    LocalLLMClassifier  ×DUP  # Uses local ollama model (Qwen 3B) for intent classification....
+  skills/benchmark/v3/skill.py:
+    e: GoalType,ModelScore,BenchmarkSkill,execute,get_info,health_check
+    GoalType
+    ModelScore
+    BenchmarkSkill  ×DUP  # Analyzes and benchmarks LLM models for goal-based recommenda...
       __init__(0)  CC=1.0
-    SmartIntentClassifier  # ML-based intent classifier for evo-engine.
-
-Replaces all har...
-      __init__(2)  CC=2.0
-        → _load_training_data(0)  CC=7.0
-        → _training_path(0)  CC=3.0
-        → _save_training_data(0)  CC=2.0
-    _load_default_training()
-    create_smart_classifier(state_dir,llm_client)
+        → _load_config(0)  CC=4.0
+    execute(params)
+    get_info()
+    health_check()
   skills/zarz_dzania/v5/skill.py:
     e: ZarzadzaniaSkill,get_info,health_check,execute
     ZarzadzaniaSkill
@@ -1133,12 +1152,6 @@ Flow per t...
       __init__(0)  CC=1.0
     get_info()
     health_check()
-  skills/devops/v1/skill.py:
-    e: DevOpsSkill,get_info,health_check
-    DevOpsSkill  # Test, validate and deploy skills in isolated subprocess....
-      check_syntax(1)  CC=2.0
-    get_info()
-    health_check()
   skills/network_info/v1/skill.py:
     e: get_info,execute,health_check
     get_info()
@@ -1151,6 +1164,12 @@ Flow per t...
     get_info()
     health_check()
     check_readiness()
+  skills/devops/v1/skill.py:
+    e: DevOpsSkill,get_info,health_check
+    DevOpsSkill  # Test, validate and deploy skills in isolated subprocess....
+      check_syntax(1)  CC=2.0
+    get_info()
+    health_check()
   skills/tts/providers/espeak/archive/v1/skill.py:
     e: TTSSkill,get_info,health_check,check_readiness
     TTSSkill  # Text-to-Speech using espeak (stdlib + subprocess only, zero ...
@@ -1276,9 +1295,6 @@ Flow per t...
       check_python_module(1)  CC=2.0
     get_info()
     health_check()
-  examples/advanced/01_pipeline.py:
-    e: main
-    main()
   cores/v1/utils.py:
     e: _quiet_print,_quiet_warning,setup_litellm,clean_code,clean_json
     _quiet_print()
@@ -1286,6 +1302,9 @@ Flow per t...
     setup_litellm()
     clean_code(code)
     clean_json(text)
+  examples/advanced/01_pipeline.py:
+    e: main
+    main()
   skill.py:
     e: TTSSkill,get_info,health_check,_pip,_speak_pyttsx3,_speak_gtts,_speak_espeak,execute
     TTSSkill
@@ -1423,8 +1442,9 @@ Flow per t...
     execute(params)
     health_check()
   skills/weather/v1/skill.py:
-    e: _fetch_weather,health_check,get_info
+    e: _fetch_weather,execute,health_check,get_info
     _fetch_weather(location)
+    execute(input_data)
     health_check()
     get_info()
   skills/kalkulator/v29/skill.py:
@@ -1486,11 +1506,11 @@ Flow per t...
   examples/basic/01_hello.py:
     e: main
     main()
-  setup.py:
   __init__.py:
+  setup.py:
   cores/v1/__init__.py:
   cores/v1/intent/training.py:
-  setup.py:
   __init__.py:
+  setup.py:
   setup.py:
   __init__.py:

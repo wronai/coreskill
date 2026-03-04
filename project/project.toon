@@ -1,6 +1,6 @@
-# coreskill | 143f 27517L | python:143
+# coreskill | 145f 29457L | python:145
 # Keys: M=modules, D=details, i=imports, c=classes, f=functions, m=methods
-M[143]:
+M[145]:
   __init__.py,19
   build_core.py,525
   cli.py,248
@@ -9,7 +9,7 @@ M[143]:
   cores/v1/auto_repair.py,450
   cores/v1/config.py,188
   cores/v1/config_generator.py,221
-  cores/v1/core.py,973
+  cores/v1/core.py,1033
   cores/v1/evo_engine.py,580
   cores/v1/evo_journal.py,350
   cores/v1/garbage_collector.py,248
@@ -17,7 +17,7 @@ M[143]:
   cores/v1/intent/embedding.py,117
   cores/v1/intent/local_llm.py,96
   cores/v1/intent/training.py,103
-  cores/v1/intent_engine.py,379
+  cores/v1/intent_engine.py,391
   cores/v1/llm_client.py,325
   cores/v1/logger.py,104
   cores/v1/pipeline_manager.py,39
@@ -31,7 +31,7 @@ M[143]:
   cores/v1/session_config.py,370
   cores/v1/skill_logger.py,245
   cores/v1/skill_manager.py,459
-  cores/v1/smart_intent.py,717
+  cores/v1/smart_intent.py,721
   cores/v1/stable_snapshot.py,318
   cores/v1/supervisor.py,69
   cores/v1/system_identity.py,157
@@ -48,7 +48,9 @@ M[143]:
   seeds/echo_skill_v1.py,19
   setup.py,40
   skill.py,78
-  skills/benchmark/v1/skill.py,448
+  skills/benchmark/v1/skill.py,798
+  skills/benchmark/v2/skill.py,360
+  skills/benchmark/v3/skill.py,798
   skills/deps/v1/skill.py,150
   skills/deps/v2/skill.py,84
   skills/deps/v3/skill.py,67
@@ -132,7 +134,7 @@ M[143]:
   skills/tts/providers/espeak/archive/v72/skill.py,22
   skills/tts/providers/espeak/latest/skill.py,4
   skills/tts/providers/espeak/stable/skill.py,54
-  skills/weather/v1/skill.py,43
+  skills/weather/v1/skill.py,58
   skills/web_search/providers/duckduckgo/v1/skill.py,131
   skills/zarz_dzania/v1/skill.py,110
   skills/zarz_dzania/v2/skill.py,111
@@ -426,10 +428,25 @@ D:
     execute(input_data)
   skills/benchmark/v1/skill.py:
     i: json,time,os,dataclasses.{asdict,dataclass},pathlib.Path,typing.{Any,Dict,List,Optional}
-    e: GoalType,ModelScore,BenchmarkSkill,execute,get_info,health_check
+    e: BENCHMARK_TESTS,GoalType,ModelScore,BenchmarkSkill,execute,get_info,health_check
     GoalType: 
     ModelScore: 
-    BenchmarkSkill: __init__(0),_load_config(0),_get_models_from_tier(2),execute(1),_recommend_models(2)  # Analyzes and benchmarks LLM models fo...
+    BenchmarkSkill: __init__(0),_load_config(0),_get_models_from_tier(2),_get_api_key(0),execute(1)  # Analyzes and benchmarks LLM models fo...
+    execute(params:Dict[str;Any])->Dict[str, Any]
+    get_info()
+    health_check()
+  skills/benchmark/v2/skill.py:
+    i: json,time,os,re,subprocess,pathlib.Path,typing.{Any,Dict,List,Optional}
+    e: ModelScore,GoalType,BenchmarkSkill
+    ModelScore: 
+    GoalType: 
+    BenchmarkSkill: __init__(0),_load_config(0),_get_models_from_tier(2),_get_api_key(0),execute(1)  # Analyzes and benchmarks LLM models fo...
+  skills/benchmark/v3/skill.py:
+    i: json,time,os,dataclasses.{asdict,dataclass},pathlib.Path,typing.{Any,Dict,List,Optional}
+    e: BENCHMARK_TESTS,GoalType,ModelScore,BenchmarkSkill,execute,get_info,health_check
+    GoalType: 
+    ModelScore: 
+    BenchmarkSkill: __init__(0),_load_config(0),_get_models_from_tier(2),_get_api_key(0),execute(1)  # Analyzes and benchmarks LLM models fo...
     execute(params:Dict[str;Any])->Dict[str, Any]
     get_info()
     health_check()
@@ -1000,8 +1017,9 @@ D:
     check_readiness()
   skills/weather/v1/skill.py:
     i: json,ssl,typing.{Any,Dict},urllib.{error,request}
-    e: health_check,get_info
+    e: execute,health_check,get_info
     _fetch_weather(location:str)->Dict
+    execute(input_data:Dict[str;Any])->Dict[str, Any]
     health_check()->Dict[str, Any]
     get_info()
   skills/web_search/providers/duckduckgo/v1/skill.py:
