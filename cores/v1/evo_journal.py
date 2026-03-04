@@ -323,6 +323,10 @@ class EvolutionJournal:
             return "optimize_performance"
         if "stub" in el or "not implemented" in el:
             return "rewrite_from_scratch"
+        if "interface" in el or "get_info" in el or "health_check" in el:
+            return "normal_evolve"  # needs LLM to add missing functions
+        if "preflight" in el:
+            return "normal_evolve"
 
         # Check history: which strategy worked best for this skill?
         history = self.get_skill_history(skill_name, 5)

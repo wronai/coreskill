@@ -153,3 +153,151 @@ def skill_health_summary(skill_name):
         }
     except Exception as e:
         return {"skill": skill_name, "status": "error", "detail": str(e)}
+
+
+# ─── Markdown Export Functions ───────────────────────────────────────
+def get_markdown_logs(last_n: int = 50, skill_name: str = None) -> str:
+    """Get logs formatted as markdown ready for LLM with code blocks."""
+    import sqlite3
+    if not _SQLITE_PATH.exists():
+        return "# Skill Logs\n\n*No logs available*"
+    
+    try:
+        conn = sqlite3.connect(str(_SQLITE_PATH))
+        conn.row_factory = sqlite3.Row
+        
+        if skill_name:
+            rows = conn.execute(
+                "SELECT * FROM logs WHERE function LIKE ? ORDER BY timestamp DESC LIMIT ?",
+                (f"%{skill_name}%", last_n)
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM logs ORDER BY timestamp DESC LIMIT ?",
+                (last_n,)
+            ).fetchall()
+        conn.close()
+        
+        if not rows:
+            return "# Skill Logs\n\n*No logs found*"
+        
+        lines = [f"# Skill Logs (last {len(rows)} entries)\n"]
+        
+        for row in rows:
+            r = dict(row)
+            ts = r.get("timestamp", "unknown")
+            func = r.get("function_name", "unknown")
+            level = r.get("level", "INFO")
+            
+            lines.append(f"## [{ts}] `{func}` - Level {level}")
+            lines.append("")
+            
+            # Exception as code block
+            if r.get("exception"):
+                lines.append("### Exception")
+                lines.append("```")
+                lines.append(r["exception"][:500])
+                lines.append("```")
+                lines.append("")
+            
+            # Arguments as JSON code block
+            if r.get("args") or r.get("kwargs"):
+                lines.append("### Arguments")
+                lines.append("```json")
+                args_data = {"args": r.get("args", []), "kwargs": r.get("kwargs", {})}
+                lines.append(json.dumps(args_data, indent=2, ensure_ascii=False))
+                lines.append("```")
+                lines.append("")
+            
+            # Return value as JSON
+            if r.get("return_value"):
+                lines.append("### Return")
+                lines.append("```json")
+                lines.append(json.dumps(r["return_value"], indent=2, ensure_ascii=False)[:500])
+                lines.append("```")
+                lines.append("")
+            
+            if r.get("duration_ms"):
+                lines.append(f"**Duration:** {r['duration_ms']}ms")
+                lines.append("")
+            
+            lines.append("---")
+            lines.append("")
+        
+        return "\n".join(lines)
+    except Exception as e:
+        return f"# Skill Logs\n\nError loading logs: {e}"
+
+
+def get_errors_markdown(skill_name=None, last_n=20) -> str:
+    """Get errors formatted as markdown for LLM analysis."""
+    errors = query_skill_errors(skill_name, last_n)
+    
+    header = f"# Error Log"
+    if skill_name:
+        header += f": `{skill_name}`"
+    header += f" ({len(errors)} errors)\n"
+    
+    if not errors:
+        return header + "\n*No errors found*"
+    
+    lines = [header]
+    for err in errors:
+        ts = err.get("timestamp", "unknown")
+        func = err.get("function_name", "unknown")
+        exc = err.get("exception", "No details")
+        
+        lines.append(f"## [{ts}] `{func}`")
+        lines.append("")
+        lines.append("```python")
+        lines.append(exc[:500])
+        lines.append("```")
+        lines.append("")
+    
+    return "\n".join(lines)
+
+
+def get_health_markdown() -> str:
+    """Get health summary for all skills as markdown."""
+    import sqlite3
+    
+    if not _SQLITE_PATH.exists():
+        return "# Health Summary\n\n*No data available*"
+    
+    try:
+        conn = sqlite3.connect(str(_SQLITE_PATH))
+        rows = conn.execute(
+            "SELECT DISTINCT function FROM logs WHERE function LIKE '%'"
+        ).fetchall()
+        conn.close()
+        
+        skills = set()
+        for (func,) in rows:
+            skill = func.split('.')[0] if '.' in func else func
+            skills.add(skill)
+        
+        lines = ["# Health Summary\n"]
+        
+        for skill_name in sorted(skills):
+            health = skill_health_summary(skill_name)
+            
+            status = health.get("status", "unknown")
+            if status == "healthy":
+                emoji = "✅"
+            elif status == "degraded":
+                emoji = "⚠️"
+            else:
+                emoji = "❌"
+            
+            lines.append(f"## {emoji} `{skill_name}`")
+            lines.append("")
+            lines.append(f"- **Status:** {status}")
+            lines.append(f"- **Calls:** {health.get('total_calls', 0)}")
+            lines.append(f"- **Errors:** {health.get('errors', 0)}")
+            lines.append(f"- **Error Rate:** {health.get('error_rate', 0):.1%}")
+            lines.append(f"- **Avg Duration:** {health.get('avg_duration_ms', 'N/A')}ms")
+            lines.append("")
+        
+        return "\n".join(lines)
+    except Exception as e:
+        return f"# Health Summary\n\nError: {e}"

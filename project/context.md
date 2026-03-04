@@ -4,19 +4,19 @@
 
 - **Project**: /home/tom/github/wronai/coreskill
 - **Analysis Mode**: static
-- **Total Functions**: 549
-- **Total Classes**: 76
-- **Modules**: 63
-- **Entry Points**: 502
+- **Total Functions**: 629
+- **Total Classes**: 75
+- **Modules**: 59
+- **Entry Points**: 573
 
 ## Architecture by Module
 
 ### cores.v1.core
-- **Functions**: 49
+- **Functions**: 50
 - **File**: `core.py`
 
 ### cores.v1.smart_intent
-- **Functions**: 29
+- **Functions**: 30
 - **Classes**: 5
 - **File**: `smart_intent.py`
 
@@ -40,25 +40,50 @@
 - **Classes**: 1
 - **File**: `skill_manager.py`
 
+### cores.v1.session_config
+- **Functions**: 23
+- **Classes**: 2
+- **File**: `session_config.py`
+
+### cores.v1.auto_repair
+- **Functions**: 22
+- **Classes**: 2
+- **File**: `auto_repair.py`
+
+### cores.v1.evo_journal
+- **Functions**: 20
+- **Classes**: 2
+- **File**: `evo_journal.py`
+
+### skills.benchmark.v1.skill
+- **Functions**: 18
+- **Classes**: 3
+- **File**: `skill.py`
+
 ### cores.v1.preflight
 - **Functions**: 17
 - **Classes**: 3
 - **File**: `preflight.py`
 
-### skills.benchmark.v1.skill
-- **Functions**: 16
-- **Classes**: 3
-- **File**: `skill.py`
+### cores.v1.self_healing
+- **Functions**: 17
+- **Classes**: 6
+- **File**: `__init__.py`
+
+### cores.v1.intent_engine
+- **Functions**: 15
+- **Classes**: 1
+- **File**: `intent_engine.py`
 
 ### skills.git_ops.v1.skill
 - **Functions**: 15
 - **Classes**: 1
 - **File**: `skill.py`
 
-### cores.v1.intent_engine
+### cores.v1.config
 - **Functions**: 14
 - **Classes**: 1
-- **File**: `intent_engine.py`
+- **File**: `config.py`
 
 ### cores.v1.llm_client
 - **Functions**: 14
@@ -75,38 +100,13 @@
 - **Classes**: 2
 - **File**: `skill.py`
 
-### cores.v1.user_memory
-- **Functions**: 10
+### cores.v1.logger
+- **Functions**: 11
 - **Classes**: 1
-- **File**: `user_memory.py`
-
-### cores.v1.supervisor
-- **Functions**: 10
-- **Classes**: 1
-- **File**: `supervisor.py`
-
-### cores.v1.garbage_collector
-- **Functions**: 10
-- **Classes**: 1
-- **File**: `garbage_collector.py`
-
-### skills.stt.providers.vosk.archive.v7.skill
-- **Functions**: 10
-- **Classes**: 1
-- **File**: `skill.py`
-
-### skills.devops.v1.skill
-- **Functions**: 10
-- **Classes**: 1
-- **File**: `skill.py`
-
-### cores.v1.system_identity
-- **Functions**: 9
-- **Classes**: 2
-- **File**: `system_identity.py`
+- **File**: `logger.py`
 
 ### skills.openrouter.v1.skill
-- **Functions**: 9
+- **Functions**: 11
 - **Classes**: 1
 - **File**: `skill.py`
 
@@ -117,12 +117,27 @@ Main execution flows into the system:
 ### core.main
 - **Calls**: core.load_state, Supervisor, core.cpr, core.cpr, core.cpr, core.cpr, core.save_state, state.get
 
+### cores.v1.core.main
+- **Calls**: cores.v1.skill_logger.init_nfo, main.load_state, cores.v1.core._check_restart_loop, Logger, Supervisor, cores.v1.config.cpr, cores.v1.config.cpr, cores.v1.config.cpr
+
 ### seeds.core_v1.main
 - **Calls**: seeds.core_v1.load_state, Supervisor, seeds.core_v1.cpr, seeds.core_v1.cpr, seeds.core_v1.cpr, seeds.core_v1.cpr, seeds.core_v1.save_state, state.get
 
 ### cores.v1.evo_engine.EvoEngine._execute_with_validation
 > Pipeline: preflight → execute → validate result → reflect → retry if needed.
-- **Calls**: set, self.sm.latest_v, range, self.sm.latest_v, cores.v1.config.cpr, self.log.core, cores.v1.config.cpr, self.sm.exec_skill
+Now with journal tracking and quality reflection.
+- **Calls**: cores.v1.session_config.SessionConfig.set, self.sm.latest_v, self.journal.get_skill_history, self.journal.start_evolution, range, self.journal.finish_evolution, self.sm.latest_v, cores.v1.config.cpr
+
+### scripts.simulate.Simulator._final_report
+- **Calls**: print, print, print, len, sum, list, print, print
+
+### scripts.simulate.Simulator.run_scenario
+> Run a single scenario.
+- **Calls**: scenario.get, scenario.get, print, print, print, SimulationResult, enumerate, result.finish
+
+### cores.v1.skill_logger.get_markdown_logs
+> Get logs formatted as markdown ready for LLM with code blocks.
+- **Calls**: _SQLITE_PATH.exists, sqlite3.connect, conn.close, None.join, str, None.fetchall, None.fetchall, dict
 
 ### cores.v1.evo_engine.EvoEngine._autonomous_stt_repair
 > Autonomous diagnosis and repair for STT empty transcription.
@@ -143,6 +158,17 @@ Returns (fixed, message, new_result).
 ### main.bootstrap
 - **Calls**: main.log, main.load_state, state.get, state.get, main.log, str, str, d.mkdir
 
+### examples.skills.01_create.main
+- **Calls**: print, Path, print, print, skill_dir.mkdir, print, skill_file.write_text, print
+
+### cores.v1.evo_engine.EvoEngine.evolve_skill
+> Create + evolutionary test loop for new skills.
+Enhanced with journal tracking and cross-iteration reflection.
+- **Calls**: cores.v1.config.cpr, self.log.core, self.journal.start_evolution, time.time, cores.v1.config.cpr, self.sm.create_skill, cores.v1.config.cpr, range
+
+### examples.advanced.01_pipeline.main
+- **Calls**: print, main.load_state, LLMClient, SkillManager, sm.list_skills, IntentEngine, EvoEngine, print
+
 ### cores.v1.evo_engine.EvoEngine.handle_request
 > Full pipeline: analyze → execute/create/evolve → validate. No user prompts.
 - **Calls**: analysis.get, analysis.get, analysis.get, analysis.get, cores.v1.config.cpr, self.log.core, self.llm.analyze_need, isinstance
@@ -151,9 +177,9 @@ Returns (fixed, message, new_result).
 > Try alternative providers from the chain when primary fails.
 - **Calls**: self.provider_chain.select_with_fallback, self.sm._active_provider, cores.v1.config.cpr, cores.v1.config.cpr, len, cores.v1.config.cpr, self.sm.provider_selector.get_skill_path, cores.v1.config.cpr
 
-### cores.v1.preflight.SkillPreflight.check_imports
-> Stage 2: Do all imports resolve? Detect missing stdlib imports.
-- **Calls**: set, set, ast.walk, PreflightResult, ast.parse, isinstance, PreflightResult, skill_path.exists
+### scripts.simulate.Simulator.run_all
+> Run all scenarios for N iterations.
+- **Calls**: range, self._final_report, self.evo.journal.get_global_stats, journal_file.write_text, print, print, print, print
 
 ### cores.v1.intent_engine.IntentEngine.analyze
 > ML-based intent detection.
@@ -164,15 +190,27 @@ Flow:
   Stage 2: Context i
 - **Calls**: user_msg.strip, stripped.split, self._build_context, self._classifier.classify, self._recent_topic, self.record_unhandled, isinstance, list
 
+### cores.v1.preflight.SkillPreflight.check_imports
+> Stage 2: Do all imports resolve? Detect missing stdlib imports.
+- **Calls**: cores.v1.session_config.SessionConfig.set, cores.v1.session_config.SessionConfig.set, ast.walk, PreflightResult, ast.parse, isinstance, PreflightResult, skill_path.exists
+
 ### cores.v1.preflight.SkillPreflight.auto_fix_imports
 > Auto-fix missing stdlib imports by adding them at the top.
-- **Calls**: set, ast.walk, code.split, enumerate, None.join, ast.parse, isinstance, line.strip
+- **Calls**: cores.v1.session_config.SessionConfig.set, ast.walk, code.split, enumerate, None.join, ast.parse, isinstance, line.strip
 
 ### skills.shell.v1.skill.ShellSkill.execute
 - **Calls**: None.strip, None.strip, min, input_data.get, print, int, os.path.expanduser, self._is_interactive
 
 ### seeds.core_v1.SkillManager.exec_skill
 - **Calls**: mp.exists, self.latest_v, json.loads, m.get, p.exists, importlib.util.spec_from_file_location, importlib.util.module_from_spec, spec.loader.exec_module
+
+### cores.v1.skill_logger.get_health_markdown
+> Get health summary for all skills as markdown.
+- **Calls**: _SQLITE_PATH.exists, sqlite3.connect, None.fetchall, conn.close, cores.v1.session_config.SessionConfig.set, sorted, None.join, str
+
+### scripts.simulate.Simulator._init_system
+> Initialize all evo-engine components.
+- **Calls**: cores.v1.skill_logger.init_nfo, main.load_state, Logger, cores.v1.config.get_models_from_config, LLMClient, ResourceMonitor, ProviderSelector, SkillManager
 
 ### cli.main_cli
 > Main CLI entry point.
@@ -191,43 +229,6 @@ Flow:
 ### skills.stt.providers.vosk.archive.v6.skill.STTSkill.execute
 - **Calls**: int, params.get, params.get, int, params.get, params.get, self._transcribe_vosk, isinstance
 
-### skills.stt.providers.vosk.archive.v3.skill.STTSkill.execute
-- **Calls**: int, params.get, params.get, int, params.get, params.get, self._transcribe_vosk, isinstance
-
-### skills.stt.providers.vosk.archive.v7.skill.STTSkill.execute
-- **Calls**: int, params.get, params.get, int, params.get, params.get, self._transcribe_vosk, isinstance
-
-### skills.stt.providers.vosk.archive.v1.skill.STTSkill.execute
-- **Calls**: int, params.get, params.get, int, params.get, params.get, self._transcribe_vosk, isinstance
-
-### cores.v1.preflight.EvolutionGuard.is_stub_skill
-> Detect if skill is a stub (placeholder/test implementation).
-Conservative: only flag clearly non-functional code.
-Real skills with subprocess/os/urlli
-- **Calls**: skill_path.read_text, any, re.search, l.strip, len, len, re.search, skill_path.exists
-
-### skills.openrouter.v1.skill.OpenRouterSkill._search_models
-> Search models by query string.
-- **Calls**: None.lower, params.get, params.get, scored.sort, self._fetch_models, model.get, results.append, len
-
-### skills.benchmark.v1.skill.BenchmarkSkill._recommend_models
-> Recommend best models for a specific goal.
-- **Calls**: params.get, params.get, params.get, params.get, self.GOAL_PROFILES.get, self._get_candidate_models, scored_models.sort, self._apply_constraints
-
-### cores.v1.core._cmd_autotune
-> Auto-tune: benchmark models and select optimal one: /autotune [goal]
-- **Calls**: cores.v1.config.cpr, benchmark_execute, result.get, cores.v1.config.cpr, cores.v1.config.cpr, cores.v1.config.cpr, main.save_state, logger.core
-
-### cores.v1.skill_manager.SkillManager.latest_v
-- **Calls**: self._active_provider, d.iterdir, vs.sort, d.exists, prov_dir.is_dir, None.exists, None.exists, prov_dir.iterdir
-
-### skills.stt.providers.vosk.stable.skill.STTSkill.execute
-- **Calls**: int, params.get, params.get, int, params.get, params.get, self._transcribe_vosk, None.strip
-
-### skills.stt.providers.vosk.archive.v7.skill.check_readiness
-> Multi-level readiness check: deps, hardware, resources.
-- **Calls**: vosk_cache.is_dir, sorted, issues.append, issues.append, issues.append, issues.append, bool, shutil.which
-
 ## Process Flows
 
 Key execution flows identified:
@@ -242,27 +243,42 @@ main [core]
 ### Flow 2: _execute_with_validation
 ```
 _execute_with_validation [cores.v1.evo_engine.EvoEngine]
-  └─ →> cpr
+  └─ →> set
 ```
 
-### Flow 3: _autonomous_stt_repair
+### Flow 3: _final_report
+```
+_final_report [scripts.simulate.Simulator]
+```
+
+### Flow 4: run_scenario
+```
+run_scenario [scripts.simulate.Simulator]
+```
+
+### Flow 5: get_markdown_logs
+```
+get_markdown_logs [cores.v1.skill_logger]
+```
+
+### Flow 6: _autonomous_stt_repair
 ```
 _autonomous_stt_repair [cores.v1.evo_engine.EvoEngine]
   └─ →> cpr
   └─ →> cpr
 ```
 
-### Flow 4: chat
+### Flow 7: chat
 ```
 chat [cores.v1.llm_client.LLMClient]
 ```
 
-### Flow 5: smart_evolve
+### Flow 8: smart_evolve
 ```
 smart_evolve [cores.v1.skill_manager.SkillManager]
 ```
 
-### Flow 6: _cmd_apikey
+### Flow 9: _cmd_apikey
 ```
 _cmd_apikey [cores.v1.core]
   └─ →> cpr
@@ -270,43 +286,48 @@ _cmd_apikey [cores.v1.core]
   └─ →> save_state
 ```
 
-### Flow 7: bootstrap
+### Flow 10: bootstrap
 ```
 bootstrap [main]
   └─> log
   └─> load_state
 ```
 
-### Flow 8: handle_request
-```
-handle_request [cores.v1.evo_engine.EvoEngine]
-  └─ →> cpr
-```
-
-### Flow 9: _try_fallback_providers
-```
-_try_fallback_providers [cores.v1.evo_engine.EvoEngine]
-  └─ →> cpr
-  └─ →> cpr
-```
-
-### Flow 10: check_imports
-```
-check_imports [cores.v1.preflight.SkillPreflight]
-```
-
 ## Key Classes
+
+### cores.v1.session_config.SessionConfig
+> User-facing configuration manager.
+
+This is a SESSION-ONLY layer - changes are NOT persisted to disk
+- **Methods**: 25
+- **Key Methods**: cores.v1.session_config.SessionConfig.__init__, cores.v1.session_config.SessionConfig.CATEGORIES, cores.v1.session_config.SessionConfig.PROVIDER_TIERS, cores.v1.session_config.SessionConfig.get, cores.v1.session_config.SessionConfig.set, cores.v1.session_config.SessionConfig.reset, cores.v1.session_config.SessionConfig.on_change, cores.v1.session_config.SessionConfig._notify, cores.v1.session_config.SessionConfig.handle_configure_intent, cores.v1.session_config.SessionConfig._configure_llm
 
 ### cores.v1.skill_manager.SkillManager
 - **Methods**: 22
 - **Key Methods**: cores.v1.skill_manager.SkillManager.__init__, cores.v1.skill_manager.SkillManager._collect_versions, cores.v1.skill_manager.SkillManager.list_skills, cores.v1.skill_manager.SkillManager._is_rolled_back, cores.v1.skill_manager.SkillManager.latest_v, cores.v1.skill_manager.SkillManager._active_provider, cores.v1.skill_manager.SkillManager.skill_path, cores.v1.skill_manager.SkillManager.create_skill, cores.v1.skill_manager.SkillManager.diagnose_skill, cores.v1.skill_manager.SkillManager._raw_test
+
+### cores.v1.auto_repair.AutoRepair
+> Self-healing engine with task-based repair loop.
+
+Flow per task:
+    1. DIAGNOSE — identify exact is
+- **Methods**: 20
+- **Key Methods**: cores.v1.auto_repair.AutoRepair.__init__, cores.v1.auto_repair.AutoRepair.run_boot_repair, cores.v1.auto_repair.AutoRepair.repair_skill, cores.v1.auto_repair.AutoRepair._scan_all_skills, cores.v1.auto_repair.AutoRepair._list_all_skills, cores.v1.auto_repair.AutoRepair._diagnose_skill, cores.v1.auto_repair.AutoRepair._get_skill_path, cores.v1.auto_repair.AutoRepair._execute_repair_task, cores.v1.auto_repair.AutoRepair._plan_strategy, cores.v1.auto_repair.AutoRepair._apply_fix
+
+### cores.v1.evo_journal.EvolutionJournal
+> Persistent journal for evolutionary cycles.
+
+Tracks:
+  - Per-skill evolution history (iterations, sc
+- **Methods**: 17
+- **Key Methods**: cores.v1.evo_journal.EvolutionJournal.__init__, cores.v1.evo_journal.EvolutionJournal._load_summary, cores.v1.evo_journal.EvolutionJournal._save_summary, cores.v1.evo_journal.EvolutionJournal._append_entry, cores.v1.evo_journal.EvolutionJournal.start_evolution, cores.v1.evo_journal.EvolutionJournal.finish_evolution, cores.v1.evo_journal.EvolutionJournal.reflect, cores.v1.evo_journal.EvolutionJournal.get_skill_history, cores.v1.evo_journal.EvolutionJournal.get_global_stats, cores.v1.evo_journal.EvolutionJournal.format_report
 
 ### cores.v1.intent_engine.IntentEngine
 > Context-aware intent detection with ML-based classification.
 
 Stages:
   0. Trivial filter (very shor
-- **Methods**: 15
+- **Methods**: 16
 - **Key Methods**: cores.v1.intent_engine.IntentEngine.__init__, cores.v1.intent_engine.IntentEngine.classifier, cores.v1.intent_engine.IntentEngine.save, cores.v1.intent_engine.IntentEngine._update_topics_from_result, cores.v1.intent_engine.IntentEngine._recent_topic, cores.v1.intent_engine.IntentEngine._build_context, cores.v1.intent_engine.IntentEngine.record_skill_use, cores.v1.intent_engine.IntentEngine.record_correction, cores.v1.intent_engine.IntentEngine.record_success, cores.v1.intent_engine.IntentEngine.record_unhandled
 
 ### cores.v1.smart_intent.SmartIntentClassifier
@@ -356,6 +377,11 @@ Directives are short text notes th
 - **Methods**: 12
 - **Key Methods**: cores.v1.llm_client.LLMClient.__init__, cores.v1.llm_client.LLMClient.tier_info, cores.v1.llm_client.LLMClient._is_available, cores.v1.llm_client.LLMClient._report_ok, cores.v1.llm_client.LLMClient._report_fail, cores.v1.llm_client.LLMClient.chat, cores.v1.llm_client.LLMClient._build_error_msg, cores.v1.llm_client.LLMClient._try_model, cores.v1.llm_client.LLMClient._get_unavailable_reason, cores.v1.llm_client.LLMClient.gen_code
 
+### cores.v1.logger.Logger
+> Per-skill, per-core structured logging with learning.
+- **Methods**: 11
+- **Key Methods**: cores.v1.logger.Logger.__init__, cores.v1.logger.Logger._write, cores.v1.logger.Logger._write_markdown, cores.v1.logger.Logger._format_markdown, cores.v1.logger.Logger._entry, cores.v1.logger.Logger.core, cores.v1.logger.Logger.skill, cores.v1.logger.Logger.read_skill_log, cores.v1.logger.Logger.read_core_log, cores.v1.logger.Logger.get_markdown_logs
+
 ### cores.v1.supervisor.Supervisor
 > Manages core versions: can create coreB/C/D, test, promote, rollback.
 - **Methods**: 10
@@ -365,6 +391,11 @@ Directives are short text notes th
 > Cleans up failed evolution stubs, promotes stable versions.
 - **Methods**: 10
 - **Key Methods**: cores.v1.garbage_collector.EvolutionGarbageCollector.__init__, cores.v1.garbage_collector.EvolutionGarbageCollector.is_stub, cores.v1.garbage_collector.EvolutionGarbageCollector.is_broken, cores.v1.garbage_collector.EvolutionGarbageCollector.scan_versions, cores.v1.garbage_collector.EvolutionGarbageCollector.cleanup_provider, cores.v1.garbage_collector.EvolutionGarbageCollector.cleanup_legacy, cores.v1.garbage_collector.EvolutionGarbageCollector.migrate_to_stable_latest, cores.v1.garbage_collector.EvolutionGarbageCollector._copy_version, cores.v1.garbage_collector.EvolutionGarbageCollector.cleanup_all, cores.v1.garbage_collector.EvolutionGarbageCollector.summary
+
+### cores.v1.self_healing.SelfHealingOrchestrator
+> Orkiestrator procesu autonaprawy z podziałem na zadania.
+- **Methods**: 10
+- **Key Methods**: cores.v1.self_healing.SelfHealingOrchestrator.__init__, cores.v1.self_healing.SelfHealingOrchestrator.heal_skill, cores.v1.self_healing.SelfHealingOrchestrator._execute_healing_cycle, cores.v1.self_healing.SelfHealingOrchestrator._fix_syntax, cores.v1.self_healing.SelfHealingOrchestrator._fix_imports, cores.v1.self_healing.SelfHealingOrchestrator._fix_interface, cores.v1.self_healing.SelfHealingOrchestrator._evolve_with_llm, cores.v1.self_healing.SelfHealingOrchestrator._rewrite_skill, cores.v1.self_healing.SelfHealingOrchestrator._get_skill_path, cores.v1.self_healing.SelfHealingOrchestrator.get_healing_report
 
 ### cores.v1.preflight.EvolutionGuard
 > Prevents evolution loops where the same error repeats.
@@ -379,38 +410,10 @@ Uses paraphrase-multilingual-MiniLM-L1
 - **Methods**: 8
 - **Key Methods**: cores.v1.smart_intent.EmbeddingEngine.__init__, cores.v1.smart_intent.EmbeddingEngine.available, cores.v1.smart_intent.EmbeddingEngine._try_init, cores.v1.smart_intent.EmbeddingEngine.encode, cores.v1.smart_intent.EmbeddingEngine.similarity, cores.v1.smart_intent.EmbeddingEngine._bow_vector, cores.v1.smart_intent.EmbeddingEngine._normalize_pl, cores.v1.smart_intent.EmbeddingEngine.install_hint
 
-### cores.v1.logger.Logger
-> Per-skill, per-core structured logging with learning.
-- **Methods**: 8
-- **Key Methods**: cores.v1.logger.Logger.__init__, cores.v1.logger.Logger._write, cores.v1.logger.Logger._entry, cores.v1.logger.Logger.core, cores.v1.logger.Logger.skill, cores.v1.logger.Logger.read_skill_log, cores.v1.logger.Logger.read_core_log, cores.v1.logger.Logger.learn_summary
-
 ### skills.openrouter.v1.skill.OpenRouterSkill
 > OpenRouter API client for discovering and ranking free LLM models.
 - **Methods**: 8
 - **Key Methods**: skills.openrouter.v1.skill.OpenRouterSkill.__init__, skills.openrouter.v1.skill.OpenRouterSkill.execute, skills.openrouter.v1.skill.OpenRouterSkill._fetch_models, skills.openrouter.v1.skill.OpenRouterSkill._score_model, skills.openrouter.v1.skill.OpenRouterSkill._discover_free, skills.openrouter.v1.skill.OpenRouterSkill._search_models, skills.openrouter.v1.skill.OpenRouterSkill._get_model_info, skills.openrouter.v1.skill.OpenRouterSkill._get_recommended_use
-
-### skills.devops.v1.skill.DevOpsSkill
-> Test, validate and deploy skills in isolated subprocess.
-- **Methods**: 8
-- **Key Methods**: skills.devops.v1.skill.DevOpsSkill.check_syntax, skills.devops.v1.skill.DevOpsSkill.detect_imports, skills.devops.v1.skill.DevOpsSkill.check_deps, skills.devops.v1.skill.DevOpsSkill.find_system_alternatives, skills.devops.v1.skill.DevOpsSkill.test_skill, skills.devops.v1.skill.DevOpsSkill.health_check_skill, skills.devops.v1.skill.DevOpsSkill.generate_fix_prompt, skills.devops.v1.skill.DevOpsSkill.execute
-
-### cores.v1.system_identity.SystemIdentity
-> Builds dynamic system prompt that separates:
-- What the SYSTEM can do (capabilities)
-- What the LLM 
-- **Methods**: 7
-- **Key Methods**: cores.v1.system_identity.SystemIdentity.__init__, cores.v1.system_identity.SystemIdentity.refresh_statuses, cores.v1.system_identity.SystemIdentity.get_status, cores.v1.system_identity.SystemIdentity.build_system_prompt, cores.v1.system_identity.SystemIdentity.build_fallback_message, cores.v1.system_identity.SystemIdentity.build_skill_context_for_llm, cores.v1.system_identity.SystemIdentity.get_readiness_report
-
-### cores.v1.evo_engine.EvoEngine
-> Generic evolutionary algorithm:
-1. Detect need → 2. Execute skill → 3. Validate goal → 4. If fail:
- 
-- **Methods**: 7
-- **Key Methods**: cores.v1.evo_engine.EvoEngine.__init__, cores.v1.evo_engine.EvoEngine.handle_request, cores.v1.evo_engine.EvoEngine._execute_with_validation, cores.v1.evo_engine.EvoEngine._try_fallback_providers, cores.v1.evo_engine.EvoEngine._validate_result, cores.v1.evo_engine.EvoEngine._autonomous_stt_repair, cores.v1.evo_engine.EvoEngine.evolve_skill
-
-### skills.deps.v2.skill.DepsSkill
-- **Methods**: 7
-- **Key Methods**: skills.deps.v2.skill.DepsSkill.__init__, skills.deps.v2.skill.DepsSkill.check_system, skills.deps.v2.skill.DepsSkill.check_python_module, skills.deps.v2.skill.DepsSkill.pip_install, skills.deps.v2.skill.DepsSkill.execute, skills.deps.v2.skill.DepsSkill.get_info, skills.deps.v2.skill.DepsSkill.health_check
 
 ## Data Transformation Functions
 
@@ -418,6 +421,15 @@ Key functions that process and transform data:
 
 ### cores.v1.config._parse_models_override
 - **Output to**: isinstance, isinstance, None.strip, x.strip, None.strip
+
+### cores.v1.evo_journal.EvolutionJournal.format_report
+> Human-readable evolution report.
+- **Output to**: self.get_global_stats, stats.get, None.join, lines.append, None.join
+
+### cores.v1.auto_repair.AutoRepair.validate_model
+> Check if a model is suitable for chat (not code-only).
+Returns (valid: bool, reason: str).
+- **Output to**: model_name.lower
 
 ### cores.v1.smart_intent.EmbeddingEngine.encode
 > Encode texts to vectors.
@@ -428,25 +440,40 @@ Key functions that process and transform data:
 Returns {verdict: success|partial|fail
 - **Output to**: result.get, result.get, isinstance, inner.get, inner.get
 
+### cores.v1.session_config.SessionConfig.format_change_feedback
+> Format configuration change for user feedback.
+- **Output to**: category_names.get
+
+### cores.v1.logger.Logger._format_markdown
+> Format entry as markdown with code blocks.
+- **Output to**: entry.get, entry.get, entry.get, entry.get, None.join
+
 ## Public API Surface
 
 Functions exposed as public API (no underscore prefix):
 
 - `core.main` - 147 calls
+- `cores.v1.core.main` - 117 calls
 - `seeds.core_v1.main` - 108 calls
-- `cores.v1.core.main` - 104 calls
+- `scripts.simulate.Simulator.run_scenario` - 47 calls
+- `cores.v1.skill_logger.get_markdown_logs` - 44 calls
 - `cores.v1.llm_client.LLMClient.chat` - 37 calls
 - `cli.cmd_cache_reset` - 36 calls
 - `cores.v1.skill_manager.SkillManager.smart_evolve` - 36 calls
 - `main.bootstrap` - 33 calls
+- `examples.skills.01_create.main` - 33 calls
+- `cores.v1.evo_engine.EvoEngine.evolve_skill` - 32 calls
+- `examples.advanced.01_pipeline.main` - 32 calls
 - `cli.cmd_status` - 30 calls
 - `cores.v1.evo_engine.EvoEngine.handle_request` - 30 calls
 - `cli.cmd_logs_reset` - 29 calls
+- `scripts.simulate.Simulator.run_all` - 27 calls
+- `cores.v1.intent_engine.IntentEngine.analyze` - 27 calls
 - `cores.v1.preflight.SkillPreflight.check_imports` - 27 calls
-- `cores.v1.intent_engine.IntentEngine.analyze` - 26 calls
 - `cores.v1.preflight.SkillPreflight.auto_fix_imports` - 26 calls
 - `skills.shell.v1.skill.ShellSkill.execute` - 26 calls
 - `seeds.core_v1.SkillManager.exec_skill` - 26 calls
+- `cores.v1.skill_logger.get_health_markdown` - 25 calls
 - `cli.main_cli` - 23 calls
 - `cores.v1.skill_manager.SkillManager.create_skill` - 23 calls
 - `skills.git_ops.v1.skill.GitOpsSkill.execute` - 23 calls
@@ -454,24 +481,17 @@ Functions exposed as public API (no underscore prefix):
 - `skills.stt.providers.vosk.archive.v3.skill.STTSkill.execute` - 23 calls
 - `skills.stt.providers.vosk.archive.v7.skill.STTSkill.execute` - 23 calls
 - `skills.stt.providers.vosk.archive.v1.skill.STTSkill.execute` - 23 calls
+- `cores.v1.auto_repair.AutoRepair.run_boot_repair` - 22 calls
 - `cores.v1.preflight.EvolutionGuard.is_stub_skill` - 22 calls
 - `cores.v1.skill_manager.SkillManager.latest_v` - 21 calls
 - `skills.stt.providers.vosk.stable.skill.STTSkill.execute` - 21 calls
 - `skills.stt.providers.vosk.archive.v7.skill.check_readiness` - 21 calls
+- `examples.basic.01_hello.main` - 21 calls
 - `core.PipelineEngine.execute_pipeline` - 20 calls
-- `cores.v1.evo_engine.EvoEngine.evolve_skill` - 19 calls
 - `cores.v1.resource_monitor.ResourceMonitor.can_run` - 17 calls
+- `cores.v1.evo_journal.EvolutionJournal.reflect` - 17 calls
 - `cores.v1.garbage_collector.EvolutionGarbageCollector.cleanup_legacy` - 17 calls
 - `cores.v1.llm_client.LLMClient.analyze_need` - 17 calls
-- `cores.v1.pipeline_manager.PipelineManager.run_p` - 17 calls
-- `cores.v1.skill_manager.SkillManager.get_health_context` - 17 calls
-- `seeds.core_v1.PipelineManager.run_p` - 17 calls
-- `cores.v1.garbage_collector.EvolutionGarbageCollector.cleanup_provider` - 16 calls
-- `cores.v1.garbage_collector.EvolutionGarbageCollector.migrate_to_stable_latest` - 16 calls
-- `seeds.core_v1.SkillManager.evolve` - 16 calls
-- `cores.v1.preflight.SkillPreflight.check_interface` - 15 calls
-- `cores.v1.logger.Logger.learn_summary` - 15 calls
-- `cores.v1.skill_manager.SkillManager.list_skills` - 15 calls
 
 ## System Interactions
 
@@ -482,10 +502,24 @@ graph TD
     main --> load_state
     main --> Supervisor
     main --> cpr
+    main --> init_nfo
+    main --> _check_restart_loop
+    main --> Logger
     _execute_with_valida --> set
     _execute_with_valida --> latest_v
+    _execute_with_valida --> get_skill_history
+    _execute_with_valida --> start_evolution
     _execute_with_valida --> range
-    _execute_with_valida --> cpr
+    _final_report --> print
+    _final_report --> len
+    _final_report --> sum
+    run_scenario --> get
+    run_scenario --> print
+    get_markdown_logs --> exists
+    get_markdown_logs --> connect
+    get_markdown_logs --> close
+    get_markdown_logs --> join
+    get_markdown_logs --> str
     _autonomous_stt_repa --> cpr
     _autonomous_stt_repa --> any
     _autonomous_stt_repa --> which
@@ -495,20 +529,6 @@ graph TD
     chat --> get
     chat --> print
     smart_evolve --> latest_v
-    smart_evolve --> skill_path
-    smart_evolve --> read_text
-    smart_evolve --> diagnose_skill
-    smart_evolve --> get
-    _cmd_apikey --> get
-    _cmd_apikey --> strip
-    _cmd_apikey --> cpr
-    _cmd_apikey --> save_state
-    bootstrap --> log
-    bootstrap --> load_state
-    bootstrap --> get
-    handle_request --> get
-    handle_request --> cpr
-    _try_fallback_provid --> select_with_fallback
 ```
 
 ## Reverse Engineering Guidelines

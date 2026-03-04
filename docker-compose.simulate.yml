@@ -1,0 +1,89 @@
+# Docker Compose for evo-engine simulation
+# Runs automated chat conversations that trigger evolutionary skill creation
+version: '3.8'
+
+services:
+  # Full simulation: multiple iterations with all scenarios
+  simulate:
+    build:
+      context: .
+      dockerfile: Dockerfile.simulate
+    container_name: evo-simulate
+    volumes:
+      - ./logs:/app/logs
+      - ./skills:/app/skills
+      - ./registry:/app/registry
+    environment:
+      - PYTHONUNBUFFERED=1
+      - EVO_DISABLE_LOCAL=1
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+    command: >
+      python scripts/simulate.py
+      --iterations 3
+      --verbose
+    networks:
+      - evo-sim-net
+
+  # Quick simulation: single iteration, specific scenario
+  simulate-quick:
+    build:
+      context: .
+      dockerfile: Dockerfile.simulate
+    container_name: evo-simulate-quick
+    volumes:
+      - ./logs:/app/logs
+      - ./skills:/app/skills
+    environment:
+      - PYTHONUNBUFFERED=1
+      - EVO_DISABLE_LOCAL=1
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+    command: >
+      python scripts/simulate.py
+      --iterations 1
+      --scenario create_kalkulator
+      --verbose
+    networks:
+      - evo-sim-net
+
+  # Log analyzer: reads simulation logs and generates report
+  analyze:
+    build:
+      context: .
+      dockerfile: Dockerfile.simulate
+    container_name: evo-analyze
+    volumes:
+      - ./logs:/app/logs:ro
+    command: >
+      python -c "
+      import json, sys
+      from pathlib import Path
+      logs = Path('/app/logs/simulation')
+      if not logs.exists():
+          print('No simulation logs found. Run simulate first.')
+          sys.exit(1)
+      for f in sorted(logs.glob('iteration_*.json')):
+          data = json.loads(f.read_text())
+          s = data['summary']
+          print(f\"Iteracja {data['iteration']}: {s['successful']}/{s['total_scenarios']} OK | \"
+                f\"Skills: {s['skills_created']} | Avg: {s['avg_duration_ms']:.0f}ms | \"
+                f\"Intent: {s['avg_intent_accuracy']:.0f}%\")
+          if s['errors']:
+              for e in s['errors'][:3]:
+                  print(f'  ⚠ {e[:80]}')
+      report = logs / 'final_report.json'
+      if report.exists():
+          r = json.loads(report.read_text())
+          print(f\"\\n=== FINAL: {r['successful']}/{r['total_scenarios']} ({r['success_rate']}%) ===\")
+      journal = logs / 'journal_summary.json'
+      if journal.exists():
+          j = json.loads(journal.read_text())
+          print(f\"Journal: {j.get('total_evolutions',0)} ewolucji, \"
+                f\"sukces: {j.get('success_rate',0)}%, \"
+                f\"śr. jakość: {j.get('avg_quality',0):.3f}\")
+      "
+    networks:
+      - evo-sim-net
+
+networks:
+  evo-sim-net:
+    driver: bridge

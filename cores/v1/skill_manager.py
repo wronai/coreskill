@@ -465,7 +465,11 @@ class SkillManager:
 
         prompt += ("\nReturn ONLY the complete fixed Python code."
                    "\nMUST use only stdlib + available system commands."
-                   "\nexecute() MUST return dict with 'success' key.")
+                   "\nexecute() MUST return dict with 'success' key."
+                   "\nMUST include module-level functions: get_info() -> dict, health_check() -> dict."
+                   "\nget_info() returns {'name': '...', 'version': 'v1', 'description': '...'}."
+                   "\nhealth_check() returns {'status': 'ok'}."
+                   "\nMUST include module-level execute(params) that creates class instance and calls .execute(params).")
 
         code = clean_code(self.llm.gen_code(prompt))
         if not code or "[ERROR]" in code:

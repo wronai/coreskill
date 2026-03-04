@@ -1,0 +1,21 @@
+{
+  "name": "network_info",
+  "version": "v1",
+  "description": "Pokazuje adres IP i MAC urządzenia",
+  "author": "CoreSkill AI",
+  "actions": ["show_ip", "show_mac", "show_all"],
+  "parameters": {
+    "action": {
+      "type": "string",
+      "description": "Co pokazać",
+      "enum": ["show_ip", "show_mac", "show_all"],
+      "default": "show_all"
+    }
+  },
+  "keywords": ["ip", "mac", "adres", "numer", "sieć", "network"],
+  "examples": [
+    "Jaki mam adres IP?",
+    "Pokaż MAC",
+    "Jaki numer IP i MAC?"
+  ]
+}

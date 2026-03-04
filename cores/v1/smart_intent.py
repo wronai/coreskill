@@ -30,6 +30,13 @@ from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Optional, List, Dict, Tuple
 
+# Import ROOT for config file access
+try:
+    from .config import ROOT
+except ImportError:
+    # Fallback for standalone usage
+    ROOT = Path(__file__).resolve().parent.parent.parent
+
 
 # ── Result types ──────────────────────────────────────────────────────
 
@@ -79,117 +86,46 @@ class TrainingExample:
 # ── Default training data ─────────────────────────────────────────────
 # This replaces ALL _KW_* tuples. Each entry teaches the classifier.
 # Format: (phrase, action, skill)
+# Loaded from config/intent_training_default.json
 
-DEFAULT_TRAINING = [
-    # ── STT (listening/recording) ──
-    ("pogadajmy głosowo", "use", "stt"),
-    ("porozmawiajmy głosowo", "use", "stt"),
-    ("możemy pogadać głosowo?", "use", "stt"),
-    ("chcę rozmawiać głosem", "use", "stt"),
-    ("rozmowa głosowa", "use", "stt"),
-    ("nagraj co mówię", "use", "stt"),
-    ("nasłuchuj", "use", "stt"),
-    ("posłuchaj mnie", "use", "stt"),
-    ("włącz mikrofon", "use", "stt"),
-    ("czy mnie słyszysz", "use", "stt"),
-    ("transkrybuj", "use", "stt"),
-    ("zacznij słuchać", "use", "stt"),
-    ("dyktuj", "use", "stt"),
-    ("rozpoznaj mowę", "use", "stt"),
-    ("let's talk by voice", "use", "stt"),
-    ("listen to me", "use", "stt"),
-    ("start recording", "use", "stt"),
-    ("can you hear me", "use", "stt"),
-    ("turn on the microphone", "use", "stt"),
-    ("voice conversation", "use", "stt"),
 
-    # ── TTS (speaking) ──
-    ("powiedz coś", "use", "tts"),
-    ("przywitaj się głosowo", "use", "tts"),
-    ("przeczytaj to na głos", "use", "tts"),
-    ("mów do mnie", "use", "tts"),
-    ("powiedz mi", "use", "tts"),
-    ("czytaj na głos", "use", "tts"),
-    ("odczytaj tekst", "use", "tts"),
-    ("speak to me", "use", "tts"),
-    ("say something", "use", "tts"),
-    ("read this aloud", "use", "tts"),
-    ("say hello", "use", "tts"),
+def _load_default_training():
+    """Load default training data from config file."""
+    config_path = ROOT / "config" / "intent_training_default.json"
+    fallback = [
+        # Minimal fallback in case config file is missing
+        ("pogadajmy głosowo", "use", "stt"),
+        ("porozmawiajmy głosowo", "use", "stt"),
+        ("powiedz coś", "use", "tts"),
+        ("cześć", "chat", ""),
+        ("stwórz skill", "create", ""),
+        ("napraw to", "evolve", ""),
+        # Network info examples
+        ("jaki mam adres ip", "use", "network_info"),
+        ("pokaż mac", "use", "network_info"),
+        ("jaki numer ip", "use", "network_info"),
+        ("adres mac urządzenia", "use", "network_info"),
+        ("pokaż ip i mac", "use", "network_info"),
+    ]
+    
+    if not config_path.exists():
+        return fallback
+    
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            examples = data.get("examples", [])
+            # Convert JSON format to tuple format
+            return [
+                (ex["phrase"], ex["action"], ex.get("skill", ""))
+                for ex in examples
+            ]
+    except Exception as e:
+        print(f"[SmartIntent] Warning: Could not load training data from {config_path}: {e}")
+        return fallback
 
-    # ── Web search ──
-    ("wyszukaj w internecie", "use", "web_search"),
-    ("znajdź informacje o", "use", "web_search"),
-    ("poszukaj w google", "use", "web_search"),
-    ("szukaj w necie", "use", "web_search"),
-    ("search the web for", "use", "web_search"),
-    ("google this", "use", "web_search"),
-    ("look up", "use", "web_search"),
-    ("sprawdź w internecie", "use", "web_search"),
 
-    # ── Shell commands ──
-    ("uruchom komendę", "use", "shell"),
-    ("wykonaj polecenie", "use", "shell"),
-    ("odpal w terminalu", "use", "shell"),
-    ("aktualizuj system", "use", "shell"),
-    ("zainstaluj pakiet", "use", "shell"),
-    ("run a command", "use", "shell"),
-    ("execute in terminal", "use", "shell"),
-    ("sudo apt update", "use", "shell"),
-    ("pip install numpy", "use", "shell"),
-    ("ls -la", "use", "shell"),
-    # Write code and run it (distinguish from "create skill")
-    ("napisz skrypt i uruchom", "use", "shell"),
-    ("napisz program w python i uruchom", "use", "shell"),
-    ("stwórz plik python i odpal", "use", "shell"),
-    ("zapisz kod do pliku i wykonaj", "use", "shell"),
-    ("write a python script and run it", "use", "shell"),
-    ("create a file and execute it", "use", "shell"),
-    ("make a countdown script and run", "use", "shell"),
-
-    # ── Git operations ──
-    ("zrób commit", "use", "git_ops"),
-    ("scommituj zmiany", "use", "git_ops"),
-    ("wypchnij do repozytorium", "use", "git_ops"),
-    ("git push", "use", "git_ops"),
-    ("pokaż status gita", "use", "git_ops"),
-    ("commit changes", "use", "git_ops"),
-    ("push to remote", "use", "git_ops"),
-    ("git status", "use", "git_ops"),
-    ("stwórz branch", "use", "git_ops"),
-
-    # ── Evolve (improve existing skill) ──
-    ("napraw ten skill", "evolve", ""),
-    ("popraw działanie", "evolve", ""),
-    ("ulepsz skill", "evolve", ""),
-    ("zmień sposób działania", "evolve", ""),
-    ("fix this skill", "evolve", ""),
-    ("improve this", "evolve", ""),
-    ("make it better", "evolve", ""),
-
-    # ── Create (new skill) ──
-    ("stwórz nowy skill", "create", ""),
-    ("zbuduj narzędzie do", "create", ""),
-    ("napisz program który", "create", ""),
-    ("zrób aplikację", "create", ""),
-    ("zaimplementuj", "create", ""),
-    ("potrzebuję funkcji do", "create", ""),
-    ("chciałbym mieć", "create", ""),
-    ("create a new skill", "create", ""),
-    ("build a tool for", "create", ""),
-    ("write a program that", "create", ""),
-
-    # ── Chat (general conversation) ──
-    ("cześć, jak się masz?", "chat", ""),
-    ("opowiedz mi o sobie", "chat", ""),
-    ("co potrafisz?", "chat", ""),
-    ("jaka jest pogoda", "chat", ""),
-    ("co myślisz o AI", "chat", ""),
-    ("hello, how are you?", "chat", ""),
-    ("tell me a joke", "chat", ""),
-    ("what can you do?", "chat", ""),
-    ("dzień dobry", "chat", ""),
-    ("pomóż mi zrozumieć", "chat", ""),
-]
+DEFAULT_TRAINING = _load_default_training()
 
 
 # ── Embedding Engine ──────────────────────────────────────────────────

@@ -58,3 +58,12 @@ if __name__ == '__main__':
 
     print(f"Info: {kalkulator_skill.get_info()}\n")
     print(f"Health Check: {kalkulator_skill.health_check()}\n")
+
+
+def get_info():
+    return {"name": "kalkulator", "version": "v1", "description": "kalkulator skill"}
+
+
+def health_check():
+    return True
+

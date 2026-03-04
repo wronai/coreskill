@@ -280,3 +280,8 @@ def execute(params: Dict[str, Any]) -> Dict[str, Any]:
     """Execute OpenRouter skill with given parameters."""
     skill = OpenRouterSkill()
     return skill.execute(params)
+
+
+def health_check():
+    return True
+

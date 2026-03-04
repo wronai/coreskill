@@ -1,7 +1,6 @@
 """
 devops skill - Test, validate and deploy skills.
 Bootstrap skill for evo-engine. No external dependencies.
-Handles: syntax check, subprocess test, dependency detection, health checks.
 """
 import subprocess
 import sys

@@ -77,6 +77,7 @@ class IntentEngine:
             "web_search": "web",
             "git_ops": "git",
             "shell": "dev",
+            "network_info": "system",
         }
         topic = topic_map.get(skill)
         if topic:
@@ -176,6 +177,16 @@ class IntentEngine:
                 "conf": result.confidence,
                 "tier": result.tier,
             })
+
+            # Handle CONFIGURE intent - session configuration changes
+            if result.action == "configure":
+                return {
+                    "action": "configure",
+                    "category": result.skill,  # llm, tts, stt, voice
+                    "target": self._extract_config_target(user_msg, result.skill),
+                    "original_msg": user_msg,
+                    "_conf": result.confidence,
+                }
 
             # Shell: extract actual command if not already set
             if result.skill == "shell":
@@ -287,6 +298,58 @@ class IntentEngine:
             if sk in ul:
                 return sk
         return None
+
+    def _extract_config_target(self, msg: str, category: str) -> str:
+        """Extract configuration target from message.
+        
+        Returns: 'better', 'worse', 'faster', specific name, or ''
+        """
+        import re
+        ul = msg.lower()
+        
+        # Quality modifiers
+        if any(w in ul for w in ("lepszy", "lepsza", "better", "najlepszy", "best", "premium", "pro", "jakość")):
+            return "better"
+        if any(w in ul for w in ("gorszy", "gorsza", "worse", "simpler", "prostszy", "gorszej")):
+            return "worse"
+        if any(w in ul for w in ("szybszy", "szybsza", "szybciej", "faster", "fast", "speed")):
+            return "faster"
+        if any(w in ul for w in ("darmowy", "free", "tańszy", "cheap")):
+            return "free"
+        if any(w in ul for w in ("lokalny", "local", "offline")):
+            return "local"
+        
+        # Voice on/off
+        if category == "voice":
+            if any(w in ul for w in ("włącz", "enable", "on", "aktywuj")):
+                return "on"
+            if any(w in ul for w in ("wyłącz", "wyłacz", "disable", "off", "dezaktywuj", "mute")):
+                return "off"
+        
+        # Specific model/provider names (extract from message)
+        # LLM models
+        patterns = [
+            r'(gemini[-]?[a-z0-9.]*)',
+            r'(gpt[-]?[0-9.]*)',
+            r'(claude[-]?[a-z0-9.]*)',
+            r'(llama[-]?[a-z0-9._]*)',
+            r'(qwen[-]?[0-9.]*)',
+        ]
+        if category == "llm":
+            for p in patterns:
+                m = re.search(p, ul)
+                if m:
+                    return m.group(1)
+        
+        # TTS/STT providers - extract any word that could be a provider name
+        if category in ("tts", "stt"):
+            # Common provider names
+            providers = ["coqui", "piper", "espeak", "pyttsx3", "whisper", "vosk", "faster-whisper"]
+            for p in providers:
+                if p in ul:
+                    return p
+        
+        return ""
 
     # ── Proactive gap detection ───────────────────────────────────────
     def suggest_skills(self):

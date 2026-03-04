@@ -211,3 +211,8 @@ if __name__ == "__main__":
         print(f"API test: {result}")
     else:
         print("No OPENROUTER_API_KEY set, skipping API test")
+
+
+def health_check():
+    return True
+

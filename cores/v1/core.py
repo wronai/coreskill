@@ -33,6 +33,7 @@ from .skill_logger import init_nfo
 from .user_memory import UserMemory
 from .garbage_collector import EvolutionGarbageCollector
 from .auto_repair import AutoRepair
+from .session_config import SessionConfig, ConfigChange
 
 
 # ─── Docker Compose Generator ────────────────────────────────────────
@@ -71,6 +72,7 @@ HELP = """
   /models refresh    Auto-discover       /core           A/B status
   /switch            Switch core         /log [skill]    Recent logs
   /learn [skill]     Show learnings      /state          System state
+  /config            Show session config /config <cat> <set> <val>  Change setting
   /correct <wrong> <right>  Correct last intent (teaches the system)
   /profile           Show learned user profile & preferences
   /suggest           Suggest new skills based on unhandled requests
@@ -81,6 +83,8 @@ HELP = """
 
   Chat naturally - evo auto-detects needs with context-aware IntentEngine,
   builds+tests skills, and validates goals. Learns from your corrections.
+  
+  Configuration via chat: say "używaj lepszego TTS", "przełącz na gemini", etc.
 """
 
 
@@ -653,11 +657,10 @@ def _run_voice_loop(sm, evo, llm, intent, logger, conv, identity, memory=None):
                 break
         elif status == "silence":
             silence_count += 1
-            cpr(C.YELLOW, f"[VOICE] Nie usłyszałem ({silence_count}/{MAX_SILENCE}). Mów głośniej lub Ctrl+C.")
-            if silence_count >= MAX_SILENCE:
-                cpr(C.YELLOW, "[VOICE] Zbyt wiele ciszy — wychodzę z trybu głosowego. "
-                              "Przy następnym uruchomieniu tryb głosowy będzie nadal aktywny.")
-                break
+            cpr(C.YELLOW, f"[VOICE] Nie usłyszałem ({silence_count}). Mów głośniej lub Ctrl+C.")
+            # Don't exit on silence - just continue listening
+            # Only exit if explicitly requested by user
+            continue
         else:
             cpr(C.RED, f"[VOICE] Błąd: {text}. Kończę tryb głosowy.")
             break
@@ -955,10 +958,42 @@ COMMANDS = {
     "/forget": _cmd_forget,
     "/apikey": _cmd_apikey,
     "/autotune": _cmd_autotune,
+    "/journal": lambda **ctx: cpr(C.CYAN, ctx["evo"].journal.format_report()),
+    "/config": _cmd_config,
 }
 
 
-# ─── Main ────────────────────────────────────────────────────────────
+def _cmd_config(a1, **ctx):
+    """Show or modify session configuration."""
+    session_cfg = ctx.get("session_config")
+    if not session_cfg:
+        cpr(C.YELLOW, "SessionConfig not available")
+        return
+    
+    if not a1:
+        # Show current session config
+        cpr(C.CYAN, session_cfg.get_session_summary())
+        return
+    
+    # Parse config command: /config <category> <setting> <value>
+    parts = a1.split(maxsplit=2)
+    if len(parts) < 2:
+        cpr(C.YELLOW, "Usage: /config <category> <setting> [value]  (e.g., /config tts provider coqui)")
+        return
+    
+    category = parts[0]
+    setting = parts[1]
+    value = parts[2] if len(parts) > 2 else ""
+    
+    # Handle special values
+    if value.lower() in ("true", "on", "enable", "włącz"):
+        value = True
+    elif value.lower() in ("false", "off", "disable", "wyłącz", "wyłacz"):
+        value = False
+    
+    change = session_cfg.set(category, setting, value)
+    feedback = session_cfg.format_change_feedback(change)
+    cpr(C.CYAN, feedback)
 def main():
     init_nfo()
 
@@ -997,6 +1032,10 @@ def main():
     if memory.directives:
         cpr(C.CYAN, f"📋 Pamięć: {len(memory.directives)} dyrektywa(y) aktywna. /memories aby zobaczyć.")
 
+    # Session configuration layer (user-facing, hot-swappable)
+    session_cfg = SessionConfig(llm_client=llm, provider_selector=provider_sel)
+    cpr(C.DIM, "SessionConfig: gotowy do zmian konfiguracji w locie")
+
     cpr(C.DIM, f"Model: {llm.model} | Core: {sv.active()} | Tiers: {llm.tier_info()}")
     sk = sm.list_skills()
     if sk:
@@ -1018,7 +1057,7 @@ def main():
         "sm": sm, "llm": llm, "pm": pm, "evo": evo, "sv": sv,
         "intent": intent, "logger": logger, "state": state, "conv": conv,
         "provider_selector": provider_sel, "resource_monitor": resource_mon,
-        "identity": identity, "memory": memory,
+        "identity": identity, "memory": memory, "session_config": session_cfg,
     }
 
     # Auto-enter voice mode if persistent preference is saved
@@ -1059,6 +1098,31 @@ def main():
         logger.core("intent_result", {
             "action": analysis.get("action"), "skill": analysis.get("skill",""),
             "goal": analysis.get("goal","")})
+
+        # ── Handle CONFIGURE intent (session configuration changes) ──
+        if analysis.get("action") == "configure":
+            change = session_cfg.handle_configure_intent(analysis)
+            feedback = session_cfg.format_change_feedback(change)
+            cpr(C.CYAN, feedback)
+            conv.append({"role": "assistant", "content": feedback})
+            
+            # Apply overrides to components
+            if change.category == "llm" and change.setting == "model" and change.new_value:
+                # For LLM model, update immediately
+                state["model"] = change.new_value
+                save_state(state)
+                llm.model = change.new_value
+                cpr(C.GREEN, f"Model zmieniony na: {change.new_value}")
+            elif change.category in ("tts", "stt") and change.setting == "provider":
+                # Store in skill_manager's provider selector context
+                cpr(C.GREEN, f"{change.category.upper()} provider: {change.old_value} → {change.new_value}")
+                # Update provider selector to use the new preference
+                if hasattr(sm, 'provider_preferences'):
+                    sm.provider_preferences[change.category] = change.new_value
+            
+            _check_proactive_learning(intent)
+            intent.save()
+            continue
 
         # Voice conversation mode: auto-save preference + enter continuous listen loop
         if (analysis.get("action") == "use" and analysis.get("skill") == "stt"

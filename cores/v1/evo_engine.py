@@ -10,8 +10,11 @@ try:
 except (ImportError, AttributeError):
     _logged = lambda cls: cls
 
+import time
+
 from .config import MAX_EVO_ITERATIONS, cpr, C
 from .preflight import EvolutionGuard
+from .evo_journal import EvolutionJournal
 
 
 @_logged
@@ -28,6 +31,7 @@ class EvoEngine:
         self.log = logger
         self.evo_guard = EvolutionGuard()
         self.provider_chain = provider_chain  # ProviderChain instance (optional)
+        self.journal = EvolutionJournal()
 
     def handle_request(self, user_msg, skills, analysis=None):
         """Full pipeline: analyze → execute/create/evolve → validate. No user prompts."""
@@ -91,10 +95,23 @@ class EvoEngine:
         return None
 
     def _execute_with_validation(self, skill_name, inp, goal, user_msg):
-        """Pipeline: preflight → execute → validate result → reflect → retry if needed."""
+        """Pipeline: preflight → execute → validate result → reflect → retry if needed.
+        Now with journal tracking and quality reflection."""
         max_retries = 2
         seen_errors = set()
         start_version = self.sm.latest_v(skill_name)
+
+        # Journal: consult history for avoid-patterns before starting
+        history_avoid = []
+        prev_history = self.journal.get_skill_history(skill_name, 5)
+        if prev_history:
+            failed = [h for h in prev_history if not h.get("success") and h.get("error")]
+            history_avoid = [h["error"][:60] for h in failed[-2:]]
+            if history_avoid:
+                cpr(C.DIM, f"[JOURNAL] Znane problemy: {'; '.join(history_avoid[:2])}")
+
+        # Journal: start tracking
+        j_entry = self.journal.start_evolution(skill_name, goal)
 
         for attempt in range(max_retries + 1):
             version = self.sm.latest_v(skill_name) or "?"
@@ -138,6 +155,16 @@ class EvoEngine:
             if validation["verdict"] == "success":
                 cpr(C.GREEN, f"[PIPE] ✓ Goal achieved: {goal or 'OK'}")
                 self.log.skill(skill_name, "goal_achieved", {"goal": goal})
+                # Journal: reflect + record success
+                refl = self.journal.reflect(skill_name, result)
+                self.journal.finish_evolution(
+                    skill_name, success=True,
+                    quality_score=refl["quality_score"],
+                    reflection=refl["reflection"],
+                    attempts=attempt + 1)
+                if refl["improvement"] > 0.05:
+                    cpr(C.DIM, f"[JOURNAL] Jakość: {refl['quality_score']:.2f} "
+                               f"(+{refl['improvement']:.2f}) | {refl['speed_assessment']}")
                 return {"type": "success", "skill": skill_name,
                         "result": result, "goal": goal}
 
@@ -154,11 +181,21 @@ class EvoEngine:
                     fixed, msg, new_result = self._autonomous_stt_repair(skill_name, result, user_msg)
                     if fixed:
                         cpr(C.GREEN, f"[AUTO] Naprawione! {msg[:100]}")
+                        self.journal.finish_evolution(
+                            skill_name, success=True, quality_score=0.6,
+                            reflection="Auto-repair STT", attempts=attempt + 1)
                         return {"type": "success", "skill": skill_name,
                                 "result": new_result, "goal": goal}
                     else:
                         cpr(C.YELLOW, f"[AUTO] Nie udało się naprawić: {msg}")
                 
+                # Journal: partial = moderate quality
+                refl = self.journal.reflect(skill_name, result)
+                self.journal.finish_evolution(
+                    skill_name, success=True,
+                    quality_score=max(refl["quality_score"], 0.3),
+                    reflection=f"Partial: {validation['reason'][:80]}",
+                    attempts=attempt + 1)
                 return {"type": "success", "skill": skill_name,
                         "result": result, "goal": goal}
 
@@ -179,11 +216,19 @@ class EvoEngine:
             # Record in guard
             self.evo_guard.record_error(skill_name, error_info, version)
 
-            # Auto-fix path
-            strategy = self.evo_guard.suggest_strategy(skill_name, error_info)
-            cpr(C.DIM, f"[PIPE] Reflect: strategy={strategy['strategy']}")
+            # Journal-enhanced reflection: use history to pick strategy
+            j_refl = self.journal.reflect(skill_name, result, error=error_info)
+            suggested = j_refl.get("suggested_strategy", "")
+            avoid = j_refl.get("avoid_patterns", [])
+            cpr(C.DIM, f"[JOURNAL] Sugestia: {suggested} | "
+                       f"Unikaj: {'; '.join(avoid[:2]) if avoid else 'brak'}")
 
-            if strategy["strategy"] == "auto_fix_imports":
+            # Auto-fix path (prefer journal suggestion over guard)
+            strategy = self.evo_guard.suggest_strategy(skill_name, error_info)
+            effective_strategy = suggested if suggested and suggested != "normal_evolve" else strategy["strategy"]
+            cpr(C.DIM, f"[PIPE] Reflect: strategy={effective_strategy}")
+
+            if effective_strategy == "auto_fix_imports":
                 sp = self.sm.skill_path(skill_name)
                 if sp and sp.exists():
                     code = sp.read_text()
@@ -217,12 +262,24 @@ class EvoEngine:
                     except Exception as e:
                         cpr(C.DIM, f"[PIPE] pip install {pkg} error: {e}")
 
-            ok, msg = self.sm.smart_evolve(skill_name, error_info, user_msg)
+            # Include avoid-patterns in evolve prompt
+            evolve_ctx = error_info
+            if avoid:
+                evolve_ctx += f"\nWAŻNE: unikaj tych błędów z poprzednich iteracji: {'; '.join(avoid[:3])}"
+
+            ok, msg = self.sm.smart_evolve(skill_name, evolve_ctx, user_msg)
             if ok:
                 cpr(C.DIM, f"[PIPE] {msg}")
             else:
                 cpr(C.RED, f"[PIPE] Evolution failed: {msg}")
                 break
+
+        # Journal: record failure
+        self.journal.finish_evolution(
+            skill_name, success=False, quality_score=0.0,
+            error=error_info if 'error_info' in dir() else "unknown",
+            reflection=f"Failed after {attempt + 1} attempts",
+            attempts=attempt + 1)
 
         # Rollback if evolution created broken versions
         cur_version = self.sm.latest_v(skill_name)
@@ -415,30 +472,54 @@ class EvoEngine:
         return False, "Nie udało się automatycznie naprawić. Sprawdź: /diagnose stt", result
 
     def evolve_skill(self, name, desc):
-        """Create + evolutionary test loop for new skills."""
+        """Create + evolutionary test loop for new skills.
+        Enhanced with journal tracking and cross-iteration reflection."""
         cpr(C.CYAN, f"\n[EVO] === Building '{name}' ===")
         self.log.core("evo_start", {"skill": name, "desc": desc})
+        j_entry = self.journal.start_evolution(name, desc, strategy="create_new")
+        t0 = time.time()
 
         cpr(C.DIM, f"[EVO] 1/{MAX_EVO_ITERATIONS}: Generating...")
         ok, msg = self.sm.create_skill(name, desc)
         if not ok:
             cpr(C.RED, f"[EVO] Create failed: {msg}")
+            self.journal.finish_evolution(
+                name, success=False, error=msg, reflection="Create failed")
             return False, msg
         cpr(C.GREEN, f"[EVO] {msg}")
+
+        # Collect errors across iterations for smarter evolve prompts
+        all_errors = []
 
         for i in range(MAX_EVO_ITERATIONS):
             cpr(C.DIM, f"[EVO] Testing '{name}'...")
             test_ok, test_out = self.sm.test_skill(name)
 
             if test_ok:
-                cpr(C.GREEN, f"[EVO] ✓ '{name}' works!")
+                elapsed = (time.time() - t0) * 1000
+                cpr(C.GREEN, f"[EVO] ✓ '{name}' works! ({i + 1} iter, {elapsed:.0f}ms)")
                 self.log.core("evo_success", {"skill": name, "iterations": i + 1})
+                # Journal: compute quality from test + code
+                sp = self.sm.skill_path(name)
+                code_size = sp.stat().st_size if sp and sp.exists() else 0
+                self.journal.finish_evolution(
+                    name, success=True, quality_score=0.8,
+                    reflection=f"Created in {i+1} iter, {elapsed:.0f}ms",
+                    code_size=code_size, test_passed=True, attempts=i + 1)
                 return True, f"Skill '{name}' ready ({i + 1} iter)"
 
             if i < MAX_EVO_ITERATIONS - 1:
                 cpr(C.YELLOW, f"[EVO] ✗ iter {i+1}: {test_out[:100]}")
+                all_errors.append(test_out[:200])
                 cpr(C.DIM, f"[EVO] Diagnosing + evolving...")
-                ok, msg = self.sm.smart_evolve(name, test_out[:300])
+
+                # Build evolve context with history of errors
+                evolve_feedback = test_out[:300]
+                if len(all_errors) > 1:
+                    evolve_feedback += (f"\n\nPREVIOUS ERRORS (do NOT repeat):\n" +
+                                        "\n".join(f"- {e[:100]}" for e in all_errors[:-1]))
+
+                ok, msg = self.sm.smart_evolve(name, evolve_feedback)
                 if not ok:
                     cpr(C.RED, f"[EVO] Evolve failed: {msg}")
                     break
@@ -447,5 +528,9 @@ class EvoEngine:
                 cpr(C.RED, f"[EVO] Max iterations. Error: {test_out[:100]}")
 
         self.log.core("evo_failed", {"skill": name})
+        self.journal.finish_evolution(
+            name, success=False, error=all_errors[-1][:200] if all_errors else "max_iterations",
+            reflection=f"Failed {MAX_EVO_ITERATIONS} iter. Errors: {len(all_errors)}",
+            attempts=MAX_EVO_ITERATIONS)
         self.sm.rollback(name)
         return False, f"Skill '{name}' failed after {MAX_EVO_ITERATIONS} iter"

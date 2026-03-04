@@ -181,14 +181,21 @@ class LLMClient:
                     print(f"[VERBOSE] Response length: {len(result)} chars")
                 return result
 
-        # 2. Tiered fallback — free → local → paid
-        # Check if API key is missing - notify user about paid models
+        # 2. Tiered fallback — free → paid (if API key) → local
+        # This ensures paid models are tried before falling back to local
         has_api_key = bool(self.api_key and len(self.api_key) > 10)
+        
         if not has_api_key and self.active_tier == TIER_FREE:
             cpr(C.YELLOW, "⚠ Brak klucza API dla OpenRouter — płatne modele niedostępne.")
             cpr(C.DIM, "   Użyj /apikey <twój-klucz> aby włączyć szybsze naprawy.")
         
-        for tier in (TIER_FREE, TIER_LOCAL, TIER_PAID):
+        # Determine fallback order based on API key availability
+        if has_api_key:
+            tier_order = (TIER_FREE, TIER_PAID, TIER_LOCAL)  # Try paid before local
+        else:
+            tier_order = (TIER_FREE, TIER_LOCAL)  # Skip paid if no API key
+        
+        for tier in tier_order:
             # Skip PAID tier if no API key
             if tier == TIER_PAID and not has_api_key:
                 if os.environ.get("EVO_VERBOSE") == "1":
@@ -290,7 +297,11 @@ class LLMClient:
              "5. Include proper error handling with try/except.\n"
              "6. For TTS: use subprocess.run(['espeak', ...]) not pyttsx3/gtts.\n"
              "7. For HTTP: use urllib.request, not requests.\n"
-             "8. Start IMMEDIATELY with imports, no comments before code.")
+             "8. Start IMMEDIATELY with imports, no comments before code.\n"
+             "9. MUST include module-level functions: get_info() -> dict and health_check() -> dict.\n"
+             "   get_info() returns {'name': '...', 'version': 'v1', 'description': '...'}.\n"
+             "   health_check() returns {'status': 'ok'} or {'status': 'error', 'message': '...'}.\n"
+             "10. MUST include module-level execute(params) function that creates class instance and calls .execute(params).")
         if ctx: s += f"\nContext:\n{ctx}"
         if learning: s += f"\nLearnings from past attempts:\n{learning}"
         return self.chat([{"role":"system","content":s},

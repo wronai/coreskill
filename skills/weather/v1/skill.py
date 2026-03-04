@@ -2,148 +2,26 @@
 """
 Weather skill - Sprawdza pogodę używając wttr.in (bez API key)
 """
-import subprocess
 import json
-import re
+import ssl
+import urllib.request
+import urllib.error
 from typing import Dict, Any
 
 
-def get_info() -> Dict[str, Any]:
-    """Zwraca metadane skilla."""
-    return {
-        "name": "weather",
-        "version": "v1",
-        "description": "Sprawdza aktualną pogodę dla podanej lokalizacji",
-        "author": "CoreSkill AI",
-        "actions": ["current", "forecast"],
-        "parameters": {
-            "location": {
-                "type": "string",
-                "description": "Nazwa miasta lub lokalizacji",
-                "required": True,
-                "example": "Warsaw, Krakow, London"
-            },
-            "format": {
-                "type": "string",
-                "description": "Format wyniku",
-                "default": "text",
-                "enum": ["text", "json"]
-            }
-        }
-    }
-
-
-def execute(params: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Sprawdza pogodę dla podanej lokalizacji.
+def _fetch_weather(location: str) -> Dict:
+    """Pobiera dane pogodowe z wttr.in."""
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
     
-    Args:
-        params: {"location": "Warsaw", "format": "text"}
+    encoded_location = location.replace(" ", "%20")
+    url = f"https://wttr.in/{encoded_location}?format=j1"
     
-    Returns:
-        {"success": True, "result": {"temp": "15°C", "condition": "Sunny", ...}}
-    """
-    location = params.get("location", "").strip()
-    fmt = params.get("format", "text")
+    req = urllib.request.Request(url, headers={'User-Agent': 'curl/7.68.0'})
     
-    if not location:
-        return {
-            "success": False,
-            "error": "Missing required parameter: location",
-            "suggestion": "Provide location: execute({'location': 'Warsaw'})"
-        }
-    
-    try:
-        # Use wttr.in API (free, no API key needed)
-        # Format: j1 = JSON format
-        url = f"wttr.in/{location}?format=j1"
-        
-        result = subprocess.run(
-            ["curl", "-s", "--max-time", "10", url],
-            capture_output=True,
-            text=True,
-            timeout=15
-        )
-        
-        if result.returncode != 0:
-            return {
-                "success": False,
-                "error": f"Failed to fetch weather: {result.stderr}",
-                "suggestion": "Check internet connection or try different location"
-            }
-        
-        # Parse JSON response
-        try:
-            data = json.loads(result.stdout)
-        except json.JSONDecodeError:
-            # wttr.in returns HTML error page for unknown locations
-            if "Unknown location" in result.stdout or "404" in result.stdout:
-                return {
-                    "success": False,
-                    "error": f"Unknown location: {location}",
-                    "suggestion": "Try city name in English, e.g., 'Warsaw', 'Krakow', 'London'"
-                }
-            return {
-                "success": False,
-                "error": "Invalid response from weather service",
-                "suggestion": "Try again later or check if location name is correct"
-            }
-        
-        # Extract current weather
-        current = data.get("current_condition", [{}])[0]
-        
-        weather_data = {
-            "location": location,
-            "temperature_c": current.get("temp_C"),
-            "temperature_f": current.get("temp_F"),
-            "feels_like_c": current.get("FeelsLikeC"),
-            "humidity": current.get("humidity"),
-            "pressure": current.get("pressure"),
-            "wind_speed_kmph": current.get("windspeedKmph"),
-            "wind_direction": current.get("winddir16Point"),
-            "description": current.get("weatherDesc", [{}])[0].get("value", "Unknown"),
-            "visibility_km": current.get("visibility"),
-            "uv_index": current.get("uvIndex"),
-        }
-        
-        # Format output
-        if fmt == "json":
-            output = weather_data
-        else:
-            # Human-readable format in Polish
-            temp = weather_data["temperature_c"]
-            feels = weather_data["feels_like_c"]
-            desc = weather_data["description"]
-            humidity = weather_data["humidity"]
-            wind = weather_data["wind_speed_kmph"]
-            
-            output = (
-                f"🌡️ Temperatura: {temp}°C (odczuwalna: {feels}°C)\n"
-                f"☁️ Warunki: {desc}\n"
-                f"💧 Wilgotność: {humidity}%\n"
-                f"💨 Wiatr: {wind} km/h {weather_data['wind_direction']}\n"
-                f"📍 Lokalizacja: {location}"
-            )
-        
-        return {
-            "success": True,
-            "result": weather_data,
-            "formatted": output if fmt == "text" else None,
-            "message": output if fmt == "text" else f"Weather in {location}: {weather_data['temperature_c']}°C, {weather_data['description']}"
-        }
-        
-    except subprocess.TimeoutExpired:
-        return {
-            "success": False,
-            "error": "Request timeout - weather service not responding",
-            "suggestion": "Try again later"
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "error": str(e),
-            "suggestion": "Check location name and try again"
-        }
+    with urllib.request.urlopen(req, context=ctx, timeout=15) as response:
+        return json.loads(response.read().decode('utf-8'))
 
 
 def health_check() -> Dict[str, Any]:

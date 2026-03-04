@@ -86,5 +86,23 @@
       "codellama",
       "codegemma"
     ]
+  },
+  "categories": {
+    "llm": ["model", "temperature", "max_tokens"],
+    "tts": ["provider", "speed", "voice", "quality"],
+    "stt": ["provider", "duration", "sensitivity"],
+    "voice": ["auto_mode", "wake_word", "mute_beep"]
+  },
+  "provider_tiers": {
+    "tts": {
+      "espeak": {"tier": "lite", "quality": 3, "speed": 10},
+      "pyttsx3": {"tier": "standard", "quality": 5, "speed": 8},
+      "coqui": {"tier": "premium", "quality": 9, "speed": 4},
+      "piper": {"tier": "premium", "quality": 9, "speed": 5}
+    },
+    "stt": {
+      "vosk": {"tier": "lite", "quality": 6, "speed": 9},
+      "whisper": {"tier": "premium", "quality": 9, "speed": 5}
+    }
   }
 }

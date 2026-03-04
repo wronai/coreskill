@@ -557,3 +557,12 @@ def execute(params: Dict[str, Any]) -> Dict[str, Any]:
     """Execute benchmark skill with given parameters."""
     skill = BenchmarkSkill()
     return skill.execute(params)
+
+
+def get_info():
+    return {"name": "benchmark", "version": "v1", "description": "benchmark skill"}
+
+
+def health_check():
+    return True
+

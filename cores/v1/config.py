@@ -204,3 +204,42 @@ def get_models_from_config(state):
     if st_models:
         return st_models
     return FREE_MODELS
+
+
+def get_categories():
+    """Get configuration categories and their options."""
+    return get_config_value("categories", {
+        "llm": ["model", "temperature", "max_tokens"],
+        "tts": ["provider", "speed", "voice", "quality"],
+        "stt": ["provider", "duration", "sensitivity"],
+        "voice": ["auto_mode", "wake_word", "mute_beep"],
+    })
+
+
+def get_provider_tiers():
+    """Get provider quality tiers for 'better/worse' resolution."""
+    return get_config_value("provider_tiers", {
+        "tts": {
+            "espeak": {"tier": "lite", "quality": 3, "speed": 10},
+            "pyttsx3": {"tier": "standard", "quality": 5, "speed": 8},
+            "coqui": {"tier": "premium", "quality": 9, "speed": 4},
+            "piper": {"tier": "premium", "quality": 9, "speed": 5},
+        },
+        "stt": {
+            "vosk": {"tier": "lite", "quality": 6, "speed": 9},
+            "whisper": {"tier": "premium", "quality": 9, "speed": 5},
+        },
+    })
+
+
+def get_blocked_commands():
+    """Get blocked dangerous shell commands."""
+    return get_config_value("blocking.blocked_commands", [
+        "rm -rf /",
+        "rm -rf /*",
+        "mkfs",
+        "dd if=/dev/zero",
+        "format",
+        "fdisk",
+        ":(){ :|:& };:",
+    ])

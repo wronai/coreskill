@@ -6,11 +6,37 @@ import shutil
 import subprocess
 import shlex
 import sys
+from pathlib import Path
+
 try:
     import nfo
     _logged = nfo.logged
 except (ImportError, AttributeError):
     _logged = lambda cls: cls
+
+
+def _load_blocked_commands():
+    """Load blocked dangerous commands from system config file."""
+    # Find project root (3 levels up from this file: skill.py -> v1 -> shell -> skills)
+    project_root = Path(__file__).resolve().parent.parent.parent.parent
+    config_path = project_root / "config" / "system.json"
+    
+    fallback = (
+        "rm -rf /", "rm -rf /*", "mkfs", "dd if=/dev/zero",
+        "format", "fdisk", ":(){ :|:& };:",
+    )
+    
+    if not config_path.exists():
+        return fallback
+    
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+            blocked = config.get("blocking", {}).get("blocked_commands", [])
+            return tuple(blocked) if blocked else fallback
+    except Exception:
+        return fallback
+
 
 # Commands that require explicit confirmation (destructive)
 DANGEROUS_PREFIXES = (
@@ -18,10 +44,8 @@ DANGEROUS_PREFIXES = (
     "> /dev/", "chmod 777", ":(){ :",
 )
 
-# Commands that are always blocked
-BLOCKED_COMMANDS = (
-    "rm -rf /", "rm -rf /*", "mkfs", "dd if=/dev/zero",
-)
+# Commands that are always blocked - loaded from config
+BLOCKED_COMMANDS = _load_blocked_commands()
 
 MAX_OUTPUT_LINES = 200
 MAX_TIMEOUT = 120

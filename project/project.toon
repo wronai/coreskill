@@ -1,66 +1,61 @@
-# coreskill | 71f 13394L | python:71
+# coreskill | 67f 17141L | python:67
 # Keys: M=modules, D=details, i=imports, c=classes, f=functions, m=methods
-M[71]:
+M[67]:
   __init__.py,19
   build_core.py,525
   cli.py,248
   core.py,515
-  cores/v1/__init__.py,28
-  cores/v1/config.py,105
-  cores/v1/core.py,932
-  cores/v1/evo_engine.py,339
+  cores/v1/__init__.py,31
+  cores/v1/auto_repair.py,450
+  cores/v1/config.py,188
+  cores/v1/core.py,982
+  cores/v1/evo_engine.py,424
+  cores/v1/evo_journal.py,350
   cores/v1/garbage_collector.py,248
-  cores/v1/intent_engine.py,239
-  cores/v1/llm_client.py,307
-  cores/v1/logger.py,48
+  cores/v1/intent_engine.py,287
+  cores/v1/llm_client.py,320
+  cores/v1/logger.py,104
   cores/v1/pipeline_manager.py,39
   cores/v1/preflight.py,324
   cores/v1/provider_selector.py,338
   cores/v1/resource_monitor.py,129
-  cores/v1/skill_logger.py,123
-  cores/v1/skill_manager.py,442
-  cores/v1/smart_intent.py,673
+  cores/v1/self_healing/__init__.py,294
+  cores/v1/session_config.py,353
+  cores/v1/skill_logger.py,245
+  cores/v1/skill_manager.py,446
+  cores/v1/smart_intent.py,620
   cores/v1/supervisor.py,69
   cores/v1/system_identity.py,157
   cores/v1/user_memory.py,148
   cores/v1/utils.py,100
+  examples/advanced/01_pipeline.py,48
+  examples/basic/01_hello.py,33
+  examples/basic/02_memory.py,32
+  examples/skills/01_create.py,106
   main.py,89
+  scripts/simulate.py,442
   seeds/core_v1.py,313
   seeds/echo_skill_v1.py,19
   setup.py,40
   skill.py,78
-  skills/benchmark/v1/skill.py,444
-  skills/deps/v1/skill.py,146
+  skills/benchmark/v1/skill.py,448
+  skills/deps/v1/skill.py,150
   skills/deps/v2/skill.py,84
   skills/deps/v3/skill.py,67
-  skills/devops/v1/skill.py,210
-  skills/echo/v1/skill.py,22
-  skills/git_ops/v1/skill.py,116
-  skills/kalkulator/v1/skill.py,4
-  skills/kalkulator/v10/skill.py,4
-  skills/kalkulator/v2/skill.py,4
-  skills/kalkulator/v3/skill.py,4
-  skills/kalkulator/v4/skill.py,4
-  skills/kalkulator/v5/skill.py,4
-  skills/kalkulator/v6/skill.py,4
-  skills/kalkulator/v7/skill.py,4
-  skills/kalkulator/v8/skill.py,4
-  skills/kalkulator/v9/skill.py,4
-  skills/llm_router/v1/skill.py,109
-  skills/openrouter/v1/skill.py,214
-  skills/openrouter_api_test/v1/skill.py,177
-  skills/shell/v1/skill.py,108
-  skills/shell/v2/skill.py,4
-  skills/shell/v3/skill.py,4
-  skills/shell/v4/skill.py,4
-  skills/shell/v5/skill.py,4
-  skills/shell/v6/skill.py,4
-  skills/shell/v7/skill.py,4
+  skills/devops/v1/skill.py,213
+  skills/echo/v1/skill.py,28
+  skills/git_ops/v1/skill.py,120
+  skills/kalkulator/v1/skill.py,50
+  skills/llm_router/v1/skill.py,113
+  skills/network_info/v1/skill.py,58
+  skills/openrouter/v1/skill.py,224
+  skills/openrouter_api_test/v1/skill.py,179
+  skills/shell/v1/skill.py,128
   skills/stt/providers/vosk/archive/v1/skill.py,131
   skills/stt/providers/vosk/archive/v3/skill.py,131
   skills/stt/providers/vosk/archive/v6/skill.py,131
   skills/stt/providers/vosk/archive/v7/skill.py,173
-  skills/stt/providers/vosk/latest/skill.py,16
+  skills/stt/providers/vosk/latest/skill.py,4
   skills/stt/providers/vosk/stable/skill.py,138
   skills/tts/providers/espeak/archive/v1/skill.py,53
   skills/tts/providers/espeak/archive/v1/test.py,41
@@ -68,10 +63,11 @@ M[71]:
   skills/tts/providers/espeak/archive/v63/skill.py,17
   skills/tts/providers/espeak/archive/v72/skill.py,22
   skills/tts/providers/espeak/latest/skill.py,4
-  skills/tts/providers/espeak/stable/skill.py,53
+  skills/tts/providers/espeak/stable/skill.py,54
+  skills/weather/v1/skill.py,41
   skills/web_search/providers/duckduckgo/v1/skill.py,131
   tests/__init__.py,0
-  tests/test_e2e.py,1412
+  tests/test_e2e.py,1609
 D:
   cli.py:
     i: argparse,os,sys,shutil,json,cores.v1.config.{LOGS_DIR,ROOT,STATE_FILE,load_state},pathlib.Path
@@ -97,17 +93,23 @@ D:
     log_ev(event;data=None)
     gen_compose(skills;state)
     main()
+  cores/v1/auto_repair.py:
+    i: ast,sys,subprocess,shutil,datetime,config.{C,SKILLS_DIR,cpr},datetime.timezone,pathlib.Path
+    e: RepairTask,AutoRepair
+    RepairTask: __init__(4),__repr__(0)  # Single repair task with status tracking.
+    AutoRepair: __init__(3),run_boot_repair(0),repair_skill(1),_scan_all_skills(0),_list_all_skills(0)  # Self-healing engine with task-based r...
   cores/v1/config.py:
     i: os,json,datetime,datetime.timezone,pathlib.Path
-    e: ROOT,SKILLS_DIR,PIPELINES_DIR,LOGS_DIR,STATE_FILE,CONFIG_FILE,MAX_EVO_ITERATIONS,_MODEL_CONFIG
+    e: ROOT,SKILLS_DIR,PIPELINES_DIR,LOGS_DIR,STATE_FILE,CONFIG_FILE,SYSTEM_CONFIG_FILE,_SYSTEM_CONFIG
     C: 
+    _load_system_config()
+    get_system_config()
+    get_config_value(key_path;default=None)
+    get_code_model_patterns()
     _load_model_config()
     get_models_from_tier(tier_name;enabled_only=True)
     cpr(c;m)
     load_state()
-    save_state(s)
-    _parse_models_override(raw)
-    get_models_from_config(state)
   cores/v1/core.py:
     i: os,sys,json,time,datetime,config.{C,ROOT,SKILLS_DIR},datetime.{timedelta,timezone}
     e: gen_compose,HELP,COMMANDS,main
@@ -120,9 +122,14 @@ D:
     _cmd_run(a1;a2)
     _cmd_evolve(a1)
   cores/v1/evo_engine.py:
-    i: nfo,config.{C,MAX_EVO_ITERATIONS,cpr},preflight.EvolutionGuard
+    i: sys,nfo,time,config.{C,MAX_EVO_ITERATIONS,cpr},evo_journal.EvolutionJournal,preflight.EvolutionGuard
     e: EvoEngine
     EvoEngine: __init__(4),handle_request(3),_execute_with_validation(4),_try_fallback_providers(4),_validate_result(4)  # Generic evolutionary algorithm:
+  cores/v1/evo_journal.py:
+    i: json,time,datetime,config.{LOGS_DIR,cpr},datetime.timezone,pathlib.Path,typing.{Dict,List,Optional}
+    e: EvolutionEntry,EvolutionJournal
+    EvolutionEntry: __init__(3),finish(4),to_dict(0)  # Single evolution attempt record.
+    EvolutionJournal: __init__(0),_load_summary(0),_save_summary(0),_append_entry(1),start_evolution(3)  # Persistent journal for evolutionary c...
   cores/v1/garbage_collector.py:
     i: json,shutil,datetime,config.{C,SKILLS_DIR,cpr},datetime.timezone,pathlib.Path
     e: EvolutionGarbageCollector
@@ -138,9 +145,9 @@ D:
     _detect_ollama_models()
     discover_models()
   cores/v1/logger.py:
-    i: json,datetime,config.LOGS_DIR,datetime.timezone
+    i: json,datetime,config.LOGS_DIR,datetime.timezone,pathlib.Path
     e: Logger
-    Logger: __init__(1),_write(2),_entry(2),core(2),skill(3)  # Per-skill, per-core structured loggin...
+    Logger: __init__(1),_write(2),_write_markdown(2),_format_markdown(1),_entry(2)  # Per-skill, per-core structured loggin...
   cores/v1/pipeline_manager.py:
     i: json,datetime,config.{C,PIPELINES_DIR,cpr},datetime.timezone,utils.{clean_code,clean_json}
     e: PipelineManager
@@ -152,7 +159,7 @@ D:
     SkillPreflight: check_all(1),check_syntax(1),check_imports(2),check_interface(1),auto_fix_imports(1)  # Pre-flight validation for skill files.
     EvolutionGuard: __init__(0),fingerprint(1),record_error(3),is_repeating(2),get_error_summary(1)  # Prevents evolution loops where the sa...
   cores/v1/provider_selector.py:
-    i: json,time,config.SKILLS_DIR,pathlib.Path,typing.Optional
+    i: json,time,config.{SKILLS_DIR,get_config_value},pathlib.Path,typing.Optional
     e: TIER_ORDER,FAILURE_THRESHOLD,DEMOTION_COOLDOWN,SUCCESS_RECOVERY,ProviderInfo,ProviderSelector,ProviderChain
     ProviderInfo: __init__(2)  # Parsed provider metadata.
     ProviderSelector: __init__(2),list_capabilities(0),list_providers(1),load_manifest(1),load_meta(2)  # Selects the best available provider f...
@@ -161,6 +168,20 @@ D:
     i: os,shutil,subprocess,pathlib.Path
     e: ResourceMonitor
     ResourceMonitor: __init__(0),snapshot(0),_cpu_count(0),_ram_total(0),_ram_available(0)  # Detects CPU, RAM, GPU, disk, installe...
+  cores/v1/self_healing/__init__.py:
+    i: re,ast,sys,json,time,hashlib,traceback,pathlib.Path,typing.{Dict,List}
+    e: HealingStage,HealingTask,HealingResult,ErrorFingerprint,SelfReflectionEngine,SelfHealingOrchestrator,heal_skill
+    HealingStage:   # Stadia procesu naprawy.
+    HealingTask:   # Pojedyncze zadanie naprawy.
+    HealingResult:   # Wynik procesu naprawy.
+    ErrorFingerprint: create(2)  # Tworzy unikalny odcisk palca błędu.
+    SelfReflectionEngine: __init__(1),reflect(2),_learn_rule(3),_update_strategy_stats(2),get_best_strategy(2)  # Silnik autorefleksji i uczenia się z...
+    heal_skill(skill_name:str;error_info:Dict;llm_client;skill_manager;state:Dict)->HealingResult
+  cores/v1/session_config.py:
+    i: re,config.{get_categories,get_provider_tiers},dataclasses.{dataclass,field},typing.{Any,Callable,Dict,Optional}
+    e: ConfigChange,SessionConfig
+    ConfigChange:   # Represents a single configuration cha...
+    SessionConfig: __init__(2),CATEGORIES(0),PROVIDER_TIERS(0),get(3),set(3)  # User-facing configuration manager.
   cores/v1/skill_logger.py:
     i: nfo,config.LOGS_DIR,pathlib.Path
     e: _NFO_DIR,_SQLITE_PATH,_JSON_PATH,init_nfo,inject_logging,get_skill_logger,query_skill_errors,query_slow_calls
@@ -170,6 +191,8 @@ D:
     query_skill_errors(skill_name=None;last_n=20)
     query_slow_calls(threshold_ms=2000;last_n=10)
     skill_health_summary(skill_name)
+    get_markdown_logs(last_n:int=50;skill_name:str=None)->str
+    get_errors_markdown(skill_name=None;last_n=20)->str
   cores/v1/skill_manager.py:
     i: json,hashlib,shutil,subprocess,sys,traceback,datetime,datetime.timezone,importlib.util,pathlib.Path
     e: SkillManager
@@ -184,6 +207,7 @@ D:
     EmbeddingEngine: __init__(1),available(0),_try_init(0),encode(1),similarity(2)  # Sentence-transformers based embedding...
     LocalLLMClassifier: __init__(0),available(0),_detect(0),classify(3)  # Uses local ollama model (Qwen 3B) for...
     SmartIntentClassifier: __init__(2),_training_path(0),_load_training_data(0),_save_training_data(0),add_example(4)  # ML-based intent classifier for evo-en...
+    _load_default_training()
     create_smart_classifier(state_dir:Path=None;llm_client=None)->SmartIntentClassifier
   cores/v1/supervisor.py:
     i: json,shutil,datetime,config.{ROOT,save_state},datetime.timezone
@@ -206,6 +230,22 @@ D:
     setup_litellm()
     clean_code(code)
     clean_json(text)
+  examples/advanced/01_pipeline.py:
+    i: sys,cores.v1.config.load_state,cores.v1.evo_engine.EvoEngine,cores.v1.intent_engine.IntentEngine,cores.v1.llm_client.LLMClient,cores.v1.skill_manager.SkillManager
+    e: main
+    main()
+  examples/basic/01_hello.py:
+    i: sys,cores.v1.config.{load_state,save_state},cores.v1.llm_client.LLMClient,cores.v1.skill_manager.SkillManager
+    e: main
+    main()
+  examples/basic/02_memory.py:
+    i: sys,cores.v1.config.{load_state,save_state},cores.v1.user_memory.UserMemory
+    e: main
+    main()
+  examples/skills/01_create.py:
+    i: sys,pathlib.Path
+    e: SKILL_CODE,main
+    main()
   main.py:
     i: os,sys,json,subprocess,datetime,datetime.timezone,importlib.util,pathlib.Path
     e: ROOT,CORES,SKILLS,LOGS,STATE,DEFAULT,log,load_state
@@ -214,6 +254,12 @@ D:
     save_state(s)
     check(version=1)
     bootstrap()
+  scripts/simulate.py:
+    i: os,sys,json,time,argparse,datetime,datetime.timezone,pathlib.Path
+    e: ROOT,SCENARIOS,SimulationResult,Simulator,main
+    SimulationResult: __init__(1),finish(0),duration_ms(0),to_dict(0)  # Result of a single scenario execution.
+    Simulator: __init__(1),_init_system(0),run_scenario(1),run_all(2),_iter_summary(1)  # Runs automated chat scenarios against...
+    main()
   seeds/core_v1.py:
     i: os,sys,json,subprocess,hashlib,traceback,shutil,datetime,importlib.util,pathlib.Path
     e: ROOT,SKILLS_DIR,PIPELINES_DIR,LOGS_DIR,STATE_FILE,C,cpr,load_state
@@ -249,11 +295,13 @@ D:
     execute(input_data)
   skills/benchmark/v1/skill.py:
     i: json,time,os,dataclasses.{asdict,dataclass},pathlib.Path,typing.{Any,Dict,List,Optional}
-    e: GoalType,ModelScore,BenchmarkSkill,execute
+    e: GoalType,ModelScore,BenchmarkSkill,execute,get_info,health_check
     GoalType: 
     ModelScore: 
     BenchmarkSkill: __init__(0),_load_config(0),_get_models_from_tier(2),execute(1),_recommend_models(2)  # Analyzes and benchmarks LLM models fo...
     execute(params:Dict[str;Any])->Dict[str, Any]
+    get_info()
+    health_check()
   skills/deps/v1/skill.py:
     i: subprocess,sys,os,json,nfo,importlib.util
     e: DepsSkill,get_info,health_check
@@ -292,53 +340,9 @@ D:
     get_info()
     health_check()
   skills/kalkulator/v1/skill.py:
-    e: TestSkill,get_info,health_check
-    TestSkill: execute(1)
-    get_info()
-    health_check()
-  skills/kalkulator/v10/skill.py:
-    e: TestSkill,get_info,health_check
-    TestSkill: execute(1)
-    get_info()
-    health_check()
-  skills/kalkulator/v2/skill.py:
-    e: TestSkill,get_info,health_check
-    TestSkill: execute(1)
-    get_info()
-    health_check()
-  skills/kalkulator/v3/skill.py:
-    e: TestSkill,get_info,health_check
-    TestSkill: execute(1)
-    get_info()
-    health_check()
-  skills/kalkulator/v4/skill.py:
-    e: TestSkill,get_info,health_check
-    TestSkill: execute(1)
-    get_info()
-    health_check()
-  skills/kalkulator/v5/skill.py:
-    e: TestSkill,get_info,health_check
-    TestSkill: execute(1)
-    get_info()
-    health_check()
-  skills/kalkulator/v6/skill.py:
-    e: TestSkill,get_info,health_check
-    TestSkill: execute(1)
-    get_info()
-    health_check()
-  skills/kalkulator/v7/skill.py:
-    e: TestSkill,get_info,health_check
-    TestSkill: execute(1)
-    get_info()
-    health_check()
-  skills/kalkulator/v8/skill.py:
-    e: TestSkill,get_info,health_check
-    TestSkill: execute(1)
-    get_info()
-    health_check()
-  skills/kalkulator/v9/skill.py:
-    e: TestSkill,get_info,health_check
-    TestSkill: execute(1)
+    i: subprocess,sys
+    e: Kalkulator,get_info,health_check
+    Kalkulator: __init__(0),execute(1),get_info(0),health_check(0)
     get_info()
     health_check()
   skills/llm_router/v1/skill.py:
@@ -347,54 +351,34 @@ D:
     LLMRouterSkill: execute(1),_discover_local(0),_discover_remote(0),_health_check(2),_full_status(1)  # Model discovery & health checking ski...
     get_info()
     health_check()
+  skills/network_info/v1/skill.py:
+    i: subprocess,json,re,typing.{Any,Dict}
+    e: get_info,execute,health_check
+    get_info()
+    execute(params:dict)->dict
+    health_check()
   skills/openrouter/v1/skill.py:
     i: json,typing.{Any,Dict,List,Optional},urllib.{error,request}
-    e: OpenRouterSkill,execute
+    e: OpenRouterSkill,get_info,execute,health_check
     OpenRouterSkill: __init__(0),execute(1),_fetch_models(0),_score_model(2),_discover_free(1)  # OpenRouter API client for discovering...
+    get_info()
     execute(params:Dict[str;Any])->Dict[str, Any]
+    health_check()
   skills/openrouter_api_test/v1/skill.py:
     i: json,os,subprocess,sys,time
-    e: OpenRouterAPITestSkill,execute,get_info
+    e: OpenRouterAPITestSkill,execute,get_info,health_check
     OpenRouterAPITestSkill: __init__(0),get_info(0),execute(1),_test_api(2),_validate_key(1)  # Test OpenRouter API connectivity and...
     execute(params:dict)->dict
     get_info()
+    health_check()
   skills/shell/v1/skill.py:
-    i: json,os,shutil,subprocess,shlex,sys,nfo
+    i: json,os,shutil,subprocess,shlex,sys,nfo,pathlib.Path
     e: DANGEROUS_PREFIXES,BLOCKED_COMMANDS,MAX_OUTPUT_LINES,MAX_TIMEOUT,get_info,health_check,ShellSkill,execute
     ShellSkill: _is_interactive(1),execute(1)
+    _load_blocked_commands()
     get_info()
     health_check()
     execute(input_data:dict)->dict
-  skills/shell/v2/skill.py:
-    e: TestSkill,get_info,health_check
-    TestSkill: execute(1)
-    get_info()
-    health_check()
-  skills/shell/v3/skill.py:
-    e: TestSkill,get_info,health_check
-    TestSkill: execute(1)
-    get_info()
-    health_check()
-  skills/shell/v4/skill.py:
-    e: TestSkill,get_info,health_check
-    TestSkill: execute(1)
-    get_info()
-    health_check()
-  skills/shell/v5/skill.py:
-    e: TestSkill,get_info,health_check
-    TestSkill: execute(1)
-    get_info()
-    health_check()
-  skills/shell/v6/skill.py:
-    e: TestSkill,get_info,health_check
-    TestSkill: execute(1)
-    get_info()
-    health_check()
-  skills/shell/v7/skill.py:
-    e: TestSkill,get_info,health_check
-    TestSkill: execute(1)
-    get_info()
-    health_check()
   skills/stt/providers/vosk/archive/v1/skill.py:
     i: json,os,shutil,subprocess,sys,tempfile,pathlib.Path
     e: get_info,health_check,STTSkill,execute
@@ -424,6 +408,11 @@ D:
     health_check()
     check_readiness()
     execute(input_data:dict)->dict
+  skills/stt/providers/vosk/latest/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
   skills/stt/providers/vosk/stable/skill.py:
     i: json,os,shutil,subprocess,sys,tempfile,pathlib.Path
     e: get_info,health_check,STTSkill,execute
@@ -470,12 +459,17 @@ D:
     get_info()
     health_check()
   skills/tts/providers/espeak/stable/skill.py:
-    i: subprocess,shutil
+    i: subprocess,shutil,re
     e: TTSSkill,get_info,health_check,check_readiness
     TTSSkill: __init__(0),execute(1)  # Text-to-Speech using espeak (stdlib +...
     get_info()
     health_check()
     check_readiness()
+  skills/weather/v1/skill.py:
+    i: json,ssl,typing.{Any,Dict},urllib.{error,request}
+    e: health_check
+    _fetch_weather(location:str)->Dict
+    health_check()->Dict[str, Any]
   skills/web_search/providers/duckduckgo/v1/skill.py:
     i: subprocess,json,re,html.parser,urllib.{parse,request}
     e: SimpleHTMLTextExtractor,WebSearchSkill,get_info,health_check
