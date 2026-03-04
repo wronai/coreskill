@@ -8,6 +8,7 @@ import tempfile
 import urllib.request
 from pathlib import Path
 
+# Pre-configured models - Polish + fallback
 DEFAULT_MODELS = {
     "pl": {
         "url": "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/pl/pl_PL-gosia-medium.onnx",
@@ -25,8 +26,8 @@ DEFAULT_MODELS = {
 def get_info():
     return {
         "name": "tts",
-        "version": "v1",
-        "description": "High-quality neural TTS with auto-model download (piper)"
+        "version": "v2",
+        "description": "High-quality neural TTS with auto-model download (piper)",
     }
 
 
@@ -35,35 +36,48 @@ def health_check():
     model = _get_model_path("pl")
     has_playback = shutil.which("aplay") or shutil.which("paplay") or shutil.which("pw-play")
 
-    if piper and model and has_playback:
-        return {"status": "ok"}
-    else:
+    status = "ok" if piper and model and has_playback else "error"
+    result = {
+        "status": status,
+        "piper_available": bool(piper),
+        "model_available": bool(model),
+        "playback_available": bool(has_playback),
+        "model_path": str(model) if model else None,
+    }
+    if status == "error":
         errors = []
         if not piper:
             errors.append("piper not installed")
         if not model:
             errors.append("model not available")
         if not has_playback:
-            errors.append("audio playback not available")
-        return {"status": "error", "message": ", ".join(errors)}
+            errors.append("no audio playback")
+        result["message"] = "; ".join(errors)
+    return result
 
 
 def _get_cache_dir() -> Path:
+    """Get piper cache directory for models."""
     cache = Path.home() / ".cache" / "piper"
     cache.mkdir(parents=True, exist_ok=True)
     return cache
 
 
 def _get_model_path(lang: str = "pl") -> Path | None:
+    """Get model path - from env, cache, or None."""
+    # 1. Check env var first
     env_model = os.environ.get("PIPER_MODEL", "").strip()
     if env_model:
         path = Path(env_model)
         if path.exists():
             return path
 
+    # 2. Check cache for downloaded models
     cache = _get_cache_dir()
     info = DEFAULT_MODELS.get(lang, DEFAULT_MODELS["pl"])
     model_name = info["name"]
+
+    # Look for .onnx file
     candidate = cache / f"{model_name}.onnx"
     if candidate.exists():
         return candidate
@@ -72,6 +86,7 @@ def _get_model_path(lang: str = "pl") -> Path | None:
 
 
 def _download_file(url: str, dest: Path, timeout: int = 120) -> bool:
+    """Download file with progress."""
     try:
         dest.parent.mkdir(parents=True, exist_ok=True)
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
@@ -88,10 +103,12 @@ def _download_file(url: str, dest: Path, timeout: int = 120) -> bool:
 
 
 def _ensure_model(lang: str = "pl") -> Path:
+    """Ensure model exists - download if needed."""
     existing = _get_model_path(lang)
     if existing:
         return existing
 
+    # Fallback: direct download
     info = DEFAULT_MODELS.get(lang, DEFAULT_MODELS["pl"])
     cache = _get_cache_dir()
     model_file = cache / f"{info['name']}.onnx"
@@ -109,7 +126,9 @@ def _ensure_model(lang: str = "pl") -> Path:
 
 
 class PiperTTSSkill:
-    MAX_TEXT_LEN = 1000
+    """Piper TTS with auto-model download and streaming playback."""
+
+    MAX_TEXT_LEN = 1000  # Reasonable limit for neural TTS
 
     def __init__(self):
         self._piper = shutil.which("piper") or shutil.which("piper-tts")
@@ -120,13 +139,16 @@ class PiperTTSSkill:
         )
 
     def _clean_for_tts(self, text: str) -> str:
+        """Clean text for better speech synthesis."""
         if not text:
             return ""
+        # Remove markdown
         text = re.sub(r'```[\s\S]*?```', '', text)
         text = re.sub(r'`([^`]*)`', r'\1', text)
         text = re.sub(r'^#{1,6}\s+', '', text, flags=re.MULTILINE)
         text = re.sub(r'\*{1,3}([^*]+)\*{1,3}', r'\1', text)
         text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', text)
+        # Remove emojis
         text = re.sub(r'[\U0001F300-\U0001FAFF\u2600-\u27BF\u2300-\u23FF'
                       r'\u2B50\u2705\u274C\u26A0\u2728\u2757\u2753'
                       r'\u25B6\u25C0\u27A1\u2B05\u2B06\u2B07'
@@ -141,32 +163,37 @@ class PiperTTSSkill:
 
     def execute(self, params: dict) -> dict:
         text = params.get("text", "")
-        lang = params.get("lang", "pl")[:2].lower()
-        speed = float(params.get("speed", 1.5))
+        lang = params.get("lang", "pl")[:2].lower()  # "pl_PL" -> "pl"
+        speed = float(params.get("speed", 1.5))  # Default 150% speed
 
         if not text:
             return {"success": False, "error": "No text provided"}
 
         if not self._piper:
-            return {"success": False, "error": "piper not installed"}
+            return {"success": False, "error": "piper not installed (pip install piper-tts)"}
 
         if not self._play_cmd:
-            return {"success": False, "error": "No audio playback available"}
+            return {"success": False, "error": "No audio playback (apt install alsa-utils)"}
 
+        # Clean text
         clean = self._clean_for_tts(text)
         if not clean:
             return {"success": False, "error": "No speakable text after cleanup"}
 
+        # Truncate long text
         if len(clean) > self.MAX_TEXT_LEN:
             clean = clean[:self.MAX_TEXT_LEN].rsplit(' ', 1)[0] + '...'
 
         try:
+            # Ensure model (auto-download if needed)
             model_path = _ensure_model(lang)
-            length_scale = 1.0 / speed
 
             with tempfile.TemporaryDirectory(prefix="piper_tts_") as td:
                 wav_path = Path(td) / "out.wav"
 
+                # Build piper command with speed control
+                # length_scale < 1 = faster, > 1 = slower
+                length_scale = 1.0 / speed
                 cmd = [
                     self._piper,
                     "--model", str(model_path),
@@ -174,6 +201,7 @@ class PiperTTSSkill:
                     "--length-scale", str(length_scale),
                 ]
 
+                # Generate speech (streaming to file)
                 r = subprocess.run(
                     cmd,
                     input=clean,
@@ -188,6 +216,7 @@ class PiperTTSSkill:
                 if not wav_path.exists() or wav_path.stat().st_size < 100:
                     return {"success": False, "error": "piper produced empty audio"}
 
+                # Play audio
                 play = subprocess.run(
                     [self._play_cmd, str(wav_path)],
                     capture_output=True,
@@ -209,16 +238,10 @@ class PiperTTSSkill:
                 }
 
         except subprocess.TimeoutExpired:
-            return {"success": False, "error": "TTS timeout"}
+            return {"success": False, "error": "TTS timeout (>30s)"}
         except Exception as e:
             return {"success": False, "error": str(e)}
 
 
 def execute(params: dict) -> dict:
     return PiperTTSSkill().execute(params)
-
-
-if __name__ == "__main__":
-    text = " ".join(sys.argv[1:]) if len(sys.argv) > 1 else "Cześć, to jest test polskiego głosu."
-    result = execute({"text": text, "lang": "pl"})
-    print(json.dumps(result, indent=2, ensure_ascii=False))
