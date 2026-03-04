@@ -6,7 +6,7 @@
 |---|-----------|-----------|
 | **Twórca** | WronAI | LangChain Inc. |
 | **Architektura** | Ewolucyjna (text2pipeline) | Graf stanów (state machine) |
-| **Licencja** | MIT | MIT |
+| **Licencja** | Apache 2.0 | MIT |
 | **Cena** | Darmowy | Darmowy + LangSmith $39/seat/mies. |
 | **GitHub Stars** | Nowy projekt | ~15K |
 | **Wycena firmy** | — | $1.25B (po rundzie $125M, X 2025) |

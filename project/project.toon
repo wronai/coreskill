@@ -1,8 +1,6 @@
-# coreskill | 168f 46439L | python:168
+# coreskill | 168f 46453L | python:168
 # Keys: M=modules, D=details, i=imports, c=classes, f=functions, m=methods
 M[168]:
-  skills/account_creator/v1/skill.py,350
-  skills/document_publisher/v1/skill.py,436
   __init__.py,19
   build_core.py,525
   cli.py,248
@@ -14,7 +12,7 @@ M[168]:
   cores/v1/base_skill.py,295
   cores/v1/config.py,196
   cores/v1/config_generator.py,221
-  cores/v1/core.py,1328
+  cores/v1/core.py,1337
   cores/v1/drift_detector.py,451
   cores/v1/event_bus.py,94
   cores/v1/evo_engine.py,747
@@ -72,6 +70,7 @@ M[168]:
   setup.py,40
   skill.py,78
   skills/_health_/v1/skill.py,376
+  skills/account_creator/v1/skill.py,350
   skills/auto/v1/skill.py,254
   skills/auto/v2/skill.py,254
   skills/benchmark/v2/skill.py,372
@@ -90,6 +89,7 @@ M[168]:
   skills/devops/v4/skill.py,211
   skills/diagnostic_runner/v1/skill.py,114
   skills/document_editor/v1/skill.py,392
+  skills/document_publisher/v1/skill.py,438
   skills/document_reader/v1/skill.py,375
   skills/document_search/v1/skill.py,363
   skills/echo/providers/default/stable/skill.py,67
@@ -170,20 +170,6 @@ M[168]:
   tests/test_e2e.py,1985
   tests/test_sprint0.py,562
 D:
-  skills/account_creator/v1/skill.py:
-    i: json,secrets,string,re,hashlib,datetime,pathlib.Path
-    e: get_info,health_check,AccountCreatorSkill,execute
-    AccountCreatorSkill: __init__(0),generate_password(5),_calculate_password_strength(1),check_password_strength(1),validate_email(1)  # Account creation and credential manag...
-    get_info()
-    health_check()
-    execute(input_data:dict)->dict
-  skills/document_publisher/v1/skill.py:
-    i: json,base64,hashlib,datetime,pathlib.Path,urllib.{error,parse,request}
-    e: get_info,health_check,DocumentPublisherSkill,execute
-    DocumentPublisherSkill: __init__(0),_load_index(0),_save_index(1),_read_file(1),generate_html(4)  # Document publishing and sharing system.
-    get_info()
-    health_check()
-    execute(input_data:dict)->dict
   cli.py:
     i: argparse,os,sys,shutil,json,cores.v1.config.{LOGS_DIR,ROOT,STATE_FILE,load_state},pathlib.Path
     e: print_color,cmd_logs_reset,cmd_cache_reset,cmd_state_reset,cmd_status,cmd_shell,main_cli
@@ -635,6 +621,13 @@ D:
     get_info()->dict
     health_check()->dict
     execute(params:dict)->dict
+  skills/account_creator/v1/skill.py:
+    i: json,secrets,string,re,hashlib,datetime,pathlib.Path
+    e: get_info,health_check,AccountCreatorSkill,execute
+    AccountCreatorSkill: __init__(0),generate_password(5),_calculate_password_strength(1),check_password_strength(1),validate_email(1)  # Account creation and credential manag...
+    get_info()
+    health_check()
+    execute(input_data:dict)->dict
   skills/auto/v1/skill.py:
     i: subprocess,re,json,os,pathlib.Path,urllib.{error,request}
     e: get_info,health_check,AutoSkillBuilder,execute
@@ -758,6 +751,13 @@ D:
     i: json,re,datetime,difflib.unified_diff,pathlib.Path
     e: get_info,health_check,DocumentEditorSkill,execute
     DocumentEditorSkill: __init__(0),_read_file(1),_write_file(3),find_replace(6),insert_text(5)  # Document editing and manipulation.
+    get_info()
+    health_check()
+    execute(input_data:dict)->dict
+  skills/document_publisher/v1/skill.py:
+    i: json,base64,hashlib,datetime,re,time,pathlib.Path,urllib.{error,parse,request}
+    e: get_info,health_check,DocumentPublisherSkill,execute
+    DocumentPublisherSkill: __init__(0),_load_index(0),_save_index(1),_read_file(1),generate_html(4)  # Document publishing and sharing system.
     get_info()
     health_check()
     execute(input_data:dict)->dict

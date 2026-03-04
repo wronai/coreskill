@@ -4,15 +4,15 @@
 
 - **Project**: .
 - **Analysis Mode**: static
-- **Total Functions**: 1538
-- **Total Classes**: 192
-- **Modules**: 160
+- **Total Functions**: 1563
+- **Total Classes**: 193
+- **Modules**: 161
 - **Entry Points**: 0
 
 ## Architecture by Module
 
 ### cores.v1.core
-- **Functions**: 60
+- **Functions**: 63
 - **File**: `core.py`
 
 ### root.core
@@ -65,6 +65,11 @@
 - **Classes**: 2
 - **File**: `session_config.py`
 
+### skills.document_publisher.v1.skill
+- **Functions**: 22
+- **Classes**: 1
+- **File**: `skill.py`
+
 ### cores.v1.drift_detector
 - **Functions**: 21
 - **Classes**: 3
@@ -105,11 +110,6 @@
 - **Classes**: 1
 - **File**: `skill.py`
 
-### cores.v1.preflight
-- **Functions**: 17
-- **Classes**: 3
-- **File**: `preflight.py`
-
 ## Key Entry Points
 
 Main execution flows into the system:
@@ -143,6 +143,11 @@ Flow per task:
 > Engine that evaluates and executes declarative reflection rules.
 - **Methods**: 19
 - **Key Methods**: cores.v1.reflection_engine.ReflectionRuleEngine.__init__, cores.v1.reflection_engine.ReflectionRuleEngine._load_rules, cores.v1.reflection_engine.ReflectionRuleEngine._register_default_actions, cores.v1.reflection_engine.ReflectionRuleEngine.reload_rules, cores.v1.reflection_engine.ReflectionRuleEngine.record_failure, cores.v1.reflection_engine.ReflectionRuleEngine.record_success, cores.v1.reflection_engine.ReflectionRuleEngine.evaluate_rules, cores.v1.reflection_engine.ReflectionRuleEngine._match_trigger, cores.v1.reflection_engine.ReflectionRuleEngine._get_priority, cores.v1.reflection_engine.ReflectionRuleEngine.execute_action
+
+### skills.document_publisher.v1.skill.DocumentPublisherSkill
+> Document publishing and sharing system.
+- **Methods**: 19
+- **Key Methods**: skills.document_publisher.v1.skill.DocumentPublisherSkill.__init__, skills.document_publisher.v1.skill.DocumentPublisherSkill._load_index, skills.document_publisher.v1.skill.DocumentPublisherSkill._save_index, skills.document_publisher.v1.skill.DocumentPublisherSkill._read_file, skills.document_publisher.v1.skill.DocumentPublisherSkill.generate_html, skills.document_publisher.v1.skill.DocumentPublisherSkill._markdown_to_html, skills.document_publisher.v1.skill.DocumentPublisherSkill._plain_text_to_html, skills.document_publisher.v1.skill.DocumentPublisherSkill._escape_html, skills.document_publisher.v1.skill.DocumentPublisherSkill._apply_default_template, skills.document_publisher.v1.skill.DocumentPublisherSkill._apply_minimal_template
 
 ### skills.social_media_manager.v1.skill.SocialMediaManagerSkill
 > Social media content management and scheduling.
@@ -234,12 +239,6 @@ Key principles:
 > Analyzes and benchmarks LLM models for goal-based recommendations.
 - **Methods**: 14
 - **Key Methods**: skills.benchmark.v3.skill.BenchmarkSkill.__init__, skills.benchmark.v3.skill.BenchmarkSkill._load_config, skills.benchmark.v3.skill.BenchmarkSkill._get_models_from_tier, skills.benchmark.v3.skill.BenchmarkSkill._get_api_key, skills.benchmark.v3.skill.BenchmarkSkill._get_cached_recommendations, skills.benchmark.v3.skill.BenchmarkSkill._call_model_for_benchmark, skills.benchmark.v3.skill.BenchmarkSkill.execute, skills.benchmark.v3.skill.BenchmarkSkill._recommend_models_live, skills.benchmark.v3.skill.BenchmarkSkill._get_model_param_size, skills.benchmark.v3.skill.BenchmarkSkill._compare_models
-
-### cores.v1.quality_gate.SkillQualityGate
-> Validates skill quality before registration.
-Each check contributes a weight to the final score.
-- **Methods**: 13
-- **Key Methods**: cores.v1.quality_gate.SkillQualityGate.__init__, cores.v1.quality_gate.SkillQualityGate.evaluate, cores.v1.quality_gate.SkillQualityGate.should_register, cores.v1.quality_gate.SkillQualityGate.compare, cores.v1.quality_gate.SkillQualityGate._check_preflight, cores.v1.quality_gate.SkillQualityGate._check_manifest_schema, cores.v1.quality_gate.SkillQualityGate._check_drift, cores.v1.quality_gate.SkillQualityGate._check_health, cores.v1.quality_gate.SkillQualityGate._check_test_exec, cores.v1.quality_gate.SkillQualityGate._check_output
 
 ## Data Transformation Functions
 
@@ -384,18 +383,18 @@ Functions exposed as public API (no underscore prefix):
 - `cores.v1.system_identity.SystemIdentity.build_system_prompt` - 31 calls
 - `cli.cmd_status` - 30 calls
 - `cores.v1.base_skill.SkillManifest.from_dict` - 30 calls
-- `skills.task_manager.v1.skill.TaskManagerSkill.execute` - 30 calls
 - `skills.account_creator.v1.skill.AccountCreatorSkill.execute` - 30 calls
+- `skills.task_manager.v1.skill.TaskManagerSkill.execute` - 30 calls
 - `cli.cmd_logs_reset` - 29 calls
 - `skills.text_summarizer.v1.skill.TextSummarizerSkill.summarize` - 29 calls
 - `skills.document_editor.v1.skill.DocumentEditorSkill.find_replace` - 29 calls
 - `cores.v1.repair_journal.RepairJournal.ask_llm_and_try` - 28 calls
 - `scripts.simulate.Simulator.run_all` - 27 calls
 - `cores.v1.preflight.SkillPreflight.check_imports` - 27 calls
+- `skills.document_publisher.v1.skill.DocumentPublisherSkill.generate_html` - 27 calls
 - `skills.document_search.v1.skill.DocumentSearchSkill.search_by_content` - 27 calls
 - `skills.email_client.v1.skill.EmailClientSkill.execute` - 27 calls
 - `cores.v1.preflight.SkillPreflight.auto_fix_imports` - 26 calls
-- `skills.document_editor.v1.skill.DocumentEditorSkill.format_text` - 26 calls
 
 ## System Interactions
 

@@ -6,7 +6,7 @@
 |---|-----------|------|
 | **Twórca** | WronAI | Rasa Technologies |
 | **Architektura** | Ewolucyjna (text2pipeline) | NLU pipeline + dialog management |
-| **Licencja** | MIT | Dual (OSS Apache 2.0 + commercial CALM) |
+| **Licencja** | Apache 2.0 | Dual (OSS Apache 2.0 + commercial CALM) |
 | **Cena** | Darmowy | Od $35K/rok (Growth) |
 | **Klienci** | Early adopters | Banki, telekomy, healthcare |
 | **Nisza** | Autonomiczna automatyzacja | Konwersacyjna AI (regulowane branże) |

@@ -6,7 +6,7 @@
 |---|-----------|----------|
 | **Twórca** | WronAI | Botpress Inc. |
 | **Architektura** | Ewolucyjna (text2pipeline) | AI-native agent platform (LLMz) |
-| **Licencja** | MIT | Proprietary (cloud) |
+| **Licencja** | Apache 2.0 | Proprietary (cloud) |
 | **Cena** | Darmowy | Darmowy start ($5 AI credit) → $89/mies. (Plus) → $495/mies. (Team) |
 | **Finansowanie** | — | $25M Series B |
 | **Przychody** | — | >$10M ARR (2025), podwajane co kwartał |

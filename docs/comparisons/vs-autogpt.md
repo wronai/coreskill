@@ -6,7 +6,7 @@
 |---|-----------|---------|
 | **Twórca** | WronAI | Significant Gravitas |
 | **Architektura** | Ewolucyjna (text2pipeline) | Autonomiczna pętla + visual builder |
-| **Licencja** | MIT | MIT |
+| **Licencja** | Apache 2.0 | MIT |
 | **Cena** | Darmowy | Darmowy + cloud beta |
 | **GitHub Stars** | Nowy projekt | ~182K (najwyżej w kategorii) |
 | **Historia** | 2024+ | Marzec 2023 (pionier autonomicznych agentów) |

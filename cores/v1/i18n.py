@@ -60,7 +60,7 @@ TTS_KEYWORDS: Dict[str, Tuple[str, ...]] = {
     "en": ("speak", "say", "read aloud", "tell me", "pronounce", "read out"),
     "de": ("sprich", "sag", "vorlesen", "lies vor", "aussprechen", "erzähl"),
     "fr": ("parle", "dis", "lis à voix haute", "prononce", "récite", "dis-moi"),
-    "es": ("habla", "di", "lee en voz alta", "pronuncia", "dime", "recita"),
+    "es": ("habla", "di", "lee en voz alta", "pronuncia", "dime", "recita", "háblame"),
     "it": ("parla", "di'", "leggi ad alta voce", "pronuncia", "dimmi", "recita"),
     "pt": ("fala", "diz", "lê em voz alta", "pronuncia", "diz-me", "recita"),
     "nl": ("spreek", "zeg", "lees voor", "vertel", "uitspreek"),
@@ -138,7 +138,7 @@ VOICE_MODE_KEYWORDS: Dict[str, Tuple[str, ...]] = {
     "en": ("voice mode", "let's talk", "voice conversation", "talk to me"),
     "de": ("sprachmodus", "lass uns reden", "sprachgespräch", "sprich mit mir"),
     "fr": ("mode vocal", "parlons", "conversation vocale", "parle-moi"),
-    "es": ("modo voz", "hablemos", "conversación de voz", "háblame"),
+    "es": ("modo voz", "hablemos", "conversación de voz", "hablamos"),
     "it": ("modalità vocale", "parliamo", "conversazione vocale", "parlami"),
     "pt": ("modo voz", "vamos conversar", "conversa por voz", "fala comigo"),
     "nl": ("spraak modus", "laten we praten", "spraakgesprek", "praat met me"),
@@ -647,11 +647,31 @@ ALL_CREATE_KW_FLAT = _flatten(CREATE_KEYWORDS)
 
 
 def match_any_keyword(text: str, keyword_set: FrozenSet[str]) -> bool:
-    """Check if any keyword from the set appears in the text (case-insensitive)."""
+    """Check if any keyword from the set appears in the text (case-insensitive).
+
+    For keywords ≤ 3 chars, requires word-boundary matching to prevent
+    false positives across languages (e.g., "di" matching inside "dinle").
+    Also checks diacritics-normalized text for cross-lingual matching
+    (e.g., "háblame" matching keyword "habla").
+    """
     text_lower = text.lower()
+    text_norm = normalize_diacritics(text_lower)
+    words = set(text_lower.split())
+    words_norm = set(text_norm.split())
+
     for kw in keyword_set:
-        if kw in text_lower:
-            return True
+        if len(kw) <= 3:
+            # Short keywords: exact word match only (avoid "di" in "dinle")
+            if kw in words or kw in words_norm:
+                return True
+        else:
+            # Longer keywords: substring match
+            if kw in text_lower or kw in text_norm:
+                return True
+            # Also normalize the keyword itself (e.g., "háblame" → "hablame")
+            kw_norm = normalize_diacritics(kw)
+            if kw_norm != kw and (kw_norm in text_lower or kw_norm in text_norm):
+                return True
     return False
 
 
@@ -715,8 +735,11 @@ def detect_language(text: str) -> str:
         if "ä" in tl:
             return "sv"
         return "no"
-    # German
-    if "ß" in tl or ("ü" in tl and "ö" in tl and "ä" in tl):
+    # German — ß is unique; also detect if any 2 of ä/ö/ü present
+    if "ß" in tl:
+        return "de"
+    de_chars = sum(1 for c in "äöü" if c in tl)
+    if de_chars >= 2:
         return "de"
     # French
     if any(c in tl for c in "ç") and any(c in tl for c in "éèêë"):
@@ -727,6 +750,35 @@ def detect_language(text: str) -> str:
     # Portuguese
     if "ã" in tl or "õ" in tl:
         return "pt"
+    
+    # Keyword-based detection for plain Latin (no diacritics)
+    # Common words that distinguish languages
+    words = set(tl.split())
+    
+    # Romanian specific words (check first - "ce" is also French)
+    if any(w in words for w in ("faci", "prietenul", "cum", "să", "și", "pentru", "din", "multumesc", "buna")):
+        return "ro"
+    # German articles/conjunctions
+    if any(w in words for w in ("der", "die", "das", "ein", "eine", "und", "ist", "wie")):
+        return "de"
+    # French articles/prepositions
+    if any(w in words for w in ("le", "la", "les", "un", "une", "et", "est", "pour", "ce")):
+        return "fr"
+    # Spanish articles
+    if any(w in words for w in ("el", "la", "los", "las", "un", "una", "es", "está", "qué")):
+        return "es"
+    # Italian articles
+    if any(w in words for w in ("il", "la", "gli", "un", "una", "è", "sono", "per")):
+        return "it"
+    # Romanian specific words
+    if any(w in words for w in ("ce", "cum", "că", "să", "şi", "pentru", "din")):
+        return "ro"
+    # Polish specific words (even without diacritics)
+    if any(w in words for w in ("jest", "nie", "tak", "co", "jak", "dla", "tego")):
+        return "pl"
+    # Dutch
+    if any(w in words for w in ("de", "het", "een", "en", "is", "voor")):
+        return "nl"
     
     # Default to English for plain Latin
     return "en"

@@ -43,12 +43,9 @@ class IntentEngine:
 
     # Only trivial words are kept as a quick filter (stage 0).
     # These are NOT intent classifiers — just "skip" words.
-    _TRIVIAL = frozenset({
-        "czy", "co", "jak", "no", "ok", "hej", "elo", "hm", "ee",
-        "nie", "tak", "aha", "wow", "ej", "hmm", "eee", "o",
-        "a", "i", "to", "jest", "kto", "ile", "cześć", "czesc",
-        "halo", "siema", "yo", "witam", "dzień", "dzien",
-    })
+    # Multilingual: greetings, yes/no, farewells across all European languages.
+    from .i18n import ALL_TRIVIAL_WORDS
+    _TRIVIAL = ALL_TRIVIAL_WORDS
 
     def __init__(self, llm, logger, state):
         self.llm = llm

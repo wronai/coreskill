@@ -31,8 +31,10 @@ def _fetch_weather(location: str) -> Dict:
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
     
-    encoded_location = location.replace(" ", "%20")
-    url = f"https://wttr.in/{encoded_location}?format=j1"
+    # Ensure proper UTF-8 encoding for Polish characters
+    from urllib.parse import quote
+    encoded_location = quote(location.replace(" ", " "), safe='') if location else ""
+    url = f"https://wttr.in/{encoded_location}?format=j1" if encoded_location else "https://wttr.in/?format=j1"
     
     req = urllib.request.Request(url, headers={'User-Agent': 'curl/7.68.0'})
     

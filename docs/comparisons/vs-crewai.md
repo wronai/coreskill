@@ -6,7 +6,7 @@
 |---|-----------|--------|
 | **Twórca** | WronAI | CrewAI Inc. |
 | **Architektura** | Ewolucyjna (text2pipeline) | Role-based multi-agent |
-| **Licencja** | MIT | MIT |
+| **Licencja** | Apache 2.0 | MIT |
 | **Cena** | Darmowy | $99–$120K/rok |
 | **GitHub Stars** | Nowy projekt | ~40K |
 | **Finansowanie** | — | $18M Series A |

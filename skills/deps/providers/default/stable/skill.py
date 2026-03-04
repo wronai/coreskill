@@ -45,6 +45,16 @@ class DepsSkill:
         except Exception as e:
             return {"success": False, "package": package, "error": str(e)}
 
+    def scan_system(self):
+        """Scan system capabilities and return detailed results"""
+        result = {}
+        for category, cmds in self.tools.items():
+            result[category] = {}
+            for cmd in cmds:
+                check = self.check_system(cmd)
+                result[category][cmd] = check
+        return result
+
     def execute(self, params: dict) -> dict:
         try:
             text = params.get("text", "")

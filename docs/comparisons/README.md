@@ -16,7 +16,7 @@ Szczegółowe porównanie CoreSkill (evo-engine) z wiodącymi frameworkami i pla
 | **Local-first** | ✅ Ollama + offline | ❌ Cloud-first | ❌ Cloud-first | ⚠️ Azure-first | ⚠️ Cloud-first | ⚠️ Wymaga API | ✅ On-premise | ❌ Cloud |
 | **Quality gates** | ✅ 5-check pipeline | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Provider chain + fallback** | ✅ Auto-degradacja + UCB1 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Licencja** | MIT | MIT | MIT | MIT | Apache 2.0 | MIT | Dual (OSS + commercial) | Proprietary |
+| **Licencja** | Apache 2.0 | MIT | MIT | MIT | Apache 2.0 | MIT | Dual (OSS + commercial) | Proprietary |
 | **Cena** | Darmowy | Darmowy + $39/seat | $99–$120K/rok | Darmowy | Custom enterprise | Darmowy + cloud | Od $35K/rok | Od $89/mies. |
 | **GitHub Stars** | Nowy projekt | ~15K | ~40K | ~55K | ~24K | ~182K | ~19K | ~13K |
 | **Dojrzałość** | Wczesna faza | Produkcja (1.0) | Produkcja | Przejściowa | Produkcja | Aktywny | Produkcja | Produkcja |

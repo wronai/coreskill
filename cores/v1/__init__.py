@@ -58,6 +58,12 @@ from .quality_gate import SkillQualityGate, QualityReport
 from .skill_validator import SkillValidator, ValidationResult
 from .base_skill import BaseSkill, SkillManifest, generate_scaffold, generate_manifest_yaml, InputField
 from .skill_forge import SkillForge, ErrorBudget, SkillMatch, is_conversational
+from .i18n import (
+    EUROPEAN_LANGUAGES, normalize_diacritics, detect_language, match_any_keyword,
+    ALL_TTS_KEYWORDS, ALL_STT_KEYWORDS, ALL_SEARCH_KEYWORDS, ALL_SHELL_KEYWORDS,
+    ALL_CREATE_KEYWORDS, ALL_EVOLVE_KEYWORDS, ALL_CONFIGURE_KEYWORDS,
+    ALL_TRIVIAL_WORDS, ALL_ACTION_VERBS,
+)
 from .skill_schema import (
     SKILL_MANIFEST_SCHEMA,
     SKILL_OUTPUT_SCHEMA,

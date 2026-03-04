@@ -58,68 +58,53 @@ class SkillMatch:
     description: str = ""
 
 
-# ─── Conversational Detection ────────────────────────────────────────
+# ─── Conversational Detection (multilingual) ────────────────────────
 
-# Patterns that indicate conversational queries (no skill needed)
-_CONVERSATIONAL_PATTERNS_PL = (
-    r"^(cześć|hej|witaj|siema|dzień dobry|dobry)",
-    r"^(co|jak|gdzie|kiedy|dlaczego|czy)\s",
-    r"^(opowiedz|powiedz|wyjaśnij|wytłumacz|opisz)",
-    r"^(dzięki|dziękuję|ok|okej|dobrze|super|fajnie|rozumiem)",
-    r"^(kim jesteś|co umiesz|jak masz na imię)",
-    r"(co sądzisz|co myślisz|jak uważasz)",
-    r"^(tak|nie|może|chyba|pewnie)$",
-    r"^(pa|do widzenia|na razie|koniec)$",
-)
-
-_CONVERSATIONAL_PATTERNS_EN = (
-    r"^(hi|hello|hey|greetings|good morning|good evening)",
-    r"^(what|how|where|when|why|who|is|are|do|does|can|could)\s",
-    r"^(tell me|explain|describe|talk about)",
-    r"^(thanks|thank you|ok|okay|sure|great|fine|got it)",
-    r"^(who are you|what can you do|what's your name)",
-    r"(what do you think|your opinion)",
-    r"^(yes|no|maybe|probably)$",
-    r"^(bye|goodbye|see you|later)$",
-)
-
-_CONVERSATIONAL_RE = [
-    re.compile(p, re.IGNORECASE)
-    for p in _CONVERSATIONAL_PATTERNS_PL + _CONVERSATIONAL_PATTERNS_EN
-]
-
-# Explicit creation keywords — override conversational detection
-_CREATE_KEYWORDS = (
-    "stwórz", "utwórz", "zbuduj", "napisz skill", "create", "build",
-    "make a skill", "new skill", "nowy skill", "/create",
+from .i18n import (
+    ALL_GREETING_PATTERNS, ALL_FAREWELL_PATTERNS, ALL_THANKS_PATTERNS,
+    ALL_QUESTION_WORDS, ALL_YES_NO_MAYBE, ALL_CREATE_KW_FLAT,
+    ALL_ACTION_VERBS, match_any_keyword,
 )
 
 
 def is_conversational(query: str) -> bool:
-    """Check if query is a conversational question that doesn't need a skill."""
+    """Check if query is a conversational question that doesn't need a skill.
+    Supports all European languages via i18n module."""
     q = query.strip()
     if not q:
         return True
 
-    # Explicit creation request → NOT conversational
     q_lower = q.lower()
-    if any(kw in q_lower for kw in _CREATE_KEYWORDS):
+
+    # Explicit creation request → NOT conversational
+    if match_any_keyword(q_lower, ALL_CREATE_KW_FLAT):
         return False
 
-    # Check conversational patterns
-    for pattern in _CONVERSATIONAL_RE:
-        if pattern.search(q):
-            return True
+    # Greetings in any European language
+    if match_any_keyword(q_lower, ALL_GREETING_PATTERNS):
+        return True
+
+    # Farewells in any European language
+    if match_any_keyword(q_lower, ALL_FAREWELL_PATTERNS):
+        return True
+
+    # Thanks / acknowledgment in any European language
+    if match_any_keyword(q_lower, ALL_THANKS_PATTERNS):
+        return True
+
+    # Yes/No/Maybe single-word responses
+    if q_lower.rstrip("?!.,") in ALL_YES_NO_MAYBE:
+        return True
+
+    # Questions starting with question words (any language)
+    first_word = q_lower.split()[0].rstrip("?!.,") if q_lower.split() else ""
+    if first_word in ALL_QUESTION_WORDS:
+        return True
 
     # Short queries (≤3 words) without action verbs are usually conversational
     words = q.split()
     if len(words) <= 3:
-        action_verbs = {
-            "policz", "oblicz", "uruchom", "wykonaj", "skanuj", "szukaj",
-            "calculate", "run", "execute", "scan", "search", "install",
-            "find", "check", "test", "deploy", "build", "create",
-        }
-        if not any(w.lower() in action_verbs for w in words):
+        if not any(w.lower() in ALL_ACTION_VERBS for w in words):
             return True
 
     return False

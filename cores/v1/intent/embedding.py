@@ -149,12 +149,18 @@ class EmbeddingEngine:
 
     @staticmethod
     def _normalize_pl(text: str) -> str:
-        """Normalize Polish text: strip diacritics, lowercase."""
-        _PL_MAP = str.maketrans(
-            "ąćęłńóśźżĄĆĘŁŃÓŚŹŻ",
-            "acelnoszzACELNOSZZ"
-        )
-        return text.lower().translate(_PL_MAP)
+        """Normalize European diacritics: strip accents, lowercase.
+        Kept method name for backward compatibility."""
+        try:
+            from ..i18n import normalize_diacritics
+            return normalize_diacritics(text)
+        except ImportError:
+            # Fallback: basic Polish-only normalization
+            _PL_MAP = str.maketrans(
+                "ąćęłńóśźżĄĆĘŁŃÓŚŹŻ",
+                "acelnoszzACELNOSZZ"
+            )
+            return text.lower().translate(_PL_MAP)
 
     def install_hint(self) -> str:
         """Hint for installing sentence-transformers."""

@@ -1,111 +1,116 @@
-import subprocess
 import re
-import urllib.request
+import subprocess
 import json
+import urllib.request
+import urllib.error
 
 def get_info() -> dict:
     return {
         'name': 'pound_to_yen_converter',
-        'version': 'v1',
-        'description': 'Converts pounds sterling to Japanese yen with Polish TTS'
+        'version': 'v4',
+        'description': 'Converts pounds sterling to Japanese yen'
     }
 
 def health_check() -> dict:
     try:
-        # Test espeak availability
-        result = subprocess.run(['espeak', '--version'], capture_output=True, timeout=5)
-        if result.returncode != 0:
-            return {'status': 'error', 'message': 'espeak not available'}
-        
-        # Test internet connection by trying to fetch exchange rate data
-        req = urllib.request.Request(
-            'https://api.exchangerate-api.com/v4/latest/GBP',
-            headers={'User-Agent': 'Mozilla/5.0'}
-        )
-        with urllib.request.urlopen(req, timeout=10) as response:
-            data = json.loads(response.read().decode())
-            if 'rates' in data and 'JPY' in data['rates']:
-                return {'status': 'ok'}
-        return {'status': 'error', 'message': 'Exchange rate API not accessible'}
+        # Check if espeak is available (for TTS) and internet connectivity
+        subprocess.run(['espeak', '--version'], capture_output=True, timeout=5)
+        # Test internet connectivity by trying to reach a reliable endpoint
+        urllib.request.urlopen('https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml', timeout=5)
+        return {'status': 'ok'}
     except Exception as e:
         return {'status': 'error', 'message': str(e)}
 
-class Converter:
-    def execute(self, params: dict) -> dict:
-        try:
-            text = params.get('text', '').lower()
-            
-            # Extract amount if present, default to 1000 (thousand)
-            amount = 1000.0  # Default
-            
-            # Try to match patterns like "tysiąc funtów", "1000 funtów", "tys. funtów"
-            amount_match = re.search(r'(\d+)\s*(tysiąc|tys\.?)?\s*funtów|(\d+)\s*funtów', text)
-            if amount_match:
-                if amount_match.group(1):  # Has a number
-                    if amount_match.group(2):  # Has "tysiąc" or "tys."
-                        amount = float(amount_match.group(1)) * 1000
-                    else:
-                        amount = float(amount_match.group(1))
-                elif 'tysiąc' in text or 'tys.' in text:
-                    amount = 1000.0
-                else:
-                    amount = 1000.0
-            else:
-                # Check for "tysiąc" alone
-                if 'tysiąc' in text or 'tys.' in text:
-                    amount = 1000.0
-            
-            # Fetch current exchange rate
-            try:
-                req = urllib.request.Request(
-                    'https://api.exchangerate-api.com/v4/latest/GBP',
-                    headers={'User-Agent': 'Mozilla/5.0'}
-                )
-                with urllib.request.urlopen(req, timeout=10) as response:
-                    data = json.loads(response.read().decode())
-                    if 'rates' in data and 'JPY' in data['rates']:
-                        rate = data['rates']['JPY']
-                    else:
-                        raise ValueError("JPY rate not found")
-            except Exception:
-                # Fallback rate if API unavailable (as of 2023 ~180 JPY/GBP)
-                rate = 180.0
-            
-            # Calculate conversion
-            result_yen = amount * rate
-            
-            # Format result with proper Polish formatting (spaces instead of commas)
-            result_text = f"{result_yen:,.0f}".replace(",", " ")
-            
-            # Prepare response
-            amount_display = int(amount) if amount == int(amount) else amount
-            response_text = f"{amount_display:,}".replace(",", " ") + " funtów szterlingów to około " + result_text + " jenów japońskich."
-            
-            # Use espeak for TTS if available
-            try:
-                subprocess.run(['espeak', '-v', 'pl', response_text], 
-                              capture_output=True, timeout=5)
-            except Exception:
-                pass  # Ignore TTS errors
-            
-            return {
-                'success': True,
-                'amount_pounds': amount,
-                'rate': rate,
-                'amount_yen': result_yen,
-                'text_response': response_text,
-                'spoken': response_text
-            }
-        except Exception as e:
-            return {
-                'success': False,
-                'error': str(e),
-                'spoken': "Wystąpił błąd podczas przeliczania."
-            }
-
 def execute(params: dict) -> dict:
-    converter = Converter()
-    return converter.execute(params)
+    try:
+        # Default conversion: 1000 GBP to JPY
+        text = params.get('text', '').lower()
+        
+        # Extract amount if mentioned (e.g., "tysiąc", "1000", "thousand")
+        amount = 1000  # default
+        
+        # Check for "tysiąc" (Polish for thousand)
+        if 'tysiąc' in text:
+            amount = 1000
+        elif 'milion' in text:
+            amount = 1000000
+        else:
+            # Try to extract a number
+            numbers = re.findall(r'\d+', text)
+            if numbers:
+                amount = int(numbers[0])
+        
+        # Check for GBP and JPY mentions
+        gbp_mentioned = any(word in text for word in ['funt', 'funty', 'szterling', 'gbp', 'pound', 'pounds'])
+        jpy_mentioned = any(word in text for word in ['jen', 'jeny', 'japońskie', 'jpy', 'yen', 'yens'])
+        
+        # If neither GBP nor JPY mentioned, assume default conversion (GBP to JPY)
+        if not (gbp_mentioned and jpy_mentioned):
+            # Check if at least GBP is mentioned
+            if gbp_mentioned and not jpy_mentioned:
+                jpy_mentioned = True  # assume JPY is implied
+            elif not gbp_mentioned and jpy_mentioned:
+                gbp_mentioned = True  # assume GBP is implied
+            elif not gbp_mentioned and not jpy_mentioned:
+                # Default to GBP to JPY conversion
+                gbp_mentioned = True
+                jpy_mentioned = True
+        
+        # Fetch exchange rate from ECB (Euro to GBP and Euro to JPY)
+        try:
+            url = 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml'
+            with urllib.request.urlopen(url, timeout=10) as response:
+                data = response.read().decode('utf-8')
+                
+                # Extract GBP rate (1 EUR = X GBP)
+                gbp_match = re.search(r'currency="GBP".*?rate="([^"]+)"', data)
+                if not gbp_match:
+                    raise ValueError("GBP rate not found in ECB data")
+                eur_to_gbp = float(gbp_match.group(1))
+                
+                # Extract JPY rate (1 EUR = X JPY)
+                jpy_match = re.search(r'currency="JPY".*?rate="([^"]+)"', data)
+                if not jpy_match:
+                    raise ValueError("JPY rate not found in ECB data")
+                eur_to_jpy = float(jpy_match.group(1))
+                
+                # Calculate GBP to JPY rate: 1 GBP = (1/eur_to_gbp) * eur_to_jpy
+                gbp_to_jpy = eur_to_jpy / eur_to_gbp
+                
+                # Calculate amount in JPY
+                jpy_amount = amount * gbp_to_jpy
+                
+        except Exception as e:
+            # Fallback: use hardcoded rates if API fails
+            gbp_to_jpy = 185.0  # approximate rate as of 2023
+            jpy_amount = amount * gbp_to_jpy
+        
+        # Format the result
+        result_text = f"{amount} funtów szterlingów to około {jpy_amount:,.0f} jenów japońskich."
+        
+        # Try to speak the result using espeak
+        try:
+            subprocess.run(['espeak', '-v', 'pl', result_text], capture_output=True, timeout=5)
+        except Exception:
+            pass  # Ignore TTS errors
+        
+        return {
+            'success': True,
+            'amount_gbp': amount,
+            'amount_jpy': round(jpy_amount, 2),
+            'rate': round(gbp_to_jpy, 2),
+            'text': result_text
+        }
+    
+    except Exception as e:
+        return {
+            'success': False,
+            'error': str(e),
+            'text': 'Wystąpił błąd podczas przeliczania walut.'
+        }
+
+def module_execute(params: dict) -> dict:
+    return execute(params)
 
 if __name__ == '__main__':
     # Test the skill

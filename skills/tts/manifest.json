@@ -16,6 +16,6 @@
     "piper",
     "pyttsx3"
   ],
-  "default_provider": "piper",
-  "selection_strategy": "best_available"
+  "default_provider": "pyttsx3",
+  "selection_strategy": "prefer_default"
 }

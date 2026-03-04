@@ -142,7 +142,7 @@ Zobacz [TODO.md](TODO.md) i [CHANGELOG.md](CHANGELOG.md)
 
 ## 📄 Licencja
 
-MIT License - zobacz [LICENSE](LICENSE)
+Apache License 2.0 - zobacz [LICENSE](LICENSE)
 
 ## 🤝 Wkład w projekt
 

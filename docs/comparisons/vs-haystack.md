@@ -6,7 +6,7 @@
 |---|-----------|----------|
 | **Twórca** | WronAI | deepset |
 | **Architektura** | Ewolucyjna (text2pipeline) | Pipeline RAG-first |
-| **Licencja** | MIT | Apache 2.0 |
+| **Licencja** | Apache 2.0 | Apache 2.0 |
 | **Cena** | Darmowy | Custom enterprise (deepset Cloud) |
 | **GitHub Stars** | Nowy projekt | ~24K |
 | **Klienci** | Early adopters | Airbus, The Economist, Netflix |

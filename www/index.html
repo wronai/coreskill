@@ -22,6 +22,451 @@
 </head>
 <body>
     <div id="root"></div>
-    <script type="text/babel" src="strategia-sprzedazy.jsx"></script>
+    <script type="text/babel">
+        // Import React components
+        const { useState } = React;
+
+        const phases = [
+          {
+            id: "week1",
+            title: "Tydzień 1–2",
+            subtitle: "Pierwsze przychody",
+            color: "#ef4444",
+            revenue: "500–2000 PLN/mies.",
+            items: [
+              {
+                name: "LLM Proxy + API Key Reselling",
+                desc: "Uruchom proxy (LiteLLM/OpenRouter) z polskim landing page. Sprzedaj dostęp do taniego LLM API ze swoim value-add: polskie prompty, auto-routing, fallback.",
+                price: "49 PLN/mies. (1000 req) → 149 PLN (10K req) → 499 PLN (unlimited)",
+                target: "Polscy freelancerzy, startupy, studenci AI",
+                effort: "2–3 dni setup",
+                tech: "LiteLLM + Stripe + landing page",
+              },
+              {
+                name: "Browser Automation as a Service",
+                desc: "Opakuj Broxeen browser sessions w gotowe skrypty automatyzacji: monitoring cen, scraping ofert, auto-fill formularzy. Sprzedawaj jako gotowe \"boty\".",
+                price: "99–299 PLN jednorazowo per bot / 49 PLN/mies. za hosting",
+                target: "E-commerce, agencje marketingowe, handlowcy",
+                effort: "1 tydzień na 3–5 botów",
+                tech: "Broxeen + Playwright/Puppeteer sessions",
+              },
+            ],
+          },
+          {
+            id: "month1",
+            title: "Miesiąc 1–2",
+            subtitle: "Stały MRR",
+            color: "#f59e0b",
+            revenue: "3000–8000 PLN/mies.",
+            items: [
+              {
+                name: "Broxeen Pro — Monitoring Kamer AI",
+                desc: "Pakiet desktop app + 5 kamer + AI detekcja (ruch, osoby, pojazdy). Gotowy produkt dla małych firm, warsztatów, sklepów, magazynów.",
+                price: "199 PLN/mies. (do 5 kamer) → 499 PLN/mies. (do 20 kamer) → 999 PLN jednorazowo (lifetime, self-hosted)",
+                target: "Małe firmy, warsztaty, sklepy, biura w PL",
+                effort: "2 tygodnie na packaging + onboarding",
+                tech: "Broxeen + RTSP + AI model (YOLO/OpenCV)",
+              },
+              {
+                name: "Skills Marketplace — MVP",
+                desc: "Rejestr skilli z podziałem: Free (echo, weather, calculator) → Premium (browser automation, network scan, document reader, DevOps). Jednorazowy zakup lub subskrypcja.",
+                price: "Free tier → 29 PLN/skill → 149 PLN/mies. (all-access)",
+                target: "Developerzy, DevOps, sysadmini",
+                effort: "2 tygodnie na portal + payment",
+                tech: "Next.js storefront + Stripe + skill registry API",
+              },
+            ],
+          },
+          {
+            id: "quarter1",
+            title: "Kwartał 1–2",
+            subtitle: "Skalowanie",
+            color: "#22c55e",
+            revenue: "10K–30K PLN/mies.",
+            items: [
+              {
+                name: "CoreSkill Cloud — Managed Platform",
+                desc: "Hostowany evo-engine z dashboard, monitoring, skill marketplace. Klient deployuje agenty bez własnej infrastruktury.",
+                price: "0 PLN (500 exec/mies.) → 299 PLN (5K exec) → 999 PLN (25K exec) → Enterprise custom",
+                target: "Zespoły DevOps, software houses, startupy AI",
+                effort: "1–2 miesiące na MVP cloud",
+                tech: "Docker + K8s + dashboard React + Stripe metered billing",
+              },
+              {
+                name: "Pakiety wdrożeniowe (consulting)",
+                desc: "Wdrożenie automatyzacji u klienta: monitoring sieci, browser boty, integracje. Sprzedaż bezpośrednia w PL, potem EU.",
+                price: "5000–15 000 PLN per wdrożenie + 499 PLN/mies. support",
+                target: "Średnie firmy, agencje, software houses",
+                effort: "Per projekt",
+                tech: "Broxeen + evo-engine + custom skills",
+              },
+            ],
+          },
+        ];
+
+        const quickWins = [
+          {
+            what: "🤖 Bot monitoringu cen",
+            who: "Sprzedawcy Allegro/Amazon",
+            price: "149 PLN",
+            time: "2 dni",
+            desc: "Automatyczne śledzenie cen konkurencji na Allegro/Amazon. Alert email/SMS gdy cena spadnie.",
+          },
+          {
+            what: "📷 Zestaw monitoring 1 kamera",
+            who: "Właściciele warsztatów/sklepów",
+            price: "299 PLN setup + 49 PLN/mies.",
+            time: "1 dzień",
+            desc: "Broxeen + tania kamera IP + AI detekcja ruchu. Powiadomienia na telefon.",
+          },
+          {
+            what: "🔍 Audyt sieci + raport",
+            who: "Małe firmy bez IT",
+            price: "499 PLN jednorazowo",
+            time: "1 dzień",
+            desc: "Skan sieci Broxeen → raport PDF: wszystkie urządzenia, otwarte porty, zagrożenia, rekomendacje.",
+          },
+          {
+            what: "📝 Bot auto-wypełniania formularzy",
+            who: "Księgowi, HR, administracja",
+            price: "199 PLN/mies.",
+            time: "3 dni",
+            desc: "Automatyczne wypełnianie powtarzalnych formularzy online (US, ZUS, GUS) z danych Excel/CSV.",
+          },
+          {
+            what: "🌐 Web scraper na zamówienie",
+            who: "Agencje marketingowe, researchers",
+            price: "299–799 PLN per scraper",
+            time: "2–5 dni",
+            desc: "Dedykowany scraper: nieruchomości, oferty pracy, przetargi. Dane do CSV/Google Sheets.",
+          },
+          {
+            what: "🔑 LLM API dla polskich devów",
+            who: "Freelancerzy, startupy",
+            price: "49 PLN/mies.",
+            time: "3 dni setup",
+            desc: "Proxy do GPT-4/Claude/Gemini z polskim dashboardem, fakturą PL, limity per projekt.",
+          },
+        ];
+
+        const premiumSkills = [
+          { name: "browser_automation", cat: "Automatyzacja", price: "99 PLN", demand: "🔥🔥🔥", desc: "Playwright sessions, form fill, screenshot, PDF" },
+          { name: "network_scanner_pro", cat: "Bezpieczeństwo", price: "149 PLN", demand: "🔥🔥🔥", desc: "Pełny skan + vuln check + raport PDF" },
+          { name: "camera_ai_monitor", cat: "Monitoring", price: "199 PLN", demand: "🔥🔥", desc: "YOLO detekcja + alerty + timeline zdarzeń" },
+          { name: "document_ocr_reader", cat: "Dokumenty", price: "79 PLN", demand: "🔥🔥", desc: "OCR + ekstrakcja danych z faktur/umów" },
+          { name: "devops_deploy", cat: "DevOps", price: "149 PLN", demand: "🔥🔥", desc: "Auto-deploy, health check, rollback" },
+          { name: "web_scraper_pro", cat: "Data", price: "129 PLN", demand: "🔥🔥🔥", desc: "Anti-bot bypass, pagination, proxy rotation" },
+          { name: "llm_router_smart", cat: "AI", price: "99 PLN", demand: "🔥🔥", desc: "UCB1 bandit routing + cost optimization" },
+          { name: "ssh_manager", cat: "Infrastruktura", price: "79 PLN", demand: "🔥", desc: "Multi-server SSH, batch commands, monitoring" },
+          { name: "backup_agent", cat: "Infrastruktura", price: "99 PLN", demand: "🔥🔥", desc: "Auto-backup do S3/GCS/local, szyfrowanie, harmonogram" },
+          { name: "report_generator", cat: "Business", price: "149 PLN", demand: "🔥🔥", desc: "Auto-raporty PDF/DOCX z danych, szablony, AI podsumowania" },
+        ];
+
+        const channels = [
+          { ch: "OLX / Usługi", cost: "0 PLN", reach: "Natychmiast", desc: "Ogłoszenia: 'Automatyzacja IT', 'Monitoring kamer AI', 'Boty do scrapingu'" },
+          { ch: "Grupy Facebook", cost: "0 PLN", reach: "1–3 dni", desc: "Polskie grupy: programowanie, ecommerce, małe firmy, startups PL. Daj wartość, potem ofertę" },
+          { ch: "LinkedIn PL", cost: "0 PLN", reach: "1 tydzień", desc: "Posty o automatyzacji, case study, demo video. CTO/CEO małych firm" },
+          { ch: "Micro-landing (Carrd)", cost: "19 PLN/rok", reach: "1 dzień setup", desc: "Szybka strona z ofertą + Stripe payment link. carrd.co lub landing.ai" },
+          { ch: "Fiverr / Upwork", cost: "0 PLN", reach: "1 tydzień", desc: "Gig: 'Custom AI bot', 'Network security audit', 'Web scraping service'" },
+          { ch: "GitHub + Product Hunt", cost: "0 PLN", reach: "2–4 tyg.", desc: "Open-source → star gathering → Product Hunt launch → paid conversions" },
+          { ch: "YouTube PL (demo)", cost: "0 PLN", reach: "2–4 tyg.", desc: "Krótkie demo: 'Jak zautomatyzować X w 5 minut'. SEO na polskie frazy" },
+        ];
+
+        const techStack = [
+          { layer: "Landing / Storefront", rec: "Carrd.co → Next.js", reason: "Carrd na start (19 PLN/rok, 1 dzień). Potem Next.js z Tailwind." },
+          { layer: "Payment", rec: "Stripe", reason: "Polskie firmy: Stripe (PLN) + PayU/Przelewy24 jako fallback." },
+          { layer: "Email", rec: "Resend → SendGrid", reason: "Resend (prosty, 100K darmowych) → SendGrid dla większej skali." },
+          { layer: "Automation", rec: "Broxeen + Playwright", reason: "Broxeen dla monitoringu, Playwright dla browser botów. Oba mają API." },
+          { layer: "AI/LLM", rec: "OpenRouter + LiteLLM", reason: "OpenRouter dla dostępu, LiteLLM dla proxy/routing. Obsługują PLN." },
+          { layer: "Infrastructure", rec: "Docker + Hetzner", reason: "Hetzner (DE/PL) + Docker. Tanie, dobre łącze, API do automatyzacji." },
+        ];
+
+        const Badge = ({ color, children }) => {
+          return React.createElement('span', {
+            style: {
+              display: "inline-block",
+              padding: "2px 8px",
+              borderRadius: 12,
+              fontSize: 11,
+              fontWeight: 600,
+              background: color === "green" ? "#22c55e" : color === "yellow" ? "#f59e0b" : "#ef4444",
+              color: "white"
+            }
+          }, children);
+        };
+
+        const App = () => {
+          const [tab, setTab] = useState("quick");
+
+          return React.createElement('div', { className: "container" },
+            React.createElement('div', {
+              style: {
+                background: "linear-gradient(135deg, #1e293b, #0f172a)",
+                borderRadius: 16,
+                padding: 32,
+                marginBottom: 32,
+                border: "1px solid #334155"
+              }
+            },
+              React.createElement('div', { style: { display: "flex", alignItems: "center", gap: 12, marginBottom: 8 } },
+                React.createElement('div', {
+                  style: {
+                    width: 40,
+                    height: 40,
+                    borderRadius: 10,
+                    background: "linear-gradient(135deg, #ef4444, #f59e0b)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 20
+                  }
+                }, "⚡"),
+                React.createElement('div', null,
+                  React.createElement('h1', {
+                    style: {
+                      fontSize: 28,
+                      fontWeight: 800,
+                      margin: 0,
+                      background: "linear-gradient(135deg, #ef4444, #f59e0b, #22c55e)",
+                      WebkitBackgroundClip: "text",
+                      WebkitTextFillColor: "transparent"
+                    }
+                  }, "Strategia Go-to-Market"),
+                  React.createElement('p', {
+                    style: { fontSize: 13, color: "#71717a", margin: 0 }
+                  }, "evo-engine + Broxeen → przychody w 7 dni")
+                )
+              ),
+              React.createElement('p', {
+                style: {
+                  fontSize: 15,
+                  color: "#a1a1aa",
+                  lineHeight: 1.7,
+                  margin: "16px 0 0 0"
+                }
+              }, "Strategia \"revenue-first\": zacznij od natychmiastowych przychodów w PL (OLX, Facebook, LinkedIn), skaluj przez marketplace skills + LLM proxy, potem wchodź na EU/global z managed cloud platform.")
+            ),
+
+            // Tabs
+            React.createElement('div', {
+              style: {
+                display: "flex",
+                gap: 4,
+                marginBottom: 32,
+                overflowX: "auto",
+                paddingBottom: 4
+              }
+            }, [
+              { id: "quick", label: "Szybkie zwycięstwa" },
+              { id: "phases", label: "Fazy" },
+              { id: "skills", label: "Premium Skills" },
+              { id: "channels", label: "Kanały" },
+              { id: "tech", label: "Tech Stack" }
+            ].map(t =>
+              React.createElement('button', {
+                key: t.id,
+                onClick: () => setTab(t.id),
+                style: {
+                  padding: "8px 16px",
+                  borderRadius: 8,
+                  border: "none",
+                  background: tab === t.id ? "#ef4444" : "#27272a",
+                  color: "white",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  whiteSpace: "nowrap"
+                }
+              }, t.label)
+            )),
+
+            // Tab content
+            tab === "quick" && React.createElement('div', null,
+              React.createElement('h2', { style: { fontSize: 20, fontWeight: 700, margin: "0 0 16px 0" } }, "🚀 Szybkie zwycięstwa (7 dni)"),
+              React.createElement('div', { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 } },
+                quickWins.map((win, i) =>
+                  React.createElement('div', {
+                    key: i,
+                    style: {
+                      background: "#27272a",
+                      padding: 20,
+                      borderRadius: 12,
+                      border: "1px solid #3f3f46"
+                    }
+                  },
+                    React.createElement('div', { style: { fontSize: 18, fontWeight: 700, marginBottom: 8 } }, win.what),
+                    React.createElement('div', { style: { fontSize: 14, color: "#a1a1aa", marginBottom: 4 } }, win.who),
+                    React.createElement('div', { style: { fontSize: 16, color: "#22c55e", fontWeight: 600, marginBottom: 4 } }, win.price),
+                    React.createElement('div', { style: { fontSize: 13, color: "#f59e0b", marginBottom: 8 } }, `⏱ ${win.time}`),
+                    React.createElement('div', { style: { fontSize: 14, color: "#d4d4d8", lineHeight: 1.6 } }, win.desc)
+                  )
+                )
+              )
+            ),
+
+            tab === "phases" && React.createElement('div', null,
+              React.createElement('h2', { style: { fontSize: 20, fontWeight: 700, margin: "0 0 16px 0" } }, "📈 Fazy rozwoju"),
+              phases.map(phase =>
+                React.createElement('div', {
+                  key: phase.id,
+                  style: {
+                    background: "#27272a",
+                    padding: 24,
+                    borderRadius: 12,
+                    border: "1px solid #3f3f46",
+                    marginBottom: 24
+                  }
+                },
+                  React.createElement('div', { style: { display: "flex", alignItems: "center", gap: 12, marginBottom: 16 } },
+                    React.createElement('div', {
+                      style: {
+                        width: 48,
+                        height: 48,
+                        borderRadius: 10,
+                        background: phase.color,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 20,
+                        fontWeight: 700,
+                        color: "white"
+                      }
+                    }, phase.id === "week1" ? "1" : phase.id === "month1" ? "2" : "3"),
+                    React.createElement('div', null,
+                      React.createElement('h3', { style: { fontSize: 18, fontWeight: 700, margin: "0 0 4px 0" } }, phase.title),
+                      React.createElement('p', { style: { fontSize: 14, color: "#a1a1aa", margin: 0 } }, `${phase.subtitle} • ${phase.revenue}`)
+                    )
+                  ),
+                  React.createElement('div', { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 } },
+                    phase.items.map((item, i) =>
+                      React.createElement('div', {
+                        key: i,
+                        style: {
+                          background: "#1e1e1e",
+                          padding: 16,
+                          borderRadius: 8,
+                          border: "1px solid #333"
+                        }
+                      },
+                        React.createElement('h4', { style: { fontSize: 15, fontWeight: 600, margin: "0 0 8px 0" } }, item.name),
+                        React.createElement('p', { style: { fontSize: 13, color: "#a1a1aa", margin: "0 0 8px 0", lineHeight: 1.5 } }, item.desc),
+                        React.createElement('div', { style: { fontSize: 14, color: "#22c55e", fontWeight: 600, marginBottom: 4 } }, item.price),
+                        React.createElement('div', { style: { fontSize: 12, color: "#71717a", marginBottom: 4 } }, `👥 ${item.target}`),
+                        React.createElement('div', { style: { fontSize: 12, color: "#f59e0b" } }, `⏱ ${item.effort}`)
+                      )
+                    )
+                  )
+                )
+              )
+            ),
+
+            tab === "skills" && React.createElement('div', null,
+              React.createElement('h2', { style: { fontSize: 20, fontWeight: 700, margin: "0 0 16px 0" } }, "💎 Premium Skills Marketplace"),
+              React.createElement('div', { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: 16 } },
+                premiumSkills.map((skill, i) =>
+                  React.createElement('div', {
+                    key: i,
+                    style: {
+                      background: "#27272a",
+                      padding: 16,
+                      borderRadius: 12,
+                      border: "1px solid #3f3f46"
+                    }
+                  },
+                    React.createElement('div', { style: { display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: 8 } },
+                      React.createElement('div', null,
+                        React.createElement('div', { style: { fontSize: 14, fontWeight: 600, marginBottom: 4 } }, skill.name),
+                        <Badge color={skill.demand.includes("🔥🔥🔥") ? "green" : skill.demand.includes("🔥🔥") ? "yellow" : "red"}>{skill.demand}</Badge>
+                      ),
+                      React.createElement('div', { style: { fontSize: 16, color: "#22c55e", fontWeight: 600 } }, skill.price)
+                    ),
+                    React.createElement('div', { style: { fontSize: 12, color: "#a1a1aa", marginBottom: 4 } }, skill.cat),
+                    React.createElement('div', { style: { fontSize: 13, color: "#d4d4d8", lineHeight: 1.5 } }, skill.desc)
+                  )
+                )
+              )
+            ),
+
+            tab === "channels" && React.createElement('div', null,
+              React.createElement('h2', { style: { fontSize: 20, fontWeight: 700, margin: "0 0 16px 0" } }, "📢 Kanały sprzedaży"),
+              React.createElement('div', { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 } },
+                channels.map((ch, i) =>
+                  React.createElement('div', {
+                    key: i,
+                    style: {
+                      background: "#27272a",
+                      padding: 20,
+                      borderRadius: 12,
+                      border: "1px solid #3f3f46"
+                    }
+                  },
+                    React.createElement('div', { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 } },
+                      React.createElement('div', { style: { fontSize: 16, fontWeight: 700 } }, ch.ch),
+                      <Badge color={ch.reach === "Natychmiast" ? "green" : "yellow"}>{ch.reach}</Badge>
+                    ),
+                    React.createElement('div', { style: { fontSize: 14, color: "#22c55e", fontWeight: 600, marginBottom: 4 } }, ch.cost),
+                    React.createElement('div', { style: { fontSize: 13, color: "#d4d4d8", lineHeight: 1.6 } }, ch.desc)
+                  )
+                )
+              ),
+              React.createElement('div', {
+                style: {
+                  marginTop: 24,
+                  padding: 20,
+                  background: "#18181b",
+                  borderRadius: 12,
+                  border: "1px solid #f59e0b33"
+                }
+              },
+                React.createElement('h4', {
+                  style: { fontSize: 14, fontWeight: 700, margin: "0 0 12px 0", color: "#fbbf24" }
+                }, "🇵🇱 Grupy Facebook do targetowania (Polska)"),
+                React.createElement('div', {
+                  style: { fontSize: 13, color: "#a1a1aa", lineHeight: 2 }
+                }, "\"Programowanie — Pair Programming PL\" (45K) · \"Startups Poland\" (12K) · \"Python Polska\" (18K) · \"E-commerce Polska — Sklepy Internetowe\" (38K) · \"Małe firmy — Marketing\" (65K) · \"Automatyzacja IT\" (8K) · \"DevOps Polska\" (6K) · \"Monitoring i CCTV Polska\" (15K) · \"Freelancerzy IT Polska\" (22K)")
+              )
+            ),
+
+            tab === "tech" && React.createElement('div', null,
+              React.createElement('h2', { style: { fontSize: 20, fontWeight: 700, margin: "0 0 16px 0" } }, "🛠️ Tech Stack"),
+              React.createElement('p', {
+                style: {
+                  fontSize: 14,
+                  color: "#a1a1aa",
+                  marginBottom: 24,
+                  lineHeight: 1.7
+                }
+              }, "Minimalistyczny stack na szybki start. Zasada: ", React.createElement('strong', { style: { color: "#fbbf24" } }, "używaj tego co masz"), ", nie buduj nowego."),
+              React.createElement('div', { style: { display: "grid", gap: 16 } },
+                techStack.map((item, i) =>
+                  React.createElement('div', {
+                    key: i,
+                    style: {
+                      background: "#27272a",
+                      padding: 20,
+                      borderRadius: 12,
+                      border: "1px solid #3f3f46",
+                      display: "grid",
+                      gridTemplateColumns: "150px 1fr",
+                      gap: 20,
+                      alignItems: "start"
+                    }
+                  },
+                    React.createElement('div', null,
+                      React.createElement('div', { style: { fontSize: 13, fontWeight: 600, color: "#a1a1aa", marginBottom: 4 } }, item.layer),
+                      React.createElement('div', { style: { fontSize: 16, fontWeight: 700, color: "#fbbf24" } }, item.rec)
+                    ),
+                    React.createElement('div', { style: { fontSize: 14, color: "#d4d4d8", lineHeight: 1.6 } }, item.reason)
+                  )
+                )
+              )
+            )
+          );
+        };
+
+        // Render the app
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(React.createElement(App));
+    </script>
 </body>
 </html>

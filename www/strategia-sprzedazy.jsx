@@ -18,7 +18,7 @@ const phases = [
       },
       {
         name: "Browser Automation as a Service",
-        desc: "Opakuj Broxeen browser sessions w gotowe skrypty automatyzacji: monitoring cen, scraping ofert, auto-fill formularzy. Sprzedawaj jako gotowe „boty".",
+        desc: "Opakuj Broxeen browser sessions w gotowe skrypty automatyzacji: monitoring cen, scraping ofert, auto-fill formularzy. Sprzedawaj jako gotowe \"boty\".",
         price: "99–299 PLN jednorazowo per bot / 49 PLN/mies. za hosting",
         target: "E-commerce, agencje marketingowe, handlowcy",
         effort: "1 tydzień na 3–5 botów",
@@ -201,7 +201,7 @@ export default function Strategy() {
             </div>
           </div>
           <p style={{ fontSize: 15, color: "#a1a1aa", lineHeight: 1.7, margin: "16px 0 0 0" }}>
-            Strategia „revenue-first": zacznij od natychmiastowych przychodów w PL (OLX, Facebook, LinkedIn), skaluj przez marketplace skills + LLM proxy, potem wchodź na EU/global z managed cloud platform.
+            Strategia "revenue-first": zacznij od natychmiastowych przychodów w PL (OLX, Facebook, LinkedIn), skaluj przez marketplace skills + LLM proxy, potem wchodź na EU/global z managed cloud platform.
           </p>
         </div>
 
@@ -357,7 +357,7 @@ export default function Strategy() {
             <div style={{ marginTop: 24, padding: 20, background: "#18181b", borderRadius: 12, border: "1px solid #f59e0b33" }}>
               <h4 style={{ fontSize: 14, fontWeight: 700, margin: "0 0 12px 0", color: "#fbbf24" }}>🇵🇱 Grupy Facebook do targetowania (Polska)</h4>
               <div style={{ fontSize: 13, color: "#a1a1aa", lineHeight: 2 }}>
-                „Programowanie — Pair Programming PL" (45K) · „Startups Poland" (12K) · „Python Polska" (18K) · „E-commerce Polska — Sklepy Internetowe" (38K) · „Małe firmy — Marketing" (65K) · „Automatyzacja IT" (8K) · „DevOps Polska" (6K) · „Monitoring i CCTV Polska" (15K) · „Freelancerzy IT Polska" (22K)
+                "Programowanie — Pair Programming PL" (45K) · "Startups Poland" (12K) · "Python Polska" (18K) · "E-commerce Polska — Sklepy Internetowe" (38K) · "Małe firmy — Marketing" (65K) · "Automatyzacja IT" (8K) · "DevOps Polska" (6K) · "Monitoring i CCTV Polska" (15K) · "Freelancerzy IT Polska" (22K)
               </div>
             </div>
           </div>

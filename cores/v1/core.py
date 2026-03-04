@@ -12,36 +12,73 @@ import json
 import time
 from datetime import datetime, timezone, timedelta
 
-from .config import (
-    ROOT, SKILLS_DIR, C, cpr,
-    TIER_FREE, TIER_LOCAL, TIER_PAID,
-    DEFAULT_MODEL,
-    load_state, save_state, get_models_from_config,
-)
-from .utils import mprint
-from .logger import Logger
-from .llm_client import LLMClient, _detect_ollama_models, discover_models
-from .intent_engine import IntentEngine
-from .skill_manager import SkillManager
-from .evo_engine import EvoEngine
-from .pipeline_manager import PipelineManager
-from .supervisor import Supervisor
-from .resource_monitor import ResourceMonitor
-from .provider_selector import ProviderSelector, ProviderChain
-from .system_identity import SystemIdentity
-from .skill_logger import init_nfo
-from .user_memory import UserMemory
-from .garbage_collector import EvolutionGarbageCollector
-from .auto_repair import AutoRepair
-from .session_config import SessionConfig, ConfigChange
-from .config_generator import ConfigGenerator, get_config_generator
-from .voice_loop import (_extract_stt_text, _speak_tts, _run_stt_cycle,
-                        _run_voice_loop, _run_file_input_loop)
-from .fuzzy_router import FuzzyCommandRouter
-from .event_bus import EventBus
-from .adaptive_monitor import AdaptiveResourceMonitor
-from .proactive_scheduler import ProactiveScheduler, setup_default_tasks
-from .bandit_selector import UCB1BanditSelector
+# Handle both package import and standalone file import
+try:
+    from .config import (
+        ROOT, SKILLS_DIR, C, cpr,
+        TIER_FREE, TIER_LOCAL, TIER_PAID,
+        DEFAULT_MODEL,
+        load_state, save_state, get_models_from_config,
+    )
+    from .utils import mprint
+    from .logger import Logger
+    from .llm_client import LLMClient, _detect_ollama_models, discover_models
+    from .intent_engine import IntentEngine
+    from .skill_manager import SkillManager
+    from .evo_engine import EvoEngine
+    from .pipeline_manager import PipelineManager
+    from .supervisor import Supervisor
+    from .resource_monitor import ResourceMonitor
+    from .provider_selector import ProviderSelector, ProviderChain
+    from .system_identity import SystemIdentity
+    from .skill_logger import init_nfo
+    from .user_memory import UserMemory
+    from .garbage_collector import EvolutionGarbageCollector
+    from .auto_repair import AutoRepair
+    from .session_config import SessionConfig, ConfigChange
+    from .config_generator import ConfigGenerator, get_config_generator
+    from .voice_loop import (_extract_stt_text, _speak_tts, _run_stt_cycle,
+                            _run_voice_loop, _run_file_input_loop)
+    from .fuzzy_router import FuzzyCommandRouter
+    from .event_bus import EventBus
+    from .adaptive_monitor import AdaptiveResourceMonitor
+    from .proactive_scheduler import ProactiveScheduler, setup_default_tasks
+    from .bandit_selector import UCB1BanditSelector
+except ImportError:
+    # Fallback for standalone file loading
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+    sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+    
+    from config import (
+        ROOT, SKILLS_DIR, C, cpr,
+        TIER_FREE, TIER_LOCAL, TIER_PAID,
+        DEFAULT_MODEL,
+        load_state, save_state, get_models_from_config,
+    )
+    from utils import mprint
+    from logger import Logger
+    from llm_client import LLMClient, _detect_ollama_models, discover_models
+    from intent_engine import IntentEngine
+    from skill_manager import SkillManager
+    from evo_engine import EvoEngine
+    from pipeline_manager import PipelineManager
+    from supervisor import Supervisor
+    from resource_monitor import ResourceMonitor
+    from provider_selector import ProviderSelector, ProviderChain
+    from system_identity import SystemIdentity
+    from skill_logger import init_nfo
+    from user_memory import UserMemory
+    from garbage_collector import EvolutionGarbageCollector
+    from auto_repair import AutoRepair
+    from session_config import SessionConfig, ConfigChange
+    from config_generator import ConfigGenerator, get_config_generator
+    from voice_loop import (_extract_stt_text, _speak_tts, _run_stt_cycle,
+                            _run_voice_loop, _run_file_input_loop)
+    from fuzzy_router import FuzzyCommandRouter
+    from event_bus import EventBus
+    from adaptive_monitor import AdaptiveResourceMonitor
+    from proactive_scheduler import ProactiveScheduler, setup_default_tasks
+    from bandit_selector import UCB1BanditSelector
 
 
 # ─── Docker Compose Generator ────────────────────────────────────────
@@ -614,11 +651,9 @@ def _handle_outcome(outcome, intent, conv, identity=None):
             mprint(f"### ❌ Nie udało się: {outcome.get('goal', '?')}\nSpróbuję odpowiedzieć tekstowo.")
     return False
 
-def _handle_chat(llm, sm, logger, conv, identity=None, memory=None):
-    """Generate LLM response. Returns response text (or None on error)."""
+def _build_env_context():
+    """Build masked environment context for LLM."""
     import os as _os
-    
-    # Build enhanced system context with env vars and skills
     _env_ctx = []
     _key_env = ['HOME', 'USER', 'PATH', 'PWD', 'SHELL', 'TERM', 'EVO_TEXT_ONLY',
                 'OPENROUTER_API_KEY', 'OLLAMA_HOST', 'DISPLAY', 'XDG_SESSION_TYPE',
@@ -629,8 +664,11 @@ def _handle_chat(llm, sm, logger, conv, identity=None, memory=None):
             if 'KEY' in _k or 'TOKEN' in _k or 'SECRET' in _k:
                 _v = _v[:8] + "..." if len(_v) > 12 else "***"
             _env_ctx.append(f"  {_k}={_v}")
-    
-    # Get skills with descriptions
+    return _env_ctx
+
+
+def _build_skills_info(sm):
+    """Build skills descriptions for system prompt."""
     _skills_info = []
     for _name, _skill in sm.list_skills().items():
         try:
@@ -644,41 +682,51 @@ def _handle_chat(llm, sm, logger, conv, identity=None, memory=None):
                 _skills_info.append(f"  {_name}: (skill bez opisu)")
         except Exception:
             _skills_info.append(f"  {_name}: (błąd odczytu info)")
+    return _skills_info
+
+
+def _build_fallback_system_prompt(sm, identity=None):
+    """Build fallback system prompt when identity not available."""
+    from datetime import datetime as _dt
+    import os
+    import json
     
+    _now = _dt.now().strftime("%Y-%m-%d %H:%M:%S (%A)")
+    _skills = list(sm.list_skills().keys())
+    _env_candidates = [
+        "OPENROUTER_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY",
+        "GOOGLE_API_KEY", "MOONSHOT_API_KEY", "OLLAMA_HOST",
+        "EVO_MODEL", "EVO_TEXT_ONLY",
+    ]
+    _env_lines = []
+    for k in _env_candidates:
+        _env_lines.append(f"- {k}: {'SET' if os.environ.get(k) else 'UNSET'}")
+
+    sp = (
+        f"AKTUALNY CZAS SYSTEMOWY: {_now}\n"
+        "NIGDY nie wymyślaj daty/godziny — używaj WYŁĄCZNIE powyższego czasu.\n\n"
+        "Jesteś evo-engine, ewolucyjny asystent AI połączony z systemem skills.\n"
+        "Nigdy nie mów, że nie umiesz — używaj skill-i.\n\n"
+        f"DOSTĘPNE SKILLS: {json.dumps(_skills, ensure_ascii=False)}\n\n"
+        "DOSTĘPNE ZMIENNE ŚRODOWISKOWE (tylko nazwy, bez wartości):\n"
+        + "\n".join(_env_lines)
+    )
+    return sp
+
+
+def _handle_chat(llm, sm, logger, conv, identity=None, memory=None):
+    """Generate LLM response. Returns response text (or None on error)."""
+    # Build context components
+    _env_ctx = _build_env_context()
+    _skills_info = _build_skills_info(sm)
+    
+    # Get base system prompt
     if identity:
         sp = identity.build_system_prompt()
     else:
-        from datetime import datetime as _dt
-        _now = _dt.now().strftime("%Y-%m-%d %H:%M:%S (%A)")
-        # Fallback prompt must still tell the LLM what integrations/skills are available.
-        # IMPORTANT: never include secret VALUES, only names + whether present.
-        _skills = list(sm.list_skills().keys())
-        _env_candidates = [
-            "OPENROUTER_API_KEY",
-            "OPENAI_API_KEY",
-            "ANTHROPIC_API_KEY",
-            "GOOGLE_API_KEY",
-            "MOONSHOT_API_KEY",
-            "OLLAMA_HOST",
-            "EVO_MODEL",
-            "EVO_TEXT_ONLY",
-        ]
-        _env_lines = []
-        for k in _env_candidates:
-            _env_lines.append(f"- {k}: {'SET' if os.environ.get(k) else 'UNSET'}")
+        sp = _build_fallback_system_prompt(sm)
 
-        sp = (
-            f"AKTUALNY CZAS SYSTEMOWY: {_now}\n"
-            "NIGDY nie wymyślaj daty/godziny — używaj WYŁĄCZNIE powyższego czasu.\n\n"
-            "Jesteś evo-engine, ewolucyjny asystent AI połączony z systemem skills.\n"
-            "Nigdy nie mów, że nie umiesz — używaj skill-i.\n\n"
-            f"DOSTĘPNE SKILLS: {json.dumps(_skills, ensure_ascii=False)}\n\n"
-            "DOSTĘPNE ZMIENNE ŚRODOWISKOWE (tylko nazwy, bez wartości):\n"
-            + "\n".join(_env_lines)
-        )
-
-    # Always provide the LLM with a concise, safe snapshot of env+skills.
-    # Values are masked; this is informational so the LLM knows what it can use.
+    # Augment with env and skills info
     if _env_ctx:
         sp += "\n\nZMIENNE ŚRODOWISKOWE (maskowane):\n" + "\n".join(_env_ctx[:20])
         if len(_env_ctx) > 20:
@@ -688,6 +736,7 @@ def _handle_chat(llm, sm, logger, conv, identity=None, memory=None):
         if len(_skills_info) > 20:
             sp += f"\n  ... i {len(_skills_info) - 20} innych"
     
+    # Add memory context
     if memory:
         mem_ctx = memory.build_system_context()
         if mem_ctx:

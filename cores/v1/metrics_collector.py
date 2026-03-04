@@ -235,51 +235,51 @@ class MetricsCollector:
         except (json.JSONDecodeError, TypeError):
             return None
     
-    def compute_system_health(self, skills_dir: Path) -> SystemHealthSnapshot:
-        """Compute current system health from all metrics."""
-        from .skill_schema import get_schema_validation_stats
-        
-        # Count skills
-        total_skills = 0
-        if skills_dir.exists():
-            total_skills = sum(1 for d in skills_dir.iterdir() 
-                             if d.is_dir() and not d.name.startswith("."))
-        
-        # Valid manifests
-        manifest_stats = get_schema_validation_stats(skills_dir)
-        
-        # Recent skill metrics (last 24h)
+    def _count_skills(self, skills_dir: Path) -> int:
+        """Count total skills in skills directory."""
+        if not skills_dir.exists():
+            return 0
+        return sum(1 for d in skills_dir.iterdir() 
+                   if d.is_dir() and not d.name.startswith("."))
+
+    def _get_recent_skill_metrics(self, cutoff: float) -> list[SkillMetric]:
+        """Get skill metrics from last 24 hours."""
         recent_metrics = []
-        cutoff = time.time() - 24 * 3600
-        if SKILL_METRICS_FILE.exists():
-            with open(SKILL_METRICS_FILE) as f:
-                for line in f:
-                    try:
-                        data = json.loads(line)
-                        ts = datetime.fromisoformat(data["timestamp"].replace('Z', '+00:00'))
-                        if ts.timestamp() > cutoff:
-                            recent_metrics.append(SkillMetric(**data))
-                    except (json.JSONDecodeError, ValueError, KeyError):
-                        continue
-        
-        # Calculate stats
-        avg_quality = 0.0
-        success_rate = 0.0
-        if recent_metrics:
-            avg_quality = sum(m.quality_score for m in recent_metrics) / len(recent_metrics)
-            successes = sum(1 for m in recent_metrics if m.success)
-            success_rate = successes / len(recent_metrics)
-        
-        # Error frequency
+        if not SKILL_METRICS_FILE.exists():
+            return recent_metrics
+            
+        with open(SKILL_METRICS_FILE) as f:
+            for line in f:
+                try:
+                    data = json.loads(line)
+                    ts = datetime.fromisoformat(data["timestamp"].replace('Z', '+00:00'))
+                    if ts.timestamp() > cutoff:
+                        recent_metrics.append(SkillMetric(**data))
+                except (json.JSONDecodeError, ValueError, KeyError):
+                    continue
+        return recent_metrics
+
+    def _calculate_skill_stats(self, metrics: list[SkillMetric]) -> tuple[float, float]:
+        """Calculate avg quality and success rate from metrics."""
+        if not metrics:
+            return 0.0, 0.0
+        avg_quality = sum(m.quality_score for m in metrics) / len(metrics)
+        successes = sum(1 for m in metrics if m.success)
+        success_rate = successes / len(metrics)
+        return avg_quality, success_rate
+
+    def _get_top_errors(self, metrics: list[SkillMetric], limit: int = 5) -> list[tuple[str, int]]:
+        """Get most frequent errors from metrics."""
         error_counts = {}
-        for m in recent_metrics:
+        for m in metrics:
             if m.error:
                 error_counts[m.error] = error_counts.get(m.error, 0) + 1
-        top_errors = sorted(error_counts.items(), key=lambda x: x[1], reverse=True)[:5]
-        
-        # Slowest skills
+        return sorted(error_counts.items(), key=lambda x: x[1], reverse=True)[:limit]
+
+    def _get_slowest_skills(self, metrics: list[SkillMetric], limit: int = 5) -> list[tuple[str, float]]:
+        """Get skills with highest average duration."""
         skill_durations = {}
-        for m in recent_metrics:
+        for m in metrics:
             if m.skill_name not in skill_durations:
                 skill_durations[m.skill_name] = []
             skill_durations[m.skill_name].append(m.duration_ms)
@@ -288,21 +288,41 @@ class MetricsCollector:
             name: sum(durs) / len(durs) 
             for name, durs in skill_durations.items()
         }
-        slowest = sorted(avg_by_skill.items(), key=lambda x: x[1], reverse=True)[:5]
-        
-        # Reflection count (last 24h)
+        return sorted(avg_by_skill.items(), key=lambda x: x[1], reverse=True)[:limit]
+
+    def _count_reflections(self, cutoff: float) -> int:
+        """Count reflection operations in last 24 hours."""
         reflection_count = 0
-        if OPERATIONS_FILE.exists():
-            with open(OPERATIONS_FILE) as f:
-                for line in f:
-                    try:
-                        data = json.loads(line)
-                        if data.get("operation") == "reflect":
-                            ts = datetime.fromisoformat(data["timestamp"].replace('Z', '+00:00'))
-                            if ts.timestamp() > cutoff:
-                                reflection_count += 1
-                    except (json.JSONDecodeError, ValueError, KeyError):
-                        continue
+        if not OPERATIONS_FILE.exists():
+            return reflection_count
+            
+        with open(OPERATIONS_FILE) as f:
+            for line in f:
+                try:
+                    data = json.loads(line)
+                    if data.get("operation") == "reflect":
+                        ts = datetime.fromisoformat(data["timestamp"].replace('Z', '+00:00'))
+                        if ts.timestamp() > cutoff:
+                            reflection_count += 1
+                except (json.JSONDecodeError, ValueError, KeyError):
+                    continue
+        return reflection_count
+
+    def compute_system_health(self, skills_dir: Path) -> SystemHealthSnapshot:
+        """Compute current system health from all metrics."""
+        from .skill_schema import get_schema_validation_stats
+        
+        # Collect all metrics components
+        total_skills = self._count_skills(skills_dir)
+        manifest_stats = get_schema_validation_stats(skills_dir)
+        
+        cutoff = time.time() - 24 * 3600
+        recent_metrics = self._get_recent_skill_metrics(cutoff)
+        
+        avg_quality, success_rate = self._calculate_skill_stats(recent_metrics)
+        top_errors = self._get_top_errors(recent_metrics)
+        slowest = self._get_slowest_skills(recent_metrics)
+        reflection_count = self._count_reflections(cutoff)
         
         return SystemHealthSnapshot(
             timestamp=datetime.now(timezone.utc).isoformat(),

@@ -194,59 +194,50 @@ class SmartIntentClassifier:
         ul = user_msg.lower()
         
         # Stage 0: Fast keyword prefilter (high-confidence only)
-        # TTS keywords
-        if any(w in ul for w in ("powiedz", "wypowiedz", "przeczytaj", "mów", "odczytaj", "speak", "say", "read aloud")):
+        # Uses multilingual keywords from i18n module
+        from ..i18n import (
+            ALL_TTS_KEYWORDS, ALL_STT_KEYWORDS, ALL_VOICE_MODE_KEYWORDS,
+            ALL_SEARCH_KEYWORDS, ALL_SHELL_KEYWORDS, ALL_CREATE_KEYWORDS,
+            ALL_EVOLVE_KEYWORDS, ALL_CONFIGURE_KEYWORDS, match_any_keyword,
+        )
+        
+        # TTS keywords (all European languages)
+        if match_any_keyword(ul, ALL_TTS_KEYWORDS):
             return IntentResult(action="use", skill="tts", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
         
-        # Voice/STT keywords
-        if any(w in ul for w in ("słuchaj", "nagrywaj", "zapisz co mówię", "transkrybuj", "listen", "record", "transcribe")):
+        # Voice/STT keywords (all European languages)
+        if match_any_keyword(ul, ALL_STT_KEYWORDS):
             return IntentResult(action="use", skill="stt", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
         
-        # Voice mode
-        if any(w in ul for w in ("porozmawiajmy głosowo", "pogadajmy głosem", "włącz tryb głosowy", "voice mode", "let's talk")):
+        # Voice mode (all European languages)
+        if match_any_keyword(ul, ALL_VOICE_MODE_KEYWORDS):
             return IntentResult(action="use", skill="stt", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
         
-        # Configure / settings (NEW - LLM model changes) - CHECK THIS FIRST
-        configure_keywords = ("ustaw jako domyślny", "ustaw model", "ustaw llm", "zmień model", "zmień domyślny",
-                            "ustaw domyślny model", "przełącz na", "użyj modelu", "zmień na",
-                            "set as default", "change model", "switch to", "use model",
-                            "set default LLM", "set default llm", "set default model", "set llm")
-        if any(w in ul for w in configure_keywords):
+        # Configure / settings (all European languages) - CHECK THIS FIRST
+        if match_any_keyword(ul, ALL_CONFIGURE_KEYWORDS):
             target = self._extract_model_target(user_msg)
             return IntentResult(action="configure", category="llm", target=target,
                               confidence=0.95, tier="keyword_prefilter", goal=user_msg)
         
-        # Web search - check specific verbs first, then "google" only if not part of model path
-        if any(w in ul for w in ("wyszukaj", "szukaj", "znajdź w internecie", "search", "find online", "look up")):
-            return IntentResult(action="use", skill="web_search", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
-        # Special check for "google" - avoid matching when part of openrouter/google/... model path
-        if "google" in ul and "openrouter/google" not in ul and "google/gemma" not in ul:
-            return IntentResult(action="use", skill="web_search", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
+        # Web search (all European languages)
+        if match_any_keyword(ul, ALL_SEARCH_KEYWORDS):
+            # Avoid matching "google" when part of openrouter/google/... model path
+            if "google" in ul and ("openrouter/google" in ul or "google/gemma" in ul):
+                pass
+            else:
+                return IntentResult(action="use", skill="web_search", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
         
-        # Shell
-        if any(w in ul for w in ("uruchom", "wykonaj", "bash", "terminal", "run command", "execute")):
+        # Shell (all European languages)
+        if match_any_keyword(ul, ALL_SHELL_KEYWORDS):
             return IntentResult(action="use", skill="shell", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
         
-        # Create/evolve (high confidence keywords)
-        if any(w in ul for w in ("stwórz skill", "nowy skill", "create skill", "new skill", "build skill")):
+        # Create (all European languages)
+        if match_any_keyword(ul, ALL_CREATE_KEYWORDS):
             return IntentResult(action="create", skill="", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
         
-        if any(w in ul for w in ("napisz program", "zbuduj aplikację", "stwórz program", "zbuduj system", "utwórz aplikację")):
-            return IntentResult(action="create", skill="", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
-        
-        if any(w in ul for w in ("napraw", "popraw", "ulepsz", "fix", "repair", "improve")):
+        # Evolve/fix (all European languages)
+        if match_any_keyword(ul, ALL_EVOLVE_KEYWORDS):
             return IntentResult(action="evolve", skill="", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
-        
-        # Configure / settings (NEW - LLM model changes)
-        configure_keywords = ("ustaw jako domyślny", "ustaw model", "ustaw llm", "zmień model", "zmień domyślny",
-                            "ustaw domyślny model", "przełącz na", "użyj modelu", "zmień na",
-                            "set as default", "change model", "switch to", "use model",
-                            "set default LLM", "set default llm", "set default model", "set llm")
-        if any(w in ul for w in configure_keywords):
-            # Extract model name from message
-            target = self._extract_model_target(user_msg)
-            return IntentResult(action="configure", category="llm", target=target,
-                              confidence=0.95, tier="keyword_prefilter", goal=user_msg)
 
         # Tier 1: Embedding similarity
         result = self._embedding_classify(user_msg)

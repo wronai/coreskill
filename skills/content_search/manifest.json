@@ -1,6 +1,6 @@
 {
   "capability": "content_search",
-  "description": "Text transformation and analysis",
+  "description": "Searches for content using web search when web_search returned empty results",
   "version_structure": "stable/latest/archive",
   "interface": {
     "input": {
@@ -10,6 +10,9 @@
       "result": "any"
     }
   },
+  "providers": ["default"],
+  "default_provider": "default",
+  "selection_strategy": "prefer_default",
   "constraints": {
     "max_lines": 249,
     "min_quality_score": 0.5,

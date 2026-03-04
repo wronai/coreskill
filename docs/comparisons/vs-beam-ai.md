@@ -6,7 +6,7 @@
 |---|-----------|---------|
 | **Twórca** | WronAI | Beam AI |
 | **Architektura** | Ewolucyjna (text2pipeline) | Self-learning agents (back-office) |
-| **Licencja** | MIT (open-source) | Proprietary (SaaS) |
+| **Licencja** | Apache 2.0 (open-source) | Proprietary (SaaS) |
 | **Cena** | Darmowy | Enterprise (custom pricing) |
 | **Focus** | Developer framework (generalny) | Back-office process automation |
 | **Status** | Wczesna faza | Komercyjna platforma |

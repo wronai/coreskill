@@ -7,7 +7,7 @@
 | **Twórca** | WronAI | Microsoft |
 | **Poprzednicy** | — | AutoGen (54.7K ★) + Semantic Kernel (27.3K ★) |
 | **Architektura** | Ewolucyjna (text2pipeline) | Multi-agent konwersacje + enterprise plugins |
-| **Licencja** | MIT | MIT |
+| **Licencja** | Apache 2.0 | MIT |
 | **Cena** | Darmowy | Darmowy (OSS only, brak managed cloud) |
 | **Status** | Wczesna faza | Przejściowa (GA planowane Q1 2026) |
 | **Ekosystem** | Standalone | Głęboka integracja Azure |
