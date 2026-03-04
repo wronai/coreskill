@@ -1,5 +1,6 @@
-import subprocess
 import re
+import subprocess
+import json
 import urllib.request
 import urllib.error
 from html.parser import HTMLParser
@@ -11,158 +12,153 @@ class WeatherGdanskParser(HTMLParser):
         self.in_temp = False
         self.in_condition = False
         self.in_location = False
+        self.current_data = ""
         self.temperature = None
         self.condition = None
-        self.location = None
-        self.current_tag = None
-        self.current_attrs = []
-        self.temp_buffer = ""
-        self.condition_buffer = ""
-        self.location_buffer = ""
+        self.location = "Gdańsk"
+        self.data_buffer = []
 
     def handle_starttag(self, tag, attrs):
-        self.current_tag = tag
-        self.current_attrs = attrs
         attrs_dict = dict(attrs)
-        
-        # Look for temperature (common patterns: span with class containing 'temp', div with 'temp')
-        if tag == 'span' or tag == 'div':
-            class_attr = attrs_dict.get('class', '')
-            if any(keyword in class_attr.lower() for keyword in ['temp', 'temperature']):
+        # Try to find temperature (e.g., <span class="temp">15°</span>)
+        if tag == "span" and "class" in attrs_dict:
+            cls = attrs_dict["class"].lower()
+            if any(x in cls for x in ["temp", "temperature"]):
                 self.in_temp = True
-                self.temp_buffer = ""
-            if any(keyword in class_attr.lower() for keyword in ['condition', 'weather', 'status']):
+        # Try to find weather condition (e.g., <div class="condition">Clear</div>)
+        if tag == "div" and "class" in attrs_dict:
+            cls = attrs_dict["class"].lower()
+            if any(x in cls for x in ["condition", "weather", "status"]):
                 self.in_condition = True
-                self.condition_buffer = ""
-            if any(keyword in class_attr.lower() for keyword in ['location', 'city', 'place']):
+        # Try to find location (e.g., <h1 class="location">Gdańsk</h1>)
+        if tag == "h1" and "class" in attrs_dict:
+            cls = attrs_dict["class"].lower()
+            if any(x in cls for x in ["location", "city"]):
                 self.in_location = True
-                self.location_buffer = ""
 
     def handle_endtag(self, tag):
-        if self.in_temp and tag == ('span' if self.current_tag == 'span' else 'div'):
-            self.temperature = self.temp_buffer.strip()
+        if tag == "span" and self.in_temp:
             self.in_temp = False
-        if self.in_condition and tag == ('span' if self.current_tag == 'span' else 'div'):
-            self.condition = self.condition_buffer.strip()
+        if tag == "div" and self.in_condition:
             self.in_condition = False
-        if self.in_location and tag == ('span' if self.current_tag == 'span' else 'div'):
-            self.location = self.location_buffer.strip()
+        if tag == "h1" and self.in_location:
             self.in_location = False
-        self.current_tag = None
 
     def handle_data(self, data):
         if self.in_temp:
-            self.temp_buffer += data
-        if self.in_condition:
-            self.condition_buffer += data
-        if self.in_location:
-            self.location_buffer += data
+            self.temperature = data.strip()
+        elif self.in_condition:
+            self.condition = data.strip()
+        elif self.in_location:
+            self.location = data.strip()
 
 
 def get_weather_gdansk():
-    """Fetch weather for Gdańsk using a weather API or web scraping."""
-    # Try Open-Meteo API (no API key required)
+    """Fetch weather for Gdańsk from a public weather API."""
     try:
-        # Gdańsk coordinates: 54.3520° N, 18.6466° E
-        url = "https://api.open-meteo.com/v1/forecast?latitude=54.3520&longitude=18.6466&current_weather=true"
-        with urllib.request.urlopen(url, timeout=10) as response:
-            data = response.read().decode('utf-8')
-            import json
-            weather_data = json.loads(data)
-            current = weather_data.get("current_weather", {})
-            temp = current.get("temperature")
-            windspeed = current.get("windspeed")
-            return {
-                "success": True,
-                "temperature": f"{temp}°C",
-                "windspeed": f"{windspeed} km/h",
-                "location": "Gdańsk",
-                "source": "Open-Meteo API"
-            }
+        # Use Open-Meteo API (no API key required)
+        # Coordinates for Gdańsk: 54.3520° N, 18.6466° E
+        url = (
+            "https://api.open-meteo.com/v1/forecast?"
+            "latitude=54.3520&longitude=18.6466"
+            "&current_weather=true&temperature_unit=celsius"
+        )
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=10) as response:
+            data = json.loads(response.read().decode("utf-8"))
+            current = data.get("current_weather", {})
+            temp = current.get("temperature", "N/A")
+            # Try to get weather condition from additional fields if available
+            # Open-Meteo doesn't provide condition string directly, so we'll infer
+            # from wmo_code (https://open-meteo.com/en/docs)
+            wmo_code = current.get("weathercode", 0)
+            condition = "Nieznany"
+            if wmo_code in [0]:
+                condition = "Bezchmurnie"
+            elif wmo_code in [1, 2, 3]:
+                condition = "Pochmurnie"
+            elif wmo_code in [45, 48]:
+                condition = "Mgła"
+            elif wmo_code in [51, 53, 55, 56, 57]:
+                condition = "Mżawka"
+            elif wmo_code in [61, 63, 65, 66, 67]:
+                condition = "Deszcz"
+            elif wmo_code in [71, 73, 75, 77, 80, 81, 82]:
+                condition = "Śnieg"
+            elif wmo_code in [85, 86]:
+                condition = "Zamieć śnieżna"
+            elif wmo_code in [95, 96, 99]:
+                condition = "Burza"
+            return {"temperature": str(temp), "condition": condition}
     except Exception as e:
-        # Fallback to web scraping (e.g., YR.no or AccuWeather)
-        try:
-            # Try YR.no (Norwegian Meteorological Institute) which has English weather for Gdańsk
-            url = "https://www.yr.no/en/place/Poland/Pomeranian_Gvo/Gdansk/"
-            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=10) as response:
-                html = response.read().decode('utf-8')
-                parser = WeatherGdanskParser()
-                parser.feed(html)
-                if parser.temperature and parser.condition:
-                    return {
-                        "success": True,
-                        "temperature": parser.temperature,
-                        "condition": parser.condition,
-                        "location": parser.location or "Gdańsk",
-                        "source": "YR.no"
-                    }
-        except Exception as e2:
-            return {
-                "success": False,
-                "error": f"Failed to fetch weather: {str(e)}; fallback failed: {str(e2)}"
-            }
-    return {"success": False, "error": "Unknown weather fetch failure"}
-
-
-class WeatherGdanskSkill:
-    def execute(self, params: dict) -> dict:
-        try:
-            text = params.get('text', '').lower()
-            if 'pogod' in text and 'gdańsk' in text:
-                result = get_weather_gdansk()
-                if result['success']:
-                    response_text = f"Pogoda w Gdańsku: {result['temperature']}, {result.get('condition', 'nieznana')}. Źródło: {result['source']}."
-                    # Use espeak for TTS
-                    try:
-                        subprocess.run(['espeak', response_text], check=True, capture_output=True)
-                    except Exception:
-                        pass  # TTS is optional
-                    return {
-                        'success': True,
-                        'text': response_text,
-                        'weather': {
-                            'temperature': result['temperature'],
-                            'condition': result.get('condition', 'nieznana'),
-                            'location': result['location'],
-                            'source': result['source']
-                        }
-                    }
-                else:
-                    return {
-                        'success': False,
-                        'text': "Nie udało się pobrać danych pogodowych dla Gdańska.",
-                        'error': result.get('error', 'Unknown error')
-                    }
-            else:
-                return {
-                    'success': False,
-                    'text': "Zapytanie nie dotyczy pogody w Gdańsku.",
-                    'error': "No match"
-                }
-        except Exception as e:
-            return {
-                'success': False,
-                'text': "Wystąpił błąd podczas przetwarzania zapytania.",
-                'error': str(e)
-            }
+        return {"error": str(e)}
 
 
 def get_info() -> dict:
     return {
-        'name': 'weather_gdansk',
-        'version': 'v9',
-        'description': 'Skill do sprawdzania aktualnej pogody w Gdańsku'
+        "name": "weather_gdansk",
+        "version": "v9",
+        "description": "Skill do pobierania aktualnej pogody w Gdańsku"
     }
 
 
 def health_check() -> dict:
     try:
-        # Minimal health check: ensure espeak is available (optional) and urllib works
-        urllib.request.urlopen("https://www.yr.no", timeout=5)
-        return {'status': 'ok'}
+        # Simple connectivity check to Open-Meteo
+        req = urllib.request.Request(
+            "https://api.open-meteo.com/health",
+            headers={"User-Agent": "Mozilla/5.0"}
+        )
+        with urllib.request.urlopen(req, timeout=5) as response:
+            if response.status == 200:
+                return {"status": "ok"}
+            else:
+                return {"status": "error", "message": "Unexpected health check response"}
     except Exception as e:
-        return {'status': 'error', 'message': str(e)}
+        return {"status": "error", "message": str(e)}
+
+
+class WeatherGdanskSkill:
+    def execute(self, params: dict) -> dict:
+        try:
+            text = params.get("text", "").lower()
+            # Check if the user asked for weather in Gdańsk
+            if not any(keyword in text for keyword in ["pogoda", "temperatura", "warunki pogodowe"]):
+                return {
+                    "success": False,
+                    "message": "Zapytanie nie dotyczy pogody.",
+                    "text": "Nie rozpoznano zapytania o pogodę."
+                }
+            if "gdańsk" not in text and "gdansk" not in text:
+                return {
+                    "success": False,
+                    "message": "Zapytanie nie dotyczy Gdańska.",
+                    "text": "Zapytanie dotyczy innej lokalizacji niż Gdańsk."
+                }
+
+            weather_data = get_weather_gdansk()
+            if "error" in weather_data:
+                return {
+                    "success": False,
+                    "message": f"Błąd pobierania danych: {weather_data['error']}",
+                    "text": "Nie udało się pobrać danych pogodowych."
+                }
+
+            temp = weather_data.get("temperature", "N/A")
+            condition = weather_data.get("condition", "nieznane")
+            response_text = f"W Gdańsku obecnie {temp} stopni Celsjusza, {condition}."
+            return {
+                "success": True,
+                "temperature": temp,
+                "condition": condition,
+                "text": response_text
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "message": f"Błąd wykonania: {str(e)}",
+                "text": "Wystąpił błąd podczas przetwarzania zapytania."
+            }
 
 
 def execute(params: dict) -> dict:
@@ -170,8 +166,10 @@ def execute(params: dict) -> dict:
     return skill.execute(params)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Test block
-    test_params = {'text': 'wyszukaj w internecie pogodę w Gdańsku'}
+    print("Testing weather_gdansk skill...")
+    print("Health check:", health_check())
+    test_params = {"text": "wyszukaj w internecie pogodę w Gdańsku"}
     result = execute(test_params)
-    print(result)
+    print("Test result:", json.dumps(result, indent=2, ensure_ascii=False))
