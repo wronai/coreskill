@@ -285,6 +285,7 @@ class TestProviderSelector(unittest.TestCase):
 
     def test_tts_has_multiple_providers(self):
         providers = self.ps.list_providers("tts")
+        self.assertIn("piper", providers)
         self.assertIn("espeak", providers)
         self.assertIn("coqui", providers)
         self.assertIn("pyttsx3", providers)
@@ -308,6 +309,18 @@ class TestProviderSelector(unittest.TestCase):
         """On a system without GPU/pyttsx3, espeak should be selected"""
         selected = self.ps.select("tts")
         self.assertEqual(selected, "espeak")
+
+    def test_tts_selects_piper_when_available(self):
+        """If piper is installed and configured, it should win on quality."""
+        with patch.dict(os.environ, {"PIPER_MODEL": "/tmp/fake_piper.onnx"}, clear=False):
+            with patch.object(self.rm, "has_command") as has_cmd:
+                def _fake_has_command(cmd: str) -> bool:
+                    return cmd in ("piper", "espeak")
+                has_cmd.side_effect = _fake_has_command
+
+                with patch("pathlib.Path.exists", return_value=True):
+                    selected = self.ps.select("tts")
+                    self.assertEqual(selected, "piper")
 
     def test_force_provider(self):
         """Force should override selection"""

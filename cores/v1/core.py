@@ -1247,7 +1247,7 @@ COMMANDS = {
 # ─── Boot sequence ────────────────────────────────────────────────────
 def _boot():
     """Initialize all components. Returns (cmd_ctx, conv, memory) tuple."""
-    init_nfo()
+    # init_nfo()  # DISABLED: may interfere with stdout in subprocess
 
     state = load_state()
     _check_restart_loop(state)

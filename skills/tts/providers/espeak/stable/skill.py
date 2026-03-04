@@ -61,13 +61,13 @@ class TTSSkill:
         if len(clean) > self.MAX_TEXT_LEN:
             clean = clean[:self.MAX_TEXT_LEN].rsplit(' ', 1)[0] + '...'
         try:
-            subprocess.run(
+            # Run TTS in background - don't wait for speech to finish
+            subprocess.Popen(
                 [self._backend, "-v", "pl", "--", clean],
-                check=True, capture_output=True, timeout=30
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
             )
             return {"success": True, "spoken": True, "text": clean, "backend": self._backend}
-        except subprocess.TimeoutExpired:
-            return {"success": False, "error": "TTS timeout"}
         except Exception as e:
             return {"success": False, "error": str(e)}
 

@@ -130,6 +130,8 @@ class ResourceMonitor:
     # --- Requirement checking ---
     def can_run(self, requirements: dict) -> tuple:
         """Check if system meets requirements. Returns (bool, reason)."""
+        requirements = requirements or {}
+
         # GPU
         if requirements.get("gpu"):
             gpu = self._detect_gpu()
@@ -163,5 +165,31 @@ class ResourceMonitor:
         for cmd in requirements.get("system_packages", []):
             if not self.has_command(cmd):
                 return False, f"System command '{cmd}' not found"
+
+        # Env vars
+        for key in requirements.get("env_vars", []):
+            val = os.environ.get(key, "").strip()
+            if not val:
+                return False, f"Env var '{key}' is required"
+
+        # File checks
+        files_any = requirements.get("files_any", [])
+        if files_any:
+            ok = False
+            for p in files_any:
+                try:
+                    if Path(os.path.expanduser(os.path.expandvars(str(p)))).exists():
+                        ok = True
+                        break
+                except Exception:
+                    continue
+            if not ok:
+                return False, "None of required files exist"
+
+        files_all = requirements.get("files_all", [])
+        for p in files_all:
+            pp = Path(os.path.expanduser(os.path.expandvars(str(p))))
+            if not pp.exists():
+                return False, f"Required file not found: {pp}"
 
         return True, "OK"

@@ -13,6 +13,7 @@
     }
   },
   "providers": [
+    "piper",
     "espeak",
     "pyttsx3",
     "coqui"
