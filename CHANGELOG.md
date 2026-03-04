@@ -3,6 +3,15 @@
 ### Summary
 
 feat(docs): Complete documentation, CLI, API testing, and packaging updates
+feat(skills): Add 5 new utility skills (file_manager, process_manager, clipboard, qr_generator, url_codec)
+
+### New Skills
+
+- **file_manager**: File operations (list, copy, move, delete, organize, find, info) using stdlib only
+- **process_manager**: Process management (list, find, kill, info) using /proc and ps fallback
+- **clipboard**: Clipboard operations (copy, paste, clear) with xclip/xsel/wl-copy/pbcopy support
+- **qr_generator**: QR code generation using qrencode or python-qrcode fallback
+- **url_codec**: URL encoding/decoding, base64, HTML entities using stdlib only
 
 ### Features
 
