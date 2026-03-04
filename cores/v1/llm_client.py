@@ -335,11 +335,19 @@ class LLMClient:
 
         # ── PHASE 1: Fast keyword detection (no LLM call needed) ──
         if any(w in ul for w in _evolve_kw):
-            for sk_name in skills:
-                if sk_name in ul:
-                    return {"action":"evolve","skill":sk_name,"feedback":user_msg,"goal":"improve skill"}
-            if any(w in ul for w in _tts_kw):
-                return {"action":"evolve","skill":"tts","feedback":user_msg,"goal":"improve tts"}
+            # FALLBACK: Check if this is actually a config request for LLM
+            # "lepszy model" → configure, "ulepsz skill" → evolve
+            _config_indicators = ("model", "gpt", "gemini", "claude", "llama", "qwen",
+                                "przełącz", "zmień na", "używaj")
+            if any(cfg in ul for cfg in _config_indicators):
+                # This looks like a config request, not evolve - skip to config handling
+                pass  # Skip evolve, let it fall through to config or LLM phase
+            else:
+                for sk_name in skills:
+                    if sk_name in ul:
+                        return {"action":"evolve","skill":sk_name,"feedback":user_msg,"goal":"improve skill"}
+                if any(w in ul for w in _tts_kw):
+                    return {"action":"evolve","skill":"tts","feedback":user_msg,"goal":"improve tts"}
 
         if any(w in ul for w in _create_kw):
             words = ul.split()

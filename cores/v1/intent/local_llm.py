@@ -1,8 +1,9 @@
 """Local LLM classifier for intent detection (ollama-based)."""
 import json
+import os
 import subprocess
 from typing import Optional, List, Dict, Tuple
-from .config import get_config_value
+from ..config import get_config_value
 
 
 _INTENT_CONFIG = {

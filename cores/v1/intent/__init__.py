@@ -14,7 +14,7 @@ import json
 import os
 import time
 
-from .config import get_config_value
+from ..config import get_config_value
 from .training import DEFAULT_TRAINING
 from .embedding import EmbeddingEngine
 from .local_llm import LocalLLMClassifier
@@ -125,9 +125,16 @@ class SmartIntentClassifier:
                     pass
 
     def classify(self, user_msg: str, skills: list = None,
-                 context: str = "", record: bool = True) -> IntentResult:
+                 context: str = "", record: bool = True, **kwargs) -> IntentResult:
         """
         Classify user intent using 3-tier approach.
+        
+        Args:
+            user_msg: User message to classify
+            skills: List of available skills
+            context: Additional context string
+            record: Whether to record this classification
+            **kwargs: Additional arguments for compatibility (conv, etc.)
         
         Returns IntentResult with action, skill, confidence, tier.
         """

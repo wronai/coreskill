@@ -328,12 +328,16 @@ class LocalLLMClassifier:
 
         prompt = (
             f"Klasyfikuj intencję użytkownika. Dostępne skills: [{skills_str}]\n"
+            f"Możliwe akcje: use (użyj skill), create (stwórz), evolve (ulepsz), "
+            f"configure (zmień ustawienia), chat (rozmowa)\n"
             f"Kontekst: {context[:200]}\n\n"
             f"Wiadomość: \"{user_msg}\"\n\n"
             f"Odpowiedz TYLKO JSON:\n"
-            f'{{"action":"use|create|evolve|chat","skill":"nazwa","goal":"cel"}}\n'
+            f'{{"action":"use|create|evolve|configure|chat","skill":"nazwa","goal":"cel"}}\n'
             f"Jeśli user chce rozmawiać głosowo → skill=stt.\n"
-            f"Jeśli user chce żeby system mówił → skill=tts."
+            f"Jeśli user chce żeby system mówił → skill=tts.\n"
+            f"Jeśli user chce zmienić model/ustawienia → action=configure, skill=llm/tts/stt.\n"
+            f"Priorytet: LLM > TTS > STT przy niejasności (chyba że wskazane jawnie)."
         )
 
         try:
@@ -681,9 +685,12 @@ class SmartIntentClassifier:
         skills_str = ", ".join(skills) if skills else "tts, stt, web_search, shell, git_ops"
         prompt = (
             f"Classify intent. Skills: [{skills_str}]\n"
+            f"Actions: use (execute), create (build), evolve (improve), "
+            f"configure (change settings), chat (conversation)\n"
+            f"Priority: LLM > TTS > STT when ambiguous\n"
             f"Message: \"{user_msg}\"\n"
             f"Return ONLY JSON: "
-            f'{{"action":"use|create|evolve|chat","skill":"name","goal":"..."}}'
+            f'{{"action":"use|create|evolve|configure|chat","skill":"name","goal":"..."}}'
         )
         try:
             raw = self._llm.chat(
@@ -806,3 +813,24 @@ if __name__ == "__main__":
 
         print(f"\n=== Stats ===")
         print(json.dumps(classifier.stats(), indent=2))
+
+
+# Backward compatibility: re-export from new intent package
+# These are now the canonical implementations in cores/v1/intent/
+from .intent import (
+    SmartIntentClassifier as SmartIntentClassifier,
+    IntentResult as IntentResult,
+    create_smart_classifier as create_smart_classifier,
+    EmbeddingEngine as EmbeddingEngine,
+    LocalLLMClassifier as LocalLLMClassifier,
+    DEFAULT_TRAINING as DEFAULT_TRAINING,
+)
+
+__all__ = [
+    "SmartIntentClassifier",
+    "IntentResult",
+    "create_smart_classifier",
+    "EmbeddingEngine",
+    "LocalLLMClassifier",
+    "DEFAULT_TRAINING",
+]

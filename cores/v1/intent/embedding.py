@@ -1,6 +1,6 @@
 """Embedding engine for intent classification."""
 from pathlib import Path
-from .config import get_config_value
+from ..config import get_config_value
 
 
 # Load intent configuration from system.json

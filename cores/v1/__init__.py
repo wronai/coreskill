@@ -25,10 +25,21 @@ from .system_identity import SystemIdentity, SkillStatus
 from .preflight import SkillPreflight, EvolutionGuard, PreflightResult
 from .skill_logger import init_nfo, inject_logging, get_skill_logger
 from .user_memory import UserMemory
-from .smart_intent import SmartIntentClassifier
+from .smart_intent import SmartIntentClassifier as _SIC_compat
+
+# New intent package exports (preferred)
+from .intent import (
+    SmartIntentClassifier,
+    IntentResult,
+    create_smart_classifier,
+    EmbeddingEngine,
+    LocalLLMClassifier,
+    DEFAULT_TRAINING,
+)
 from .garbage_collector import EvolutionGarbageCollector
 from .evo_journal import EvolutionJournal
 from .auto_repair import AutoRepair, RepairTask
 from .session_config import SessionConfig, ConfigChange
 from .config_generator import ConfigGenerator, get_config_generator
 from .voice_loop import _extract_stt_text, _speak_tts, _run_stt_cycle, _run_voice_loop
+from .self_reflection import SelfReflection, ReflectionEvent, DiagnosisReport

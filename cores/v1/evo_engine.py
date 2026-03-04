@@ -15,6 +15,7 @@ import time
 from .config import MAX_EVO_ITERATIONS, cpr, C
 from .preflight import EvolutionGuard
 from .evo_journal import EvolutionJournal
+from .self_reflection import SelfReflection
 
 
 @_logged
@@ -25,13 +26,18 @@ class EvoEngine:
        diagnose (devops) → find alternatives (deps) → evolve with smart prompt
     5. Loop until goal achieved or max iterations → 6. Report to user
     """
-    def __init__(self, sm, llm, logger, provider_chain=None):
+    def __init__(self, sm, llm, logger, provider_chain=None, state=None):
         self.sm = sm
         self.llm = llm
         self.log = logger
         self.evo_guard = EvolutionGuard()
         self.provider_chain = provider_chain  # ProviderChain instance (optional)
         self.journal = EvolutionJournal()
+        self.reflection = None  # Injected via set_reflection()
+
+    def set_reflection(self, reflection: SelfReflection):
+        """Inject SelfReflection instance for stall/timeout detection."""
+        self.reflection = reflection
 
     def handle_request(self, user_msg, skills, analysis=None):
         """Full pipeline: analyze → execute/create/evolve → validate. No user prompts."""
@@ -123,7 +129,17 @@ class EvoEngine:
                 inp_preview = str(inp)[:80]
                 cpr(C.DIM, f"[PIPE]   input: {inp_preview}")
             effective_inp = inp if inp else {"text": user_msg}
+            
+            # Start reflection tracking for stall/timeout detection
+            if self.reflection:
+                self.reflection.start_operation(f"{skill_name}:{goal}")
+            
             result = self.sm.exec_skill(skill_name, inp=effective_inp)
+            
+            # End reflection tracking
+            if self.reflection:
+                exec_success = result.get("success", False) and not result.get("preflight")
+                self.reflection.end_operation(success=exec_success, error=result.get("error", ""))
 
             # Log preflight failure if that's what stopped execution
             if result.get("preflight"):
@@ -301,6 +317,17 @@ class EvoEngine:
 
         cpr(C.RED, f"[PIPE] Could not achieve goal after {attempt + 1} attempts")
         self.log.core("goal_failed", {"skill": skill_name, "goal": goal})
+        
+        # Trigger self-reflection on failure
+        if self.reflection:
+            cpr(C.YELLOW, "[REFLECT] Uruchamiam autorefleksję po błędzie...")
+            report = self.reflection.run_diagnostic(skill_name, error_info if 'error_info' in dir() else "")
+            # Try auto-fix if possible
+            if report.auto_fixable:
+                fixes = self.reflection.attempt_auto_fix(report)
+                for fix in fixes:
+                    cpr(C.GREEN, f"[REFLECT] {fix}")
+        
         return {"type": "failed", "skill": skill_name, "goal": goal}
 
     def _try_fallback_providers(self, skill_name, inp, goal, user_msg):
@@ -377,6 +404,21 @@ class EvoEngine:
         # Skill-specific validation
         if skill_name == "stt":
             spoken = inner.get("spoken") or inner.get("text") or ""
+            
+            # STT v2: hardware check failed
+            if inner.get("hardware_ok") is False:
+                error_msg = inner.get("error", "Unknown hardware error")
+                return {"verdict": "fail",
+                        "reason": f"STT hardware error: {error_msg}"}
+            
+            # STT v2: no sound detected
+            if inner.get("has_sound") is False:
+                db_level = inner.get("audio_level_db", -999)
+                warning = inner.get("warning", "No sound detected")
+                return {"verdict": "partial",
+                        "reason": f"STT silence detected ({db_level:.1f}dB). Check microphone and speak louder."}
+            
+            # Legacy: empty transcription (should not happen with v2, but keep for compatibility)
             if not spoken.strip():
                 return {"verdict": "partial",
                         "reason": "STT returned empty transcription (silence or mic issue)"}

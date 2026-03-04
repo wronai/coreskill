@@ -865,6 +865,42 @@ def _cmd_config(a1, **ctx):
     cpr(C.CYAN, feedback)
 
 
+def _cmd_reflect(a1, **ctx):
+    """Run self-reflection diagnostic: /reflect [skill_name]"""
+    from .self_reflection import SelfReflection
+    
+    llm = ctx["llm"]
+    sm = ctx["sm"]
+    logger = ctx["logger"]
+    state = ctx["state"]
+    
+    skill_name = a1 if a1 else ""
+    
+    cpr(C.CYAN, f"\n[REFLECT] Uruchamiam autorefleksję systemu...")
+    if skill_name:
+        cpr(C.DIM, f"[REFLECT] Fokus na skill: {skill_name}")
+    
+    # Create reflection instance
+    reflection = SelfReflection(llm, sm, logger, state)
+    
+    # Run diagnostic
+    report = reflection.run_diagnostic(skill_name, specific_error="")
+    
+    # Try auto-fix if possible and user wants it
+    if report.auto_fixable:
+        cpr(C.CYAN, "\n[REFLECT] Próbuję automatycznych napraw...")
+        fixes = reflection.attempt_auto_fix(report)
+        if fixes:
+            cpr(C.GREEN, "\n[REFLECT] Wykonane naprawy:")
+            for fix in fixes:
+                cpr(C.GREEN, f"  ✓ {fix}")
+        else:
+            cpr(C.YELLOW, "[REFLECT] Nie udało się automatycznie naprawić")
+    
+    # Show summary
+    cpr(C.DIM, f"\n[REFLECT] Podsumowanie: {reflection.get_summary()}")
+
+
 # Command dispatch table
 COMMANDS = {
     "/help": _cmd_help,
@@ -906,6 +942,7 @@ COMMANDS = {
     "/autotune": _cmd_autotune,
     "/journal": lambda **ctx: cpr(C.CYAN, ctx["evo"].journal.format_report()),
     "/config": _cmd_config,
+    "/reflect": _cmd_reflect,
 }
 
 
@@ -955,6 +992,12 @@ def main():
     # Session configuration layer (user-facing, hot-swappable)
     session_cfg = SessionConfig(llm_client=llm, provider_selector=provider_sel)
     cpr(C.DIM, "SessionConfig: gotowy do zmian konfiguracji w locie")
+
+    # Self-reflection system for auto-diagnosis on failures/stalls
+    from .self_reflection import SelfReflection
+    reflection = SelfReflection(llm, sm, logger, state)
+    evo.set_reflection(reflection)
+    cpr(C.DIM, "SelfReflection: aktywny (automatyczna diagnostyka przy błędach)")
 
     cpr(C.DIM, f"Model: {llm.model} | Core: {sv.active()} | Tiers: {llm.tier_info()}")
     sk = sm.list_skills()
@@ -1021,6 +1064,10 @@ def main():
 
         # ── Handle CONFIGURE intent (session configuration changes) ──
         if analysis.get("action") == "configure":
+            # Log if this was a fallback case
+            if analysis.get("_fallback"):
+                cpr(C.YELLOW, f"[FALLBACK] Niejasna konfiguracja → domyślnie LLM (brak kontekstu głosowego)")
+            
             change = session_cfg.handle_configure_intent(analysis)
             feedback = session_cfg.format_change_feedback(change)
             cpr(C.CYAN, feedback)
