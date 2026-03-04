@@ -10,61 +10,59 @@ class WeatherGdanskParser(HTMLParser):
         super().__init__()
         self.in_temp = False
         self.in_condition = False
-        self.temp = None
+        self.current_tag = ""
+        self.temperature = None
         self.condition = None
-        self._temp_buffer = ""
-        self._condition_buffer = ""
-        self._in_temp_div = False
-        self._in_condition_div = False
-        self._depth = 0
+        self.buffer = ""
 
     def handle_starttag(self, tag, attrs):
+        self.current_tag = tag
         attrs_dict = dict(attrs)
-        if tag == "div":
-            if attrs_dict.get("class") and "current-temp" in attrs_dict["class"]:
-                self._in_temp_div = True
-                self._depth = 0
-            elif attrs_dict.get("class") and "condition" in attrs_dict["class"]:
-                self._in_condition_div = True
-                self._depth = 0
-        elif self._in_temp_div and tag == "span":
-            self.in_temp = True
-        elif self._in_condition_div and tag == "span":
-            self.in_condition = True
+        # Look for temperature (e.g., <span class="temp">12°</span>)
+        if tag == "span" and "class" in attrs_dict:
+            cls = attrs_dict["class"]
+            if any(x in cls for x in ["temp", "temperature"]):
+                self.in_temp = True
+        # Look for condition (e.g., <div class="condition">Cloudy</div>)
+        if tag == "div" and "class" in attrs_dict:
+            cls = attrs_dict["class"]
+            if any(x in cls for x in ["condition", "weather"]):
+                self.in_condition = True
 
     def handle_endtag(self, tag):
-        if tag == "div":
-            if self._in_temp_div:
-                self._in_temp_div = False
-            elif self._in_condition_div:
-                self._in_condition_div = False
-        elif tag == "span":
-            if self.in_temp:
-                self.in_temp = False
-                self.temp = self._temp_buffer.strip()
-                self._temp_buffer = ""
-            elif self.in_condition:
-                self.in_condition = False
-                self.condition = self._condition_buffer.strip()
-                self._condition_buffer = ""
+        self.current_tag = ""
+        if tag == "span" and self.in_temp:
+            self.in_temp = False
+        if tag == "div" and self.in_condition:
+            self.in_condition = False
 
     def handle_data(self, data):
-        if self.in_temp:
-            self._temp_buffer += data
-        elif self.in_condition:
-            self._condition_buffer += data
+        data = data.strip()
+        if not data:
+            return
+
+        if self.in_temp and self.temperature is None:
+            # Extract numeric temperature with optional sign and unit
+            match = re.search(r"([+-]?\d+)", data)
+            if match:
+                self.temperature = match.group(1) + "°C"
+        if self.in_condition and self.condition is None:
+            # Keep only first meaningful word(s), avoid numbers
+            if not re.search(r"\d", data) and len(data) > 2:
+                self.condition = data
 
 
 def get_info() -> dict:
     return {
         "name": "weather_gdansk",
-        "version": "v1",
-        "description": "Skill to search for current weather in Gdańsk online"
+        "version": "v7",
+        "description": "Searches for current weather in Gdańsk online"
     }
 
 
 def health_check() -> dict:
     try:
+        # Test network connectivity with a lightweight request
         req = urllib.request.Request(
             "https://www.google.com",
             headers={"User-Agent": "Mozilla/5.0"}
@@ -73,7 +71,7 @@ def health_check() -> dict:
             if response.status == 200:
                 return {"status": "ok"}
             else:
-                return {"status": "error", "message": f"HTTP {response.status}"}
+                return {"status": "error", "message": "Google returned non-200 status"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -81,85 +79,77 @@ def health_check() -> dict:
 class WeatherGdanskSkill:
     def execute(self, params: dict) -> dict:
         try:
-            text = params.get("text", "")
-            
-            # Extract Gdańsk reference from text (case-insensitive)
-            if not re.search(r"gda[ńn]sk", text, re.IGNORECASE):
+            text = params.get("text", "").strip().lower()
+            if not text or "gdańsk" not in text and "gdansk" not in text:
                 return {
                     "success": False,
-                    "spoken": "Nie znaleziono wzmianki o Gdańsku w zapytaniu."
+                    "message": "No Gdańsk reference found in input text"
                 }
+
+            # Use Google search with weather site
+            query = "pogoda w Gdańsku"
+            search_url = f"https://www.google.com/search?q={urllib.parse.quote(query)}&hl=pl"
             
-            # Try to get weather from Google Weather
-            url = "https://www.google.com/search?q=pogoda+gdansk&hl=pl"
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-            }
+            req = urllib.request.Request(
+                search_url,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+                }
+            )
             
-            req = urllib.request.Request(url, headers=headers)
             with urllib.request.urlopen(req, timeout=10) as response:
-                html_content = response.read().decode("utf-8", errors="ignore")
+                html = response.read().decode("utf-8", errors="ignore")
             
-            # Parse the HTML to extract weather info
             parser = WeatherGdanskParser()
-            parser.feed(html_content)
+            parser.feed(html)
             
-            # If parser didn't find data, try alternative extraction
-            if not parser.temp or not parser.condition:
-                # Try to find temperature using regex
-                temp_match = re.search(r'(\d+°C)', html_content)
+            # Fallback: try to extract from Google's weather card directly
+            if parser.temperature is None:
+                temp_match = re.search(r'(\d+)\s*°C', html)
                 if temp_match:
-                    parser.temp = temp_match.group(1)
-                
-                # Try to find condition using regex
-                condition_match = re.search(r'(<span[^>]*class="wob_t"[^>]*>.*?</span>)', html_content, re.IGNORECASE)
-                if not condition_match:
-                    condition_match = re.search(r'(<div[^>]*class="vk_bk wob-title"[^>]*>.*?</div>)', html_content, re.IGNORECASE)
-                if condition_match:
-                    # Extract text from the matched HTML
-                    clean_match = re.sub(r'<[^>]+>', '', condition_match.group(1))
-                    parser.condition = clean_match.strip()
+                    parser.temperature = temp_match.group(1) + "°C"
             
-            # If still no data, try espeak to announce no data found
-            if not parser.temp:
+            if parser.condition is None:
+                condition_match = re.search(r'<div[^>]*class="vk_gy vk_sh"[^>]*>([^<]+)</div>', html)
+                if condition_match:
+                    parser.condition = condition_match.group(1).strip()
+            
+            if parser.temperature:
+                result_text = f"Pogoda w Gdańsku: {parser.temperature}"
+                if parser.condition:
+                    result_text += f", {parser.condition}"
+                
+                # Use espeak for TTS if available
+                try:
+                    subprocess.run(
+                        ["espeak", "-v", "pl", result_text],
+                        check=True,
+                        capture_output=True
+                    )
+                except (subprocess.CalledProcessError, FileNotFoundError):
+                    pass  # TTS is optional
+                
+                return {
+                    "success": True,
+                    "message": result_text,
+                    "temperature": parser.temperature,
+                    "condition": parser.condition or "brak danych"
+                }
+            else:
                 return {
                     "success": False,
-                    "spoken": "Nie udało się pobrać danych pogodowych dla Gdańska."
+                    "message": "Nie udało się pobrać danych o pogodzie w Gdańsku"
                 }
-            
-            # Prepare response
-            weather_info = f"Pogoda w Gdańsku: {parser.condition}, temperatura {parser.temp}"
-            
-            # Use espeak for TTS if available
-            try:
-                subprocess.run(
-                    ["espeak", "-v", "pl", weather_info],
-                    check=True,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL
-                )
-            except (subprocess.CalledProcessError, FileNotFoundError):
-                # espeak not available, continue without TTS
-                pass
-            
-            return {
-                "success": True,
-                "weather": {
-                    "condition": parser.condition,
-                    "temperature": parser.temp
-                },
-                "spoken": weather_info
-            }
-        
+
         except urllib.error.URLError as e:
             return {
                 "success": False,
-                "spoken": f"Błąd sieci: {str(e)}"
+                "message": f"Błąd połączenia: {str(e.reason)}"
             }
         except Exception as e:
             return {
                 "success": False,
-                "spoken": f"Błąd: {str(e)}"
+                "message": f"Błąd systemu: {str(e)}"
             }
 
 
