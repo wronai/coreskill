@@ -420,33 +420,35 @@ class BenchmarkSkill:
         if "budget" in benchmark_profile:
             budget = benchmark_profile["budget"]
         
-        # Get candidate models
+        # Get candidate models - ALL models (free + paid)
         candidates = self._get_candidate_models(budget, available_models)
-        # Limit to top 5 for speed
-        candidates = candidates[:5]
+        # Limit to reasonable number but test more models
+        candidates = candidates[:15]  # Test up to 15 models
         
-        print(f"[Benchmark LIVE] Testing {len(candidates)} models with real API calls...")
+        print(f"[Benchmark LIVE] Testing {len(candidates)} models (timeout=10s)...")
         
-        # Test each model with SHORT intelligence-focused prompts (fast, minimal tokens)
+        # Test each model with SHORT intelligence-focused prompts
         test_prompts = {
-            "reasoning": "2+3*4=? Explain in 1 sentence.",  # 5 tokens, tests logic
-            "coding": "Fix: def add(a,b): return a-b",  # 8 tokens, tests code understanding  
-            "knowledge": "Capital of France in 2 words.",  # 4 tokens, tests knowledge
+            "reasoning": "2+3*4=? Explain in 1 sentence.",
+            "coding": "Fix: def add(a,b): return a-b",
+            "knowledge": "Capital of France in 2 words.",
         }
         
         live_results = []
+        failed_models = []
+        
         for model_id in candidates:
-            print(f"[Benchmark LIVE] Testing {model_id.split('/')[-1]}...")
+            print(f"[Benchmark LIVE] Testing {model_id.split('/')[-1]}...", end=" ")
             
             scores = {}
             latencies = []
             errors = []
             
-            # Run tests
+            # Run tests with SHORT timeout (10s)
             for test_type, prompt in test_prompts.items():
                 start = time.time()
                 try:
-                    response = self._call_model_for_benchmark(model_id, api_key, prompt, timeout=20)
+                    response = self._call_model_for_benchmark(model_id, api_key, prompt, timeout=10)
                     latency = time.time() - start
                     latencies.append(latency)
                     
@@ -456,22 +458,25 @@ class BenchmarkSkill:
                         "quality": round(quality, 2),
                     }
                 except Exception as e:
-                    latencies.append(20)  # timeout
-                    errors.append(str(e)[:50])
-                    scores[test_type] = {"latency_ms": 20000, "quality": 0.0}
+                    latencies.append(10)  # timeout
+                    errors.append(str(e)[:30])
+                    scores[test_type] = {"latency_ms": 10000, "quality": 0.0}
             
             # Calculate metrics
-            avg_latency = sum(latencies) / len(latencies) if latencies else 20
+            avg_latency = sum(latencies) / len(latencies) if latencies else 10
             avg_quality = sum(s["quality"] for s in scores.values()) / len(scores) if scores else 0
             
-            # Convert to speed score (inverse of latency)
-            # < 1s = excellent, > 5s = poor
-            speed_score = max(0, 1 - (avg_latency / 5.0))
+            # Skip models that timed out or have 0 quality
+            if avg_latency > 9 or avg_quality == 0:
+                print("❌ timeout/failed")
+                failed_models.append(model_id.split('/')[-1])
+                continue
             
-            # Cost score
+            print(f"✓ q={avg_quality:.2f} lat={avg_latency*1000:.0f}ms")
+            
+            speed_score = max(0, 1 - (avg_latency / 5.0))
             cost_score = 1.0 if ":free" in model_id else 0.5
             
-            # Weighted overall score using profile weights
             weights = benchmark_profile
             overall = (
                 avg_quality * weights.get("quality_weight", 0.35) +
@@ -497,10 +502,9 @@ class BenchmarkSkill:
                 "avg_latency_ms": round(avg_latency * 1000, 1),
                 "tier": tier,
                 "live_tests": scores,
-                "errors": errors if errors else None,
             })
         
-        # Sort by live score
+        # Sort by score
         live_results.sort(key=lambda x: x["overall_score"], reverse=True)
         
         # Build recommendations
@@ -530,8 +534,11 @@ class BenchmarkSkill:
             "profile_description": benchmark_profile.get("description", "live testing"),
             "constraints": constraints,
             "recommendations": recommendations,
-            "summary": f"Best (LIVE): {recommendations[0]['model_id'].split('/')[-1]} (score: {recommendations[0]['overall_score']}, lat: {recommendations[0]['avg_latency_ms']:.0f}ms)" if recommendations else "No models tested",
+            "summary": f"Best: {recommendations[0]['model_id'].split('/')[-1] if recommendations else 'none'} (score: {recommendations[0]['overall_score'] if recommendations else 0}, lat: {recommendations[0]['avg_latency_ms']:.0f}ms)" if recommendations else "No working models found",
             "live_tested": True,
+            "tested_count": len(live_results),
+            "failed_count": len(failed_models),
+            "failed_models": failed_models,
         }
     
     def _get_candidate_models(self, budget: str, available_models: Optional[List[str]]) -> List[str]:
