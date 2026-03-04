@@ -3,5 +3,6 @@
   "version": "v4",
   "parent": "v3",
   "phase": "runtime",
-  "created_at": "2026-03-04T09:52:41.573360+00:00"
+  "created_at": "2026-03-04T09:52:41.573360+00:00",
+  "rolled_back": true
 }

@@ -685,32 +685,10 @@ class SmartIntentClassifier:
             f"Return ONLY JSON: "
             f'{{"action":"use|create|evolve|chat","skill":"name","goal":"..."}}'
         )
-        # Use prompt template from external configuration
-        if prompt_manager:
-            user_prompt = prompt_manager.render("intent_classification", {
-                "skills": skills_str,
-                "user_msg": user_msg
-            }, "template")
-            system_prompt = prompt_manager.get("intent_classification", "system")
-        else:
-            user_prompt = None
-            system_prompt = None
-        
-        # Fallback if prompt file is missing
-        if not user_prompt:
-            user_prompt = (
-                f"Classify intent. Skills: [{skills_str}]\n"
-                f"Message: \"{user_msg}\"\n"
-                f"Return ONLY JSON: "
-                f'{{"action":"use|create|evolve|chat","skill":"name","goal":"..."}}'
-            )
-        if not system_prompt:
-            system_prompt = "Intent classifier. Return ONLY JSON."
-        
         try:
             raw = self._llm.chat(
-                [{"role": "system", "content": system_prompt},
-                 {"role": "user", "content": user_prompt}],
+                [{"role": "system", "content": "Intent classifier. Return ONLY JSON."},
+                 {"role": "user", "content": prompt}],
                 temperature=0.1, max_tokens=100
             )
             import re

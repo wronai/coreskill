@@ -222,8 +222,9 @@ class IntentEngine:
 
         # Stage 2: Context inference
         topic = self._recent_topic()
+        ul = user_msg.lower()
+        
         if topic == "voice":
-            ul = user_msg.lower()
             _listen = ("słysz", "slysz", "mikrofon", "nagr", "nasłuch", "nasluch")
             if any(w in ul for w in _listen) and "stt" in skills_list:
                 return {"action": "use", "skill": "stt",
@@ -246,6 +247,39 @@ class IntentEngine:
                         "original_msg": user_msg,
                         "_conf": 0.75,  # High confidence due to context
                     }
+        
+        # FALLBACK: Not in voice context, but quality words present
+        # Check if this could be a config intent with LLM priority
+        _quality_words = ("lepszy", "lepsza", "gorszy", "gorsza", "szybszy", "szybsza",
+                       "better", "worse", "faster", "slower", "quality", "jakość",
+                       "przełącz", "zmień", "używaj", "switch", "change", "use")
+        if any(w in ul for w in _quality_words):
+            # Check for LLM indicators first (prioritize LLM)
+            _llm_indicators = ("model", "gemini", "gpt", "claude", "llama", "qwen", 
+                              "llm", "nai", "mozgo", "mózgo")
+            _voice_indicators = ("głos", "głosik", "mowa", "mówić", "voice", "tts", 
+                               "speech", "syntezator", "speak", "rozpoznawanie", "stt")
+            
+            if any(m in ul for m in _llm_indicators):
+                # LLM pattern detected - prioritize LLM config
+                return {
+                    "action": "configure",
+                    "category": "llm",
+                    "target": self._extract_config_target(user_msg, "llm"),
+                    "original_msg": user_msg,
+                    "_conf": 0.70,
+                }
+            elif not any(v in ul for v in _voice_indicators):
+                # No voice indicators either - FALLBACK to LLM as default
+                # This prioritizes LLM over TTS when ambiguous
+                return {
+                    "action": "configure",
+                    "category": "llm",
+                    "target": self._extract_config_target(user_msg, "llm"),
+                    "original_msg": user_msg,
+                    "_conf": 0.65,  # Lower confidence due to ambiguity
+                    "_fallback": True,  # Mark as fallback for debugging
+                }
 
         # Stage 3: Unhandled
         self.record_unhandled(user_msg)

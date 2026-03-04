@@ -125,6 +125,8 @@
     {"phrase": "włącz lepszy głos", "action": "configure", "skill": "tts", "lang": "pl", "source": "default"},
     {"phrase": "używaj espeak", "action": "configure", "skill": "tts", "lang": "pl", "source": "default"},
     {"phrase": "na szybszy głos", "action": "configure", "skill": "tts", "lang": "pl", "source": "default"},
+    {"phrase": "na gorszy głos", "action": "configure", "skill": "tts", "lang": "pl", "source": "default"},
+    {"phrase": "zmień mój głos", "action": "configure", "skill": "tts", "lang": "pl", "source": "default"},
     {"phrase": "use better voice", "action": "configure", "skill": "tts", "lang": "en", "source": "default"},
     {"phrase": "switch tts to coqui", "action": "configure", "skill": "tts", "lang": "en", "source": "default"},
     {"phrase": "change voice quality", "action": "configure", "skill": "tts", "lang": "en", "source": "default"},

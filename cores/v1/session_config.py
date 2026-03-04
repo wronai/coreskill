@@ -132,10 +132,37 @@ class SessionConfig:
         - category: 'llm', 'tts', 'stt', 'voice'
         - target: specific target (model name, provider name, 'better', 'best', 'worse')
         - original_msg: user's original message (for context)
+        
+        FALLBACK: If category is ambiguous or empty, prioritize LLM configuration
+        as the default for quality-related requests (better/worse/faster).
         """
         category = intent_result.get("category", "")
         target = intent_result.get("target", "")
         original = intent_result.get("original_msg", "")
+        
+        # FALLBACK: Check for ambiguity - if no clear category but quality words present
+        # Prioritize LLM as default for "better/worse/faster" when ambiguous
+        if not category or category == "":
+            ul = original.lower()
+            quality_words = ("lepszy", "lepsza", "gorszy", "gorsza", "szybszy", "szybsza",
+                           "better", "worse", "faster", "slower")
+            if any(w in ul for w in quality_words):
+                # Check if it's clearly about voice/TTS (głos, mowa, voice, tts, speech)
+                voice_indicators = ("głos", "głosik", "mowa", "mówić", "voice", "tts", 
+                                   "speech", "syntezator", "speak")
+                if not any(v in ul for v in voice_indicators):
+                    # Default to LLM when ambiguous quality request without voice context
+                    category = "llm"
+                    print(f"[SessionConfig] Ambiguous config '{original}' → defaulting to LLM (fallback)")
+        
+        # Second fallback: If target is provider name that exists in TTS, but no voice context
+        # Still check if user might mean LLM model with similar name
+        if category in ("tts", "stt") and target:
+            # Check if this looks like an LLM model request despite classification
+            llm_patterns = ("gemini", "gpt", "claude", "llama", "qwen", "model")
+            if any(p in original.lower() for p in llm_patterns):
+                print(f"[SessionConfig] Override: '{original}' contains LLM patterns → switching to LLM config")
+                category = "llm"
         
         if category == "llm":
             return self._configure_llm(target, original)
