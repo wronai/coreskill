@@ -271,7 +271,9 @@ class SelfReflection:
         try:
             # Szybki test ping
             start = time.time()
-            response = self.llm.complete("Respond with only 'OK'", max_tokens=5)
+            response = self.llm.chat(
+                [{"role": "user", "content": "Respond with only 'OK'"}],
+                max_tokens=5)
             latency_ms = int((time.time() - start) * 1000)
             
             if response and "error" not in response.lower():
@@ -410,7 +412,9 @@ Jako techniczny ekspert systemu evo-engine, podaj:
 
 Odpowiedź krótko, konkretnie, po polsku."""
 
-            response = self.llm.complete(context, max_tokens=200, temperature=0.3)
+            response = self.llm.chat(
+                [{"role": "user", "content": context}],
+                max_tokens=200, temperature=0.3)
             return response.strip() if response else ""
         except Exception as e:
             return f"[LLM analysis failed: {e}]"

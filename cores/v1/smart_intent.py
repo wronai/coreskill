@@ -562,21 +562,33 @@ class SmartIntentClassifier:
 
         # Stage 0: Fast keyword prefilter (high-confidence only)
         ul = user_msg.lower()
-        # TTS keywords
-        if any(w in ul for w in ("powiedz", "wypowiedz", "przeczytaj", "mów", "odczytaj", "speak", "say", "read aloud")):
+        words = set(ul.split())
+        
+        # TTS keywords - speak/read aloud
+        tts_keywords = {"powiedz", "wypowiedz", "przeczytaj", "mów", "odczytaj", "speak", "say", "read", "aloud"}
+        if any(w in ul for w in ("czytaj", "przeczytaj")) or words & tts_keywords:
             return IntentResult(action="use", skill="tts", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
-        # Voice/STT keywords
-        if any(w in ul for w in ("słuchaj", "nagrywaj", "zapisz co mówię", "transkrybuj", "listen", "record", "transcribe")):
+        
+        # Voice/STT keywords - listen/record/transcribe (check BEFORE TTS to avoid "mów" matching "mówię")
+        stt_keywords = {"słuchaj", "nagrywaj", "transkrybuj", "listen", "record", "transcribe"}
+        if any(w in ul for w in ("zapisz co mówię", "rozpoznaj mowę")) or words & stt_keywords:
             return IntentResult(action="use", skill="stt", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
+        
         # Voice mode
         if any(w in ul for w in ("porozmawiajmy głosowo", "pogadajmy głosem", "włącz tryb głosowy", "voice mode", "let's talk")):
             return IntentResult(action="use", skill="stt", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
+        
         # Web search
-        if any(w in ul for w in ("wyszukaj", "szukaj", "znajdź w internecie", "google", "search", "find online", "look up")):
+        web_keywords = {"wyszukaj", "szukaj", "google", "search", "find", "look"}
+        if any(w in ul for w in ("znajdź w internecie", "przeszukaj web", "daj mi linki")) or words & web_keywords:
             return IntentResult(action="use", skill="web_search", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
+        
         # Shell
-        if any(w in ul for w in ("uruchom", "wykonaj", "bash", "terminal", "run command", "execute")):
+        shell_phrases = ("uruchom", "wykonaj", "bash", "terminal", "run command", "execute")
+        shell_words = {"bash", "terminal", "command", "execute", "uruchom", "wykonaj"}
+        if any(w in ul for w in shell_phrases) or words & shell_words:
             return IntentResult(action="use", skill="shell", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
+        
         # Create/evolve
         if any(w in ul for w in ("stwórz skill", "nowy skill", "create skill", "new skill", "build skill")):
             return IntentResult(action="create", skill="", confidence=0.95, tier="keyword_prefilter", goal=user_msg)

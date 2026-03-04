@@ -18,6 +18,61 @@ from .evo_journal import EvolutionJournal
 from .self_reflection import SelfReflection
 
 
+# ─── Failure Tracker ─────────────────────────────────────────────────
+class FailureTracker:
+    """Tracks consecutive failures and unhandled events.
+    Triggers auto-reflection after THRESHOLD consecutive occurrences."""
+    THRESHOLD = 3
+
+    def __init__(self):
+        self.consecutive_failures: list = []   # recent failure descriptions
+        self.unhandled_events: list = []        # events with no reaction
+        self._reflection_count = 0
+
+    def record_failure(self, skill: str, error: str, goal: str = ""):
+        """Record a failure event. Returns True if threshold reached."""
+        self.consecutive_failures.append({
+            "skill": skill, "error": error[:200], "goal": goal,
+            "ts": time.time(),
+        })
+        return len(self.consecutive_failures) >= self.THRESHOLD
+
+    def record_unhandled(self, user_msg: str, analysis: dict = None):
+        """Record an unhandled event (no reaction). Returns True if threshold reached."""
+        self.unhandled_events.append({
+            "msg": user_msg[:200],
+            "analysis": str(analysis)[:100] if analysis else "",
+            "ts": time.time(),
+        })
+        return len(self.unhandled_events) >= self.THRESHOLD
+
+    def record_success(self):
+        """Reset failure streak on success."""
+        self.consecutive_failures.clear()
+
+    def should_reflect(self) -> bool:
+        """Check if auto-reflection should trigger."""
+        return (len(self.consecutive_failures) >= self.THRESHOLD
+                or len(self.unhandled_events) >= self.THRESHOLD)
+
+    def consume_failures(self) -> dict:
+        """Return accumulated failure context and reset counters."""
+        ctx = {
+            "failures": list(self.consecutive_failures),
+            "unhandled": list(self.unhandled_events),
+            "reflection_number": self._reflection_count + 1,
+        }
+        self._reflection_count += 1
+        self.consecutive_failures.clear()
+        self.unhandled_events.clear()
+        return ctx
+
+    def summary(self) -> str:
+        return (f"failures={len(self.consecutive_failures)}/"
+                f"{self.THRESHOLD}, unhandled={len(self.unhandled_events)}/"
+                f"{self.THRESHOLD}, reflections={self._reflection_count}")
+
+
 @_logged
 class EvoEngine:
     """
@@ -25,6 +80,9 @@ class EvoEngine:
     1. Detect need → 2. Execute skill → 3. Validate goal → 4. If fail:
        diagnose (devops) → find alternatives (deps) → evolve with smart prompt
     5. Loop until goal achieved or max iterations → 6. Report to user
+    
+    Auto-reflection: after 3 consecutive failures or 3 unhandled events,
+    triggers SelfReflection diagnostic + auto-fix cycle.
     """
     def __init__(self, sm, llm, logger, provider_chain=None, state=None):
         self.sm = sm
@@ -34,6 +92,7 @@ class EvoEngine:
         self.provider_chain = provider_chain  # ProviderChain instance (optional)
         self.journal = EvolutionJournal()
         self.reflection = None  # Injected via set_reflection()
+        self.failure_tracker = FailureTracker()
 
     def set_reflection(self, reflection: SelfReflection):
         """Inject SelfReflection instance for stall/timeout detection."""
@@ -50,6 +109,10 @@ class EvoEngine:
 
         if action == "chat":
             return None
+
+        # Check if we should trigger auto-reflection before proceeding
+        if self.failure_tracker.should_reflect() and self.reflection:
+            self._run_auto_reflection("pre_request")
 
         skill_or_name = analysis.get('skill', analysis.get('name', '?'))
         cpr(C.DIM, f"[PIPE] Intent: {action} → {skill_or_name} | goal: {goal[:60]}")
@@ -98,7 +161,84 @@ class EvoEngine:
                 return self._execute_with_validation(name, inp, goal, user_msg)
             return {"type": "evo_failed", "message": msg}
 
+        # Track unhandled — no action taken for non-chat request
+        self.failure_tracker.record_unhandled(user_msg, analysis)
+        if self.failure_tracker.should_reflect() and self.reflection:
+            self._run_auto_reflection("unhandled")
         return None
+
+    def _run_auto_reflection(self, trigger_skill: str):
+        """Run auto-reflection after 3 consecutive failures or unhandled events.
+        Diagnoses system, attempts auto-fixes, logs results to journal."""
+        ctx = self.failure_tracker.consume_failures()
+        n_fail = len(ctx["failures"])
+        n_unhandled = len(ctx["unhandled"])
+        reflection_num = ctx["reflection_number"]
+
+        cpr(C.YELLOW, f"\n[REFLECT] === Auto-refleksja #{reflection_num} ===")
+        cpr(C.YELLOW, f"[REFLECT] Powód: {n_fail} błędów, {n_unhandled} nieobsłużonych")
+        self.log.core("auto_reflection_trigger", {
+            "reflection_num": reflection_num,
+            "failures": n_fail, "unhandled": n_unhandled,
+            "trigger": trigger_skill,
+        })
+
+        # Determine which skill to focus diagnostics on
+        focus_skill = ""
+        last_error = ""
+        if ctx["failures"]:
+            # Most recent failing skill
+            focus_skill = ctx["failures"][-1].get("skill", "")
+            last_error = ctx["failures"][-1].get("error", "")
+            # Show failure summary
+            skill_counts = {}
+            for f in ctx["failures"]:
+                s = f.get("skill", "?")
+                skill_counts[s] = skill_counts.get(s, 0) + 1
+            for s, c in skill_counts.items():
+                cpr(C.DIM, f"[REFLECT]   {s}: {c}x failed")
+
+        if ctx["unhandled"]:
+            cpr(C.DIM, f"[REFLECT]   {n_unhandled} wiadomości bez reakcji")
+            for u in ctx["unhandled"][-2:]:
+                cpr(C.DIM, f"[REFLECT]     ‘{u['msg'][:60]}’")
+
+        # Run full diagnostic
+        report = self.reflection.run_diagnostic(focus_skill, last_error)
+
+        # Attempt auto-fixes
+        fixes_applied = []
+        if report.auto_fixable:
+            cpr(C.CYAN, "[REFLECT] Próbuję automatycznych napraw...")
+            fixes_applied = self.reflection.attempt_auto_fix(report)
+            for fix in fixes_applied:
+                cpr(C.GREEN, f"[REFLECT] ✓ {fix}")
+
+        # Log reflection to journal
+        self.journal.start_evolution(
+            focus_skill or "system",
+            f"auto_reflection_{reflection_num}",
+            strategy="reflection")
+        self.journal.finish_evolution(
+            focus_skill or "system",
+            success=bool(fixes_applied),
+            quality_score=0.5 if fixes_applied else 0.1,
+            reflection=f"Auto-reflection #{reflection_num}: "
+                       f"{report.overall_status}, "
+                       f"{len(fixes_applied)} fixes applied",
+            error=last_error[:200] if not fixes_applied else "")
+
+        cpr(C.CYAN, f"[REFLECT] Status: {report.overall_status} | "
+                    f"Naprawy: {len(fixes_applied)} | "
+                    f"Do zrobienia: {len(report.requires_user)}")
+        cpr(C.DIM, f"[REFLECT] === Koniec auto-refleksji #{reflection_num} ===\n")
+
+        self.log.core("auto_reflection_done", {
+            "reflection_num": reflection_num,
+            "status": report.overall_status,
+            "fixes": len(fixes_applied),
+            "requires_user": len(report.requires_user),
+        })
 
     def _execute_with_validation(self, skill_name, inp, goal, user_msg):
         """Pipeline: preflight → execute → validate result → reflect → retry if needed.
@@ -185,6 +325,8 @@ class EvoEngine:
             if validation["verdict"] == "success":
                 cpr(C.GREEN, f"[PIPE] ✓ Goal achieved: {goal or 'OK'}")
                 self.log.skill(skill_name, "goal_achieved", {"goal": goal})
+                # Reset failure streak on success
+                self.failure_tracker.record_success()
                 # Journal: reflect + record success
                 refl = self.journal.reflect(skill_name, result)
                 self.journal.finish_evolution(
@@ -330,17 +472,17 @@ class EvoEngine:
 
         cpr(C.RED, f"[PIPE] Could not achieve goal after {attempt + 1} attempts")
         self.log.core("goal_failed", {"skill": skill_name, "goal": goal})
-        
-        # Trigger self-reflection on failure
-        if self.reflection:
-            cpr(C.YELLOW, "[REFLECT] Uruchamiam autorefleksję po błędzie...")
-            report = self.reflection.run_diagnostic(skill_name, error_info if 'error_info' in dir() else "")
-            # Try auto-fix if possible
-            if report.auto_fixable:
-                fixes = self.reflection.attempt_auto_fix(report)
-                for fix in fixes:
-                    cpr(C.GREEN, f"[REFLECT] {fix}")
-        
+
+        # Track failure for auto-reflection threshold
+        err_text = error_info if 'error_info' in dir() else "unknown"
+        threshold_hit = self.failure_tracker.record_failure(skill_name, err_text, goal)
+
+        # Trigger auto-reflection if 3 consecutive failures accumulated
+        if threshold_hit and self.reflection:
+            self._run_auto_reflection(skill_name)
+        elif self.reflection:
+            cpr(C.DIM, f"[REFLECT] Failures: {self.failure_tracker.summary()}")
+
         return {"type": "failed", "skill": skill_name, "goal": goal}
 
     def _try_fallback_providers(self, skill_name, inp, goal, user_msg):
