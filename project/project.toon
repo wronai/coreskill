@@ -1,6 +1,7 @@
-# coreskill | 67f 17141L | python:67
+# coreskill | 68f 17246L | python:68
 # Keys: M=modules, D=details, i=imports, c=classes, f=functions, m=methods
-M[67]:
+M[68]:
+  skills/time/v1/skill.py,93
   __init__.py,19
   build_core.py,525
   cli.py,248
@@ -23,7 +24,7 @@ M[67]:
   cores/v1/session_config.py,353
   cores/v1/skill_logger.py,245
   cores/v1/skill_manager.py,446
-  cores/v1/smart_intent.py,620
+  cores/v1/smart_intent.py,610
   cores/v1/supervisor.py,69
   cores/v1/system_identity.py,157
   cores/v1/user_memory.py,148
@@ -69,6 +70,12 @@ M[67]:
   tests/__init__.py,0
   tests/test_e2e.py,1609
 D:
+  skills/time/v1/skill.py:
+    i: datetime,typing.{Any,Dict}
+    e: get_info,execute,health_check
+    get_info()->Dict[str, Any]
+    execute(params:Dict[str;Any])->Dict[str, Any]
+    health_check()->Dict[str, Any]
   cli.py:
     i: argparse,os,sys,shutil,json,cores.v1.config.{LOGS_DIR,ROOT,STATE_FILE,load_state},pathlib.Path
     e: print_color,cmd_logs_reset,cmd_cache_reset,cmd_state_reset,cmd_status,cmd_shell,main_cli
@@ -135,8 +142,8 @@ D:
     e: EvolutionGarbageCollector
     EvolutionGarbageCollector: __init__(1),is_stub(1),is_broken(1),scan_versions(1),cleanup_provider(2)  # Cleans up failed evolution stubs, pro...
   cores/v1/intent_engine.py:
-    i: json,re,datetime,config.{SKILLS_DIR,save_state},datetime.timezone,smart_intent.SmartIntentClassifier,utils.clean_json
-    e: IntentEngine
+    i: json,re,datetime,config.{SKILLS_DIR,get_config_value,save_state},datetime.timezone,smart_intent.SmartIntentClassifier,utils.clean_json
+    e: _TOPIC_MAP,IntentEngine
     IntentEngine: __init__(3),classifier(0),save(0),_update_topics_from_result(1),_recent_topic(1)  # Context-aware intent detection with M...
   cores/v1/llm_client.py:
     i: os,json,subprocess,time,re,config.{FREE_MODELS,LOCAL_PREFERRED,TIER_FREE,TIER_LOCAL,TIER_PAID}

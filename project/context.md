@@ -4,10 +4,10 @@
 
 - **Project**: /home/tom/github/wronai/coreskill
 - **Analysis Mode**: static
-- **Total Functions**: 629
+- **Total Functions**: 632
 - **Total Classes**: 75
-- **Modules**: 59
-- **Entry Points**: 573
+- **Modules**: 60
+- **Entry Points**: 575
 
 ## Architecture by Module
 

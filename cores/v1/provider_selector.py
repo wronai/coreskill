@@ -21,7 +21,7 @@ from .config import SKILLS_DIR, get_config_value
 
 
 # Tier priority (higher = more demanding but better quality)
-TIER_ORDER = {"lite": 0, "standard": 1, "premium": 2}
+TIER_ORDER = get_config_value("tier_order", {"lite": 0, "standard": 1, "premium": 2})
 
 # Auto-degradation constants - loaded from system config
 FAILURE_THRESHOLD = get_config_value("cooldowns.failure_threshold", 3)

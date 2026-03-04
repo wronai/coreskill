@@ -1,9 +1,9 @@
-# code2llm | 55f 13744L | py:55 | 2026-03-04
-# CC̄=5.0 | critical:83/629 | dups:13 | cycles:0
+# code2llm | 56f 13848L | py:56 | 2026-03-04
+# CC̄=5.0 | critical:83/632 | dups:13 | cycles:0
 
 HEALTH[20]:
   🔴 DUP   13 classes duplicated
-  🔴 GOD   cores/v1/smart_intent.py = 802L, 5 classes, 30m, max CC=17
+  🔴 GOD   cores/v1/smart_intent.py = 791L, 5 classes, 30m, max CC=17
   🔴 GOD   core.py = 609L, 6 classes, 29m, max CC=74
   🟡 CC    cmd_logs_reset CC=20 (limit:15)
   🟡 CC    cmd_cache_reset CC=23 (limit:15)
@@ -63,7 +63,7 @@ LAYERS:
   │
   cores/                          CC̄=5.5    ←in:0  →out:0  ×DUP
   │ !! core                      1191L  0C   50m  CC=46     ←1
-  │ !! smart_intent               802L  5C   30m  CC=17     ←0
+  │ !! smart_intent               791L  5C   30m  CC=17     ←0
   │ !! auto_repair                600L  2C   22m  CC=14     ←0
   │ !! evo_engine                 536L  1C    7m  CC=43     ←0
   │ !! skill_manager              536L  1C   24m  CC=18     ←0
@@ -73,7 +73,7 @@ LAYERS:
   │ !! preflight                  397L  3C   17m  CC=25     ←0
   │ __init__                   393L  6C   17m  CC=9      ←0
   │ !! llm_client                 380L  1C   14m  CC=24     ←1
-  │ !! intent_engine              376L  1C   15m  CC=24     ←0
+  │ !! intent_engine              379L  1C   15m  CC=24     ←0
   │ !  garbage_collector          320L  1C   10m  CC=13     ←0
   │ !  skill_logger               303L  0C    9m  CC=11     ←3
   │ !  config                     245L  1C   14m  CC=10     ←10
@@ -90,7 +90,7 @@ LAYERS:
   │ !! core_v1                    357L  5C   27m  CC=54     ←1  ×DUP
   │ echo_skill_v1               25L  1C    4m  CC=1      ←0
   │
-  skills/                         CC̄=3.8    ←in:0  →out:0  ×DUP
+  skills/                         CC̄=3.7    ←in:0  →out:0  ×DUP
   │ !! skill                      568L  3C   18m  CC=28     ←0
   │ !  skill                      287L  1C   11m  CC=13     ←0
   │ skill                      242L  1C   10m  CC=8      ←0
@@ -104,6 +104,7 @@ LAYERS:
   │ !  skill                      154L  1C    8m  CC=13     ←0  ×DUP
   │ skill                      142L  1C   15m  CC=4      ←0
   │ skill                      124L  1C    7m  CC=7      ←0
+  │ skill                      112L  0C    3m  CC=3      ←0
   │ skill                       94L  1C    9m  CC=7      ←0  ×DUP
   │ skill                       75L  1C    7m  CC=8      ←0  ×DUP
   │ skill                       73L  0C    3m  CC=8      ←0
@@ -170,7 +171,7 @@ DUPLICATES[13]:
     B: 3m  __init__ active switch
     DIFF: A has +health,recover → keep A
 
-FUNCTIONS (CC≥10, 83 of 625):
+FUNCTIONS (CC≥10, 83 of 628):
    74.0  main                                       29n   1exit  loops+cond  !! split
    54.0  main                                       21n   1exit  loops+cond  !! split
    46.0  main                                       51n   1exit  loops+cond  !! split
@@ -223,8 +224,8 @@ FUNCTIONS (CC≥10, 83 of 625):
    12.0  EvolutionJournal._compute_quality          15n   2exit  cond+ret
 
   summary:
-    critical(≥10): 83 | high(5-10): 146 | medium(2-5): 222 | low(<2): 174
-    13% CC≥10  37% CC≥5
+    critical(≥10): 83 | high(5-10): 146 | medium(2-5): 224 | low(<2): 175
+    13% CC≥10  36% CC≥5
 
 HOTSPOTS:
   #1  main                                 fan=60   "calls 60 functions"
@@ -743,6 +744,11 @@ This is a SESSION-ONLY l...
     TestSkill
       execute(1)  CC=4.0
     get_info()
+    health_check()
+  skills/time/v1/skill.py:
+    e: get_info,execute,health_check
+    get_info()
+    execute(params)
     health_check()
   skills/weather/v1/skill.py:
     e: _fetch_weather,health_check

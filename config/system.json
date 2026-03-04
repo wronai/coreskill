@@ -46,9 +46,25 @@
   "intent": {
     "confidence_threshold": 0.40,
     "sbert_threshold": 0.70,
+    "tfidf_threshold": 0.45,
+    "bow_threshold": 0.35,
+    "low_threshold_factor": 0.6,
+    "min_threshold": 0.25,
+    "similarity_min": 0.3,
     "enable_embeddings": true,
     "enable_local_llm": true,
-    "enable_remote_llm": true
+    "enable_remote_llm": true,
+    "training_file": "intent_training.json",
+    "embedding_model": "paraphrase-multilingual-MiniLM-L12-v2",
+    "tfidf_fallback": true,
+    "local_llm_models": [
+      "qwen3:4b",
+      "qwen2.5:3b",
+      "qwen2.5-coder:3b",
+      "gemma3:4b",
+      "phi4-mini",
+      "llama3.2:3b"
+    ]
   },
   "blocking": {
     "blocked_commands": [
@@ -104,5 +120,18 @@
       "vosk": {"tier": "lite", "quality": 6, "speed": 9},
       "whisper": {"tier": "premium", "quality": 9, "speed": 5}
     }
+  },
+  "tier_order": {
+    "lite": 0,
+    "standard": 1,
+    "premium": 2
+  },
+  "topic_map": {
+    "stt": "voice",
+    "tts": "voice",
+    "web_search": "web",
+    "git_ops": "git",
+    "shell": "dev",
+    "network_info": "system"
   }
 }

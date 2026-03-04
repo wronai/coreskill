@@ -31,11 +31,26 @@ from pathlib import Path
 from typing import Optional, List, Dict, Tuple
 
 # Import ROOT for config file access
-try:
-    from .config import ROOT
-except ImportError:
-    # Fallback for standalone usage
-    ROOT = Path(__file__).resolve().parent.parent.parent
+from .config import ROOT, get_config_value
+
+
+# Load intent configuration from system.json
+_INTENT_CONFIG = {
+    "confidence_threshold": get_config_value("intent.confidence_threshold", 0.78),
+    "sbert_threshold": get_config_value("intent.sbert_threshold", 0.70),
+    "tfidf_threshold": get_config_value("intent.tfidf_threshold", 0.45),
+    "bow_threshold": get_config_value("intent.bow_threshold", 0.35),
+    "low_threshold_factor": get_config_value("intent.low_threshold_factor", 0.6),
+    "min_threshold": get_config_value("intent.min_threshold", 0.25),
+    "similarity_min": get_config_value("intent.similarity_min", 0.3),
+    "training_file": get_config_value("intent.training_file", "intent_training.json"),
+    "embedding_model": get_config_value("intent.embedding_model", "paraphrase-multilingual-MiniLM-L12-v2"),
+    "tfidf_fallback": get_config_value("intent.tfidf_fallback", True),
+    "local_llm_models": get_config_value("intent.local_llm_models", [
+        "qwen3:4b", "qwen2.5:3b", "qwen2.5-coder:3b",
+        "gemma3:4b", "phi4-mini", "llama3.2:3b"
+    ]),
+}
 
 
 # ── Result types ──────────────────────────────────────────────────────
@@ -90,26 +105,15 @@ class TrainingExample:
 
 
 def _load_default_training():
-    """Load default training data from config file."""
+    """Load default training data from config file.
+    
+    Falls back to minimal stub if config missing - will be auto-populated
+    by LLM on first run via ConfigManager.
+    """
     config_path = ROOT / "config" / "intent_training_default.json"
-    fallback = [
-        # Minimal fallback in case config file is missing
-        ("pogadajmy głosowo", "use", "stt"),
-        ("porozmawiajmy głosowo", "use", "stt"),
-        ("powiedz coś", "use", "tts"),
-        ("cześć", "chat", ""),
-        ("stwórz skill", "create", ""),
-        ("napraw to", "evolve", ""),
-        # Network info examples
-        ("jaki mam adres ip", "use", "network_info"),
-        ("pokaż mac", "use", "network_info"),
-        ("jaki numer ip", "use", "network_info"),
-        ("adres mac urządzenia", "use", "network_info"),
-        ("pokaż ip i mac", "use", "network_info"),
-    ]
     
     if not config_path.exists():
-        return fallback
+        return []
     
     try:
         with open(config_path, 'r', encoding='utf-8') as f:
@@ -122,7 +126,7 @@ def _load_default_training():
             ]
     except Exception as e:
         print(f"[SmartIntent] Warning: Could not load training data from {config_path}: {e}")
-        return fallback
+        return []
 
 
 DEFAULT_TRAINING = _load_default_training()
@@ -138,8 +142,8 @@ class EmbeddingEngine:
     Falls back to TF-IDF if sentence-transformers not installed.
     """
 
-    MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
-    TFIDF_FALLBACK = True
+    MODEL_NAME = _INTENT_CONFIG["embedding_model"]
+    TFIDF_FALLBACK = _INTENT_CONFIG["tfidf_fallback"]
 
     def __init__(self, cache_dir: Path = None):
         self._model = None
@@ -274,14 +278,7 @@ class LocalLLMClassifier:
     ~100-200ms via ollama API.
     """
 
-    MODELS = [
-        "qwen3:4b",         # best small model
-        "qwen2.5:3b",
-        "qwen2.5-coder:3b",
-        "gemma3:4b",
-        "phi4-mini",
-        "llama3.2:3b",
-    ]
+    MODELS = _INTENT_CONFIG["local_llm_models"]
 
     def __init__(self):
         self._model = None
@@ -403,14 +400,15 @@ class SmartIntentClassifier:
     """
 
     # Base threshold — auto-adjusted by embedding mode
-    CONFIDENCE_THRESHOLD = float(os.environ.get("EVO_INTENT_THRESHOLD", "0.78"))
+    CONFIDENCE_THRESHOLD = float(os.environ.get("EVO_INTENT_THRESHOLD", 
+                                               str(_INTENT_CONFIG["confidence_threshold"])))
     # Mode-specific thresholds (TF-IDF/BOW scores are inherently lower)
     _MODE_THRESHOLDS = {
-        "sbert": 0.70,   # sentence-transformers: high quality
-        "tfidf": 0.45,   # TF-IDF: char n-grams, lower scores
-        "bow":   0.35,   # bag-of-words: lowest quality
+        "sbert": _INTENT_CONFIG["sbert_threshold"],
+        "tfidf": _INTENT_CONFIG["tfidf_threshold"],
+        "bow":   _INTENT_CONFIG["bow_threshold"],
     }
-    TRAINING_FILE = "intent_training.json"
+    TRAINING_FILE = _INTENT_CONFIG["training_file"]
 
     def __init__(self, state_dir: Path = None, llm_client=None):
         self._state_dir = state_dir or Path.home() / ".evo-engine"
@@ -574,7 +572,8 @@ class SmartIntentClassifier:
                 return result_remote
 
         # Fallback: use best embedding result even if low confidence
-        low_threshold = max(threshold * 0.6, 0.25)
+        low_threshold = max(threshold * _INTENT_CONFIG["low_threshold_factor"], 
+                           _INTENT_CONFIG["min_threshold"])
         if result and result.action != "chat" and result.confidence >= low_threshold:
             result.tier = "embedding_low"
             return result
@@ -604,7 +603,7 @@ class SmartIntentClassifier:
             scores.sort(reverse=True)
             top = scores[:5]
 
-            if not top or top[0][0] < 0.3:
+            if not top or top[0][0] < _INTENT_CONFIG["similarity_min"]:
                 return None
 
             # Voting: aggregate top matches by (action, skill)

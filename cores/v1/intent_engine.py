@@ -13,9 +13,19 @@ import json
 import re
 from datetime import datetime, timezone
 
-from .config import SKILLS_DIR, save_state
+from .config import SKILLS_DIR, save_state, get_config_value
 from .utils import clean_json
 from .smart_intent import SmartIntentClassifier
+
+
+# Load topic map from system configuration
+_TOPIC_MAP = get_config_value("topic_map", {
+    "stt": "voice", "tts": "voice",
+    "web_search": "web",
+    "git_ops": "git",
+    "shell": "dev",
+    "network_info": "system",
+})
 
 
 class IntentEngine:
@@ -72,14 +82,7 @@ class IntentEngine:
     def _update_topics_from_result(self, result):
         """Update topic tracking from classification result."""
         skill = result.get("skill", "")
-        topic_map = {
-            "stt": "voice", "tts": "voice",
-            "web_search": "web",
-            "git_ops": "git",
-            "shell": "dev",
-            "network_info": "system",
-        }
-        topic = topic_map.get(skill)
+        topic = _TOPIC_MAP.get(skill)
         if topic:
             topics = self._p.get("topics", [])
             self._p["topics"] = ([topic] + topics)[:30]

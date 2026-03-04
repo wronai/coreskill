@@ -1,0 +1,22 @@
+{
+  "name": "time",
+  "version": "v1",
+  "description": "Pokazuje aktualną godzinę, datę i czas",
+  "author": "CoreSkill AI",
+  "actions": ["current_time", "current_date", "current_datetime"],
+  "parameters": {
+    "format": {
+      "type": "string",
+      "description": "Format wyjścia",
+      "default": "text",
+      "enum": ["text", "json"]
+    }
+  },
+  "keywords": ["godzina", "czas", "data", "która", "późno", "time", "date", "hour"],
+  "examples": [
+    "Która jest godzina?",
+    "Jaki mamy czas?",
+    "Podaj datę",
+    "Ile jest godzin?"
+  ]
+}

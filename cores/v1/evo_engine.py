@@ -122,7 +122,8 @@ class EvoEngine:
             if inp:
                 inp_preview = str(inp)[:80]
                 cpr(C.DIM, f"[PIPE]   input: {inp_preview}")
-            result = self.sm.exec_skill(skill_name, inp=inp)
+            effective_inp = inp if inp else {"text": user_msg}
+            result = self.sm.exec_skill(skill_name, inp=effective_inp)
 
             # Log preflight failure if that's what stopped execution
             if result.get("preflight"):

@@ -34,6 +34,7 @@ from .user_memory import UserMemory
 from .garbage_collector import EvolutionGarbageCollector
 from .auto_repair import AutoRepair
 from .session_config import SessionConfig, ConfigChange
+from .config_generator import ConfigGenerator, get_config_generator
 
 
 # ─── Docker Compose Generator ────────────────────────────────────────
@@ -919,6 +920,39 @@ def _cmd_autotune(a1, **ctx):
     cpr(C.DIM, f"   Poprzedni: {current.split('/')[-1]}")
 
 
+def _cmd_config(a1, **ctx):
+    """Show or modify session configuration."""
+    session_cfg = ctx.get("session_config")
+    if not session_cfg:
+        cpr(C.YELLOW, "SessionConfig not available")
+        return
+    
+    if not a1:
+        # Show current session config
+        cpr(C.CYAN, session_cfg.get_session_summary())
+        return
+    
+    # Parse config command: /config <category> <setting> <value>
+    parts = a1.split(maxsplit=2)
+    if len(parts) < 2:
+        cpr(C.YELLOW, "Usage: /config <category> <setting> [value]  (e.g., /config tts provider coqui)")
+        return
+    
+    category = parts[0]
+    setting = parts[1]
+    value = parts[2] if len(parts) > 2 else ""
+    
+    # Handle special values
+    if value.lower() in ("true", "on", "enable", "włącz"):
+        value = True
+    elif value.lower() in ("false", "off", "disable", "wyłącz", "wyłacz"):
+        value = False
+    
+    change = session_cfg.set(category, setting, value)
+    feedback = session_cfg.format_change_feedback(change)
+    cpr(C.CYAN, feedback)
+
+
 # Command dispatch table
 COMMANDS = {
     "/help": _cmd_help,
@@ -963,37 +997,7 @@ COMMANDS = {
 }
 
 
-def _cmd_config(a1, **ctx):
-    """Show or modify session configuration."""
-    session_cfg = ctx.get("session_config")
-    if not session_cfg:
-        cpr(C.YELLOW, "SessionConfig not available")
-        return
-    
-    if not a1:
-        # Show current session config
-        cpr(C.CYAN, session_cfg.get_session_summary())
-        return
-    
-    # Parse config command: /config <category> <setting> <value>
-    parts = a1.split(maxsplit=2)
-    if len(parts) < 2:
-        cpr(C.YELLOW, "Usage: /config <category> <setting> [value]  (e.g., /config tts provider coqui)")
-        return
-    
-    category = parts[0]
-    setting = parts[1]
-    value = parts[2] if len(parts) > 2 else ""
-    
-    # Handle special values
-    if value.lower() in ("true", "on", "enable", "włącz"):
-        value = True
-    elif value.lower() in ("false", "off", "disable", "wyłącz", "wyłacz"):
-        value = False
-    
-    change = session_cfg.set(category, setting, value)
-    feedback = session_cfg.format_change_feedback(change)
-    cpr(C.CYAN, feedback)
+# ─── Main ────────────────────────────────────────────────────────────
 def main():
     init_nfo()
 
@@ -1013,6 +1017,10 @@ def main():
     mdl, models = _resolve_model(state)
     llm, sm, pm, evo, intent, provider_sel, resource_mon, identity = _init_components(
         ak, mdl, models, logger, state)
+
+    # Ensure all config files exist (generate missing ones via LLM)
+    cfg_gen = get_config_generator(llm_client=llm)
+    cfg_gen.ensure_config_files()
 
     # Startup: auto-repair (GC + skill fixes + model validation)
     repairer = AutoRepair(skill_manager=sm, logger=logger, identity=identity)
