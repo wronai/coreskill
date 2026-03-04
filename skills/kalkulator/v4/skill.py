@@ -11,7 +11,6 @@ def get_info() -> dict:
 
 def health_check() -> dict:
     try:
-        # Check if python3 is available and can import math
         subprocess.run([sys.executable, '-c', 'import math'], check=True, capture_output=True)
         return {'status': 'ok'}
     except Exception as e:
@@ -24,28 +23,27 @@ class Kalkulator:
             return {'success': False, 'error': 'Brak wyrażenia do obliczenia.'}
 
         try:
-            # Using eval is generally unsafe, but for a controlled environment and simple math expressions,
-            # it can be used with caution. For a production system, a safer parser would be recommended.
-            # We are restricting the environment for eval to only allow math functions.
+            # Restrict the environment for eval to only allow math functions and basic operations.
+            # This is a basic security measure. For production, a dedicated math expression parser is recommended.
             allowed_globals = {
                 "__builtins__": None,
                 "math": math
             }
-            # Basic check for potentially harmful keywords. A more robust solution would involve AST parsing.
-            disallowed_keywords = ['import', 'exec', 'eval', 'open', '__', 'os', 'sys']
-            if any(keyword in expression for keyword in disallowed_keywords):
+            
+            # Basic check for potentially unsafe keywords. This is not exhaustive.
+            unsafe_keywords = ['import', 'exec', 'eval', 'open', '__', 'os', 'sys', 'subprocess']
+            if any(keyword in expression for keyword in unsafe_keywords):
                  return {'success': False, 'error': 'Niedozwolone operacje w wyrażeniu.'}
 
-            # Evaluate the expression
             result = eval(expression, allowed_globals)
-
-            # Format the result for potential TTS
-            if isinstance(result, (int, float)):
-                spoken_result = f"Wynik to {result}"
+            
+            # Format the result for better readability, especially for floats
+            if isinstance(result, float):
+                result_str = f"{result:.4f}" # Format to 4 decimal places
             else:
-                spoken_result = f"Wynik to {str(result)}"
+                result_str = str(result)
 
-            return {'success': True, 'result': result, 'spoken': spoken_result}
+            return {'success': True, 'result': result_str, 'spoken': f"Wynik to {result_str}"}
         except (SyntaxError, NameError, TypeError, ZeroDivisionError) as e:
             return {'success': False, 'error': f'Błąd składni lub wykonania: {e}'}
         except Exception as e:
@@ -66,10 +64,12 @@ if __name__ == '__main__':
         "10 / 2",
         "math.sqrt(16)",
         "2 ** 3",
+        "10 / 3", # Test float result
         "math.pow(2, 3)",
         "10 / 0", # Test division by zero
         "invalid syntax", # Test syntax error
         "print('hello')", # Test disallowed function
+        "math.log(100, 10)" # Test log
     ]
 
     for expr in test_expressions:
@@ -84,3 +84,4 @@ if __name__ == '__main__':
     print("\nTest z niedozwolonym wyrażeniem:")
     result_disallowed = execute({'expression': 'import os'})
     print(f"Wynik: {result_disallowed}")
+```
