@@ -607,13 +607,22 @@ class SmartIntentClassifier:
             return IntentResult(action="use", skill="tts", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
         
         # Voice/STT keywords - listen/record/transcribe (check BEFORE TTS to avoid "mów" matching "mówię")
-        stt_keywords = {"słuchaj", "nagrywaj", "transkrybuj", "zapisz", "rozpoznaj", "listen", "record", "transcribe"}
-        stt_phrases = ["zapisz co mówię", "rozpoznaj mowę", "transkrybuj co"]
+        stt_keywords = {"słuchaj", "posłuchaj", "nagrywaj", "transkrybuj", "zapisz", "rozpoznaj", "listen", "record", "transcribe"}
+        stt_phrases = ["zapisz co mówię", "rozpoznaj mowę", "transkrybuj co", "posłuchaj co mówię", "posluchaj co mowie"]
         if any(phrase in ul for phrase in stt_phrases) or words & stt_keywords:
             return IntentResult(action="use", skill="stt", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
         
         # Voice mode
-        voice_phrases = ["porozmawiajmy głosowo", "pogadajmy głosem", "włącz tryb głosowy", "voice mode", "let's talk", "voice conversation"]
+        voice_phrases = [
+            "porozmawiajmy głosowo",
+            "pogadajmy głosem",
+            "włącz tryb głosowy",
+            "voice mode",
+            "let's talk",
+            "voice conversation",
+            "mówmy głosowo",
+            "mowmy glosowo",
+        ]
         if any(phrase in ul for phrase in voice_phrases):
             return IntentResult(action="use", skill="stt", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
         
@@ -632,9 +641,12 @@ class SmartIntentClassifier:
         # Create/evolve
         create_phrases = ["stwórz skill", "nowy skill", "create skill", "new skill", "build skill",
                          "napisz program", "zbuduj aplikację", "stwórz program", "zbuduj system", "utwórz aplikację",
-                         "napisz kod", "zbuduj kod", "stwórz kod"]
+                         "napisz kod", "zbuduj kod", "stwórz kod",
+                         "deploy aplikację", "deploy aplikacje", "deploy app", "deploy application"]
         evolve_phrases = ["napraw", "popraw", "ulepsz", "fix", "repair", "improve", "evolve"]
-        if any(phrase in ul for phrase in create_phrases):
+        if any(phrase in ul for phrase in create_phrases) or (
+            ("stwórz" in ul or "stworz" in ul or "create" in ul or "build" in ul) and "skill" in ul
+        ):
             return IntentResult(action="create", skill="", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
         if any(phrase in ul for phrase in evolve_phrases):
             return IntentResult(action="evolve", skill="", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
@@ -905,17 +917,6 @@ if __name__ == "__main__":
         print(f"\n=== Stats ===")
         print(json.dumps(classifier.stats(), indent=2))
 
-
-# Backward compatibility: re-export from new intent package
-# These are now the canonical implementations in cores/v1/intent/
-from .intent import (
-    SmartIntentClassifier as SmartIntentClassifier,
-    IntentResult as IntentResult,
-    create_smart_classifier as create_smart_classifier,
-    EmbeddingEngine as EmbeddingEngine,
-    LocalLLMClassifier as LocalLLMClassifier,
-    DEFAULT_TRAINING as DEFAULT_TRAINING,
-)
 
 __all__ = [
     "SmartIntentClassifier",

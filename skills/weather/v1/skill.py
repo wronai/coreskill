@@ -24,6 +24,25 @@ def _fetch_weather(location: str) -> Dict:
         return json.loads(response.read().decode('utf-8'))
 
 
+def execute(input_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Główna funkcja wykonawcza skilla pogodowego."""
+    try:
+        location = input_data.get("location")
+        if not location:
+            return {"success": False, "error": "Brak lokalizacji"}
+            
+        data = _fetch_weather(location)
+        
+        return {
+            "success": True,
+            "data": data,
+            "location": location,
+            "status": "ok"
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e), "status": "error"}
+
+
 def health_check() -> Dict[str, Any]:
     """Sprawdza health skilla."""
     try:

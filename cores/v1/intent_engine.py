@@ -152,6 +152,7 @@ class IntentEngine:
           Stage 3: Gap recording
         """
         conv = conv or []
+        has_conv = bool(conv)
 
         # Stage 0: Very short / trivial → chat
         stripped = user_msg.strip()
@@ -168,7 +169,7 @@ class IntentEngine:
         else:
             skills_list = list(skills)
             skills_dict = {name: {} for name in skills_list}  # Minimal metadata
-        context = self._build_context(conv)
+        context = self._build_context(conv) if has_conv else ""
 
         result = self._classifier.classify(
             user_msg,
@@ -177,9 +178,23 @@ class IntentEngine:
             conv=conv,
         )
 
-        if result.action != "chat" and result.confidence >= 0.40:
+        # Guard: without voice-topic context, treat configure-tts/voice as uncertain
+        # and let Stage 2 context inference decide.
+        topic_now = self._recent_topic() if has_conv else None
+        ul = user_msg.lower()
+        _voice_words = ("głos", "glos", "mowa", "voice", "tts", "speech", "syntez")
+        if (
+            result.action == "configure"
+            and result.skill in ("tts", "voice")
+            and topic_now != "voice"
+            and any(w in ul for w in _voice_words)
+        ):
+            result = None
+
+        if result and result.action != "chat" and result.confidence >= 0.40:
             analysis = result.to_analysis()
-            self._update_topics_from_result(analysis)
+            if has_conv:
+                self._update_topics_from_result(analysis)
             self.log.core("intent_ml", {
                 "action": result.action,
                 "skill": result.skill,
@@ -237,7 +252,7 @@ class IntentEngine:
                     "_conf": 0.70, "_tier": "skill_name_match"}
 
         # Stage 2: Context inference
-        topic = self._recent_topic()
+        topic = self._recent_topic() if has_conv else None
         ul = user_msg.lower()
         
         if topic == "voice":

@@ -227,6 +227,31 @@ class BenchmarkSkill:
         },
     }
     
+    def _get_api_key(self) -> str:
+        """Get API key from env, state file, or params."""
+        # 1. Try environment
+        api_key = os.environ.get("OPENROUTER_API_KEY", "")
+        if api_key:
+            return api_key
+        
+        # 2. Try to load from state file
+        state_paths = [
+            Path.cwd() / ".evo_state.json",
+            Path.home() / ".evo_state.json",
+        ]
+        for state_path in state_paths:
+            if state_path.exists():
+                try:
+                    with open(state_path, 'r') as f:
+                        state = json.load(f)
+                        api_key = state.get("openrouter_api_key", "")
+                        if api_key:
+                            return api_key
+                except Exception:
+                    continue
+        
+        return ""
+    
     def execute(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """
         Main entry point.
@@ -263,13 +288,17 @@ class BenchmarkSkill:
             
             action = params.get("action", "recommend")
             
-            # Default to LIVE benchmark if API key is available and no specific action requested
-            if action == "recommend" and os.environ.get("OPENROUTER_API_KEY"):
+            # ALWAYS use LIVE benchmark - no static fallback
+            if action == "recommend":
+                # Check if API key available
+                if not self._get_api_key():
+                    return {
+                        "success": False,
+                        "error": "LIVE benchmark wymaga OPENROUTER_API_KEY. Użyj /apikey aby dodać klucz.",
+                    }
                 action = "recommend_live"
             
-            if action == "recommend":
-                return self._recommend_models(params, goal)
-            elif action == "recommend_live":
+            if action == "recommend_live":
                 return self._recommend_models_live(params, goal)
             elif action == "compare":
                 return self._compare_models(params)
@@ -384,7 +413,7 @@ class BenchmarkSkill:
         available_models = params.get("available_models", None)
         limit = params.get("limit", 3)
         profile_name = params.get("profile", "balanced")
-        api_key = params.get("api_key", os.environ.get("OPENROUTER_API_KEY", ""))
+        api_key = params.get("api_key", self._get_api_key())
         
         # Get profile weights
         benchmark_profile = self.BENCHMARK_PROFILES.get(profile_name, self.BENCHMARK_PROFILES["balanced"])
@@ -398,11 +427,11 @@ class BenchmarkSkill:
         
         print(f"[Benchmark LIVE] Testing {len(candidates)} models with real API calls...")
         
-        # Test each model with real API calls
+        # Test each model with SHORT intelligence-focused prompts (fast, minimal tokens)
         test_prompts = {
-            "coding": "Write a Python function that reverses a string without slicing. Include docstring.",
-            "json": 'Return ONLY JSON with keys: "name", "age", "city".',
-            "speed": "Say 'hello' and nothing else.",
+            "reasoning": "2+3*4=? Explain in 1 sentence.",  # 5 tokens, tests logic
+            "coding": "Fix: def add(a,b): return a-b",  # 8 tokens, tests code understanding  
+            "knowledge": "Capital of France in 2 words.",  # 4 tokens, tests knowledge
         }
         
         live_results = []
@@ -522,7 +551,6 @@ class BenchmarkSkill:
             return free_models + paid_models
     
     def _calculate_model_score(
-        self, model_id: str, goal: GoalType, profile: Dict, constraints: List[str]
     ) -> ModelScore:
         """Calculate comprehensive score for a model."""
         provider = model_id.split("/")[0] if "/" in model_id else "unknown"
@@ -651,7 +679,6 @@ class BenchmarkSkill:
         return uses
     
     def _apply_constraints(
-        self, models: List[ModelScore], constraints: List[str], profile: Dict
     ) -> List[ModelScore]:
         """Filter models based on constraints."""
         result = models
@@ -675,7 +702,6 @@ class BenchmarkSkill:
         return result
     
     def _explain_recommendation(
-        self, score: ModelScore, goal: GoalType, constraints: List[str]
     ) -> str:
         """Generate human-readable explanation."""
         parts = []
@@ -785,7 +811,7 @@ class BenchmarkSkill:
     def _run_live_benchmark(self, params: Dict) -> Dict[str, Any]:
         """Run actual live benchmark tests - inline implementation."""
         models = params.get("models", [])
-        api_key = params.get("api_key", os.environ.get("OPENROUTER_API_KEY", ""))
+        api_key = params.get("api_key", self._get_api_key())
         test_types = params.get("tests", ["speed", "coding", "json"])
         timeout = params.get("timeout_per_model", 25)
 
@@ -863,29 +889,27 @@ class BenchmarkSkill:
             raise Exception(f"Model call failed: {str(e)[:80]}")
 
     def _score_benchmark_response(self, response: str, criteria: List[str], test_type: str) -> float:
-        """Score benchmark response quality."""
+        """Score benchmark response quality - optimized for short tests."""
         if not response:
             return 0.0
-        response_lower = response.lower()
+        response_lower = response.lower().strip()
         score = 0.0
-        if test_type == "coding":
-            if "def " in response: score += 0.3
-            if '"""' in response or "'''" in response: score += 0.2
-            if "try:" in response and "except" in response: score += 0.2
-            if 100 < len(response) < 2000: score += 0.15
-        elif test_type == "polish":
-            polish_words = ["sztuczna", "inteligencja", "ai", "technologia"]
-            matches = sum(1 for w in polish_words if w in response_lower)
-            score += min(0.5, matches * 0.1)
-            if len(response) > 50: score += 0.3
-        elif test_type == "json":
-            try:
-                json_str = response
-                if "```json" in response: json_str = response.split("```json")[1].split("```")[0].strip()
-                elif "```" in response: json_str = response.split("```")[1].split("```")[0].strip()
-                data = json.loads(json_str)
-                if all(k in data for k in ["name", "age", "city"]): score = 1.0
-            except: pass
+        
+        if test_type == "reasoning":
+            # Should contain "14" (correct answer) and explanation
+            if "14" in response: score += 0.5
+            if any(word in response_lower for word in ["multiply", "multiplication", "times", "*"]):
+                score += 0.3
+            if len(response) > 20: score += 0.2  # has explanation
+        elif test_type == "coding":
+            # Should fix the bug (return a+b not a-b)
+            if "a+b" in response or "a + b" in response: score += 0.5
+            if "return" in response_lower: score += 0.3
+            if "def " in response: score += 0.2
+        elif test_type == "knowledge":
+            # Should contain "Paris" and be short
+            if "paris" in response_lower: score += 0.7
+            if len(response) < 30: score += 0.3  # concise
         elif test_type == "speed":
             score = 1.0 if len(response) > 0 else 0.0
         return min(1.0, score)
