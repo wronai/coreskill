@@ -25,10 +25,15 @@ class Kalkulator:
             if "__" in expression:
                 return {'success': False, 'error': 'Wyrażenie zawiera niedozwolone sekwencje znaków.'}
 
-            # Używamy eval z ograniczonym zakresem, aby zminimalizować ryzyko.
-            # Dopuszczamy tylko podstawowe operacje i liczby.
-            # Dla pełnego bezpieczeństwa zalecane jest użycie dedykowanej biblioteki do parsowania wyrażeń.
+            # Użycie eval z ograniczonymi globals i locals dla bezpieczeństwa
+            # Dopuszczamy tylko podstawowe operacje arytmetyczne i liczby.
+            # Nie dopuszczamy żadnych wbudowanych funkcji ani obiektów.
             result = eval(expression, {"__builtins__": {}}, {})
+
+            # Sprawdzenie typu wyniku, aby upewnić się, że jest to liczba
+            if not isinstance(result, (int, float)):
+                return {'success': False, 'error': 'Wynik wyrażenia nie jest liczbą.'}
+
             return {'success': True, 'result': result}
         except ZeroDivisionError:
             return {'success': False, 'error': 'Dzielenie przez zero jest niedozwolone.'}
@@ -36,6 +41,8 @@ class Kalkulator:
             return {'success': False, 'error': 'Błąd składni w wyrażeniu.'}
         except NameError:
             return {'success': False, 'error': 'Wyrażenie zawiera niedozwolone nazwy.'}
+        except TypeError:
+            return {'success': False, 'error': 'Błąd typu w wyrażeniu.'}
         except Exception as e:
             return {'success': False, 'error': f'Wystąpił nieoczekiwany błąd: {str(e)}'}
 
@@ -52,7 +59,8 @@ if __name__ == '__main__':
         "10 / 0",
         "invalid expression",
         "print('hello')",
-        "2 ** 3" # Poprawiono błąd składniowy w tym miejscu
+        "2 ** 3", # Test potęgowania, które jest dozwolone przez eval
+        "abs(-5)" # Test niedozwolonej funkcji
     ]
 
     print(f"Running Kalkulator skill tests (Version: {get_info()['version']})...")
@@ -67,3 +75,4 @@ if __name__ == '__main__':
 
     print("\nInfo:")
     print(get_info())
+```
