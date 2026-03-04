@@ -5,23 +5,23 @@ HEALTH[20]:
   🔴 DUP   14 classes duplicated
   🔴 GOD   cores/v1/smart_intent.py = 929L, 5 classes, 31m, max CC=32
   🔴 GOD   core.py = 609L, 6 classes, 29m, max CC=74
-  🟡 CC    main CC=74 (limit:15)
-  🟡 CC    _execute_with_validation CC=59 (limit:15)
-  🟡 CC    analyze CC=57 (limit:15)
-  🟡 CC    main CC=54 (limit:15)
-  🟡 CC    classify CC=47 (limit:15)
-  🟡 CC    classify CC=32 (limit:15)
-  🟡 CC    run_diagnostic CC=28 (limit:15)
-  🟡 CC    execute CC=28 (limit:15)
-  🟡 CC    execute CC=28 (limit:15)
-  🟡 CC    _calculate_model_score CC=28 (limit:15)
-  🟡 CC    _handle_chat CC=27 (limit:15)
-  🟡 CC    build_system_prompt CC=26 (limit:15)
-  🟡 CC    handle_request CC=26 (limit:15)
-  🟡 CC    _score_refactor CC=26 (limit:15)
-  🟡 CC    auto_fix_imports CC=25 (limit:15)
+  🟡 CC    cmd_logs_reset CC=20 (limit:15)
+  🟡 CC    cmd_cache_reset CC=23 (limit:15)
+  🟡 CC    cmd_status CC=19 (limit:15)
+  🟡 CC    run_scenario CC=21 (limit:15)
+  🟡 CC    _final_report CC=22 (limit:15)
+  🟡 CC    can_run CC=23 (limit:15)
+  🟡 CC    _suggest_strategy CC=18 (limit:15)
+  🟡 CC    _extract_stt_text CC=15 (limit:15)
+  🟡 CC    _run_stt_cycle CC=18 (limit:15)
   🟡 CC    _run_file_input_loop CC=24 (limit:15)
+  🟡 CC    _run_voice_loop CC=23 (limit:15)
+  🟡 CC    analyze CC=57 (limit:15)
+  🟡 CC    _extract_shell_command CC=18 (limit:15)
+  🟡 CC    _match_existing_skill CC=18 (limit:15)
   🟡 CC    _extract_config_target CC=24 (limit:15)
+  🟡 CC    build_system_prompt CC=26 (limit:15)
+  🟡 CC    cleanup_legacy CC=17 (limit:15)
 
 REFACTOR[4]:
   1. rm duplicates  (-14 dup classes)
@@ -197,18 +197,18 @@ DUPLICATES[14]:
     A: 5m  __init__ active health recover switch
     B: 3m  __init__ active switch
     DIFF: A has +health,recover → keep A
-  STTSkill  skills/stt/providers/vosk/stable/skill.py ↔ skills/stt/providers/vosk/archive/v6/skill.py
-    A: 7m  __init__ _check_audio_level _ensure_wav _find_vosk_model _record_wav _transcribe_vosk execute
-    B: 5m  __init__ _ensure_wav _record_wav _transcribe_vosk execute
-    DIFF: A has +_check_audio_level,_find_vosk_model → keep A
-  STTSkill  skills/stt/providers/vosk/stable/skill.py ↔ skills/stt/providers/vosk/archive/v7/skill.py
-    A: 7m  __init__ _check_audio_level _ensure_wav _find_vosk_model _record_wav _transcribe_vosk execute
-    B: 6m  __init__ _ensure_wav _find_model_path _record_wav _transcribe_vosk execute
-    DIFF: A has +_check_audio_level,_find_vosk_model → keep A
+  STTSkill  skills/stt/providers/vosk/archive/v6/skill.py ↔ skills/stt/providers/vosk/stable/skill.py
+    A: 5m  __init__ _ensure_wav _record_wav _transcribe_vosk execute
+    B: 7m  __init__ _check_audio_level _ensure_wav _find_vosk_model _record_wav _transcribe_vosk execute
+    DIFF: B has +_check_audio_level,_find_vosk_model → keep B
   STTSkill  skills/stt/providers/vosk/archive/v6/skill.py ↔ skills/stt/providers/vosk/archive/v7/skill.py
     A: 5m  __init__ _ensure_wav _record_wav _transcribe_vosk execute
     B: 6m  __init__ _ensure_wav _find_model_path _record_wav _transcribe_vosk execute
     DIFF: B has +_find_model_path → keep B
+  STTSkill  skills/stt/providers/vosk/stable/skill.py ↔ skills/stt/providers/vosk/archive/v7/skill.py
+    A: 7m  __init__ _check_audio_level _ensure_wav _find_vosk_model _record_wav _transcribe_vosk execute
+    B: 6m  __init__ _ensure_wav _find_model_path _record_wav _transcribe_vosk execute
+    DIFF: A has +_check_audio_level,_find_vosk_model → keep A
   LocalComputerDiscovery  skills/local_computer_discovery/v2/skill.py ↔ skills/local_computer_discovery/v3/skill.py
     A: 10m  __init__ discover_with_arp discover_with_arp_scan discover_with_netstat discover_with_nmap discover_with_ping execute get_hostname
     B: 10m  __init__ discover_with_arp discover_with_arp_scan discover_with_netstat discover_with_nmap discover_with_ping execute get_hostname
@@ -368,10 +368,10 @@ CLASSES:
   EvolutionEntry                 ██                         3m  CC̄=2.0   max=4   
   PreflightResult                ██                         3m  CC̄=1.7   max=2   
   LocalLLMClassifier             ██                         3m  CC̄=5.0   max=9     ×1
-  Supervisor                     ██                         3m  CC̄=1.3   max=2     ×1
   TTSSkill                       ██                         3m  CC̄=3.7   max=6   
   Pyttsx3TTSSkill                ██                         3m  CC̄=3.7   max=6   
   PiperTTSSkill                  ██                         3m  CC̄=7.0   max=14  
+  Supervisor                     ██                         3m  CC̄=1.3   max=2     ×1
   ContentSearchSkill             ██                         3m  CC̄=4.7   max=7     ×1
   ContentSearchSkill             ██                         3m  CC̄=4.7   max=7     ×1
   RepairTask                     █                          2m  CC̄=1.0   max=1   
@@ -384,8 +384,8 @@ CLASSES:
   ShellSkill                     █                          2m  CC̄=10.5  max=19    !!
   TTSSkill                                                  1m  CC̄=4.0   max=4   
   EchoSkill                                                 1m  CC̄=1.0   max=1   
-  IntentResult                                              1m  CC̄=4.0   max=4   
   ProviderInfo                                              1m  CC̄=1.0   max=1   
+  IntentResult                                              1m  CC̄=4.0   max=4   
   IntentResult                                              1m  CC̄=6.0   max=6   
   ErrorFingerprint                                          1m  CC̄=1.0   max=1   
   WeatherGdanskSkill                                        1m  CC̄=6.0   max=6   
@@ -427,25 +427,6 @@ CLASSES:
   ModelScore                                                0m  CC̄=0.0   max=0.0 
 
 D:
-  core.py:
-    e: C,LLM,SkillLoader,SkillCreator,PipelineEngine,Supervisor,cpr,load_state,save_state,log_ev,gen_compose,main
-    C
-    LLM
-      __init__(2)  CC=1.0
-    SkillLoader  # Load and execute skills dynamically....
-      list_skills(-1)  CC=9.0
-    SkillCreator
-      __init__(1)  CC=1.0
-    PipelineEngine  # text2pipeline: natural language -> skill chain -> execute...
-      __init__(1)  CC=1.0
-    Supervisor  ×DUP
-      __init__(1)  CC=1.0
-    cpr(c,m)
-    load_state()
-    save_state(s)
-    log_ev(event,data)
-    gen_compose(skills,state)
-    main()
   core.py:
     e: C,LLM,SkillLoader,SkillCreator,PipelineEngine,Supervisor,cpr,load_state,save_state,log_ev,gen_compose,main
     C
@@ -666,15 +647,6 @@ Track...
     get_info()
     health_check()
     execute(params)
-  cli.py:
-    e: print_color,cmd_logs_reset,cmd_cache_reset,cmd_state_reset,cmd_status,cmd_shell,main_cli
-    print_color(color,message)
-    cmd_logs_reset(args)
-    cmd_cache_reset(args)
-    cmd_state_reset(args)
-    cmd_status(args)
-    cmd_shell(args)
-    main_cli()
   scripts/simulate.py:
     e: SimulationResult,Simulator,main
     SimulationResult  # Result of a single scenario execution....
@@ -971,13 +943,6 @@ Us...
     health_check()
     execute(params)
     execute_wrapper(params)
-  main.py:
-    e: log,load_state,save_state,check,bootstrap
-    log(msg,lvl)
-    load_state()
-    save_state(s)
-    check(version)
-    bootstrap()
   cores/v1/intent/embedding.py:
     e: EmbeddingEngine
     EmbeddingEngine  ×DUP  # Sentence-transformers based embedding for intent similarity....
@@ -1039,6 +1004,12 @@ Usage:
     health_check()
     execute(params)
     execute_module(params)
+  skills/devops/v1/skill.py:
+    e: DevOpsSkill,get_info,health_check
+    DevOpsSkill  # Test, validate and deploy skills in isolated subprocess....
+      check_syntax(1)  CC=2.0
+    get_info()
+    health_check()
   skills/network_info/v1/skill.py:
     e: get_info,execute,health_check
     get_info()
@@ -1051,12 +1022,6 @@ Usage:
     get_info()
     health_check()
     check_readiness()
-  skills/devops/v1/skill.py:
-    e: DevOpsSkill,get_info,health_check
-    DevOpsSkill  # Test, validate and deploy skills in isolated subprocess....
-      check_syntax(1)  CC=2.0
-    get_info()
-    health_check()
   skills/zarz_dzania/v7/skill.py:
     e: ZarzadzaniaSkill,get_info,health_check,execute
     ZarzadzaniaSkill
@@ -1158,6 +1123,13 @@ Usage:
       _fetch_url(2)  CC=4.0
     get_info()
     health_check()
+  cores/v1/utils.py:
+    e: _quiet_print,_quiet_warning,setup_litellm,clean_code,clean_json
+    _quiet_print()
+    _quiet_warning(msg,cat)
+    setup_litellm()
+    clean_code(code)
+    clean_json(text)
   skills/tts/providers/pyttsx3/stable/skill.py:
     e: Pyttsx3TTSSkill,get_info,health_check,execute
     Pyttsx3TTSSkill  # Text-to-Speech using espeak (non-blocking via subprocess.Pop...
@@ -1168,13 +1140,6 @@ Usage:
   examples/advanced/01_pipeline.py:
     e: main
     main()
-  cores/v1/utils.py:
-    e: _quiet_print,_quiet_warning,setup_litellm,clean_code,clean_json
-    _quiet_print()
-    _quiet_warning(msg,cat)
-    setup_litellm()
-    clean_code(code)
-    clean_json(text)
   skill.py:
     e: TTSSkill,get_info,health_check,_pip,_speak_pyttsx3,_speak_gtts,_speak_espeak,execute
     TTSSkill
@@ -1242,17 +1207,6 @@ U...
     health_check()
     execute(params)
     execute_module(params)
-  skill.py:
-    e: TTSSkill,get_info,health_check,_pip,_speak_pyttsx3,_speak_gtts,_speak_espeak,execute
-    TTSSkill
-      execute(1)  CC=4.0
-    get_info()
-    health_check()
-    _pip(pkg)
-    _speak_pyttsx3(text,lang)
-    _speak_gtts(text,lang)
-    _speak_espeak(text,lang)
-    execute(input_data)
   skills/git_ops/v1/skill.py:
     e: GitOpsSkill,get_info,health_check
     GitOpsSkill  # Manage local git repos for skill development and versioning....
@@ -1306,9 +1260,7 @@ U...
   examples/basic/01_hello.py:
     e: main
     main()
-  setup.py:
   __init__.py:
+  setup.py:
   cores/v1/__init__.py:
   cores/v1/intent/training.py:
-  __init__.py:
-  setup.py:

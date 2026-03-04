@@ -18,6 +18,7 @@ from .utils import clean_code
 from .preflight import SkillPreflight
 from .skill_logger import inject_logging
 from .prompts import prompt_manager
+from .quality_gate import SkillQualityGate, QualityReport
 
 
 def _load_bootstrap_skill(name):
@@ -63,6 +64,7 @@ class SkillManager:
         self.log = logger
         self.provider_selector = provider_selector
         self.preflight = SkillPreflight()
+        self.quality_gate = SkillQualityGate(self.preflight)
         SKILLS_DIR.mkdir(parents=True, exist_ok=True)
         # Load bootstrap skills for internal use
         self._devops = _load_bootstrap_skill("devops")
@@ -218,13 +220,26 @@ class SkillManager:
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "checksum": hashlib.md5(code.encode()).hexdigest()}
         (sd / "meta.json").write_text(json.dumps(meta, indent=2))
+
+        # Quality gate evaluation
+        qr = self.quality_gate.evaluate(sd / "skill.py", name)
+        meta["quality_score"] = qr.score
+        (sd / "meta.json").write_text(json.dumps(meta, indent=2))
         self.log.skill(name, "skill_created", meta)
+
+        if not qr.ok:
+            cpr(C.YELLOW, f"[QG] ⚠ '{name}' quality {qr.score:.2f} < "
+                          f"{SkillQualityGate.MIN_QUALITY} — {', '.join(qr.failed)}")
+            self.log.skill(name, "quality_low", {
+                "score": qr.score, "failed": qr.failed})
+        else:
+            cpr(C.DIM, f"[QG] ✓ '{name}' quality: {qr.score:.2f}")
 
         # Git commit if available
         if self._git:
             self._git.commit_skill_version(name, nv, str(sd))
 
-        return True, f"Skill '{name}' {nv} created"
+        return True, f"Skill '{name}' {nv} created (quality: {qr.score:.2f})"
 
     def diagnose_skill(self, name, version=None):
         """Use devops+deps to fully diagnose a skill. Returns diagnostic dict."""
@@ -445,6 +460,9 @@ class SkillManager:
         p = self.skill_path(name, cv)
         old = p.read_text()
 
+        # Quality gate: evaluate old version for regression comparison
+        old_qr = self.quality_gate.evaluate(p, name)
+
         # Get diagnosis from devops
         diag = self.diagnose_skill(name, cv)
         phase = diag.get("phase", "unknown")
@@ -524,13 +542,29 @@ class SkillManager:
         if odf.exists(): shutil.copy2(str(odf), str(nd / "Dockerfile"))
         meta = {"name": name, "version": nv, "parent": cv, "phase": phase,
                 "created_at": datetime.now(timezone.utc).isoformat()}
+
+        # Quality gate: evaluate new version and check for regression
+        new_qr = self.quality_gate.evaluate(nd / "skill.py", name)
+        meta["quality_score"] = new_qr.score
+        is_regression = not self.quality_gate.compare(old_qr, new_qr)
+        meta["is_regression"] = is_regression
+
         (nd / "meta.json").write_text(json.dumps(meta, indent=2))
         self.log.skill(name, "skill_evolved", meta)
+
+        if is_regression:
+            cpr(C.YELLOW, f"[QG] ⚠ Regression: '{name}' quality "
+                          f"{old_qr.score:.2f} → {new_qr.score:.2f}")
+            self.log.skill(name, "quality_regression", {
+                "old_score": old_qr.score, "new_score": new_qr.score})
+        else:
+            cpr(C.DIM, f"[QG] ✓ '{name}' quality: "
+                       f"{old_qr.score:.2f} → {new_qr.score:.2f}")
 
         if self._git:
             self._git.commit_skill_version(name, nv, str(nd))
 
-        return True, f"'{name}' evolved: {cv} -> {nv}"
+        return True, f"'{name}' evolved: {cv} -> {nv} (quality: {new_qr.score:.2f})"
 
     def evolve(self, name, feedback):
         """Backward-compatible evolve - delegates to smart_evolve."""

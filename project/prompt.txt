@@ -12,7 +12,7 @@ Files for analysis:
 
 Subproject Analysis Files (hierarchical chunking for large repository):
 - project/root/  [root] ~21KB - Contains: analysis.toon, evolution.toon
-- project/batch_1/  [L1] ~297KB - Contains: analysis.toon, evolution.toon
+- project/batch_1/  [L1] ~303KB - Contains: analysis.toon, evolution.toon
 
 Task:
 - Summarize the architecture and main flows.

@@ -1,6 +1,6 @@
-# coreskill | 121f 32472L | python:141
+# coreskill | 123f 32900L | python:123
 # Keys: M=modules, D=details, i=imports, c=classes, f=functions, m=methods
-M[121]:
+M[123]:
   __init__.py,19
   build_core.py,525
   cli.py,248
@@ -67,10 +67,11 @@ M[121]:
   skills/deps/v3/skill.py,67
   skills/devops/v1/skill.py,213
   skills/diagnostic_runner/v1/skill.py,114
-  skills/echo/v10/skill.py,67
   skills/echo/v8/skill.py,67
   skills/echo/v9/skill.py,67
   skills/first_installment/v1/skill.py,55
+  skills/gbp_to_jpy_converter/v2/skill.py,94
+  skills/gbp_to_jpy_converter/v3/skill.py,94
   skills/git_ops/v1/skill.py,120
   skills/hw_test/v2/skill.py,439
   skills/hw_test/v3/skill.py,1367
@@ -98,7 +99,6 @@ M[121]:
   skills/stt/providers/whisper/latest/skill.py,248
   skills/system_info/v3/skill.py,64
   skills/system_info/v4/skill.py,72
-  skills/test_supervisor_probe/v10/skill.py,39
   skills/test_supervisor_probe/v8/skill.py,39
   skills/test_supervisor_probe/v9/skill.py,43
   skills/text_processor_/v6/skill.py,47
@@ -110,12 +110,14 @@ M[121]:
   skills/tts/providers/espeak/stable/skill.py,80
   skills/tts/providers/piper/latest/skill.py,185
   skills/tts/providers/piper/stable/skill.py,88
+  skills/tts/providers/pyttsx3/latest/skill.py,4
   skills/tts/providers/pyttsx3/stable/skill.py,70
   skills/weather/v1/skill.py,68
+  skills/weather_gdansk/v10/skill.py,215
   skills/weather_gdansk/v8/skill.py,166
   skills/weather_gdansk/v9/skill.py,151
   skills/web_search/providers/duckduckgo/archive/v1/skill.py,131
-  skills/web_search/providers/duckduckgo/latest/skill.py,135
+  skills/web_search/providers/duckduckgo/latest/skill.py,170
   skills/web_search/providers/duckduckgo/stable/skill.py,135
   skills/zarz_dzania/v7/skill.py,105
   skills/zarz_dzania/v8/skill.py,107
@@ -535,13 +537,6 @@ D:
     get_info()
     health_check()
     execute(input_data:dict)->dict
-  skills/echo/v10/skill.py:
-    i: subprocess,json,datetime,re,time,datetime.timezone
-    e: get_info,health_check,EchoSkill,execute
-    EchoSkill: execute(1)
-    get_info()
-    health_check()
-    execute(params:dict)->dict
   skills/echo/v8/skill.py:
     i: subprocess,json,datetime,re,time,datetime.timezone
     e: get_info,health_check,EchoSkill,execute
@@ -563,6 +558,24 @@ D:
     health_check()->dict
     execute(params:dict)->dict
     execute_module(params:dict)->dict
+  skills/gbp_to_jpy_converter/v2/skill.py:
+    i: re,subprocess,json,urllib.request
+    e: get_info,health_check,extract_amount,convert_gbp_to_jpy,GBPToJPYConverter,execute
+    GBPToJPYConverter: execute(1)
+    get_info()->dict
+    health_check()->dict
+    extract_amount(text:str)->float
+    convert_gbp_to_jpy(amount_gbp:float)->float
+    execute(params:dict)->dict
+  skills/gbp_to_jpy_converter/v3/skill.py:
+    i: re,subprocess,json,urllib.request
+    e: get_info,health_check,extract_amount,convert_gbp_to_jpy,GBPToJPYConverter,execute
+    GBPToJPYConverter: execute(1)
+    get_info()->dict
+    health_check()->dict
+    extract_amount(text:str)->float
+    convert_gbp_to_jpy(amount_gbp:float)->float
+    execute(params:dict)->dict
   skills/git_ops/v1/skill.py:
     i: subprocess,os,json,nfo,pathlib.Path
     e: GitOpsSkill,get_info,health_check
@@ -754,13 +767,6 @@ D:
     get_info()->dict
     health_check()->dict
     execute(params:dict)->dict
-  skills/test_supervisor_probe/v10/skill.py:
-    i: subprocess,sys,json
-    e: get_info,health_check,TestSupervisorProbe,execute
-    TestSupervisorProbe: execute(1)
-    get_info()->dict
-    health_check()->dict
-    execute(params:dict)->dict
   skills/test_supervisor_probe/v8/skill.py:
     i: subprocess,sys,json
     e: get_info,health_check,TestSupervisorProbe,execute
@@ -837,6 +843,11 @@ D:
     get_info()
     health_check()
     execute(params:dict)->dict
+  skills/tts/providers/pyttsx3/latest/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
   skills/tts/providers/pyttsx3/stable/skill.py:
     i: subprocess,shutil,re
     e: Pyttsx3TTSSkill,get_info,health_check,execute
@@ -852,6 +863,17 @@ D:
     execute(input_data:Dict[str;Any])->Dict[str, Any]
     health_check()->Dict[str, Any]
     get_info()
+  skills/weather_gdansk/v10/skill.py:
+    i: subprocess,re,json,html.parser.HTMLParser,urllib.request
+    e: get_info,health_check,WeatherHTMLParser,extract_weather_from_html,get_weather_from_weather_com,get_weather_from_open_meteo,execute,execute_wrapper
+    WeatherHTMLParser: __init__(0),handle_starttag(2),handle_endtag(1),handle_data(1)
+    get_info()->dict
+    health_check()->dict
+    extract_weather_from_html(html_content)
+    get_weather_from_weather_com()
+    get_weather_from_open_meteo()
+    execute(params:dict)->dict
+    execute_wrapper(params:dict)->dict
   skills/weather_gdansk/v8/skill.py:
     i: subprocess,re,html.parser.HTMLParser,urllib.{error,request}
     e: WeatherGdanskParser,get_weather_gdansk,speak_weather,WeatherGdanskSkill,get_info,health_check,execute
@@ -879,12 +901,13 @@ D:
     get_info()
     health_check()
   skills/web_search/providers/duckduckgo/latest/skill.py:
-    i: subprocess,json,re,html.parser,urllib.{parse,request}
-    e: SimpleHTMLTextExtractor,WebSearchSkill,get_info,health_check
+    i: subprocess,json,re,socket,threading,queue,time,html.parser,urllib.{parse,request}
+    e: SimpleHTMLTextExtractor,WebSearchSkill,get_info,health_check,execute
     SimpleHTMLTextExtractor: __init__(0),handle_starttag(2),handle_endtag(1),handle_data(1),get_text(0)  # Extract visible text from HTML.
     WebSearchSkill: _fetch_url(2),search_duckduckgo(2),fetch_page_text(2),search_and_summarize(2),execute(1)  # Search the web and fetch page content...
     get_info()
     health_check()
+    execute(params:dict)->dict
   skills/web_search/providers/duckduckgo/stable/skill.py:
     i: subprocess,json,re,html.parser,urllib.{parse,request}
     e: SimpleHTMLTextExtractor,WebSearchSkill,get_info,health_check

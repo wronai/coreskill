@@ -5,23 +5,23 @@ HEALTH[20]:
   🔴 DUP   14 classes duplicated
   🔴 GOD   cores/v1/smart_intent.py = 929L, 5 classes, 31m, max CC=32
   🔴 GOD   core.py = 609L, 6 classes, 29m, max CC=74
-  🟡 CC    main CC=74 (limit:15)
-  🟡 CC    _execute_with_validation CC=59 (limit:15)
-  🟡 CC    analyze CC=57 (limit:15)
-  🟡 CC    main CC=54 (limit:15)
-  🟡 CC    classify CC=47 (limit:15)
-  🟡 CC    classify CC=32 (limit:15)
-  🟡 CC    run_diagnostic CC=28 (limit:15)
-  🟡 CC    execute CC=28 (limit:15)
-  🟡 CC    execute CC=28 (limit:15)
-  🟡 CC    _calculate_model_score CC=28 (limit:15)
-  🟡 CC    _handle_chat CC=27 (limit:15)
-  🟡 CC    build_system_prompt CC=26 (limit:15)
-  🟡 CC    handle_request CC=26 (limit:15)
-  🟡 CC    _score_refactor CC=26 (limit:15)
-  🟡 CC    auto_fix_imports CC=25 (limit:15)
+  🟡 CC    cmd_logs_reset CC=20 (limit:15)
+  🟡 CC    cmd_cache_reset CC=23 (limit:15)
+  🟡 CC    cmd_status CC=19 (limit:15)
+  🟡 CC    run_scenario CC=21 (limit:15)
+  🟡 CC    _final_report CC=22 (limit:15)
+  🟡 CC    can_run CC=23 (limit:15)
+  🟡 CC    _suggest_strategy CC=18 (limit:15)
+  🟡 CC    _extract_stt_text CC=15 (limit:15)
+  🟡 CC    _run_stt_cycle CC=18 (limit:15)
   🟡 CC    _run_file_input_loop CC=24 (limit:15)
+  🟡 CC    _run_voice_loop CC=23 (limit:15)
+  🟡 CC    analyze CC=57 (limit:15)
+  🟡 CC    _extract_shell_command CC=18 (limit:15)
+  🟡 CC    _match_existing_skill CC=18 (limit:15)
   🟡 CC    _extract_config_target CC=24 (limit:15)
+  🟡 CC    build_system_prompt CC=26 (limit:15)
+  🟡 CC    cleanup_legacy CC=17 (limit:15)
 
 REFACTOR[4]:
   1. rm duplicates  (-14 dup classes)
@@ -446,25 +446,6 @@ D:
     log_ev(event,data)
     gen_compose(skills,state)
     main()
-  core.py:
-    e: C,LLM,SkillLoader,SkillCreator,PipelineEngine,Supervisor,cpr,load_state,save_state,log_ev,gen_compose,main
-    C
-    LLM
-      __init__(2)  CC=1.0
-    SkillLoader  # Load and execute skills dynamically....
-      list_skills(-1)  CC=9.0
-    SkillCreator
-      __init__(1)  CC=1.0
-    PipelineEngine  # text2pipeline: natural language -> skill chain -> execute...
-      __init__(1)  CC=1.0
-    Supervisor  ×DUP
-      __init__(1)  CC=1.0
-    cpr(c,m)
-    load_state()
-    save_state(s)
-    log_ev(event,data)
-    gen_compose(skills,state)
-    main()
   cores/v1/evo_engine.py:
     e: FailureTracker,EvoEngine
     FailureTracker  # Tracks consecutive failures and unhandled events.
@@ -666,15 +647,6 @@ Track...
     get_info()
     health_check()
     execute(params)
-  cli.py:
-    e: print_color,cmd_logs_reset,cmd_cache_reset,cmd_state_reset,cmd_status,cmd_shell,main_cli
-    print_color(color,message)
-    cmd_logs_reset(args)
-    cmd_cache_reset(args)
-    cmd_state_reset(args)
-    cmd_status(args)
-    cmd_shell(args)
-    main_cli()
   scripts/simulate.py:
     e: SimulationResult,Simulator,main
     SimulationResult  # Result of a single scenario execution....
@@ -971,13 +943,6 @@ Us...
     health_check()
     execute(params)
     execute_wrapper(params)
-  main.py:
-    e: log,load_state,save_state,check,bootstrap
-    log(msg,lvl)
-    load_state()
-    save_state(s)
-    check(version)
-    bootstrap()
   cores/v1/intent/embedding.py:
     e: EmbeddingEngine
     EmbeddingEngine  ×DUP  # Sentence-transformers based embedding for intent similarity....
@@ -1242,17 +1207,6 @@ U...
     health_check()
     execute(params)
     execute_module(params)
-  skill.py:
-    e: TTSSkill,get_info,health_check,_pip,_speak_pyttsx3,_speak_gtts,_speak_espeak,execute
-    TTSSkill
-      execute(1)  CC=4.0
-    get_info()
-    health_check()
-    _pip(pkg)
-    _speak_pyttsx3(text,lang)
-    _speak_gtts(text,lang)
-    _speak_espeak(text,lang)
-    execute(input_data)
   skills/git_ops/v1/skill.py:
     e: GitOpsSkill,get_info,health_check
     GitOpsSkill  # Manage local git repos for skill development and versioning....
@@ -1310,5 +1264,3 @@ U...
   __init__.py:
   cores/v1/__init__.py:
   cores/v1/intent/training.py:
-  __init__.py:
-  setup.py:

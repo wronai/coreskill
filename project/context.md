@@ -4,9 +4,9 @@
 
 - **Project**: .
 - **Analysis Mode**: static
-- **Total Functions**: 990
-- **Total Classes**: 132
-- **Modules**: 107
+- **Total Functions**: 1009
+- **Total Classes**: 134
+- **Modules**: 109
 - **Entry Points**: 0
 
 ## Architecture by Module
@@ -305,6 +305,12 @@ Returns {verdict: success|partial|fail
 
 ### skills.kalkulator.v47.skill.Kalkulator._validate_expression
 - **Output to**: ast.walk, ast.parse, isinstance, ValueError, isinstance
+
+### skills.gbp_to_jpy_converter.v2.skill.convert_gbp_to_jpy
+- **Output to**: urllib.request.Request, urllib.request.urlopen, json.loads, None.decode, response.read
+
+### skills.gbp_to_jpy_converter.v3.skill.convert_gbp_to_jpy
+- **Output to**: urllib.request.Request, urllib.request.urlopen, json.loads, None.decode, response.read
 
 ## Public API Surface
 
