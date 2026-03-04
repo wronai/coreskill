@@ -1,7 +1,7 @@
 {
   "name": "kalkulator",
   "version": "v5",
-  "parent": "v4",
-  "phase": "syntax",
-  "created_at": "2026-03-04T09:38:45.581127+00:00"
+  "description": "stw\u00f3rz skill kalkulator kt\u00f3ry oblicza wyra\u017cenia matematyczne",
+  "created_at": "2026-03-04T09:38:51.124306+00:00",
+  "checksum": "37cb931893ad379830ed2a1a71483097"
 }
