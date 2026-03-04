@@ -70,23 +70,30 @@ def _run_stt_cycle(sm, evo, llm, intent, logger, conv, identity, duration=5, mem
     return "got_text", stt_text
 
 
-def _run_stt_autotest(sm, logger) -> dict:
+def _run_stt_autotest(sm, logger, llm=None) -> dict:
     """Run STT hardware/audio auto-test with auto-repair at each stage.
     
-    Flow per stage: DETECT → AUTO-FIX → RE-TEST → VERIFY
-    Never just reports — always tries to fix first.
+    Flow per stage: DETECT → AUTO-FIX → RE-TEST → VERIFY → JOURNAL
+    - Records every attempt in RepairJournal (learns from past)
+    - Checks known fixes before trying blind repairs
+    - Consults LLM when local fixes fail
+    - Never just reports — always tries to fix first.
     Returns diagnostic dict with fix results.
     """
     import shutil, subprocess, tempfile, os
     from pathlib import Path
+    from .repair_journal import RepairJournal
     
-    cpr(C.CYAN, "\n[REFLECT] === Autotest STT (detect → fix → verify) ===")
+    journal = RepairJournal(llm_client=llm)
+    
+    cpr(C.CYAN, "\n[REFLECT] === Autotest STT (detect → fix → verify → learn) ===")
     
     diagnostics = {
         "microphone": {"ok": False},
         "audio_level": {"ok": False},
         "transcription": {"ok": False},
         "fixes_applied": [],
+        "llm_consulted": False,
     }
 
     # ── Helper: record test wav ─────────────────────────────────────
@@ -136,28 +143,48 @@ def _run_stt_autotest(sm, logger) -> dict:
         except Exception:
             return False, -999.0
 
-    # ── Helper: test vosk transcription ─────────────────────────────
-    def _test_vosk(wav_path):
+    # ── Helper: test vosk with explicit model path ──────────────────
+    def _test_vosk(wav_path, model_path=None):
         if not shutil.which("vosk-transcriber"):
             return False, "vosk-transcriber not found"
         fd2, out_path = tempfile.mkstemp(suffix=".txt", prefix="stt_autotest_out_")
         os.close(fd2)
         try:
-            tr = subprocess.run(
-                ["vosk-transcriber", "--input", wav_path,
-                 "--output", out_path, "--output-type", "txt"],
-                capture_output=True, text=True, timeout=30)
-            return tr.returncode == 0, (tr.stderr or "")[:200]
+            cmd = ["vosk-transcriber", "--input", wav_path,
+                   "--output", out_path, "--output-type", "txt"]
+            if model_path:
+                cmd.extend(["--model", str(model_path)])
+            tr = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            return tr.returncode == 0, (tr.stderr or "")[:300]
         except Exception as e:
             return False, str(e)
         finally:
             try: Path(out_path).unlink(missing_ok=True)
             except: pass
+    
+    # ── Helper: find vosk model directories ─────────────────────────
+    def _find_vosk_models():
+        """Find all vosk model directories. Also clean stale files."""
+        cache_dirs = [
+            Path.home() / ".cache" / "vosk",
+            Path.home() / ".local" / "share" / "vosk",
+        ]
+        models = []
+        stale_files = []
+        for cache_dir in cache_dirs:
+            if not cache_dir.exists():
+                continue
+            for item in cache_dir.iterdir():
+                if item.is_dir() and "model" in item.name.lower():
+                    models.append(item)
+                elif item.is_file() and item.suffix == ".zip":
+                    stale_files.append(item)
+        return models, stale_files
 
     # ═══════════════════════════════════════════════════════════════
     # STAGE 1: MICROPHONE HARDWARE
     # ═══════════════════════════════════════════════════════════════
-    cpr(C.DIM, "  [1/3] Sprawdzam mikrofon...")
+    cpr(C.DIM, "  [1/4] Sprawdzam mikrofon...")
     if not shutil.which("arecord"):
         cpr(C.YELLOW, "  ✗ arecord brak — próbuję zainstalować alsa-utils...")
         try:
@@ -166,8 +193,12 @@ def _run_stt_autotest(sm, logger) -> dict:
             if shutil.which("arecord"):
                 cpr(C.GREEN, "  ✓ alsa-utils zainstalowane!")
                 diagnostics["fixes_applied"].append("installed alsa-utils")
+                journal.record_attempt("stt", "arecord missing",
+                    "apt_install", "sudo apt install alsa-utils", True)
             else:
                 cpr(C.RED, "  ✗ Nie udało się zainstalować alsa-utils")
+                journal.record_attempt("stt", "arecord missing",
+                    "apt_install", "sudo apt install alsa-utils", False)
         except Exception:
             cpr(C.RED, "  ✗ Nie udało się zainstalować alsa-utils")
     
@@ -188,7 +219,6 @@ def _run_stt_autotest(sm, logger) -> dict:
             diagnostics["microphone"] = {"ok": False, "error": str(e)}
 
     if not diagnostics["microphone"]["ok"]:
-        # Can't proceed without mic
         cpr(C.RED, "[REFLECT] Brak mikrofonu — nie mogę naprawić sprzętowego problemu")
         logger.core("stt_autotest", diagnostics)
         return diagnostics
@@ -196,7 +226,7 @@ def _run_stt_autotest(sm, logger) -> dict:
     # ═══════════════════════════════════════════════════════════════
     # STAGE 2: AUDIO LEVEL — detect silence → try amixer fixes → re-test
     # ═══════════════════════════════════════════════════════════════
-    cpr(C.DIM, "  [2/3] Testuję poziom audio...")
+    cpr(C.DIM, "  [2/4] Testuję poziom audio...")
     fd, test_wav = tempfile.mkstemp(suffix=".wav", prefix="stt_autotest_")
     os.close(fd)
     
@@ -213,29 +243,33 @@ def _run_stt_autotest(sm, logger) -> dict:
                 diagnostics["audio_level"] = {"ok": True, "db": db_level}
             else:
                 cpr(C.YELLOW, f"  ✗ Audio level: {db_level:.1f}dB (cisza, {fsize}b)")
-                cpr(C.CYAN, "  [AUTOFIX] Próbuję naprawić ustawienia audio...")
                 
-                # ── AUTO-FIX: Try multiple amixer strategies ────────
+                # Check journal for known fixes first
+                known = journal.get_known_fix(f"audio silence {db_level}dB")
+                if known and known.confidence >= 0.7:
+                    cpr(C.CYAN, f"  [JOURNAL] Znany fix (conf={known.confidence:.0%}): {known.fix_type}")
+                
+                cpr(C.CYAN, "  [AUTOFIX] Próbuję naprawić ustawienia audio...")
                 amixer_fixes = [
-                    # Generic capture unmute + max volume
                     (["amixer", "set", "Capture", "unmute"], "Capture unmute"),
                     (["amixer", "set", "Capture", "100%"], "Capture 100%"),
-                    # Try specific card 0
                     (["amixer", "-c", "0", "set", "Capture", "unmute"], "Card0 Capture unmute"),
                     (["amixer", "-c", "0", "set", "Capture", "100%"], "Card0 Capture 100%"),
-                    # Try Mic control (some cards use 'Mic' instead of 'Capture')
                     (["amixer", "set", "Mic", "unmute"], "Mic unmute"),
                     (["amixer", "set", "Mic", "100%"], "Mic 100%"),
-                    # Try 'Input Source' and other common names
                     (["amixer", "set", "Capture", "cap"], "Capture cap"),
                     (["amixer", "-c", "0", "set", "Capture", "cap"], "Card0 Capture cap"),
-                    # Try card 1 (USB mics often on card 1)
                     (["amixer", "-c", "1", "set", "Capture", "unmute"], "Card1 Capture unmute"),
                     (["amixer", "-c", "1", "set", "Capture", "100%"], "Card1 Capture 100%"),
                 ]
                 
+                # Skip fixes that journal says always fail
+                failed_types = journal.get_failed_fixes(f"audio silence")
+                
                 fixes_tried = []
                 for cmd, desc in amixer_fixes:
+                    if desc in failed_types:
+                        continue
                     try:
                         r = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
                         if r.returncode == 0:
@@ -248,7 +282,6 @@ def _run_stt_autotest(sm, logger) -> dict:
                     diagnostics["fixes_applied"].extend(fixes_tried)
                     cpr(C.CYAN, f"  [AUTOFIX] Zastosowano {len(fixes_tried)} poprawek. Weryfikuję...")
                     
-                    # ── RE-TEST after fixes ─────────────────────────
                     time.sleep(0.5)
                     fd2, test_wav2 = tempfile.mkstemp(suffix=".wav", prefix="stt_retest_")
                     os.close(fd2)
@@ -256,14 +289,19 @@ def _run_stt_autotest(sm, logger) -> dict:
                         if _record_test(test_wav2):
                             has_sound2, db_level2 = _measure_db(test_wav2)
                             if has_sound2:
-                                cpr(C.GREEN, f"  ✓ NAPRAWIONE! Audio level: {db_level2:.1f}dB (było {db_level:.1f}dB)")
+                                cpr(C.GREEN, f"  ✓ NAPRAWIONE! Audio: {db_level2:.1f}dB (było {db_level:.1f}dB)")
                                 diagnostics["audio_level"] = {"ok": True, "db": db_level2,
                                                               "fixed_from": db_level}
+                                for ft in fixes_tried:
+                                    journal.record_attempt("stt", f"audio silence {db_level}dB",
+                                        ft, f"amixer {ft}", True, f"Naprawione: {db_level2:.1f}dB")
                             else:
                                 cpr(C.YELLOW, f"  ✗ Nadal cisza ({db_level2:.1f}dB) po amixer fix")
                                 diagnostics["audio_level"] = {"ok": False, "db": db_level2,
                                                               "attempted_fixes": fixes_tried}
-                                # ── Try pulseaudio as last resort ───
+                                for ft in fixes_tried:
+                                    journal.record_attempt("stt", f"audio silence {db_level}dB",
+                                        ft, f"amixer {ft}", False, f"Nadal cisza: {db_level2:.1f}dB")
                                 if shutil.which("pactl"):
                                     cpr(C.DIM, "  [AUTOFIX] Próbuję PulseAudio...")
                                     _try_pulseaudio_fix(diagnostics)
@@ -274,7 +312,6 @@ def _run_stt_autotest(sm, logger) -> dict:
                         try: Path(test_wav2).unlink(missing_ok=True)
                         except: pass
                 else:
-                    cpr(C.YELLOW, "  ✗ Żaden amixer fix nie zadziałał")
                     diagnostics["audio_level"] = {"ok": False, "db": db_level,
                                                   "error": "no amixer fixes worked"}
     finally:
@@ -282,9 +319,9 @@ def _run_stt_autotest(sm, logger) -> dict:
         except: pass
 
     # ═══════════════════════════════════════════════════════════════
-    # STAGE 3: VOSK TRANSCRIPTION — test → fix model → re-test
+    # STAGE 3: VOSK TRANSCRIPTION — deep diagnosis with path fixing
     # ═══════════════════════════════════════════════════════════════
-    cpr(C.DIM, "  [3/3] Testuję transkrypcję vosk...")
+    cpr(C.DIM, "  [3/4] Testuję transkrypcję vosk...")
     
     if not shutil.which("vosk-transcriber"):
         cpr(C.YELLOW, "  ✗ vosk-transcriber brak — próbuję zainstalować...")
@@ -294,11 +331,12 @@ def _run_stt_autotest(sm, logger) -> dict:
             if shutil.which("vosk-transcriber"):
                 cpr(C.GREEN, "  ✓ vosk zainstalowany!")
                 diagnostics["fixes_applied"].append("pip install vosk")
+                journal.record_attempt("stt", "vosk-transcriber missing",
+                    "pip_install", "pip install vosk", True)
         except Exception:
             pass
     
     if shutil.which("vosk-transcriber"):
-        # Record fresh audio for transcription test
         fd3, test_wav3 = tempfile.mkstemp(suffix=".wav", prefix="stt_vosk_test_")
         os.close(fd3)
         try:
@@ -307,27 +345,71 @@ def _run_stt_autotest(sm, logger) -> dict:
                 if vosk_ok:
                     cpr(C.GREEN, "  ✓ vosk-transcriber: działa")
                     diagnostics["transcription"] = {"ok": True}
+                    journal.record_success("stt", "vosk transcription OK")
                 else:
-                    cpr(C.YELLOW, f"  ✗ vosk-transcriber błąd: {vosk_err[:80]}")
+                    cpr(C.YELLOW, f"  ✗ vosk-transcriber błąd: {vosk_err[:100]}")
                     
-                    # ── AUTO-FIX: check/download vosk model ─────────
-                    cpr(C.CYAN, "  [AUTOFIX] Sprawdzam model vosk...")
-                    model_paths = [
-                        Path.home() / ".cache" / "vosk",
-                        Path.home() / ".local" / "share" / "vosk",
-                    ]
-                    model_found = False
-                    for mp in model_paths:
-                        if mp.exists():
-                            models = [d for d in mp.iterdir() if d.is_dir() 
-                                      and "model" in d.name.lower()]
-                            if models:
-                                cpr(C.DIM, f"    Model znaleziony: {models[0].name}")
-                                model_found = True
-                                break
+                    # ── DEEP FIX: analyze vosk error precisely ──────
+                    models, stale_zips = _find_vosk_models()
                     
-                    if not model_found:
-                        cpr(C.CYAN, "  [AUTOFIX] Pobieram model vosk-model-small-pl-0.22...")
+                    # Fix 1: Remove stale zip files confusing vosk
+                    if stale_zips:
+                        for zf in stale_zips:
+                            cpr(C.CYAN, f"  [AUTOFIX] Usuwam nierozpakowany zip: {zf.name}")
+                            try:
+                                zf.unlink()
+                                diagnostics["fixes_applied"].append(f"removed stale {zf.name}")
+                                journal.record_attempt("stt", vosk_err,
+                                    "remove_stale_zip", f"rm {zf}", True,
+                                    f"Usunięto plik myłący vosk: {zf.name}")
+                            except Exception as e:
+                                cpr(C.YELLOW, f"  ✗ Nie mogę usunąć: {e}")
+                    
+                    # Fix 2: Find correct PL model and test with explicit path
+                    pl_model = None
+                    for m in models:
+                        if "pl" in m.name.lower():
+                            pl_model = m
+                            break
+                    if not pl_model and models:
+                        pl_model = models[0]
+                    
+                    if pl_model:
+                        cpr(C.CYAN, f"  [AUTOFIX] Test z jawną ścieżką modelu: {pl_model.name}")
+                        vosk_ok2, vosk_err2 = _test_vosk(test_wav3, model_path=pl_model)
+                        if vosk_ok2:
+                            cpr(C.GREEN, f"  ✓ NAPRAWIONE! vosk działa z --model {pl_model.name}")
+                            diagnostics["transcription"] = {"ok": True, "fixed": True,
+                                                            "model_path": str(pl_model)}
+                            diagnostics["fixes_applied"].append(f"explicit model path: {pl_model.name}")
+                            journal.record_attempt("stt", vosk_err,
+                                "explicit_model_path", f"--model {pl_model}", True,
+                                "vosk działa z jawną ścieżką modelu")
+                        else:
+                            cpr(C.YELLOW, f"  ✗ Nadal nie działa z jawnym modelem: {vosk_err2[:80]}")
+                            journal.record_attempt("stt", vosk_err,
+                                "explicit_model_path", f"--model {pl_model}", False,
+                                vosk_err2[:100])
+                            
+                            # Fix 3: Re-test after stale zip removal (default path now clean)
+                            if stale_zips:
+                                cpr(C.DIM, "  [AUTOFIX] Ponowny test vosk (po czyszczeniu cache)...")
+                                vosk_ok3, vosk_err3 = _test_vosk(test_wav3)
+                                if vosk_ok3:
+                                    cpr(C.GREEN, "  ✓ NAPRAWIONE! vosk działa po czyszczeniu cache")
+                                    diagnostics["transcription"] = {"ok": True, "fixed": True}
+                                    diagnostics["fixes_applied"].append("cleaned vosk cache")
+                                    journal.record_attempt("stt", vosk_err,
+                                        "clean_cache", "rm stale zips", True)
+                                else:
+                                    diagnostics["transcription"] = {"ok": False, 
+                                                                    "error": vosk_err3[:200]}
+                            else:
+                                diagnostics["transcription"] = {"ok": False, 
+                                                                "error": vosk_err2[:200]}
+                    else:
+                        # No model found at all — download
+                        cpr(C.CYAN, "  [AUTOFIX] Brak modelu vosk — pobieram PL...")
                         try:
                             cache_dir = Path.home() / ".cache" / "vosk"
                             cache_dir.mkdir(parents=True, exist_ok=True)
@@ -340,27 +422,73 @@ def _run_stt_autotest(sm, logger) -> dict:
                             r = subprocess.run(dl_cmd, shell=True,
                                                capture_output=True, timeout=120)
                             if r.returncode == 0:
-                                cpr(C.GREEN, "  ✓ Model pobrany!")
+                                cpr(C.GREEN, "  ✓ Model PL pobrany!")
                                 diagnostics["fixes_applied"].append("downloaded vosk-model-small-pl-0.22")
+                                journal.record_attempt("stt", "no vosk model",
+                                    "download_model", dl_cmd[:80], True)
+                                # Re-test
+                                vosk_ok4, _ = _test_vosk(test_wav3)
+                                diagnostics["transcription"] = {"ok": vosk_ok4, 
+                                                                "fixed": vosk_ok4}
                             else:
                                 cpr(C.YELLOW, f"  ✗ Pobieranie modelu: exit {r.returncode}")
+                                journal.record_attempt("stt", "no vosk model",
+                                    "download_model", dl_cmd[:80], False)
+                                diagnostics["transcription"] = {"ok": False,
+                                    "error": "model download failed"}
                         except Exception as e:
-                            cpr(C.YELLOW, f"  ✗ Pobieranie modelu: {e}")
-                    
-                    # ── RE-TEST vosk after fix ──────────────────────
-                    cpr(C.DIM, "  [AUTOFIX] Ponowny test vosk...")
-                    vosk_ok2, vosk_err2 = _test_vosk(test_wav3)
-                    if vosk_ok2:
-                        cpr(C.GREEN, "  ✓ NAPRAWIONE! vosk-transcriber działa")
-                        diagnostics["transcription"] = {"ok": True, "fixed": True}
-                    else:
-                        cpr(C.YELLOW, f"  ✗ vosk nadal nie działa: {vosk_err2[:80]}")
-                        diagnostics["transcription"] = {"ok": False, "error": vosk_err2[:200]}
+                            diagnostics["transcription"] = {"ok": False, "error": str(e)[:200]}
         finally:
             try: Path(test_wav3).unlink(missing_ok=True)
             except: pass
     else:
         diagnostics["transcription"] = {"ok": False, "error": "vosk-transcriber unavailable"}
+
+    # ═══════════════════════════════════════════════════════════════
+    # STAGE 4: LLM CONSULTATION — if local fixes didn't help
+    # ═══════════════════════════════════════════════════════════════
+    still_broken = [k for k in ("microphone", "audio_level", "transcription")
+                    if not diagnostics[k].get("ok")]
+    
+    if still_broken and llm:
+        cpr(C.CYAN, f"  [4/4] Konsultuję LLM o {', '.join(still_broken)}...")
+        diagnostics["llm_consulted"] = True
+        
+        for problem_area in still_broken:
+            err_detail = diagnostics[problem_area].get("error", "unknown")
+            attempted = diagnostics.get("fixes_applied", [])
+            
+            sys_ctx = (f"Linux system. Microphone: {diagnostics['microphone']}. "
+                       f"Audio: {diagnostics['audio_level']}. "
+                       f"Transcription: {diagnostics['transcription']}")
+            
+            llm_result = journal.ask_llm_and_try(
+                skill_name="stt",
+                error=f"{problem_area}: {err_detail}",
+                system_context=sys_ctx,
+                attempted_fixes=attempted,
+            )
+            
+            if llm_result.get("success"):
+                diagnostics["fixes_applied"].append(f"llm_fix_{problem_area}")
+                cpr(C.GREEN, f"  [LLM] ✓ {problem_area} naprawione przez LLM!")
+                # Re-check this specific area
+                if problem_area == "transcription":
+                    fd_re, wav_re = tempfile.mkstemp(suffix=".wav", prefix="stt_llm_retest_")
+                    os.close(fd_re)
+                    try:
+                        if _record_test(wav_re, 2):
+                            ok_re, _ = _test_vosk(wav_re)
+                            diagnostics["transcription"] = {"ok": ok_re, "fixed": ok_re,
+                                                            "fix_source": "llm"}
+                    finally:
+                        try: Path(wav_re).unlink(missing_ok=True)
+                        except: pass
+            else:
+                cpr(C.DIM, f"  [LLM] Nie udało się naprawić {problem_area}: "
+                           f"{llm_result.get('diagnosis', '')[:80]}")
+    elif still_broken:
+        cpr(C.DIM, "  [4/4] Brak LLM — pomijam konsultację")
 
     # ═══════════════════════════════════════════════════════════════
     # SUMMARY
@@ -379,6 +507,13 @@ def _run_stt_autotest(sm, logger) -> dict:
         cpr(C.YELLOW, f"[REFLECT] STT autotest: nadal problemy — {', '.join(failed)}")
         if fixes:
             cpr(C.DIM, f"  Zastosowano {len(fixes)} fix(ów): {', '.join(fixes)}")
+    
+    # Show journal stats
+    stats = journal.get_stats()
+    if stats["total_attempts"] > 0:
+        cpr(C.DIM, f"  [JOURNAL] Łączne próby: {stats['total_attempts']} "
+                   f"(✓{stats['successes']}/✗{stats['fails']}), "
+                   f"znane wzorce: {stats['known_fix_patterns']}")
     
     cpr(C.CYAN, "[REFLECT] === Koniec autotestu ===\n")
     logger.core("stt_autotest", diagnostics)
@@ -456,7 +591,7 @@ def _run_voice_loop(sm, evo, llm, intent, logger, conv, identity, memory=None):
             if silence_count >= REFLECT_THRESHOLD and (now - last_reflect_time) > REFLECT_COOLDOWN:
                 last_reflect_time = now
                 cpr(C.YELLOW, f"[VOICE] {silence_count} ciszych z rzędu — uruchamiam autotest + autonaprawę STT...")
-                diag = _run_stt_autotest(sm, logger)
+                diag = _run_stt_autotest(sm, logger, llm=llm)
                 fixes = diag.get("fixes_applied", [])
                 
                 # If hardware problem found — only truly unfixable = no mic at all

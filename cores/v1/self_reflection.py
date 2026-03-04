@@ -68,6 +68,25 @@ class SelfReflection:
         self._consecutive_failures: Dict[str, int] = {}
         self._last_reflect_per_skill: Dict[str, float] = {}
         self._reflect_cooldown = 60  # seconds between auto-reflections per skill
+        # Repair journal + stable snapshots (lazy-init to avoid circular imports)
+        self._journal = None
+        self._snapshot = None
+    
+    @property
+    def journal(self):
+        """Lazy-init RepairJournal."""
+        if self._journal is None:
+            from .repair_journal import RepairJournal
+            self._journal = RepairJournal(llm_client=self.llm)
+        return self._journal
+    
+    @property
+    def snapshot(self):
+        """Lazy-init StableSnapshot."""
+        if self._snapshot is None:
+            from .stable_snapshot import StableSnapshot
+            self._snapshot = StableSnapshot(skill_manager=self.sm, logger=self.log)
+        return self._snapshot
         
     def start_operation(self, operation_name: str):
         """Rozpocznij śledzenie operacji do wykrycia stall/timeout."""
@@ -109,10 +128,18 @@ class SelfReflection:
         
         Call this after every skill execution. After CONSECUTIVE_FAIL_THRESHOLD
         consecutive non-successes, auto-triggers reflection diagnostic.
+        
+        Also records in RepairJournal for persistent learning and validates
+        against StableSnapshot when available.
         """
         if success and not partial:
             # Reset counter on full success
             self._consecutive_failures[skill_name] = 0
+            # Record success in journal (for recovery tracking)
+            try:
+                self.journal.record_success(skill_name, "skill execution OK")
+            except Exception:
+                pass
             return None
             
         # Increment counter
@@ -135,7 +162,37 @@ class SelfReflection:
         self.log.core("consecutive_fail_reflect", {
             "skill": skill_name, "count": count, "error": error[:200]})
         
+        # Check journal for known fixes before running full diagnostic
+        known_fix = self.journal.get_known_fix(error)
+        if known_fix and known_fix.confidence >= 0.7:
+            cpr(C.CYAN, f"[REFLECT] Znany fix z journala (conf={known_fix.confidence:.0%}): "
+                        f"{known_fix.fix_type}")
+        
+        # Compare with stable version to understand if regression
+        try:
+            validation = self.snapshot.validate_against_stable(skill_name)
+            if validation.get("matches") is False and validation.get("health_stable") == "ok":
+                cpr(C.YELLOW, f"[REFLECT] Regresja vs stable: {validation.get('changes_summary', '?')}")
+                cpr(C.CYAN, f"[REFLECT] Stable wersja działa — rozważ rollback: /snapshot restore {skill_name}")
+        except Exception:
+            pass
+        
         report = self.run_diagnostic(skill_name, specific_error=error)
+        
+        # Record the reflection attempt in journal
+        try:
+            self.journal.record_attempt(
+                skill_name=skill_name,
+                error=error[:300],
+                fix_type="auto_reflection",
+                fix_command="run_diagnostic",
+                success=report.overall_status != "critical",
+                detail=f"status={report.overall_status}, "
+                       f"fixes={len(report.auto_fixable)}, "
+                       f"user_required={len(report.requires_user)}",
+            )
+        except Exception:
+            pass
         
         # Reset counter after reflection (give fresh start)
         self._consecutive_failures[skill_name] = 0

@@ -27,6 +27,35 @@ class STTSkill:
         self._has_ffmpeg = shutil.which("ffmpeg") is not None
         self._has_vosk = shutil.which("vosk-transcriber") is not None
         self._has_sox = shutil.which("sox") is not None
+        self._vosk_model_path = self._find_vosk_model()
+
+    def _find_vosk_model(self, preferred_lang: str = "pl") -> str:
+        """Find the correct vosk model directory and clean stale files.
+        Returns explicit model path or empty string for default."""
+        cache_dirs = [
+            Path.home() / ".cache" / "vosk",
+            Path.home() / ".local" / "share" / "vosk",
+        ]
+        models = []
+        for cache_dir in cache_dirs:
+            if not cache_dir.exists():
+                continue
+            for item in cache_dir.iterdir():
+                if item.is_dir() and "model" in item.name.lower():
+                    models.append(item)
+                elif item.is_file() and item.suffix == ".zip":
+                    # Stale zip files confuse vosk model auto-detection
+                    try:
+                        item.unlink()
+                    except Exception:
+                        pass
+        if not models:
+            return ""
+        # Prefer model matching language
+        for m in models:
+            if preferred_lang in m.name.lower():
+                return str(m)
+        return str(models[0])
 
     def _check_audio_level(self, wav_path: str, min_db: float = -40.0) -> tuple:
         """Check if audio file has sufficient volume. Returns (has_sound, db_level, message)."""
@@ -145,7 +174,9 @@ class STTSkill:
         # Use txt output — vosk-transcriber has a bug in json mode
         # (monologue["text"] used before monologue is defined)
         cmd = ["vosk-transcriber", "--input", wav_path, "--output", out_path, "--output-type", "txt"]
-        if lang:
+        if self._vosk_model_path:
+            cmd += ["--model", self._vosk_model_path]
+        elif lang:
             cmd += ["--lang", lang]
 
         last_err = ""

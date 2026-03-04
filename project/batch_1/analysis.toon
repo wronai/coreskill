@@ -18,10 +18,10 @@ HEALTH[20]:
   🟡 CC    _match_existing_skill CC=18 (limit:15)
   🟡 CC    _extract_config_target CC=22 (limit:15)
   🟡 CC    run_diagnostic CC=28 (limit:15)
-  🟡 CC    classify CC=27 (limit:15)
-  🟡 CC    _tier1_embedding CC=17 (limit:15)
   🟡 CC    _score CC=15 (limit:15)
   🟡 CC    get_skill_path CC=18 (limit:15)
+  🟡 CC    classify CC=27 (limit:15)
+  🟡 CC    _tier1_embedding CC=17 (limit:15)
 
 REFACTOR[4]:
   1. rm duplicates  (-52 dup classes)
@@ -533,8 +533,8 @@ CLASSES:
   TTSSkill                       ██                         2m  CC̄=4.0   max=5   
   TTSSkill                       █                          1m  CC̄=4.0   max=4   
   EchoSkill                      █                          1m  CC̄=1.0   max=1   
-  IntentResult                   █                          1m  CC̄=4.0   max=4   
   ProviderInfo                   █                          1m  CC̄=1.0   max=1   
+  IntentResult                   █                          1m  CC̄=4.0   max=4   
   IntentResult                   █                          1m  CC̄=4.0   max=4   
   ErrorFingerprint               █                          1m  CC̄=1.0   max=1   
   PasswordGenerator              █                          1m  CC̄=4.0   max=4   

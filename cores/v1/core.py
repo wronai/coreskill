@@ -901,6 +901,45 @@ def _cmd_reflect(a1, **ctx):
     cpr(C.DIM, f"\n[REFLECT] Podsumowanie: {reflection.get_summary()}")
 
 
+def _cmd_repairs(a1, **ctx):
+    """Show repair journal: /repairs [skill_name]"""
+    from .repair_journal import RepairJournal
+    journal = RepairJournal(llm_client=ctx["llm"])
+    cpr(C.CYAN, journal.format_report(skill_name=a1 if a1 else ""))
+
+
+def _cmd_snapshot(a1, a2, **ctx):
+    """Manage stable snapshots: /snapshot [save|restore|branch|list|compare] [skill]"""
+    from .stable_snapshot import StableSnapshot
+    snap = StableSnapshot(skill_manager=ctx["sm"], logger=ctx["logger"])
+    
+    action = (a1 or "").lower()
+    skill = a2 or ""
+    
+    if action == "save" and skill:
+        snap.save_as_stable(skill)
+    elif action == "restore" and skill:
+        snap.restore_stable(skill)
+    elif action == "branch" and skill:
+        branch_type = "bugfix"  # default
+        snap.create_branch(skill, branch_type=branch_type)
+    elif action == "compare" and skill:
+        result = snap.validate_against_stable(skill)
+        cpr(C.CYAN, f"Porównanie {skill} vs stable:")
+        for k, v in result.items():
+            cpr(C.DIM, f"  {k}: {v}")
+    elif action == "list" and skill:
+        branches = snap.list_branches(skill)
+        if branches:
+            cpr(C.CYAN, f"Branching {skill}:")
+            for b in branches:
+                cpr(C.DIM, f"  {b['name']} ({b['type']}) — {b['health']}")
+        else:
+            cpr(C.DIM, f"Brak branchy dla {skill}")
+    else:
+        cpr(C.YELLOW, "Usage: /snapshot save|restore|branch|compare|list <skill_name>")
+
+
 # Command dispatch table
 COMMANDS = {
     "/help": _cmd_help,
@@ -943,6 +982,8 @@ COMMANDS = {
     "/journal": lambda **ctx: cpr(C.CYAN, ctx["evo"].journal.format_report()),
     "/config": _cmd_config,
     "/reflect": _cmd_reflect,
+    "/repairs": _cmd_repairs,
+    "/snapshot": _cmd_snapshot,
 }
 
 

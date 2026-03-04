@@ -369,6 +369,13 @@ class IntentEngine:
             return None
         ul = msg.lower()
 
+        # Skip when message contains create/evolve intent keywords
+        _CREATE_KW = ("stwórz", "stworz", "zbuduj", "napisz", "zrób", "zrob",
+                       "create", "build", "make", "napisz mi",
+                       "ulepsz", "popraw", "evolve", "improve", "fix")
+        if any(kw in ul for kw in _CREATE_KW):
+            return None
+
         # 1. Direct skill name match (e.g., "kalkulator", "echo", "shell")
         for sk in skills:
             # Skip very short names to avoid false positives
@@ -387,7 +394,8 @@ class IntentEngine:
             "text_processor": ("policz słow", "policz slow", "zlicz", "word count",
                                "count word", "ile słów", "ile slow"),
             "echo": ("echo ",),
-            "shell": ("uruchom", "wykonaj", "odpal", "run ", "exec "),
+            "shell": ("uruchom", "wykonaj", "odpal", "run ", "exec ",
+                      "sudo ", "apt ", "pip ", "systemctl ", "docker "),
             "time": ("godzina", "czas", "time", "data", "zegar"),
             "weather": ("pogoda", "weather", "temperatura"),
             "network_info": ("sieć", "siec", "network", "ip ", "ping"),

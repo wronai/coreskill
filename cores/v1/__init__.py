@@ -43,3 +43,5 @@ from .session_config import SessionConfig, ConfigChange
 from .config_generator import ConfigGenerator, get_config_generator
 from .voice_loop import _extract_stt_text, _speak_tts, _run_stt_cycle, _run_voice_loop, _run_stt_autotest
 from .self_reflection import SelfReflection, ReflectionEvent, DiagnosisReport
+from .repair_journal import RepairJournal, RepairAttempt, KnownFix
+from .stable_snapshot import StableSnapshot, SnapshotInfo

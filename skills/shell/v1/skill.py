@@ -73,7 +73,7 @@ class ShellSkill:
         return any(cmd_lower.startswith(p) for p in ("sudo ", "passwd", "ssh "))
 
     def execute(self, input_data: dict) -> dict:
-        command = input_data.get("command", "").strip()
+        command = (input_data.get("command", "") or input_data.get("text", "")).strip()
         if not command:
             return {"success": False, "error": "No command provided"}
 
