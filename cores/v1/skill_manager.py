@@ -253,7 +253,27 @@ class SkillManager:
             return self._raw_test(name, version)
 
         # Full diagnostic via devops skill
-        result = self._devops.test_skill(str(p))
+        try:
+            result = self._devops.test_skill(str(p))
+        except Exception as e:
+            # Devops itself failed - return meaningful error
+            return {
+                "phase": "diagnostic_tool_failed",
+                "error": f"Devops diagnostic tool failed: {e}",
+                "success": False,
+                "note": "The diagnostic tool (devops skill) itself encountered an error. "
+                        "This may indicate devops needs repair, not the target skill."
+            }
+
+        # Check if devops returned a validation error (likely devops issue, not target skill)
+        if not result.get("success") and result.get("phase") == "validation":
+            return {
+                "phase": "diagnostic_validation_error",
+                "error": result.get("error", "Devops validation failed"),
+                "success": False,
+                "note": "Diagnostic tool reported validation error - likely devops needs fixing."
+            }
+
         phase = result.get("phase", "unknown")
 
         # Enrich with deps info if dependency problem

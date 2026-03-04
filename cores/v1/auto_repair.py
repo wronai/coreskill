@@ -230,8 +230,42 @@ class AutoRepair:
             return issues
 
         # Check 1: Markdown artifacts (LLM generated garbage)
-        if "```" in code:
-            issues.append(("markdown", "Markdown artifacts in skill code", "critical"))
+        # Only check top-level code, not inside string literals
+        try:
+            tree = ast.parse(code)
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Constant) and isinstance(node.value, str):
+                    # Skip string literals - they may contain example code
+                    continue
+                # Check if any node contains markdown (for string nodes this would be already filtered)
+                if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant):
+                    if isinstance(node.value.value, str) and "```" in node.value.value:
+                        continue  # Skip markdown inside string literals
+        except SyntaxError:
+            pass  # Will be caught below
+
+        # Simple check for markdown fences outside of strings (conservative)
+        lines = code.split('\n')
+        in_multiline_string = False
+        string_delimiter = None
+        for line in lines:
+            stripped = line.strip()
+            # Track multiline strings
+            if not in_multiline_string:
+                if stripped.startswith('"""') or stripped.startswith("'''"):
+                    if stripped.count('"""') < 2 and stripped.count("'''") < 2:
+                        in_multiline_string = True
+                        string_delimiter = '"""' if '"""' in stripped else "'''"
+            else:
+                if string_delimiter in stripped:
+                    in_multiline_string = False
+                    continue
+                # Inside multiline string - ignore markdown
+                continue
+            # Not in multiline string - check for markdown fences
+            if stripped.startswith('```') and not in_multiline_string:
+                issues.append(("markdown", "Markdown artifacts in skill code", "critical"))
+                break
 
         # Check 2: Syntax
         try:

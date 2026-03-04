@@ -524,6 +524,20 @@ class EvoEngine:
         # Diagnose and evolve
         cpr(C.DIM, f"[PIPE] Diagnose + evolve '{skill_name}'...")
         diag = self.sm.diagnose_skill(skill_name)
+
+        # Check if diagnostic tool itself failed
+        if diag.get("phase") in ("diagnostic_tool_failed", "diagnostic_validation_error"):
+            cpr(C.YELLOW, f"[PIPE] Diagnostic tool failed: {diag.get('error', 'unknown')}")
+            cpr(C.CYAN, f"[PIPE] Attempting to repair devops diagnostic tool...")
+            # Try to repair devops itself
+            ok, msg = self.sm.smart_evolve("devops", "Fix validation error - add proper input validation for empty path parameter")
+            if ok:
+                cpr(C.GREEN, f"[PIPE] Repaired devops: {msg}")
+            # Retry original skill with fallback diagnosis
+            cpr(C.DIM, f"[PIPE] Retrying '{skill_name}' with fallback diagnosis...")
+            # Use raw test as fallback
+            diag = {"phase": "runtime", "error": error_info}
+
         missing = diag.get("missing", [])
 
         # Auto-install missing deps

@@ -286,23 +286,51 @@ class EvolutionGuard:
         return "\n".join(lines)
 
     def suggest_strategy(self, skill_name, current_error):
-        """Suggest evolution strategy based on error history."""
+        """Suggest evolution strategy based on error history and error type."""
+        # Detect specific error patterns for better strategy selection
+        error_lower = current_error.lower()
+
+        # Validation errors (missing params, empty inputs) - likely interface/logic issue
+        if any(kw in error_lower for kw in ["missing required", "validation", "missing 'path'", "no such file or directory: ''"]):
+            return {
+                "strategy": "add_interface",
+                "instructions": "Skill ma błąd walidacji parametrów. Dodaj sprawdzanie wejścia i sensowne wartości domyślne.",
+            }
+
+        # IO/File errors - path issues, permissions
+        if any(kw in error_lower for kw in ["no such file or directory", "permission denied", "not found"]):
+            return {
+                "strategy": "normal_evolve",
+                "instructions": "Błąd ścieżki pliku lub IO. Upewnij się że ścieżki są prawidłowe i pliki istnieją.",
+            }
+
+        # Import errors
+        if "not defined" in error_lower or "nameerror" in error_lower:
+            return {
+                "strategy": "auto_fix_imports",
+                "instructions": "Błąd importu/zmiennej. Dodaj brakujące importy.",
+            }
+
+        if "modulenotfounderror" in error_lower or "no module named" in error_lower:
+            return {
+                "strategy": "install_deps",
+                "instructions": "Brakujący moduł Python. Zainstaluj przez pip lub użyj alternatywy stdlib.",
+            }
+
+        # Syntax errors
+        if "syntaxerror" in error_lower or "indentationerror" in error_lower:
+            return {
+                "strategy": "rewrite_from_scratch",
+                "instructions": "Błąd składni. Przepisz kod poprawnie.",
+            }
+
+        # Check for repeating errors
         if self.is_repeating(skill_name, current_error):
-            if "not defined" in current_error:
-                return {
-                    "strategy": "auto_fix_imports",
-                    "instructions": "Ten sam błąd importu się powtarza. Auto-fix imports.",
-                }
-            elif "ModuleNotFoundError" in current_error:
-                return {
-                    "strategy": "install_deps",
-                    "instructions": "Brakujący moduł Python. Zainstaluj przez pip.",
-                }
-            else:
-                return {
-                    "strategy": "rewrite_from_scratch",
-                    "instructions": "Błąd się powtarza. Przepisz skill od zera.",
-                }
+            return {
+                "strategy": "rewrite_from_scratch",
+                "instructions": "Ten sam błąd się powtarza. Przepisz skill od zera z inaczej.",
+            }
+
         return {
             "strategy": "normal_evolve",
             "instructions": "Standardowa ewolucja z kontekstem błędu.",
