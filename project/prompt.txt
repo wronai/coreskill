@@ -8,12 +8,14 @@ Files for analysis:
 - project/context.md  (LLM narrative - architecture summary, key entry points, process flows, public API surface)
 - project/evolution.toon  (Refactoring queue - ranked actions by impact/effort, risks, metrics targets, history)
 - project/project.toon  (Project logic - compact module view from code2logic, file sizes, dependencies overview)
-- project/README.md  (Documentation - complete guide to all generated files, usage examples, interpretation)
 
 Subproject Analysis Files (hierarchical chunking for large repository):
 - project/root/  [root] ~21KB - Contains: analysis.toon, evolution.toon
-- project/batch_1/  [L1] ~381KB - Contains: analysis.toon, evolution.toon
+- project/batch_1/  [L1] ~375KB - Contains: analysis.toon, evolution.toon
 - project/examples/  [L1] ~12KB - Contains: analysis.toon, evolution.toon
+
+Missing files (not generated in this run):
+- project/README.md
 
 Task:
 - Summarize the architecture and main flows.

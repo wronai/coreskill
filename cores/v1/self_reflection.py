@@ -551,22 +551,78 @@ Odpowiedź krótko, konkretnie, po polsku."""
                 break
         
         if broken_skills and self.sm:
-            try:
-                from .auto_repair import AutoRepair
-                repairer = AutoRepair(skill_manager=self.sm, logger=self.log)
-                for skill_name in broken_skills:
-                    # Strip any error suffix like "skill(error...)"
-                    clean_name = skill_name.split("(")[0]
-                    cpr(C.CYAN, f"[REFLECT] Naprawiam skill: {clean_name}...")
-                    fixed, msg = repairer.repair_skill(clean_name)
-                    if fixed:
-                        actions.append(f"Naprawiono {clean_name}: {msg}")
-                    else:
-                        actions.append(f"Nie udało się naprawić {clean_name}: {msg}")
-            except Exception as e:
-                actions.append(f"Błąd auto-repair: {e}")
+            actions.extend(self._repair_broken_skills(broken_skills))
                     
         return actions
+
+    def _repair_broken_skills(self, broken_skills: list) -> List[str]:
+        """Repair broken skills via event bus signal or direct fallback."""
+        actions = []
+        try:
+            from .event_bus import repair_requested, RepairRequestedEvent, _HAS_BLINKER
+            if _HAS_BLINKER and repair_requested.receivers:
+                # Decoupled path: emit signal, AutoRepair handles it
+                for skill_name in broken_skills:
+                    clean_name = skill_name.split("(")[0]
+                    cpr(C.CYAN, f"[REFLECT] Naprawiam skill: {clean_name}...")
+                    evt = RepairRequestedEvent(skill_name=clean_name)
+                    results = repair_requested.send(self, event=evt)
+                    for _, result in results:
+                        if result:
+                            actions.append(result)
+                return actions
+        except ImportError:
+            pass
+
+        # Fallback: direct import (backward compat when bus not wired)
+        try:
+            from .auto_repair import AutoRepair
+            repairer = AutoRepair(skill_manager=self.sm, logger=self.log)
+            for skill_name in broken_skills:
+                clean_name = skill_name.split("(")[0]
+                cpr(C.CYAN, f"[REFLECT] Naprawiam skill: {clean_name}...")
+                fixed, msg = repairer.repair_skill(clean_name)
+                if fixed:
+                    actions.append(f"Naprawiono {clean_name}: {msg}")
+                else:
+                    actions.append(f"Nie udało się naprawić {clean_name}: {msg}")
+        except Exception as e:
+            actions.append(f"Błąd auto-repair: {e}")
+        return actions
+
+    def on_reflection_needed(self, sender, **kwargs):
+        """Event bus handler: run diagnostic + auto-fix when reflection is requested.
+        Returns DiagnosisReadyEvent with results."""
+        from .event_bus import diagnosis_ready, DiagnosisReadyEvent
+        event = kwargs.get("event")
+        if not event:
+            return None
+
+        focus_skill = ""
+        last_error = ""
+        if event.failures:
+            focus_skill = event.failures[-1].get("skill", "")
+            last_error = event.failures[-1].get("error", "")
+
+        report = self.run_diagnostic(focus_skill, last_error)
+
+        fixes_applied = []
+        if report.auto_fixable:
+            cpr(C.CYAN, "[REFLECT] Próbuję automatycznych napraw...")
+            fixes_applied = self.attempt_auto_fix(report)
+            for fix in fixes_applied:
+                cpr(C.GREEN, f"[REFLECT] ✓ {fix}")
+
+        result = DiagnosisReadyEvent(
+            skill_name=focus_skill,
+            overall_status=report.overall_status,
+            auto_fixable=report.auto_fixable,
+            requires_user=report.requires_user,
+            findings=report.findings,
+            fixes_applied=fixes_applied,
+        )
+        diagnosis_ready.send(self, event=result)
+        return result
         
     def get_summary(self) -> str:
         """Zwróć podsumowanie ostatniej diagnostyki."""

@@ -156,6 +156,20 @@ class AutoRepair:
         results = [f"{t.issue_type}:{t.status}" for t in self._tasks]
         return fixed, f"{skill_name}: {', '.join(results)}"
 
+    def on_repair_requested(self, sender, **kwargs):
+        """Event bus handler: repair a skill and emit repair_completed."""
+        from .event_bus import repair_completed, RepairCompletedEvent
+        event = kwargs.get("event")
+        if not event:
+            return None
+        fixed, msg = self.repair_skill(event.skill_name)
+        result_evt = RepairCompletedEvent(
+            skill_name=event.skill_name, success=fixed, message=msg)
+        repair_completed.send(self, event=result_evt)
+        action = f"Naprawiono {event.skill_name}: {msg}" if fixed else \
+                 f"Nie udało się naprawić {event.skill_name}: {msg}"
+        return action
+
     # ── Diagnosis ────────────────────────────────────────────────────
 
     def _scan_all_skills(self):

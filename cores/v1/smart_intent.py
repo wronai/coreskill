@@ -607,8 +607,9 @@ class SmartIntentClassifier:
             return IntentResult(action="use", skill="tts", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
         
         # Voice/STT keywords - listen/record/transcribe (check BEFORE TTS to avoid "mów" matching "mówię")
-        stt_keywords = {"słuchaj", "posłuchaj", "nagrywaj", "transkrybuj", "zapisz", "rozpoznaj", "listen", "record", "transcribe"}
-        stt_phrases = ["zapisz co mówię", "rozpoznaj mowę", "transkrybuj co", "posłuchaj co mówię", "posluchaj co mowie"]
+        stt_keywords = {"słuchaj", "posłuchaj", "nagrywaj", "nagraj", "transkrybuj", "zapisz", "rozpoznaj", "listen", "record", "transcribe"}
+        stt_phrases = ["zapisz co mówię", "rozpoznaj mowę", "transkrybuj co", "posłuchaj co mówię", "posluchaj co mowie",
+                       "włącz mikrofon", "wlacz mikrofon", "nagraj dźwięk", "nagraj dzwiek", "z mikrofonu"]
         if any(phrase in ul for phrase in stt_phrases) or words & stt_keywords:
             return IntentResult(action="use", skill="stt", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
         

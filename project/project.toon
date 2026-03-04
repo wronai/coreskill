@@ -1,15 +1,15 @@
-# coreskill | 145f 29457L | python:145
+# coreskill | 145f 30092L | python:148
 # Keys: M=modules, D=details, i=imports, c=classes, f=functions, m=methods
 M[145]:
   __init__.py,19
   build_core.py,525
   cli.py,248
   core.py,515
-  cores/v1/__init__.py,44
+  cores/v1/__init__.py,45
   cores/v1/auto_repair.py,450
   cores/v1/config.py,188
   cores/v1/config_generator.py,221
-  cores/v1/core.py,1033
+  cores/v1/core.py,1108
   cores/v1/evo_engine.py,580
   cores/v1/evo_journal.py,350
   cores/v1/garbage_collector.py,248
@@ -33,11 +33,12 @@ M[145]:
   cores/v1/skill_manager.py,459
   cores/v1/smart_intent.py,721
   cores/v1/stable_snapshot.py,318
+  cores/v1/stt_autotest.py,609
   cores/v1/supervisor.py,69
   cores/v1/system_identity.py,157
   cores/v1/user_memory.py,148
   cores/v1/utils.py,100
-  cores/v1/voice_loop.py,571
+  cores/v1/voice_loop.py,140
   examples/advanced/01_pipeline.py,48
   examples/basic/01_hello.py,33
   examples/basic/02_memory.py,32
@@ -48,9 +49,7 @@ M[145]:
   seeds/echo_skill_v1.py,19
   setup.py,40
   skill.py,78
-  skills/benchmark/v1/skill.py,798
-  skills/benchmark/v2/skill.py,360
-  skills/benchmark/v3/skill.py,798
+  skills/benchmark/v1/skill.py,917
   skills/deps/v1/skill.py,150
   skills/deps/v2/skill.py,84
   skills/deps/v3/skill.py,67
@@ -62,6 +61,7 @@ M[145]:
   skills/echo/v4/skill.py,61
   skills/echo/v5/skill.py,61
   skills/git_ops/v1/skill.py,120
+  skills/hw_test/v1/skill.py,1157
   skills/json_validator/v1/skill.py,59
   skills/json_validator/v2/skill.py,53
   skills/json_validator/v3/skill.py,53
@@ -134,7 +134,7 @@ M[145]:
   skills/tts/providers/espeak/archive/v72/skill.py,22
   skills/tts/providers/espeak/latest/skill.py,4
   skills/tts/providers/espeak/stable/skill.py,54
-  skills/weather/v1/skill.py,58
+  skills/weather/v1/skill.py,54
   skills/web_search/providers/duckduckgo/v1/skill.py,131
   skills/zarz_dzania/v1/skill.py,110
   skills/zarz_dzania/v2/skill.py,111
@@ -145,7 +145,7 @@ M[145]:
   skills/zarz_dzania/v7/skill.py,105
   skills/zarz_dzania/v8/skill.py,107
   tests/__init__.py,0
-  tests/test_e2e.py,1609
+  tests/test_e2e.py,1728
 D:
   cli.py:
     i: argparse,os,sys,shutil,json,cores.v1.config.{LOGS_DIR,ROOT,STATE_FILE,load_state},pathlib.Path
@@ -334,6 +334,21 @@ D:
     e: SnapshotInfo,StableSnapshot
     SnapshotInfo:   # Metadata for a saved snapshot.
     StableSnapshot: __init__(2),save_as_stable(2),create_branch(4),promote_branch(3),restore_stable(2)  # Manages stable/bugfix/feature version...
+  cores/v1/stt_autotest.py:
+    i: os,sys,shutil,subprocess,tempfile,time,abc.{ABC,abstractmethod},dataclasses.{dataclass,field}
+    e: TestContext,TestResult,record_test_wav,measure_db,test_vosk,find_vosk_models,find_best_model,PipelineStep
+    TestContext: add_fix(1),fixes(0)  # Shared context flowing through the pi...
+    TestResult: from_context(1)  # Final result of the STT autotest pipe...
+    PipelineStep: name(0),execute(1)  # Base class for a pipeline step.
+    HardwareDiagnosticsStep: execute(1)
+    CheckMicrophoneStep: execute(1),_try_install_alsa(1)
+    record_test_wav(path:str;duration:int=2)->bool
+    measure_db(path:str)->tuple
+    test_vosk(wav_path:str;model_path:Optional[Path]=None)->tuple
+    find_vosk_models()->tuple
+    find_best_model(models:list;prefer_lang:str='pl')->Optional[Path]
+    try_pulseaudio_fix(diagnostics:dict)
+    run_stt_autotest(sm;logger;llm=None)->dict
   cores/v1/supervisor.py:
     i: json,shutil,datetime,config.{ROOT,save_state},datetime.timezone
     e: Supervisor
@@ -431,22 +446,7 @@ D:
     e: BENCHMARK_TESTS,GoalType,ModelScore,BenchmarkSkill,execute,get_info,health_check
     GoalType: 
     ModelScore: 
-    BenchmarkSkill: __init__(0),_load_config(0),_get_models_from_tier(2),_get_api_key(0),execute(1)  # Analyzes and benchmarks LLM models fo...
-    execute(params:Dict[str;Any])->Dict[str, Any]
-    get_info()
-    health_check()
-  skills/benchmark/v2/skill.py:
-    i: json,time,os,re,subprocess,pathlib.Path,typing.{Any,Dict,List,Optional}
-    e: ModelScore,GoalType,BenchmarkSkill
-    ModelScore: 
-    GoalType: 
-    BenchmarkSkill: __init__(0),_load_config(0),_get_models_from_tier(2),_get_api_key(0),execute(1)  # Analyzes and benchmarks LLM models fo...
-  skills/benchmark/v3/skill.py:
-    i: json,time,os,dataclasses.{asdict,dataclass},pathlib.Path,typing.{Any,Dict,List,Optional}
-    e: BENCHMARK_TESTS,GoalType,ModelScore,BenchmarkSkill,execute,get_info,health_check
-    GoalType: 
-    ModelScore: 
-    BenchmarkSkill: __init__(0),_load_config(0),_get_models_from_tier(2),_get_api_key(0),execute(1)  # Analyzes and benchmarks LLM models fo...
+    BenchmarkSkill: __init__(0),_load_config(0),_get_models_from_tier(2),_get_api_key(0),_load_benchmark_results(0)  # Analyzes and benchmarks LLM models fo...
     execute(params:Dict[str;Any])->Dict[str, Any]
     get_info()
     health_check()
@@ -522,6 +522,17 @@ D:
     GitOpsSkill: __init__(1),_run(2),init(1),status(1),add(2)  # Manage local git repos for skill deve...
     get_info()
     health_check()
+  skills/hw_test/v1/skill.py:
+    i: json,math,os,platform,shutil,struct,subprocess,sys,tempfile,time
+    e: _SYSTEM,_IS_LINUX,_IS_MAC,_IS_WIN,get_info,health_check,AudioInputTester,AudioOutputTester
+    AudioInputTester: run(1),_list_capture_devices(0),_alsa_capture_devices(0),_pulse_sources(0),_macos_audio_inputs(0)  # Test microphone / capture hardware at...
+    AudioOutputTester: run(1),_list_playback_devices(0),_get_default_sink(0),_play_test_tone(1)  # Test speaker / playback hardware.
+    AudioLoopbackTester: run(2),_check_frequency(3)  # Test full audio chain: generate tone...
+    DriverTester: run(0),_detect_audio_subsystem(0),_check_kernel_modules(0),_check_driver_status(0),_macos_audio_status(0)  # Check audio-related kernel modules an...
+    USBTester: run(0),_linux_usb(0),_macos_usb(0),_extract_usb_items(2),_windows_usb(0)  # Enumerate USB devices, focusing on au...
+    get_info()
+    health_check()
+    execute(input_data:dict)->dict
   skills/json_validator/v1/skill.py:
     i: json,subprocess
     e: get_info,health_check,JsonValidator,execute

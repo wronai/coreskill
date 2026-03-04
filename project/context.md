@@ -4,15 +4,15 @@
 
 - **Project**: .
 - **Analysis Mode**: static
-- **Total Functions**: 963
-- **Total Classes**: 129
-- **Modules**: 119
+- **Total Functions**: 949
+- **Total Classes**: 126
+- **Modules**: 118
 - **Entry Points**: 0
 
 ## Architecture by Module
 
 ### cores.v1.core
-- **Functions**: 50
+- **Functions**: 56
 - **File**: `core.py`
 
 ### cores.v1.smart_intent
@@ -35,6 +35,11 @@
 - **Classes**: 6
 - **File**: `core.py`
 
+### skills.benchmark.v1.skill
+- **Functions**: 28
+- **Classes**: 3
+- **File**: `skill.py`
+
 ### seeds.core_v1
 - **Functions**: 27
 - **Classes**: 5
@@ -49,16 +54,6 @@
 - **Functions**: 24
 - **Classes**: 1
 - **File**: `skill_manager.py`
-
-### skills.benchmark.v1.skill
-- **Functions**: 24
-- **Classes**: 3
-- **File**: `skill.py`
-
-### skills.benchmark.v3.skill
-- **Functions**: 24
-- **Classes**: 3
-- **File**: `skill.py`
 
 ### cores.v1.session_config
 - **Functions**: 23
@@ -110,6 +105,11 @@
 - **Classes**: 2
 - **File**: `__init__.py`
 
+### skills.git_ops.v1.skill
+- **Functions**: 15
+- **Classes**: 1
+- **File**: `skill.py`
+
 ## Key Entry Points
 
 Main execution flows into the system:
@@ -127,19 +127,14 @@ This is a SESSION-ONLY layer - changes are NOT persisted to disk
 - **Methods**: 25
 - **Key Methods**: cores.v1.session_config.SessionConfig.__init__, cores.v1.session_config.SessionConfig.CATEGORIES, cores.v1.session_config.SessionConfig.PROVIDER_TIERS, cores.v1.session_config.SessionConfig.get, cores.v1.session_config.SessionConfig.set, cores.v1.session_config.SessionConfig.reset, cores.v1.session_config.SessionConfig.on_change, cores.v1.session_config.SessionConfig._notify, cores.v1.session_config.SessionConfig.handle_configure_intent, cores.v1.session_config.SessionConfig._configure_llm
 
+### skills.benchmark.v1.skill.BenchmarkSkill
+> Analyzes and benchmarks LLM models for goal-based recommendations.
+- **Methods**: 25
+- **Key Methods**: skills.benchmark.v1.skill.BenchmarkSkill.__init__, skills.benchmark.v1.skill.BenchmarkSkill._load_config, skills.benchmark.v1.skill.BenchmarkSkill._get_models_from_tier, skills.benchmark.v1.skill.BenchmarkSkill._get_api_key, skills.benchmark.v1.skill.BenchmarkSkill._load_benchmark_results, skills.benchmark.v1.skill.BenchmarkSkill._save_benchmark_results, skills.benchmark.v1.skill.BenchmarkSkill._update_benchmark_results, skills.benchmark.v1.skill.BenchmarkSkill._get_cached_recommendations, skills.benchmark.v1.skill.BenchmarkSkill.execute, skills.benchmark.v1.skill.BenchmarkSkill._recommend_models
+
 ### cores.v1.skill_manager.SkillManager
 - **Methods**: 22
 - **Key Methods**: cores.v1.skill_manager.SkillManager.__init__, cores.v1.skill_manager.SkillManager._collect_versions, cores.v1.skill_manager.SkillManager.list_skills, cores.v1.skill_manager.SkillManager._is_rolled_back, cores.v1.skill_manager.SkillManager.latest_v, cores.v1.skill_manager.SkillManager._active_provider, cores.v1.skill_manager.SkillManager.skill_path, cores.v1.skill_manager.SkillManager.create_skill, cores.v1.skill_manager.SkillManager.diagnose_skill, cores.v1.skill_manager.SkillManager._raw_test
-
-### skills.benchmark.v1.skill.BenchmarkSkill
-> Analyzes and benchmarks LLM models for goal-based recommendations.
-- **Methods**: 21
-- **Key Methods**: skills.benchmark.v1.skill.BenchmarkSkill.__init__, skills.benchmark.v1.skill.BenchmarkSkill._load_config, skills.benchmark.v1.skill.BenchmarkSkill._get_models_from_tier, skills.benchmark.v1.skill.BenchmarkSkill._get_api_key, skills.benchmark.v1.skill.BenchmarkSkill.execute, skills.benchmark.v1.skill.BenchmarkSkill._recommend_models, skills.benchmark.v1.skill.BenchmarkSkill._recommend_models_live, skills.benchmark.v1.skill.BenchmarkSkill._get_candidate_models, skills.benchmark.v1.skill.BenchmarkSkill._calculate_model_score, skills.benchmark.v1.skill.BenchmarkSkill._estimate_context_length
-
-### skills.benchmark.v3.skill.BenchmarkSkill
-> Analyzes and benchmarks LLM models for goal-based recommendations.
-- **Methods**: 21
-- **Key Methods**: skills.benchmark.v3.skill.BenchmarkSkill.__init__, skills.benchmark.v3.skill.BenchmarkSkill._load_config, skills.benchmark.v3.skill.BenchmarkSkill._get_models_from_tier, skills.benchmark.v3.skill.BenchmarkSkill._get_api_key, skills.benchmark.v3.skill.BenchmarkSkill.execute, skills.benchmark.v3.skill.BenchmarkSkill._recommend_models, skills.benchmark.v3.skill.BenchmarkSkill._recommend_models_live, skills.benchmark.v3.skill.BenchmarkSkill._get_candidate_models, skills.benchmark.v3.skill.BenchmarkSkill._calculate_model_score, skills.benchmark.v3.skill.BenchmarkSkill._estimate_context_length
 
 ### cores.v1.auto_repair.AutoRepair
 > Self-healing engine with task-based repair loop.
@@ -244,6 +239,11 @@ Directives are short text notes th
 - **Methods**: 10
 - **Key Methods**: cores.v1.garbage_collector.EvolutionGarbageCollector.__init__, cores.v1.garbage_collector.EvolutionGarbageCollector.is_stub, cores.v1.garbage_collector.EvolutionGarbageCollector.is_broken, cores.v1.garbage_collector.EvolutionGarbageCollector.scan_versions, cores.v1.garbage_collector.EvolutionGarbageCollector.cleanup_provider, cores.v1.garbage_collector.EvolutionGarbageCollector.cleanup_legacy, cores.v1.garbage_collector.EvolutionGarbageCollector.migrate_to_stable_latest, cores.v1.garbage_collector.EvolutionGarbageCollector._copy_version, cores.v1.garbage_collector.EvolutionGarbageCollector.cleanup_all, cores.v1.garbage_collector.EvolutionGarbageCollector.summary
 
+### cores.v1.supervisor.Supervisor
+> Manages core versions: can create coreB/C/D, test, promote, rollback.
+- **Methods**: 10
+- **Key Methods**: cores.v1.supervisor.Supervisor.__init__, cores.v1.supervisor.Supervisor.active, cores.v1.supervisor.Supervisor.active_version, cores.v1.supervisor.Supervisor.list_cores, cores.v1.supervisor.Supervisor.switch, cores.v1.supervisor.Supervisor.health, cores.v1.supervisor.Supervisor.create_next_core, cores.v1.supervisor.Supervisor.promote_core, cores.v1.supervisor.Supervisor.rollback_core, cores.v1.supervisor.Supervisor.recover
+
 ## Data Transformation Functions
 
 Key functions that process and transform data:
@@ -299,7 +299,6 @@ Returns {verdict: success|partial|fail
 Functions exposed as public API (no underscore prefix):
 
 - `core.main` - 147 calls
-- `cores.v1.core.main` - 124 calls
 - `seeds.core_v1.main` - 108 calls
 - `cores.v1.self_reflection.SelfReflection.run_diagnostic` - 53 calls
 - `scripts.simulate.Simulator.run_scenario` - 47 calls
@@ -310,6 +309,7 @@ Functions exposed as public API (no underscore prefix):
 - `cli.cmd_cache_reset` - 36 calls
 - `cores.v1.evo_engine.EvoEngine.handle_request` - 35 calls
 - `skills.zarz_dzania.v5.skill.ZarzadzaniaSkill.execute` - 35 calls
+- `cores.v1.core.main` - 34 calls
 - `main.bootstrap` - 33 calls
 - `skills.shell.v2.skill.ShellSkill.execute` - 33 calls
 - `examples.skills.01_create.main` - 33 calls
@@ -322,11 +322,10 @@ Functions exposed as public API (no underscore prefix):
 - `scripts.simulate.Simulator.run_all` - 27 calls
 - `cores.v1.preflight.SkillPreflight.check_imports` - 27 calls
 - `skills.shell.v1.skill.ShellSkill.execute` - 27 calls
+- `skills.benchmark.v1.skill.BenchmarkSkill.execute` - 27 calls
 - `cores.v1.preflight.SkillPreflight.auto_fix_imports` - 26 calls
 - `seeds.core_v1.SkillManager.exec_skill` - 26 calls
 - `cores.v1.skill_logger.get_health_markdown` - 25 calls
-- `skills.benchmark.v1.skill.BenchmarkSkill.execute` - 25 calls
-- `skills.benchmark.v3.skill.BenchmarkSkill.execute` - 25 calls
 - `cores.v1.skill_manager.SkillManager.create_skill` - 24 calls
 - `cli.main_cli` - 23 calls
 - `skills.git_ops.v1.skill.GitOpsSkill.execute` - 23 calls
@@ -338,6 +337,7 @@ Functions exposed as public API (no underscore prefix):
 - `skills.stt.providers.vosk.archive.v1.skill.STTSkill.execute` - 23 calls
 - `cores.v1.auto_repair.AutoRepair.run_boot_repair` - 22 calls
 - `cores.v1.smart_intent.SmartIntentClassifier.classify` - 22 calls
+- `cores.v1.stable_snapshot.StableSnapshot.validate_against_stable` - 22 calls
 
 ## System Interactions
 

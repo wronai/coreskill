@@ -36,6 +36,8 @@ from .auto_repair import AutoRepair
 from .session_config import SessionConfig, ConfigChange
 from .config_generator import ConfigGenerator, get_config_generator
 from .voice_loop import _extract_stt_text, _speak_tts, _run_stt_cycle, _run_voice_loop
+from .fuzzy_router import FuzzyCommandRouter
+from .event_bus import EventBus
 
 
 # ─── Docker Compose Generator ────────────────────────────────────────
@@ -1117,8 +1119,9 @@ COMMANDS = {
 }
 
 
-# ─── Main ────────────────────────────────────────────────────────────
-def main():
+# ─── Boot sequence ────────────────────────────────────────────────────
+def _boot():
+    """Initialize all components. Returns (cmd_ctx, conv, memory) tuple."""
     init_nfo()
 
     state = load_state()
@@ -1168,7 +1171,11 @@ def main():
     from .self_reflection import SelfReflection
     reflection = SelfReflection(llm, sm, logger, state)
     evo.set_reflection(reflection)
-    cpr(C.DIM, "SelfReflection: aktywny (automatyczna diagnostyka przy błędach)")
+
+    # Event bus: decouple AutoRepair ↔ EvoEngine ↔ SelfReflection
+    bus = EventBus()
+    bus.wire(reflection=reflection, repairer=repairer, evo=evo, logger=logger)
+    cpr(C.DIM, f"SelfReflection: aktywny | EventBus: {'wired' if bus.is_active else 'fallback'}")
 
     cpr(C.DIM, f"Model: {llm.model} | Core: {sv.active()} | Tiers: {llm.tier_info()}")
     sk = sm.list_skills()
@@ -1187,12 +1194,120 @@ def main():
                           "tiers": llm.tier_info(), "skills": list(sk.keys())})
 
     conv = []
+    router = FuzzyCommandRouter(COMMANDS)
     cmd_ctx = {
         "sm": sm, "llm": llm, "pm": pm, "evo": evo, "sv": sv,
         "intent": intent, "logger": logger, "state": state, "conv": conv,
         "provider_selector": provider_sel, "resource_monitor": resource_mon,
         "identity": identity, "memory": memory, "session_config": session_cfg,
+        "router": router,
     }
+    return cmd_ctx, conv, memory
+
+
+# ─── Chat loop intent handlers ───────────────────────────────────────
+def _handle_configure_intent(analysis, session_cfg, conv, state, llm, sm, intent):
+    """Handle CONFIGURE intent (session configuration changes). Returns True if handled."""
+    if analysis.get("action") != "configure":
+        return False
+
+    if analysis.get("_fallback"):
+        cpr(C.YELLOW, "[FALLBACK] Niejasna konfiguracja → domyślnie LLM (brak kontekstu głosowego)")
+
+    change = session_cfg.handle_configure_intent(analysis)
+    feedback = session_cfg.format_change_feedback(change)
+    cpr(C.CYAN, feedback)
+    conv.append({"role": "assistant", "content": feedback})
+
+    # Apply overrides to components
+    if change.category == "llm" and change.setting == "model" and change.new_value:
+        state["model"] = change.new_value
+        save_state(state)
+        llm.model = change.new_value
+        cpr(C.GREEN, f"Model zmieniony na: {change.new_value}")
+    elif change.category in ("tts", "stt") and change.setting == "provider":
+        cpr(C.GREEN, f"{change.category.upper()} provider: {change.old_value} → {change.new_value}")
+        if hasattr(sm, 'provider_preferences'):
+            sm.provider_preferences[change.category] = change.new_value
+
+    _check_proactive_learning(intent)
+    intent.save()
+    return True
+
+
+def _handle_voice_intent(analysis, sm, evo, llm, intent, logger, conv, identity, memory):
+    """Handle voice conversation intent. Returns True if handled."""
+    if not (analysis.get("action") == "use" and analysis.get("skill") == "stt"
+            and analysis.get("goal") in ("voice_conversation", "enable_voice", "enable_stt")):
+        return False
+
+    if memory and not memory.voice_mode:
+        memory.set_voice_mode(True)
+        cpr(C.CYAN, "🔊 Zapamiętano: tryb głosowy włączony na stałe. "
+                    "Wyłącz: /voice off lub powiedz 'wyłącz tryb głosowy'.")
+    _run_voice_loop(sm, evo, llm, intent, logger, conv, identity, memory=memory)
+    _check_proactive_learning(intent)
+    intent.save()
+    return True
+
+
+def _handle_stt_outcome(outcome, ui, sk, analysis, evo, intent, llm, sm, logger, conv,
+                        identity, memory):
+    """Handle STT skill outcome: retry on silence, feed text to chat. Returns True if handled."""
+    if not (outcome and outcome.get("skill") == "stt" and outcome.get("type") == "success"):
+        return False
+
+    stt_text = _extract_stt_text(outcome)
+    intent.record_skill_use("stt")
+
+    # Auto-retry once on silence before giving up
+    if not stt_text:
+        cpr(C.DIM, "[STT] Cisza — ponawiam automatycznie...")
+        retry_outcome = evo.handle_request(ui, sk, analysis=analysis)
+        if retry_outcome and retry_outcome.get("type") == "success":
+            stt_text = _extract_stt_text(retry_outcome)
+
+    if stt_text:
+        cpr(C.GREEN, f"[STT] Usłyszałem: \"{stt_text}\"")
+        mprint(f"### 🎤 Usłyszałem: *{stt_text}*")
+        conv.append({"role": "user", "content": f"[głosowo] {stt_text}"})
+        response = _handle_chat(llm, sm, logger, conv, identity=identity, memory=memory)
+        if response:
+            _speak_tts(sm, evo, response)
+    else:
+        cpr(C.YELLOW, "[STT] Nie usłyszałem nic po 2 próbach. Sprawdź mikrofon.")
+        mprint("### 🎤 Nie usłyszałem nic\nSpróbuj powiedzieć coś głośniej lub użyj `/stt` ponownie.")
+        conv.append({"role": "assistant", "content": "Nie usłyszałem nic po 2 próbach. Sprawdź mikrofon."})
+    return True
+
+
+def _auto_save_preference(ui, memory):
+    """Auto-detect and save user preference statements."""
+    if not memory or not memory.looks_like_preference(ui):
+        return
+    suggestion = memory.suggest_save(ui)
+    if not suggestion:
+        return
+    ul = ui.lower()
+    if any(kw in ul for kw in ("głosowo", "glosowo", "voice", "głos")):
+        if not memory.voice_mode:
+            memory.set_voice_mode(True)
+            cpr(C.CYAN, "🔊 Zapamiętano: tryb głosowy włączony na stałe. "
+                        "Wyłącz: /voice off")
+    else:
+        memory.add(suggestion)
+        cpr(C.CYAN, f"📋 Zapamiętano: {suggestion[:80]}")
+
+
+# ─── Main ────────────────────────────────────────────────────────────
+def main():
+    cmd_ctx, conv, memory = _boot()
+    sm, llm, evo, intent, logger = (
+        cmd_ctx["sm"], cmd_ctx["llm"], cmd_ctx["evo"],
+        cmd_ctx["intent"], cmd_ctx["logger"])
+    state = cmd_ctx["state"]
+    identity = cmd_ctx["identity"]
+    session_cfg = cmd_ctx["session_config"]
 
     # Auto-enter voice mode if persistent preference is saved
     if memory and memory.voice_mode:
@@ -1209,13 +1324,13 @@ def main():
         if not ui:
             continue
 
-        # ── Commands via dispatch table ──
+        # ── Commands via fuzzy dispatch table ──
         if ui.startswith("/"):
             p = ui.split(maxsplit=2)
             act = p[0].lower()
             a1 = p[1] if len(p) > 1 else ""
             a2 = p[2] if len(p) > 2 else ""
-            handler = COMMANDS.get(act)
+            handler, _ = cmd_ctx["router"].resolve(act)
             if handler:
                 if handler(a1=a1, a2=a2, **cmd_ctx) == "QUIT":
                     break
@@ -1233,93 +1348,24 @@ def main():
             "action": analysis.get("action"), "skill": analysis.get("skill",""),
             "goal": analysis.get("goal","")})
 
-        # ── Handle CONFIGURE intent (session configuration changes) ──
-        if analysis.get("action") == "configure":
-            # Log if this was a fallback case
-            if analysis.get("_fallback"):
-                cpr(C.YELLOW, f"[FALLBACK] Niejasna konfiguracja → domyślnie LLM (brak kontekstu głosowego)")
-            
-            change = session_cfg.handle_configure_intent(analysis)
-            feedback = session_cfg.format_change_feedback(change)
-            cpr(C.CYAN, feedback)
-            conv.append({"role": "assistant", "content": feedback})
-            
-            # Apply overrides to components
-            if change.category == "llm" and change.setting == "model" and change.new_value:
-                # For LLM model, update immediately
-                state["model"] = change.new_value
-                save_state(state)
-                llm.model = change.new_value
-                cpr(C.GREEN, f"Model zmieniony na: {change.new_value}")
-            elif change.category in ("tts", "stt") and change.setting == "provider":
-                # Store in skill_manager's provider selector context
-                cpr(C.GREEN, f"{change.category.upper()} provider: {change.old_value} → {change.new_value}")
-                # Update provider selector to use the new preference
-                if hasattr(sm, 'provider_preferences'):
-                    sm.provider_preferences[change.category] = change.new_value
-            
-            _check_proactive_learning(intent)
-            intent.save()
+        if _handle_configure_intent(analysis, session_cfg, conv, state, llm, sm, intent):
             continue
 
-        # Voice conversation mode: auto-save preference + enter continuous listen loop
-        if (analysis.get("action") == "use" and analysis.get("skill") == "stt"
-                and analysis.get("goal") in ("voice_conversation", "enable_voice", "enable_stt")):
-            if memory and not memory.voice_mode:
-                memory.set_voice_mode(True)
-                cpr(C.CYAN, "🔊 Zapamiętano: tryb głosowy włączony na stałe. "
-                            "Wyłącz: /voice off lub powiedz 'wyłącz tryb głosowy'.")
-            _run_voice_loop(sm, evo, llm, intent, logger, conv, identity, memory=memory)
-            _check_proactive_learning(intent)
-            intent.save()
+        if _handle_voice_intent(analysis, sm, evo, llm, intent, logger, conv, identity, memory):
             continue
 
-        # Show feedback before single-shot STT/TTS execution
+        # Show feedback before single-shot STT execution
         if analysis.get("action") == "use" and analysis.get("skill") == "stt":
             cpr(C.CYAN, "\n🎤 Nagrywam... (mów teraz)")
 
         outcome = evo.handle_request(ui, sk, analysis=analysis)
 
-        # Auto-detect preference statements
-        if memory and memory.looks_like_preference(ui):
-            suggestion = memory.suggest_save(ui)
-            if suggestion:
-                # Voice-related preferences: auto-save silently
-                ul = ui.lower()
-                if any(kw in ul for kw in ("głosowo", "glosowo", "voice", "głos")):
-                    if not memory.voice_mode:
-                        memory.set_voice_mode(True)
-                        cpr(C.CYAN, "🔊 Zapamiętano: tryb głosowy włączony na stałe. "
-                                    "Wyłącz: /voice off")
-                else:
-                    # Other preferences: auto-save and inform
-                    memory.add(suggestion)
-                    cpr(C.CYAN, f"📋 Zapamiętano: {suggestion[:80]}")
+        _auto_save_preference(ui, memory)
 
-        # Special STT flow: feed transcription back into conversation
-        if outcome and outcome.get("skill") == "stt" and outcome.get("type") == "success":
-            stt_text = _extract_stt_text(outcome)
-            intent.record_skill_use("stt")
-            # Auto-retry once on silence before giving up
-            if not stt_text:
-                cpr(C.DIM, "[STT] Cisza — ponawiam automatycznie...")
-                retry_outcome = evo.handle_request(ui, sk, analysis=analysis)
-                if retry_outcome and retry_outcome.get("type") == "success":
-                    stt_text = _extract_stt_text(retry_outcome)
-            if stt_text:
-                cpr(C.GREEN, f"[STT] Usłyszałem: \"{stt_text}\"")
-                mprint(f"### 🎤 Usłyszałem: *{stt_text}*")
-                conv.append({"role": "user", "content": f"[głosowo] {stt_text}"})
-                response = _handle_chat(llm, sm, logger, conv, identity=identity, memory=memory)
-                # Speak the response via TTS
-                if response:
-                    _speak_tts(sm, evo, response)
-            else:
-                cpr(C.YELLOW, "[STT] Nie usłyszałem nic po 2 próbach. Sprawdź mikrofon.")
-                mprint("### 🎤 Nie usłyszałem nic\nSpróbuj powiedzieć coś głośniej lub użyj `/stt` ponownie.")
-                conv.append({"role": "assistant", "content": "Nie usłyszałem nic po 2 próbach. Sprawdź mikrofon."})
-        elif not _handle_outcome(outcome, intent, conv, identity=identity):
-            _handle_chat(llm, sm, logger, conv, identity=identity, memory=memory)
+        if not _handle_stt_outcome(outcome, ui, sk, analysis, evo, intent, llm, sm,
+                                    logger, conv, identity, memory):
+            if not _handle_outcome(outcome, intent, conv, identity=identity):
+                _handle_chat(llm, sm, logger, conv, identity=identity, memory=memory)
 
         _check_proactive_learning(intent)
         intent.save()

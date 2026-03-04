@@ -1,6 +1,0 @@
-{
-  "name": "stt",
-  "version": "v1",
-  "description": "Speech-to-Text: nagrywanie z mikrofonu i transkrypcja mowy na tekst (arecord + vosk-transcriber)",
-  "created_at": "2025-03-03T19:00:00Z"
-}

@@ -11,49 +11,49 @@
   "results": {
     "openrouter/google/gemma-3-27b-it:free": {
       "last_tested": "2026-03-04",
-      "avg_quality": 0.33,
-      "avg_latency_ms": 7201,
-      "speed_score": 0.44,
+      "avg_quality": 0.9,
+      "avg_latency_ms": 2307.0,
+      "speed_score": 0.54,
       "tier": "free",
       "working": true
     },
     "openrouter/google/gemma-3-12b-it:free": {
       "last_tested": "2026-03-04",
-      "avg_quality": 0.33,
-      "avg_latency_ms": 7958,
-      "speed_score": 0.41,
+      "avg_quality": 1.0,
+      "avg_latency_ms": 4906.5,
+      "speed_score": 0.02,
       "tier": "free",
       "working": true
     },
     "openrouter/qwen/qwen3-coder-next": {
       "last_tested": "2026-03-04",
       "avg_quality": 1.0,
-      "avg_latency_ms": 3228,
-      "speed_score": 0.85,
+      "avg_latency_ms": 1259.8,
+      "speed_score": 0.75,
       "tier": "paid",
       "working": true
     },
     "openrouter/x-ai/grok-4.1-fast": {
       "last_tested": "2026-03-04",
       "avg_quality": 1.0,
-      "avg_latency_ms": 3944,
-      "speed_score": 0.79,
+      "avg_latency_ms": 3697.9,
+      "speed_score": 0.26,
       "tier": "paid",
       "working": true
     },
     "openrouter/deepseek/deepseek-v3.2": {
       "last_tested": "2026-03-04",
-      "avg_quality": 1.0,
-      "avg_latency_ms": 6643,
-      "speed_score": 0.47,
+      "avg_quality": 0.67,
+      "avg_latency_ms": 5318.6,
+      "speed_score": 0,
       "tier": "paid",
       "working": true
     },
     "openrouter/openai/gpt-5-mini": {
       "last_tested": "2026-03-04",
       "avg_quality": 1.0,
-      "avg_latency_ms": 6424,
-      "speed_score": 0.48,
+      "avg_latency_ms": 6093.0,
+      "speed_score": 0,
       "tier": "paid",
       "working": true
     },
@@ -80,6 +80,62 @@
       "working": false,
       "reason": "timeout",
       "tier": "free"
+    },
+    "openrouter/google/gemma-3-4b-it:free": {
+      "last_tested": "2026-03-04",
+      "avg_quality": 1.0,
+      "avg_latency_ms": 2174.0,
+      "speed_score": 0.57,
+      "tier": "free",
+      "working": true
+    },
+    "openrouter/google/gemini-2.5-flash-lite": {
+      "last_tested": "2026-03-04",
+      "avg_quality": 1.0,
+      "avg_latency_ms": 914.7,
+      "speed_score": 0.82,
+      "tier": "paid",
+      "working": true
+    },
+    "openrouter/xiaomi/mimo-v2-flash": {
+      "last_tested": "2026-03-04",
+      "avg_quality": 1.0,
+      "avg_latency_ms": 2480.8,
+      "speed_score": 0.5,
+      "tier": "paid",
+      "working": true
+    },
+    "openrouter/moonshotai/kimi-k2.5": {
+      "last_tested": "2026-03-04",
+      "avg_quality": 0.67,
+      "avg_latency_ms": 5388.9,
+      "speed_score": 0,
+      "tier": "paid",
+      "working": true
+    },
+    "openrouter/qwen/qwen3.5-flash-02-23": {
+      "last_tested": "2026-03-04",
+      "working": false,
+      "reason": "timeout",
+      "tier": "paid"
+    },
+    "openrouter/qwen/qwen3.5-plus-02-15": {
+      "last_tested": "2026-03-04",
+      "working": false,
+      "reason": "timeout",
+      "tier": "paid"
+    },
+    "openrouter/z-ai/glm-4.7": {
+      "last_tested": "2026-03-04",
+      "working": false,
+      "reason": "timeout",
+      "tier": "paid"
+    },
+    "openrouter/openai/gpt-5-nano": {
+      "last_tested": "2026-03-04",
+      "working": false,
+      "reason": "timeout",
+      "tier": "paid"
     }
   }
 }

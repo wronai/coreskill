@@ -26,7 +26,7 @@ from .config import SKILLS_DIR, cpr, C
 class EvolutionGarbageCollector:
     """Cleans up failed evolution stubs, promotes stable versions."""
 
-    MAX_ARCHIVE_VERSIONS = 5
+    MAX_ARCHIVE_VERSIONS = 2
     STUB_MAX_LINES = 10
 
     def __init__(self, skills_dir: Path = None):
@@ -186,7 +186,19 @@ class EvolutionGarbageCollector:
         # Keep last MAX_ARCHIVE working versions
         keep = set(working[-self.MAX_ARCHIVE_VERSIONS:])
 
+        # Delete stubs
         for vdir in stubs:
+            if vdir in keep:
+                continue
+            if dry_run:
+                report["deleted"].append(f"[DRY] {vdir.name}")
+            else:
+                shutil.rmtree(vdir, ignore_errors=True)
+                report["deleted"].append(vdir.name)
+
+        # Delete excess working versions (keep only last MAX_ARCHIVE)
+        excess = working[:-self.MAX_ARCHIVE_VERSIONS] if len(working) > self.MAX_ARCHIVE_VERSIONS else []
+        for vdir in excess:
             if vdir in keep:
                 continue
             if dry_run:
@@ -273,6 +285,27 @@ class EvolutionGarbageCollector:
             if src.exists():
                 shutil.copy2(src, dst_dir / f)
 
+    # ── Archive Trimming ─────────────────────────────────────────────
+
+    def trim_archive(self, provider_dir: Path, dry_run: bool = False) -> list:
+        """Trim archive/ subdirectory to MAX_ARCHIVE_VERSIONS."""
+        deleted = []
+        archive_dir = provider_dir / "archive"
+        if not archive_dir.is_dir():
+            return deleted
+        versions = sorted(
+            [d for d in archive_dir.iterdir() if d.is_dir() and d.name.startswith("v")],
+            key=lambda d: int(d.name[1:]) if d.name[1:].isdigit() else 0
+        )
+        excess = versions[:-self.MAX_ARCHIVE_VERSIONS] if len(versions) > self.MAX_ARCHIVE_VERSIONS else []
+        for vdir in excess:
+            if dry_run:
+                deleted.append(f"[DRY] archive/{vdir.name}")
+            else:
+                shutil.rmtree(vdir, ignore_errors=True)
+                deleted.append(f"archive/{vdir.name}")
+        return deleted
+
     # ── Full Cleanup ────────────────────────────────────────────────
 
     def cleanup_all(self, migrate: bool = True, dry_run: bool = False) -> list:
@@ -292,6 +325,9 @@ class EvolutionGarbageCollector:
                         r = self.migrate_to_stable_latest(provider, dry_run)
                     else:
                         r = self.cleanup_provider(provider, dry_run)
+                    # Also trim archive/ if it exists
+                    trimmed = self.trim_archive(provider, dry_run)
+                    r.setdefault("deleted", []).extend(trimmed)
                     r["skill"] = skill_dir.name
                     reports.append(r)
             else:

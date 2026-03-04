@@ -5,4 +5,4 @@ conda activate base
 pip install -e /home/tom/github/wronai/code2llm --no-deps --quiet
 #code2logic ./ -f toon --compact --no-repeat-module --function-logic --with-schema --name project -o ./
 # Suppress Python syntax warnings from files with invalid syntax (e.g., markdown code blocks)
-PYTHONWARNINGS="ignore::SyntaxWarning" code2llm ./ -f toon,evolution,code2logic -o ./project
+python3 -W ignore -m code2llm ./ -f toon,evolution,code2logic -o ./project

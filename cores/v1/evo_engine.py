@@ -203,16 +203,41 @@ class EvoEngine:
             for u in ctx["unhandled"][-2:]:
                 cpr(C.DIM, f"[REFLECT]     ‘{u['msg'][:60]}’")
 
-        # Run full diagnostic
-        report = self.reflection.run_diagnostic(focus_skill, last_error)
-
-        # Attempt auto-fixes
+        # Try event bus path first (decoupled)
+        overall_status = "unknown"
         fixes_applied = []
-        if report.auto_fixable:
-            cpr(C.CYAN, "[REFLECT] Próbuję automatycznych napraw...")
-            fixes_applied = self.reflection.attempt_auto_fix(report)
-            for fix in fixes_applied:
-                cpr(C.GREEN, f"[REFLECT] ✓ {fix}")
+        requires_user = []
+        bus_handled = False
+        try:
+            from .event_bus import reflection_needed, ReflectionNeededEvent, _HAS_BLINKER
+            if _HAS_BLINKER and reflection_needed.receivers:
+                evt = ReflectionNeededEvent(
+                    trigger=trigger_skill,
+                    failures=ctx["failures"],
+                    unhandled=ctx["unhandled"],
+                    reflection_number=reflection_num,
+                )
+                results = reflection_needed.send(self, event=evt)
+                for _, diag_result in results:
+                    if diag_result:
+                        overall_status = diag_result.overall_status
+                        fixes_applied = diag_result.fixes_applied
+                        requires_user = diag_result.requires_user
+                        bus_handled = True
+                        break
+        except ImportError:
+            pass
+
+        # Fallback: direct call (backward compat when bus not wired)
+        if not bus_handled and self.reflection:
+            report = self.reflection.run_diagnostic(focus_skill, last_error)
+            overall_status = report.overall_status
+            requires_user = report.requires_user
+            if report.auto_fixable:
+                cpr(C.CYAN, "[REFLECT] Próbuję automatycznych napraw...")
+                fixes_applied = self.reflection.attempt_auto_fix(report)
+                for fix in fixes_applied:
+                    cpr(C.GREEN, f"[REFLECT] ✓ {fix}")
 
         # Log reflection to journal
         self.journal.start_evolution(
@@ -224,20 +249,20 @@ class EvoEngine:
             success=bool(fixes_applied),
             quality_score=0.5 if fixes_applied else 0.1,
             reflection=f"Auto-reflection #{reflection_num}: "
-                       f"{report.overall_status}, "
+                       f"{overall_status}, "
                        f"{len(fixes_applied)} fixes applied",
             error=last_error[:200] if not fixes_applied else "")
 
-        cpr(C.CYAN, f"[REFLECT] Status: {report.overall_status} | "
+        cpr(C.CYAN, f"[REFLECT] Status: {overall_status} | "
                     f"Naprawy: {len(fixes_applied)} | "
-                    f"Do zrobienia: {len(report.requires_user)}")
+                    f"Do zrobienia: {len(requires_user)}")
         cpr(C.DIM, f"[REFLECT] === Koniec auto-refleksji #{reflection_num} ===\n")
 
         self.log.core("auto_reflection_done", {
             "reflection_num": reflection_num,
-            "status": report.overall_status,
+            "status": overall_status,
             "fixes": len(fixes_applied),
-            "requires_user": len(report.requires_user),
+            "requires_user": len(requires_user),
         })
 
     def _execute_with_validation(self, skill_name, inp, goal, user_msg):

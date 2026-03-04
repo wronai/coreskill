@@ -11,7 +11,11 @@
           "name": "Llama 3.3 70B Instruct",
           "provider": "meta-llama",
           "context_length": 128000,
-          "tags": ["coding", "chat", "polish"],
+          "tags": [
+            "coding",
+            "chat",
+            "polish"
+          ],
           "enabled": false,
           "comment": "timeout during benchmark - temporarily disabled"
         },
@@ -20,14 +24,21 @@
           "name": "Gemma 3 27B IT",
           "provider": "google",
           "context_length": 131072,
-          "tags": ["coding", "fast", "polish"]
+          "tags": [
+            "coding",
+            "fast",
+            "polish"
+          ]
         },
         {
           "id": "openrouter/mistralai/mistral-small-3.1-24b-instruct:free",
           "name": "Mistral Small 3.1 24B",
           "provider": "mistralai",
           "context_length": 32000,
-          "tags": ["chat", "fast"],
+          "tags": [
+            "chat",
+            "fast"
+          ],
           "enabled": false,
           "comment": "timeout during benchmark - temporarily disabled"
         },
@@ -36,7 +47,10 @@
           "name": "Llama 3.2 3B Instruct",
           "provider": "meta-llama",
           "context_length": 131072,
-          "tags": ["fast", "lightweight"],
+          "tags": [
+            "fast",
+            "lightweight"
+          ],
           "enabled": false,
           "comment": "timeout during benchmark - temporarily disabled"
         },
@@ -45,7 +59,10 @@
           "name": "GPT-OSS 120B",
           "provider": "openai",
           "context_length": 131072,
-          "tags": ["large", "reasoning"],
+          "tags": [
+            "large",
+            "reasoning"
+          ],
           "enabled": false,
           "comment": "timeout during benchmark - temporarily disabled"
         },
@@ -54,14 +71,20 @@
           "name": "Gemma 3 12B IT",
           "provider": "google",
           "context_length": 131072,
-          "tags": ["balanced", "fast"]
+          "tags": [
+            "balanced",
+            "fast"
+          ]
         },
         {
           "id": "openrouter/google/gemma-3-4b-it:free",
           "name": "Gemma 3 4B IT",
           "provider": "google",
           "context_length": 32768,
-          "tags": ["lightweight", "fast"]
+          "tags": [
+            "lightweight",
+            "fast"
+          ]
         }
       ]
     },
@@ -73,7 +96,10 @@
           "name": "Qwen2.5 Coder 14B",
           "provider": "qwen",
           "context_length": 32000,
-          "tags": ["coding", "local"],
+          "tags": [
+            "coding",
+            "local"
+          ],
           "preferred": true
         },
         {
@@ -81,28 +107,42 @@
           "name": "Mistral 7B Instruct",
           "provider": "mistralai",
           "context_length": 32000,
-          "tags": ["chat", "local"]
+          "tags": [
+            "chat",
+            "local"
+          ]
         },
         {
           "id": "ollama/qwen2.5-coder:7b-instruct",
           "name": "Qwen2.5 Coder 7B",
           "provider": "qwen",
           "context_length": 32000,
-          "tags": ["coding", "local", "fast"]
+          "tags": [
+            "coding",
+            "local",
+            "fast"
+          ]
         },
         {
           "id": "ollama/llama3.2:latest",
           "name": "Llama 3.2",
           "provider": "meta-llama",
           "context_length": 128000,
-          "tags": ["balanced", "local"]
+          "tags": [
+            "balanced",
+            "local"
+          ]
         },
         {
           "id": "ollama/qwen2.5:3b",
           "name": "Qwen2.5 3B",
           "provider": "qwen",
           "context_length": 32000,
-          "tags": ["lightweight", "local", "fast"]
+          "tags": [
+            "lightweight",
+            "local",
+            "fast"
+          ]
         }
       ]
     },
@@ -114,23 +154,37 @@
           "name": "Qwen 3.5 Flash 02-23",
           "provider": "qwen",
           "context_length": 32000,
-          "tags": ["flash", "fast", "new"],
-          "enabled": true
+          "tags": [
+            "flash",
+            "fast",
+            "new"
+          ],
+          "enabled": false,
+          "comment": "timeout/failed during live benchmark"
         },
         {
           "id": "openrouter/qwen/qwen3.5-plus-02-15",
           "name": "Qwen 3.5 Plus 02-15",
           "provider": "qwen",
           "context_length": 32000,
-          "tags": ["plus", "quality", "new"],
-          "enabled": true
+          "tags": [
+            "plus",
+            "quality",
+            "new"
+          ],
+          "enabled": false,
+          "comment": "timeout/failed during live benchmark"
         },
         {
           "id": "openrouter/qwen/qwen3-coder-next",
           "name": "Qwen 3 Coder Next",
           "provider": "qwen",
           "context_length": 32000,
-          "tags": ["coder", "coding", "new"],
+          "tags": [
+            "coder",
+            "coding",
+            "new"
+          ],
           "enabled": true
         },
         {
@@ -138,7 +192,11 @@
           "name": "Kimi K2.5",
           "provider": "moonshotai",
           "context_length": 256000,
-          "tags": ["long-context", "quality", "new"],
+          "tags": [
+            "long-context",
+            "quality",
+            "new"
+          ],
           "enabled": true
         },
         {
@@ -146,15 +204,23 @@
           "name": "GLM 4.7",
           "provider": "z-ai",
           "context_length": 32000,
-          "tags": ["balanced", "new"],
-          "enabled": true
+          "tags": [
+            "balanced",
+            "new"
+          ],
+          "enabled": false,
+          "comment": "timeout/failed during live benchmark"
         },
         {
           "id": "openrouter/x-ai/grok-4.1-fast",
           "name": "Grok 4.1 Fast",
           "provider": "x-ai",
           "context_length": 32000,
-          "tags": ["flash", "fast", "new"],
+          "tags": [
+            "flash",
+            "fast",
+            "new"
+          ],
           "enabled": true
         },
         {
@@ -162,7 +228,11 @@
           "name": "DeepSeek V3.2",
           "provider": "deepseek",
           "context_length": 64000,
-          "tags": ["reasoning", "coding", "new"],
+          "tags": [
+            "reasoning",
+            "coding",
+            "new"
+          ],
           "enabled": true
         },
         {
@@ -170,7 +240,11 @@
           "name": "GPT-5 Mini",
           "provider": "openai",
           "context_length": 32000,
-          "tags": ["mini", "fast", "new"],
+          "tags": [
+            "mini",
+            "fast",
+            "new"
+          ],
           "enabled": true
         },
         {
@@ -178,7 +252,11 @@
           "name": "Gemini 2.5 Flash Lite",
           "provider": "google",
           "context_length": 32000,
-          "tags": ["flash", "lite", "new"],
+          "tags": [
+            "flash",
+            "lite",
+            "new"
+          ],
           "enabled": true
         },
         {
@@ -186,7 +264,10 @@
           "name": "Xiaomi MiMo V2 Flash",
           "provider": "xiaomi",
           "context_length": 32000,
-          "tags": ["flash", "new"],
+          "tags": [
+            "flash",
+            "new"
+          ],
           "enabled": true
         },
         {
@@ -194,7 +275,10 @@
           "name": "GPT-5 Nano",
           "provider": "openai",
           "context_length": 32000,
-          "tags": ["nano", "new"],
+          "tags": [
+            "nano",
+            "new"
+          ],
           "enabled": true
         },
         {
@@ -202,7 +286,9 @@
           "name": "Gemini 2.0 Flash",
           "provider": "google",
           "context_length": 1000000,
-          "tags": ["flash"],
+          "tags": [
+            "flash"
+          ],
           "enabled": false,
           "comment": "commented in PAID_MODELS"
         },
@@ -211,7 +297,10 @@
           "name": "Claude 3.5 Haiku",
           "provider": "anthropic",
           "context_length": 200000,
-          "tags": ["quality", "coding"],
+          "tags": [
+            "quality",
+            "coding"
+          ],
           "enabled": false,
           "comment": "commented in PAID_MODELS"
         }

@@ -1,6 +1,0 @@
-{
-  "name": "tts",
-  "version": "v1",
-  "description": "Text-to-Speech: czytanie tekstu na głos (espeak/pyttsx3/gtts)",
-  "created_at": "2025-03-03T18:00:00Z"
-}

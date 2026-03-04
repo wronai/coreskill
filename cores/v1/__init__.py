@@ -46,3 +46,4 @@ from .stt_autotest import STTAutoTestPipeline, TestContext, TestResult, run_stt_
 from .self_reflection import SelfReflection, ReflectionEvent, DiagnosisReport
 from .repair_journal import RepairJournal, RepairAttempt, KnownFix
 from .stable_snapshot import StableSnapshot, SnapshotInfo
+from .fuzzy_router import FuzzyCommandRouter
