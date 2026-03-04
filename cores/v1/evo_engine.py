@@ -169,6 +169,19 @@ class EvoEngine:
                 "skill": skill_name, "verdict": validation["verdict"],
                 "reason": validation["reason"]})
 
+            # Track consecutive outcomes for auto-reflection
+            if self.reflection:
+                is_success = validation["verdict"] == "success"
+                is_partial = validation["verdict"] == "partial"
+                reflect_report = self.reflection.record_skill_outcome(
+                    skill_name, success=is_success, partial=is_partial,
+                    error=validation.get("reason", ""))
+                # If reflection triggered and found auto-fixable issues, try them
+                if reflect_report and reflect_report.auto_fixable:
+                    fixes = self.reflection.attempt_auto_fix(reflect_report)
+                    for fix in fixes:
+                        cpr(C.GREEN, f"[REFLECT] {fix}")
+
             if validation["verdict"] == "success":
                 cpr(C.GREEN, f"[PIPE] ✓ Goal achieved: {goal or 'OK'}")
                 self.log.skill(skill_name, "goal_achieved", {"goal": goal})

@@ -44,6 +44,19 @@ class IntentResult:
     input: Dict[str, Any] = field(default_factory=dict)  # skill params
     all_scores: Dict[str, float] = field(default_factory=dict)  # all skill scores
 
+    def to_analysis(self) -> dict:
+        """Convert to IntentEngine-compatible analysis dict."""
+        d = {"action": self.action}
+        if self.skill:
+            d["skill"] = self.skill
+        if self.input:
+            d["input"] = self.input
+        if self.goal:
+            d["goal"] = self.goal
+        d["_conf"] = self.confidence
+        d["_tier"] = self.tier
+        return d
+
 
 class SmartIntentClassifier:
     """
@@ -141,6 +154,39 @@ class SmartIntentClassifier:
         user_msg = user_msg.strip()
         if not user_msg:
             return IntentResult(action="chat", confidence=1.0, tier="trivial")
+        
+        ul = user_msg.lower()
+        
+        # Stage 0: Fast keyword prefilter (high-confidence only)
+        # TTS keywords
+        if any(w in ul for w in ("powiedz", "wypowiedz", "przeczytaj", "mów", "odczytaj", "speak", "say", "read aloud")):
+            return IntentResult(action="use", skill="tts", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
+        
+        # Voice/STT keywords
+        if any(w in ul for w in ("słuchaj", "nagrywaj", "zapisz co mówię", "transkrybuj", "listen", "record", "transcribe")):
+            return IntentResult(action="use", skill="stt", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
+        
+        # Voice mode
+        if any(w in ul for w in ("porozmawiajmy głosowo", "pogadajmy głosem", "włącz tryb głosowy", "voice mode", "let's talk")):
+            return IntentResult(action="use", skill="stt", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
+        
+        # Web search
+        if any(w in ul for w in ("wyszukaj", "szukaj", "znajdź w internecie", "google", "search", "find online", "look up")):
+            return IntentResult(action="use", skill="web_search", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
+        
+        # Shell
+        if any(w in ul for w in ("uruchom", "wykonaj", "bash", "terminal", "run command", "execute")):
+            return IntentResult(action="use", skill="shell", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
+        
+        # Create/evolve (high confidence keywords)
+        if any(w in ul for w in ("stwórz skill", "nowy skill", "create skill", "new skill", "build skill")):
+            return IntentResult(action="create", skill="", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
+        
+        if any(w in ul for w in ("napisz program", "zbuduj aplikację", "stwórz program", "zbuduj system", "utwórz aplikację")):
+            return IntentResult(action="create", skill="", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
+        
+        if any(w in ul for w in ("napraw", "popraw", "ulepsz", "fix", "repair", "improve")):
+            return IntentResult(action="evolve", skill="", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
 
         # Tier 1: Embedding similarity
         result = self._embedding_classify(user_msg)

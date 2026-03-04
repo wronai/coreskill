@@ -99,4 +99,3 @@ if __name__ == '__main__':
     print("\njson_validator skill tests completed.")
     print(f"get_info(): {get_info()}")
     print(f"health_check(): {health_check()}")
-```

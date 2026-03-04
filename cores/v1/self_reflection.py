@@ -53,6 +53,8 @@ class SelfReflection:
     STALL_THRESHOLD_S = 30  # Czas po którym uznajemy operację za "zawieszoną"
     TIMEOUT_THRESHOLD_S = 60  # Maksymalny czas operacji
     
+    CONSECUTIVE_FAIL_THRESHOLD = 3  # Trigger reflection after N consecutive fails for any skill
+    
     def __init__(self, llm_client, skill_manager, logger: Logger, state: dict):
         self.llm = llm_client
         self.sm = skill_manager
@@ -62,6 +64,10 @@ class SelfReflection:
         self.last_diagnosis: Optional[DiagnosisReport] = None
         self._operation_start_time: Optional[float] = None
         self._current_operation: str = ""
+        # Generic consecutive-failure tracking per skill
+        self._consecutive_failures: Dict[str, int] = {}
+        self._last_reflect_per_skill: Dict[str, float] = {}
+        self._reflect_cooldown = 60  # seconds between auto-reflections per skill
         
     def start_operation(self, operation_name: str):
         """Rozpocznij śledzenie operacji do wykrycia stall/timeout."""
@@ -97,6 +103,45 @@ class SelfReflection:
         self._operation_start_time = None
         self._current_operation = ""
         
+    def record_skill_outcome(self, skill_name: str, success: bool, partial: bool = False,
+                              error: str = "") -> Optional[DiagnosisReport]:
+        """Track consecutive failures for any skill. Returns DiagnosisReport if threshold hit.
+        
+        Call this after every skill execution. After CONSECUTIVE_FAIL_THRESHOLD
+        consecutive non-successes, auto-triggers reflection diagnostic.
+        """
+        if success and not partial:
+            # Reset counter on full success
+            self._consecutive_failures[skill_name] = 0
+            return None
+            
+        # Increment counter
+        count = self._consecutive_failures.get(skill_name, 0) + 1
+        self._consecutive_failures[skill_name] = count
+        
+        if count < self.CONSECUTIVE_FAIL_THRESHOLD:
+            return None
+            
+        # Check cooldown
+        now = time.time()
+        last_reflect = self._last_reflect_per_skill.get(skill_name, 0)
+        if (now - last_reflect) < self._reflect_cooldown:
+            return None
+            
+        # Threshold reached + cooldown expired → auto-reflect
+        self._last_reflect_per_skill[skill_name] = now
+        cpr(C.YELLOW, f"[REFLECT] {count} kolejnych błędów/ciszek dla '{skill_name}' "
+                      f"— uruchamiam autorefleksję...")
+        self.log.core("consecutive_fail_reflect", {
+            "skill": skill_name, "count": count, "error": error[:200]})
+        
+        report = self.run_diagnostic(skill_name, specific_error=error)
+        
+        # Reset counter after reflection (give fresh start)
+        self._consecutive_failures[skill_name] = 0
+        
+        return report
+
     def check_stall(self) -> Optional[ReflectionEvent]:
         """Sprawdź czy bieżąca operacja nie przekroczyła progu stall."""
         if not self._operation_start_time or not self._current_operation:

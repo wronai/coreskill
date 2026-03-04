@@ -1,22 +1,5 @@
 import subprocess
 import sys
-import re
-import urllib.request
-
-def get_info() -> dict:
-    return {
-        "name": "kalkulator",
-        "version": "v1",
-        "description": "Oblicza wyrażenia matematyczne z podanego tekstu.",
-    }
-
-def health_check() -> dict:
-    try:
-        # A simple check to ensure the class is functional by evaluating a basic expression
-        eval("1+1")
-        return {"status": "ok"}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
 
 class Kalkulator:
     def __init__(self):
@@ -24,98 +7,63 @@ class Kalkulator:
 
     def execute(self, params: dict) -> dict:
         try:
-            text = params.get("text", "")
-            if not text:
-                return {"success": False, "error": "No text provided."}
-
-            # Extract mathematical expression from the text
-            # This regex looks for numbers, operators (+, -, *, /, **), parentheses, decimals, and common math functions
-            # It also handles Polish phrases like "policz mi", "ile to"
-            match = re.search(r'(?:policz mi|calculate|what is|ile to)\s+(.*)', text, re.IGNORECASE)
-
-            if not match:
-                return {"success": False, "error": "Could not find a mathematical expression in the text."}
-
-            expression = match.group(1).strip()
-
-            # Basic sanitization to prevent arbitrary code execution.
-            # Allow only numbers, operators, parentheses, decimals, and basic math functions.
-            # This is still not completely safe, but better than a raw eval.
-            allowed_chars_pattern = r'^[\d\.\+\-\*\/\(\)\s\%\^\w]+$'
-            if not re.fullmatch(allowed_chars_pattern, expression):
-                return {"success": False, "error": "Invalid characters or structure in expression."}
-
-            # Replace common Polish number separators if any (e.g., "1.000" to "1000")
-            expression = expression.replace('.', '').replace(',', '.') # Assuming comma is decimal separator if dot is thousands
-
-            # Further sanitization for potentially unsafe function calls
-            # This is a very basic attempt and might miss complex attacks.
-            # A proper AST parser would be ideal but is outside stdlib.
-            if "__" in expression or "import" in expression or "exec" in expression or "eval" in expression:
-                return {"success": False, "error": "Potentially unsafe expression detected."}
+            expression = params.get("expression")
+            if not expression:
+                return {"success": False, "error": "No expression provided."}
 
             # Using eval is generally unsafe, but for a controlled environment like this,
             # and given the constraints of only stdlib, it's the most direct way.
             # In a real-world scenario, a safer parsing library would be preferred.
             result = eval(expression)
-
-            # Format the spoken output to be more natural
-            spoken_result = f"The result is {result}"
-            if isinstance(result, float):
-                spoken_result = f"The result is approximately {result:.2f}"
-
-            return {"success": True, "result": result, "spoken": spoken_result}
-
-        except ZeroDivisionError:
-            return {"success": False, "error": "Division by zero is not allowed.", "spoken": "I cannot divide by zero."}
-        except SyntaxError:
-            return {"success": False, "error": "Invalid mathematical syntax.", "spoken": "I could not understand the mathematical expression."}
-        except NameError as e:
-            # Handle cases where eval might encounter undefined names (e.g., functions not allowed)
-            return {"success": False, "error": f"Invalid expression: {e}", "spoken": f"I could not understand the mathematical expression: {e}"}
+            return {"success": True, "result": result}
         except Exception as e:
-            return {"success": False, "error": str(e), "spoken": f"An error occurred: {e}"}
+            return {"success": False, "error": str(e)}
 
-def execute(params: dict) -> dict:
-    kalkulator_skill = Kalkulator()
-    return kalkulator_skill.execute(params)
+    def get_info(self) -> dict:
+        return {
+            "name": "kalkulator",
+            "version": self.version,
+            "description": "Oblicza wyrażenia matematyczne.",
+            "capabilities": {
+                "math_expressions": True
+            }
+        }
+
+    def health_check(self) -> bool:
+        try:
+            # A simple check to ensure the class is functional
+            subprocess.run([sys.executable, "-c", "print(1+1)"], check=True, capture_output=True)
+            return True
+        except Exception:
+            return False
 
 if __name__ == '__main__':
     kalkulator_skill = Kalkulator()
 
     # Test cases
-    test_texts = [
-        "policz mi 2 + 2",
-        "calculate 10 * 5 - 3",
-        "what is (4 + 6) / 2",
-        "policz mi 2 ** 3",
-        "ile to 10 / 0", # Test division by zero
-        "policz mi invalid expression", # Test invalid syntax
-        "just some text", # Test no expression
-        "policz mi 5 * (3 + 2)",
-        "calculate 10.5 + 2.3",
-        "what is 2 * (3 + 4) / 2",
-        "policz mi 2 + 2 * 3",
-        "ile to 100 / 7",
-        "calculate 1000.50 + 200.75", # Test with potential thousands separator
-        "policz mi 50%", # Test percentage
-        "what is sqrt(9)" # Test unsupported function
+    test_expressions = [
+        {"expression": "2 + 2"},
+        {"expression": "10 * 5 - 3"},
+        {"expression": "(4 + 6) / 2"},
+        {"expression": "2 ** 3"},
+        {"expression": "10 / 0"}, # Test division by zero
+        {"expression": "invalid expression"}, # Test invalid syntax
+        {} # Test missing expression
     ]
 
-    for test_text in test_texts:
-        params = {"text": test_text}
-        print(f"Testing with text: '{test_text}'")
-        result = kalkulator_skill.execute(params)
+    for test_params in test_expressions:
+        print(f"Testing with params: {test_params}")
+        result = kalkulator_skill.execute(test_params)
         print(f"Result: {result}\n")
 
-    print(f"Info: {get_info()}\n")
-    print(f"Health Check: {health_check()}\n")
+    print(f"Info: {kalkulator_skill.get_info()}\n")
+    print(f"Health Check: {kalkulator_skill.health_check()}\n")
 
-    print(f"Module-level execute test:")
-    module_params = {"text": "policz mi 7 * 8"}
-    module_result = execute(module_params)
-    print(f"Result: {module_result}\n")
 
-    print(f"Module-level get_info test: {get_info()}\n")
-    print(f"Module-level health_check test: {health_check()}\n")
-```
+def get_info():
+    return {"name": "kalkulator", "version": "v1", "description": "kalkulator skill"}
+
+
+def health_check():
+    return True
+

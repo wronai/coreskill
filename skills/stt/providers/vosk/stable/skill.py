@@ -26,6 +26,62 @@ class STTSkill:
         self._has_arecord = shutil.which("arecord") is not None
         self._has_ffmpeg = shutil.which("ffmpeg") is not None
         self._has_vosk = shutil.which("vosk-transcriber") is not None
+        self._has_sox = shutil.which("sox") is not None
+
+    def _check_audio_level(self, wav_path: str, min_db: float = -40.0) -> tuple:
+        """Check if audio file has sufficient volume. Returns (has_sound, db_level, message)."""
+        if not Path(wav_path).exists():
+            return False, -999.0, "Audio file not found"
+
+        # Try sox first (most accurate)
+        if self._has_sox:
+            try:
+                result = subprocess.run(
+                    ["sox", wav_path, "-n", "stat"],
+                    capture_output=True, text=True, timeout=10
+                )
+                if result.returncode == 0:
+                    for line in result.stderr.split('\n'):
+                        if 'RMS amplitude' in line:
+                            parts = line.split(':')
+                            if len(parts) >= 2:
+                                try:
+                                    amplitude = float(parts[1].strip())
+                                    if amplitude > 0:
+                                        db = 20 * (amplitude ** 0.5) - 60
+                                        return db > min_db, db, f"RMS: {amplitude:.4f} (~{db:.1f}dB)"
+                                except ValueError:
+                                    pass
+            except Exception:
+                pass
+
+        # Fallback: ffmpeg volumedetect
+        if self._has_ffmpeg:
+            try:
+                result = subprocess.run(
+                    ["ffmpeg", "-i", wav_path, "-af", "volumedetect", "-f", "null", "-"],
+                    capture_output=True, text=True, timeout=10
+                )
+                for line in result.stderr.split('\n'):
+                    if 'mean_volume' in line and 'dB' in line:
+                        try:
+                            db_str = line.split(':')[1].split('dB')[0].strip()
+                            db = float(db_str)
+                            return db > min_db, db, f"Mean volume: {db:.1f}dB"
+                        except (IndexError, ValueError):
+                            pass
+            except Exception:
+                pass
+
+        # Last resort: file size
+        try:
+            size = Path(wav_path).stat().st_size
+            if size < 1000:
+                return False, -999.0, f"File too small ({size}b)"
+        except Exception:
+            pass
+
+        return True, 0.0, "Audio level check inconclusive"
 
     def _record_wav(self, duration_s: int, sample_rate: int = 16000) -> str:
         if not self._has_arecord:
@@ -130,17 +186,40 @@ class STTSkill:
             else:
                 wav_path = self._record_wav(duration_s=duration_s, sample_rate=sample_rate)
 
+            # Check audio level before transcribing
+            has_sound, db_level, level_msg = self._check_audio_level(wav_path)
+
+            if not has_sound:
+                return {
+                    "success": True,
+                    "text": "",
+                    "hardware_ok": True,
+                    "has_sound": False,
+                    "audio_level_db": db_level,
+                    "warning": f"No sound detected ({level_msg}). Check microphone.",
+                    "audio_path": wav_path if input_audio else None,
+                }
+
             result = self._transcribe_vosk(wav_path, lang=lang)
             text = (result.get("text") or "").strip()
 
             return {
                 "success": True,
                 "text": text,
+                "hardware_ok": True,
+                "has_sound": True,
+                "audio_level_db": db_level,
+                "level_info": level_msg,
                 "raw": result,
-                "audio_path": wav_path,
+                "audio_path": wav_path if input_audio else None,
             }
         except Exception as e:
-            return {"success": False, "error": str(e)}
+            return {
+                "success": False,
+                "error": str(e),
+                "hardware_ok": False,
+                "text": "",
+            }
         finally:
             # Only delete recordings we created (not user-provided files)
             try:

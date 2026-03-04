@@ -95,6 +95,13 @@ DEFAULT_TRAINING: List[Tuple[str, str, str]] = [
     ("create skill", "create", ""),
     ("new skill", "create", ""),
     ("build skill", "create", ""),
+    # Program/app creation
+    ("napisz program", "create", ""),
+    ("zbuduj aplikację", "create", ""),
+    ("stwórz program", "create", ""),
+    ("napisz kod", "create", ""),
+    ("zbuduj system", "create", ""),
+    ("utwórz aplikację", "create", ""),
     
     # Echo (test skill)
     ("echo", "use", "echo"),

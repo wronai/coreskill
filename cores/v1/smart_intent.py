@@ -560,6 +560,31 @@ class SmartIntentClassifier:
         """
         self._stats["total"] += 1
 
+        # Stage 0: Fast keyword prefilter (high-confidence only)
+        ul = user_msg.lower()
+        # TTS keywords
+        if any(w in ul for w in ("powiedz", "wypowiedz", "przeczytaj", "mów", "odczytaj", "speak", "say", "read aloud")):
+            return IntentResult(action="use", skill="tts", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
+        # Voice/STT keywords
+        if any(w in ul for w in ("słuchaj", "nagrywaj", "zapisz co mówię", "transkrybuj", "listen", "record", "transcribe")):
+            return IntentResult(action="use", skill="stt", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
+        # Voice mode
+        if any(w in ul for w in ("porozmawiajmy głosowo", "pogadajmy głosem", "włącz tryb głosowy", "voice mode", "let's talk")):
+            return IntentResult(action="use", skill="stt", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
+        # Web search
+        if any(w in ul for w in ("wyszukaj", "szukaj", "znajdź w internecie", "google", "search", "find online", "look up")):
+            return IntentResult(action="use", skill="web_search", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
+        # Shell
+        if any(w in ul for w in ("uruchom", "wykonaj", "bash", "terminal", "run command", "execute")):
+            return IntentResult(action="use", skill="shell", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
+        # Create/evolve
+        if any(w in ul for w in ("stwórz skill", "nowy skill", "create skill", "new skill", "build skill")):
+            return IntentResult(action="create", skill="", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
+        if any(w in ul for w in ("napisz program", "zbuduj aplikację", "stwórz program", "zbuduj system", "utwórz aplikację")):
+            return IntentResult(action="create", skill="", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
+        if any(w in ul for w in ("napraw", "popraw", "ulepsz", "fix", "repair", "improve")):
+            return IntentResult(action="evolve", skill="", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
+
         # Tier 1: Embedding similarity
         result = self._tier1_embedding(user_msg)
         threshold = self._MODE_THRESHOLDS.get(
