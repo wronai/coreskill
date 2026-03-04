@@ -1,0 +1,182 @@
+{
+  "description": "LLM Model Configuration for evo-engine",
+  "version": "1.0",
+  "updated": "2026-03-04",
+  "tiers": {
+    "free": {
+      "description": "OpenRouter free tier models (rate-limited)",
+      "models": [
+        {
+          "id": "openrouter/meta-llama/llama-3.3-70b-instruct:free",
+          "name": "Llama 3.3 70B Instruct",
+          "provider": "meta-llama",
+          "context_length": 128000,
+          "tags": ["coding", "chat", "polish"]
+        },
+        {
+          "id": "openrouter/google/gemma-3-27b-it:free",
+          "name": "Gemma 3 27B IT",
+          "provider": "google",
+          "context_length": 131072,
+          "tags": ["coding", "fast", "polish"]
+        },
+        {
+          "id": "openrouter/mistralai/mistral-small-3.1-24b-instruct:free",
+          "name": "Mistral Small 3.1 24B",
+          "provider": "mistralai",
+          "context_length": 32000,
+          "tags": ["chat", "fast"]
+        },
+        {
+          "id": "openrouter/meta-llama/llama-3.2-3b-instruct:free",
+          "name": "Llama 3.2 3B Instruct",
+          "provider": "meta-llama",
+          "context_length": 131072,
+          "tags": ["fast", "lightweight"]
+        },
+        {
+          "id": "openrouter/openai/gpt-oss-120b:free",
+          "name": "GPT-OSS 120B",
+          "provider": "openai",
+          "context_length": 131072,
+          "tags": ["large", "reasoning"]
+        },
+        {
+          "id": "openrouter/google/gemma-3-12b-it:free",
+          "name": "Gemma 3 12B IT",
+          "provider": "google",
+          "context_length": 131072,
+          "tags": ["balanced", "fast"]
+        },
+        {
+          "id": "openrouter/google/gemma-3-4b-it:free",
+          "name": "Gemma 3 4B IT",
+          "provider": "google",
+          "context_length": 32768,
+          "tags": ["lightweight", "fast"]
+        }
+      ]
+    },
+    "local": {
+      "description": "Ollama local models (always available)",
+      "models": [
+        {
+          "id": "ollama/qwen2.5-coder:14b",
+          "name": "Qwen2.5 Coder 14B",
+          "provider": "qwen",
+          "context_length": 32000,
+          "tags": ["coding", "local"],
+          "preferred": true
+        },
+        {
+          "id": "ollama/mistral:7b-instruct",
+          "name": "Mistral 7B Instruct",
+          "provider": "mistralai",
+          "context_length": 32000,
+          "tags": ["chat", "local"]
+        },
+        {
+          "id": "ollama/qwen2.5-coder:7b-instruct",
+          "name": "Qwen2.5 Coder 7B",
+          "provider": "qwen",
+          "context_length": 32000,
+          "tags": ["coding", "local", "fast"]
+        },
+        {
+          "id": "ollama/llama3.2:latest",
+          "name": "Llama 3.2",
+          "provider": "meta-llama",
+          "context_length": 128000,
+          "tags": ["balanced", "local"]
+        },
+        {
+          "id": "ollama/qwen2.5:3b",
+          "name": "Qwen2.5 3B",
+          "provider": "qwen",
+          "context_length": 32000,
+          "tags": ["lightweight", "local", "fast"]
+        }
+      ]
+    },
+    "paid": {
+      "description": "OpenRouter paid models (last resort)",
+      "models": [
+        {
+          "id": "openrouter/google/gemini-2.5-flash-lite",
+          "name": "Gemini 2.5 Flash Lite",
+          "provider": "google",
+          "context_length": 32000,
+          "tags": ["flash", "lite", "new"],
+          "enabled": true
+        },
+        {
+          "id": "openrouter/qwen/qwen3.5-flash-02-23",
+          "name": "Qwen 3.5 Flash",
+          "provider": "qwen",
+          "context_length": 32000,
+          "tags": ["coding", "flash", "new"],
+          "enabled": true
+        },
+        {
+          "id": "openrouter/xiaomi/mimo-v2-flash",
+          "name": "Xiaomi MiMo V2 Flash",
+          "provider": "xiaomi",
+          "context_length": 32000,
+          "tags": ["flash", "new"],
+          "enabled": true
+        },
+        {
+          "id": "openrouter/openai/gpt-5-nano",
+          "name": "GPT-5 Nano",
+          "provider": "openai",
+          "context_length": 32000,
+          "tags": ["nano", "new"],
+          "enabled": true
+        },
+        {
+          "id": "openrouter/google/gemini-2.0-flash-001",
+          "name": "Gemini 2.0 Flash",
+          "provider": "google",
+          "context_length": 1000000,
+          "tags": ["flash"],
+          "enabled": false,
+          "comment": "commented in PAID_MODELS"
+        },
+        {
+          "id": "openrouter/anthropic/claude-3.5-haiku",
+          "name": "Claude 3.5 Haiku",
+          "provider": "anthropic",
+          "context_length": 200000,
+          "tags": ["quality", "coding"],
+          "enabled": false,
+          "comment": "commented in PAID_MODELS"
+        }
+      ]
+    }
+  },
+  "provider_scores": {
+    "anthropic": 0.98,
+    "openai": 0.95,
+    "google": 0.92,
+    "xiaomi": 0.90,
+    "nvidia": 0.90,
+    "qwen": 0.88,
+    "meta-llama": 0.88,
+    "mistralai": 0.85,
+    "deepseek": 0.82,
+    "microsoft": 0.78,
+    "perplexity": 0.75
+  },
+  "speed_tiers": {
+    "3b": 0.95,
+    "4b": 0.93,
+    "7b": 0.88,
+    "8b": 0.86,
+    "14b": 0.78,
+    "27b": 0.70,
+    "32b": 0.65,
+    "70b": 0.55,
+    "120b": 0.40
+  },
+  "default": "openrouter/meta-llama/llama-3.3-70b-instruct:free"
+}

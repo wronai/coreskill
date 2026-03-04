@@ -1,0 +1,142 @@
+#!/usr/bin/env python3
+"""
+evo-engine config — state management, constants, paths.
+"""
+import os
+import json
+from pathlib import Path
+from datetime import datetime, timezone
+
+ROOT = Path(__file__).resolve().parent.parent.parent
+SKILLS_DIR = ROOT / "skills"
+PIPELINES_DIR = ROOT / "pipelines"
+LOGS_DIR = ROOT / "logs"
+STATE_FILE = ROOT / ".evo_state.json"
+CONFIG_FILE = ROOT / "config" / "models.json"
+MAX_EVO_ITERATIONS = 5
+
+def _load_model_config():
+    """Load model configuration from config/models.json"""
+    if CONFIG_FILE.exists():
+        try:
+            with open(CONFIG_FILE, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"[Config] Error loading {CONFIG_FILE}: {e}")
+    
+    # Fallback defaults
+    return {
+        "tiers": {
+            "free": {"models": [
+                {"id": "openrouter/meta-llama/llama-3.3-70b-instruct:free"},
+                {"id": "openrouter/google/gemma-3-27b-it:free"},
+            ]},
+            "local": {"models": [
+                {"id": "ollama/qwen2.5-coder:14b", "preferred": True},
+                {"id": "ollama/mistral:7b-instruct"},
+            ]},
+            "paid": {"models": []}
+        },
+        "provider_scores": {},
+        "speed_tiers": {},
+        "default": "openrouter/meta-llama/llama-3.3-70b-instruct:free"
+    }
+
+# Load configuration
+_MODEL_CONFIG = _load_model_config()
+
+def get_models_from_tier(tier_name, enabled_only=True):
+    """Get model IDs from a specific tier in JSON config."""
+    tier = _MODEL_CONFIG.get("tiers", {}).get(tier_name, {})
+    models = tier.get("models", [])
+    if enabled_only:
+        models = [m for m in models if m.get("enabled", True)]
+    return [m["id"] for m in models]
+
+# Model lists loaded from JSON
+FREE_MODELS = get_models_from_tier("free")
+LOCAL_PREFERRED = [m["id"] for m in _MODEL_CONFIG["tiers"]["local"]["models"] if m.get("preferred")] or get_models_from_tier("local")
+PAID_MODELS = get_models_from_tier("paid")
+DEFAULT_MODEL = _MODEL_CONFIG.get("default", FREE_MODELS[0] if FREE_MODELS else "openrouter/meta-llama/llama-3.3-70b-instruct:free")
+
+# Backward compat
+MODELS = FREE_MODELS
+
+# Disable local models via environment: EVO_DISABLE_LOCAL=1
+DISABLE_LOCAL_MODELS = os.environ.get("EVO_DISABLE_LOCAL", "").lower() in ("1", "true", "yes")
+
+# ─── Colors ──────────────────────────────────────────────────────────
+class C:
+    R="\033[0m"; BOLD="\033[1m"; DIM="\033[2m"; GREEN="\033[32m"
+    YELLOW="\033[33m"; BLUE="\033[34m"; MAGENTA="\033[35m"; CYAN="\033[36m"; RED="\033[31m"
+
+def cpr(c, m): print(f"{c}{m}{C.R}", flush=True)
+
+# ─── Model Tiers ─────────────────────────────────────────────────────
+TIER_FREE  = "free"       # OpenRouter free models (rate-limited)
+TIER_LOCAL = "local"      # Ollama local models (always available)
+TIER_PAID  = "paid"       # OpenRouter paid models (last resort)
+
+# Fast intent classification — prefer smallest local model
+INTENT_MODEL_MAX_PARAMS = 3.0  # billions, prefer models ≤ this size
+
+# Cooldown durations (seconds)
+COOLDOWN_RATE_LIMIT = 60
+COOLDOWN_TIMEOUT    = 30
+COOLDOWN_SERVER_ERR = 20
+
+# ─── State ───────────────────────────────────────────────────────────
+def load_state():
+    if STATE_FILE.exists():
+        try: return json.loads(STATE_FILE.read_text())
+        except: pass
+    return {}
+
+def save_state(s):
+    """Save state by merging changes into existing file, only overwriting if file is unusable."""
+    # First try to load existing state to preserve other values
+    existing = {}
+    if STATE_FILE.exists():
+        try:
+            existing = json.loads(STATE_FILE.read_text())
+        except (json.JSONDecodeError, IOError):
+            # File exists but is corrupted - will overwrite
+            pass
+    
+    # Merge new values into existing state (shallow merge for nested dicts)
+    merged = existing.copy()
+    for key, value in s.items():
+        if isinstance(value, dict) and key in merged and isinstance(merged[key], dict):
+            # Deep merge for nested dicts like user_memory, model_cooldowns
+            merged[key] = {**merged[key], **value}
+        else:
+            merged[key] = value
+    
+    merged["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    try:
+        STATE_FILE.write_text(json.dumps(merged, indent=2))
+    except IOError as e:
+        print(f"[Config] Warning: Could not save state: {e}")
+
+
+def _parse_models_override(raw):
+    if not raw:
+        return None
+    if isinstance(raw, list):
+        items = [str(x).strip() for x in raw if str(x).strip()]
+        return items or None
+    if isinstance(raw, str):
+        items = [x.strip() for x in raw.split(",") if x.strip()]
+        return items or None
+    return None
+
+
+def get_models_from_config(state):
+    env_models = _parse_models_override(os.environ.get("EVO_MODELS", ""))
+    if env_models:
+        return env_models
+    st_models = _parse_models_override(state.get("models")) if isinstance(state, dict) else None
+    if st_models:
+        return st_models
+    return FREE_MODELS
