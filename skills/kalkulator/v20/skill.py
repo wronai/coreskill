@@ -1,6 +1,8 @@
 import subprocess
 import re
 import sys
+import ast
+import operator
 
 def get_info():
     return {
@@ -12,57 +14,76 @@ def get_info():
 def health_check():
     return {'status': 'ok'}
 
+class SafeExpressionEvaluator:
+    def __init__(self):
+        self.operators = {
+            ast.Add: operator.add,
+            ast.Sub: operator.sub,
+            ast.Mult: operator.mul,
+            ast.Div: operator.truediv,
+            ast.USub: operator.neg
+        }
+
+    def _eval(self, node):
+        if isinstance(node, ast.Num):
+            return node.n
+        elif isinstance(node, ast.BinOp):
+            left = self._eval(node.left)
+            right = self._eval(node.right)
+            op = self.operators.get(type(node.op))
+            if op is None:
+                raise TypeError(f"Unsupported binary operator: {type(node.op).__name__}")
+            if op == operator.truediv and right == 0:
+                raise ZeroDivisionError("division by zero")
+            return op(left, right)
+        elif isinstance(node, ast.UnaryOp):
+            operand = self._eval(node.operand)
+            op = self.operators.get(type(node.op))
+            if op is None:
+                raise TypeError(f"Unsupported unary operator: {type(node.op).__name__}")
+            return op(operand)
+        else:
+            raise TypeError(f"Unsupported AST node type: {type(node).__name__}")
+
+    def evaluate(self, expression):
+        try:
+            tree = ast.parse(expression, mode='eval')
+            # Ensure only allowed nodes are present
+            for node in ast.walk(tree):
+                if not isinstance(node, (ast.Expression, ast.BinOp, ast.UnaryOp, ast.Num, ast.Load, ast.Add, ast.Sub, ast.Mult, ast.Div, ast.USub)):
+                    raise ValueError("Disallowed node type in expression")
+
+            return self._eval(tree.body)
+        except (SyntaxError, ValueError, TypeError, ZeroDivisionError) as e:
+            raise e
+        except Exception as e:
+            raise RuntimeError(f"Unexpected error during evaluation: {e}")
+
+
 class Kalkulator:
     def execute(self, params: dict) -> dict:
         try:
-            expression = params.get('text', '').strip()
-            if not expression:
-                return {'success': False, 'error': 'Brak wyrażenia do obliczenia.', 'spoken': 'Proszę podać wyrażenie do obliczenia.'}
+            text = params.get('text', '').strip()
+            if not text:
+                return {'success': False, 'error': 'Brak wyrażenia do obliczenia.'}
 
-            # Remove whitespace
-            expression = expression.replace(" ", "")
+            # Basic sanitization: remove whitespace
+            expression = text.replace(" ", "")
 
-            # Check for invalid characters: allow digits, +, -, *, /, ., (, )
-            if not re.fullmatch(r'^[0-9+\-*/().]+$', expression):
-                 return {'success': False, 'error': 'Wyrażenie zawiera niedozwolone znaki.', 'spoken': 'Wyrażenie zawiera niedozwolone znaki.'}
+            # More robust sanitization using ast
+            evaluator = SafeExpressionEvaluator()
+            result = evaluator.evaluate(expression)
 
-            # Check for unbalanced parentheses
-            if expression.count('(') != expression.count(')'):
-                return {'success': False, 'error': 'Niezrównoważone nawiasy.', 'spoken': 'Niezrównoważone nawiasy w wyrażeniu.'}
-            
-            # Check for invalid operator placement (basic)
-            # Disallow consecutive operators (except for unary minus handled below)
-            if re.search(r'[+\-*/]{2,}', expression):
-                return {'success': False, 'error': 'Nieprawidłowe rozmieszczenie operatorów.', 'spoken': 'Nieprawidłowe rozmieszczenie operatorów.'}
-            # Disallow operators at the start or end
-            if re.search(r'^[*/]', expression) or re.search(r'[+\-*/]$', expression):
-                return {'success': False, 'error': 'Operator na początku lub końcu wyrażenia.', 'spoken': 'Operator na początku lub końcu wyrażenia.'}
-            # Disallow empty parentheses
-            if re.search(r'\(\)', expression):
-                return {'success': False, 'error': 'Puste nawiasy są niedozwolone.', 'spoken': 'Puste nawiasy są niedozwolone.'}
-            
-            # Handle potential unary minus at the beginning or after an opening parenthesis
-            # Replace leading minus with '0-'
-            if expression.startswith('-'):
-                expression = '0' + expression
-            # Replace minus after an opening parenthesis with '(0-'
-            expression = expression.replace('(-', '(0-')
-
-            # Use eval carefully. The sanitization above aims to reduce risks.
-            # For Python 3, eval is generally safer than in older versions,
-            # but still carries risks if input is not strictly controlled.
-            # The regex and checks above provide a layer of security.
-            result = eval(expression)
-
-            return {'success': True, 'result': str(result), 'spoken': f'Wynik to {str(result)}'}
+            return {'success': True, 'result': str(result)}
 
         except SyntaxError:
-            return {'success': False, 'error': 'Błąd składni w wyrażeniu.', 'spoken': 'Błąd składni w wyrażeniu.'}
+            return {'success': False, 'error': 'Błąd składni w wyrażeniu.'}
         except ZeroDivisionError:
-            return {'success': False, 'error': 'Dzielenie przez zero jest niedozwolone.', 'spoken': 'Dzielenie przez zero jest niedozwolone.'}
+            return {'success': False, 'error': 'Dzielenie przez zero jest niedozwolone.'}
+        except (ValueError, TypeError) as e:
+            return {'success': False, 'error': str(e)}
         except Exception as e:
-            # Catch any other unexpected errors
-            return {'success': False, 'error': f'Wystąpił nieoczekiwany błąd: {str(e)}', 'spoken': f'Wystąpił nieoczekiwany błąd: {str(e)}'}
+            return {'success': False, 'error': f'Wystąpił nieoczekiwany błąd: {str(e)}'}
 
 def execute(params: dict) -> dict:
     kalkulator_skill = Kalkulator()
@@ -92,7 +113,8 @@ if __name__ == '__main__':
         "2 * / 3", # Consecutive operators
         "()", # Empty parentheses
         "5 * (3 + 2) / 5",
-        "100 / (2 * (5 - 5))" # Division by zero within nested parentheses
+        "100 / (2 * (5 - 5))", # Division by zero within nested parentheses
+        "1 + 2 * 3" # Example from user prompt
     ]
 
     for expr in test_expressions:
