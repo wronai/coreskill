@@ -1,3 +1,48 @@
+## [1.0.2] - 2026-03-04
+
+### Summary
+
+feat(docs): Complete documentation, CLI, API testing, and packaging updates
+
+### Features
+
+- feat(cli): Add coreskill CLI with status, logs reset, cache reset commands
+- feat(api): Create openrouter_api_test skill with automatic API key validation
+- feat(llm): Add verbose logging for model selection with API key warnings
+- feat(state): Fix save_state() to merge changes instead of overwriting
+- feat(gitignore): Add models/ to gitignore for large model files
+
+### Documentation
+
+- docs: Complete rewrite of README.md with current features
+- docs: Create architecture.md with system design
+- docs: Create api_reference.md with API documentation
+- docs: Create creating_skills.md with skill development guide
+- docs: Create configuration.md with configuration options
+- docs: Create troubleshooting.md with common issues
+- docs: Create examples/ folder with usage examples
+
+### Packaging
+
+- feat(packaging): Create Python package structure (__init__.py, setup.py, MANIFEST.in)
+- feat(packaging): Add entry points for coreskill CLI
+- feat(packaging): Update requirements.txt with dependencies
+
+### API Key Management
+
+- feat(apikey): Add automatic API key validation on /apikey command
+- feat(apikey): Show detailed status for invalid/rate-limited/payment errors
+- feat(apikey): Prevent saving invalid API keys
+- feat(apikey): Auto-refresh paid models list after successful validation
+
+### Fixes
+
+- fix(state): save_state() now merges changes instead of overwriting entire file
+- fix(gitignore): Add models/ to prevent pushing large model files
+- fix(llm): Add warning when paid models unavailable due to missing API key
+
+---
+
 ## [1.0.1] - 2026-03-03
 
 ### Summary

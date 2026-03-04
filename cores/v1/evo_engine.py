@@ -2,13 +2,17 @@
 """
 evo-engine EvoEngine — evolutionary skill building with diagnosis loop.
 """
-import nfo
+try:
+    import nfo
+    _logged = nfo.logged
+except (ImportError, AttributeError):
+    _logged = lambda cls: cls
 
 from .config import MAX_EVO_ITERATIONS, cpr, C
 from .preflight import EvolutionGuard
 
 
-@nfo.logged
+@_logged
 class EvoEngine:
     """
     Generic evolutionary algorithm:

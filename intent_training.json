@@ -1166,5 +1166,37 @@
   "lang": "pl",
   "source": "correction_var",
   "timestamp": "2026-03-04T08:27:23.763947+00:00"
+ },
+ {
+  "phrase": "test msg",
+  "action": "stt",
+  "skill": "stt",
+  "lang": "pl",
+  "source": "correction",
+  "timestamp": "2026-03-04T08:51:51.650427+00:00"
+ },
+ {
+  "phrase": "msg test",
+  "action": "stt",
+  "skill": "stt",
+  "lang": "pl",
+  "source": "correction_var",
+  "timestamp": "2026-03-04T08:51:51.651111+00:00"
+ },
+ {
+  "phrase": "test intent",
+  "action": "use",
+  "skill": "echo",
+  "lang": "pl",
+  "source": "correction",
+  "timestamp": "2026-03-04T08:52:25.678324+00:00"
+ },
+ {
+  "phrase": "intent test",
+  "action": "use",
+  "skill": "echo",
+  "lang": "pl",
+  "source": "correction_var",
+  "timestamp": "2026-03-04T08:52:25.679532+00:00"
  }
 ]
