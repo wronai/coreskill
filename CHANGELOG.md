@@ -1,3 +1,26 @@
+## [Unreleased]
+
+## [1.0.3] - 2026-03-05
+
+### Test
+- Update tests/manual/test_auto_create_e2e.py
+- Update tests/manual/test_io_slow.py
+- Update tests/manual/test_ml_intent.py
+- Update tests/test_e2e.py
+
+### Other
+- Update skills/kalkulator/v48/Dockerfile
+- Update skills/kalkulator/v48/meta.json
+- Update skills/kalkulator/v48/skill.py
+- Update skills/pound_to_yen_converter/v10/Dockerfile
+- Update skills/pound_to_yen_converter/v10/meta.json
+- Update skills/pound_to_yen_converter/v10/skill.py
+- Update skills/pound_to_yen_converter/v11/Dockerfile
+- Update skills/pound_to_yen_converter/v11/skill.py
+- Update skills/pound_to_yen_converter/v12/Dockerfile
+- Update skills/pound_to_yen_converter/v12/meta.json
+- ... and 1 more files
+
 ## [1.0.2] - 2026-03-05
 
 ### Summary

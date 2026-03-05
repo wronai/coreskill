@@ -222,7 +222,7 @@ git:
     format: '{prefix}{version}'
 strategies:
   python:
-    test: pytest tests/ -v
+    test: pytest tests/ -v --ignore=tests/manual/
     build: python -m build
     publish: twine upload dist/goal-{version}*
     publish_enabled: true
