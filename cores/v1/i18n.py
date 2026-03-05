@@ -723,7 +723,7 @@ _DISTINCTIVE_CHARS: Dict[str, FrozenSet[str]] = {
     "hu": frozenset("őű"),
     "tr": frozenset("ığşç"),
     "is": frozenset("ðþ"),
-    "de": frozenset("ß"),
+    "de": frozenset("ßäöü"),
     "sv": frozenset("åäö"),
     "no": frozenset("åøæ"),
     "da": frozenset("åøæ"),

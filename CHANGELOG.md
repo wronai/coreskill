@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+## [1.0.8] - 2026-03-05
+
+### Other
+- Update cores/v1/i18n.py
+
 ## [1.0.7] - 2026-03-05
 
 ### Test
