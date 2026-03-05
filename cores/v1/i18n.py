@@ -711,26 +711,25 @@ _SCRIPT_TO_LANG: Dict[str, str] = {
 _DISTINCTIVE_CHARS: Dict[str, FrozenSet[str]] = {
     # Cyrillic refinements
     "uk": frozenset("іїєґ"),
-    "be": frozenset("ўі"),
+    "be": frozenset("ў"),
     "bg": frozenset("ъ"),
     "sr": frozenset("ђљњћџ"),
-    
+
     # Latin-script languages
-    "pl": frozenset("ąęłćźżń"),
-    "cs": frozenset("ěřůď"),
-    "sk": frozenset("ľĺŕ"),
+    "pl": frozenset("ąęłćźżńśó"),
+    "cs": frozenset("ěřůďščřžýáíéúóťň"),
+    "sk": frozenset("ľĺŕśťňdz"),
     "ro": frozenset("șțăâî"),
     "hu": frozenset("őű"),
     "tr": frozenset("ığşç"),
     "is": frozenset("ðþ"),
-    "de": frozenset("ßäöü"),
+    "de": frozenset("ß"),
     "sv": frozenset("åäö"),
     "no": frozenset("åøæ"),
     "da": frozenset("åøæ"),
-    "fr": frozenset("çéèêëàù"),
+    "fr": frozenset("ç"),
     "es": frozenset("ñ¿¡"),
-    "pt": frozenset("ãõçáéíóú"),
-    "it": frozenset("àèéìòù"),
+    "pt": frozenset("ãõ"),
 }
 
 _DISTINCTIVE_WORDS: Dict[str, Tuple[str, ...]] = {
@@ -743,6 +742,19 @@ _DISTINCTIVE_WORDS: Dict[str, Tuple[str, ...]] = {
     "nl": ("de", "het", "een", "en", "is", "voor"),
     "pt": ("o", "a", "os", "as", "um", "uma", "é", "para"),
 }
+
+
+def _detect_cyrillic_lang(text: str) -> str:
+    """Detect specific Cyrillic language by distinctive characters.
+    Returns lang code or empty string if no distinctive chars found."""
+    text_lower = text.lower()
+    char_set = set(text_lower)
+    # Check each Cyrillic language's distinctive chars
+    cyrillic_langs = [("uk", "іїєґ"), ("be", "ў"), ("bg", "ъ"), ("sr", "ђљњћџ")]
+    for lang, chars in cyrillic_langs:
+        if any(c in char_set for c in chars):
+            return lang
+    return ""
 
 
 def _detect_by_script(text: str) -> str:
@@ -758,7 +770,13 @@ def _detect_by_script(text: str) -> str:
         return ""
     dominant = max(script_counts, key=lambda k: script_counts[k])
     if script_counts[dominant] > len(text) * 0.1:
-        return _SCRIPT_TO_LANG.get(dominant, "")
+        lang = _SCRIPT_TO_LANG.get(dominant, "")
+        # For Cyrillic, check distinctive chars first before defaulting to Russian
+        if lang == "ru":
+            specific_cyrillic = _detect_cyrillic_lang(text)
+            if specific_cyrillic:
+                return specific_cyrillic
+        return lang
     return ""
 
 
@@ -770,12 +788,12 @@ def _score_by_chars_and_keywords(text: str) -> str:
     for lang, chars in _DISTINCTIVE_CHARS.items():
         match_count = len(char_set.intersection(chars))
         if match_count > 0:
-            distinctiveness = 10 // len(chars)
-            scores[lang] = match_count * distinctiveness
+            # Score: 2 points per distinctive char, minimum 1 point
+            scores[lang] = match_count * max(1, 20 // len(chars))
     words = set(tl.split())
     for lang, keywords in _DISTINCTIVE_WORDS.items():
         if any(kw in words for kw in keywords):
-            scores[lang] = scores.get(lang, 0) + 5
+            scores[lang] = scores.get(lang, 0) + 3
     if scores:
         return max(scores, key=lambda k: scores[k])
     return ""

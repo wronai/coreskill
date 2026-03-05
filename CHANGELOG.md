@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+## [1.0.7] - 2026-03-05
+
+### Test
+- Update tests/test_ui_shortcuts.py
+
+### Other
+- Update cores/v1/i18n.py
+
 ## [1.0.6] - 2026-03-05
 
 ### Test
