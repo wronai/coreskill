@@ -103,105 +103,123 @@ class EvoEngine:
         """Inject SelfReflection instance for stall/timeout detection."""
         self.reflection = reflection
 
+    # ─── Action Dispatch Table ─────────────────────────────────────────
+    def _handle_action_chat(self, user_msg, skills, analysis, goal, inp):
+        """Handle 'chat' action: semantic dedup check → auto-create or chat."""
+        should_create, reason = self.forge.should_create(user_msg, skills)
+        
+        if reason == "chat":
+            return None  # Conversational query — let LLM handle
+            
+        if reason.startswith("reuse:"):
+            reuse_name = reason.split(":", 1)[1]
+            cpr(C.DIM, f"[DEDUP] Reusing '{reuse_name}' instead of creating new skill")
+            return self._execute_with_validation(reuse_name, {"text": user_msg}, user_msg, user_msg)
+            
+        if reason == "budget_exceeded":
+            cpr(C.YELLOW, "[FORGE] Creation budget exceeded — chat only mode")
+            return None
+            
+        # Auto-create new skill
+        new_skill_name = self._generate_skill_name(user_msg)
+        skill_desc = f"Skill odpowiadający na zapytanie: '{user_msg}'. Zadanie: odpowiedzieć na to pytanie. Funkcjonalność: {goal or 'obsługa tego typu zapytań'}"
+        cpr(C.CYAN, f"[AUTO-CREATE] Tworzę skill '{new_skill_name}'...")
+        
+        ok, msg = self.evolve_skill(new_skill_name, skill_desc)
+        if ok:
+            cpr(C.GREEN, f"[AUTO-CREATE] ✓ Skill '{new_skill_name}' stworzony!")
+            return self._execute_with_validation(new_skill_name, {"text": user_msg}, user_msg, user_msg)
+        else:
+            self.forge.record_create_error()
+            cpr(C.YELLOW, f"[AUTO-CREATE] ✗ Nie udało się stworzyć: {msg}")
+            return None
+
+    def _handle_action_use(self, user_msg, skills, analysis, goal, inp):
+        """Handle 'use' action: execute skill with fallback providers."""
+        skill_name = analysis.get("skill")
+        provider = analysis.get("provider")
+        
+        if skill_name and skill_name in skills:
+            result = self._execute_with_validation(skill_name, inp, goal, user_msg, provider=provider)
+            # On failure, try fallback providers
+            if (result and result.get("type") == "failed" and self.provider_chain):
+                fallback = self._try_fallback_providers(skill_name, inp, goal, user_msg)
+                if fallback:
+                    return fallback
+            return result
+            
+        # Skill not found - auto-create it
+        if skill_name:
+            cpr(C.CYAN, f"[EVO] Skill '{skill_name}' not found. Auto-creating...")
+            ok, msg = self.evolve_skill(skill_name, analysis.get("description", user_msg))
+            if ok:
+                return self._execute_with_validation(skill_name, inp, goal, user_msg, provider=provider)
+            return {"type": "evo_failed", "message": msg}
+        return None
+
+    def _handle_action_evolve(self, user_msg, skills, analysis, goal, inp):
+        """Handle 'evolve' action: improve existing skill."""
+        skill_name = analysis.get("skill", "")
+        feedback = analysis.get("feedback", user_msg)
+        
+        if skill_name and skill_name in skills:
+            cpr(C.CYAN, f"[EVO] Evolving '{skill_name}'...")
+            ok, msg = self.sm.smart_evolve(skill_name, feedback, user_msg)
+            if ok:
+                cpr(C.GREEN, f"[EVO] {msg}")
+                return self._execute_with_validation(skill_name, inp, goal, user_msg)
+            return {"type": "evo_failed", "message": msg}
+        return None
+
+    def _handle_action_create(self, user_msg, skills, analysis, goal, inp):
+        """Handle 'create' action: create new skill."""
+        name = analysis.get("name", "").replace(" ", "_").lower()
+        desc = analysis.get("description", user_msg)
+        
+        if not name:
+            return None
+        cpr(C.CYAN, f"[EVO] Auto-creating skill '{name}'...")
+        ok, msg = self.evolve_skill(name, desc)
+        if ok:
+            return self._execute_with_validation(name, inp, goal, user_msg)
+        return {"type": "evo_failed", "message": msg}
+
     def handle_request(self, user_msg, skills, analysis=None):
-        """Full pipeline: analyze → execute/create/evolve → validate. No user prompts."""
+        """Full pipeline: analyze → execute/create/evolve → validate.
+        
+        Refactored: CC=29 → ~12 using dispatch table pattern for actions.
+        """
         if analysis is None:
             analysis = self.llm.analyze_need(user_msg, skills)
         action = analysis.get("action", "chat")
         goal = analysis.get("goal", "")
         inp = analysis.get("input", {})
-        if not isinstance(inp, dict): inp = {}
+        if not isinstance(inp, dict): 
+            inp = {}
 
-        if action == "chat":
-            # SEMANTIC DEDUP: check before creating anything
-            should_create, reason = self.forge.should_create(user_msg, skills)
-
-            if reason == "chat":
-                # Conversational query — let LLM handle directly, no skill
-                return None
-
-            if reason.startswith("reuse:"):
-                # Existing skill can handle this
-                reuse_name = reason.split(":", 1)[1]
-                cpr(C.DIM, f"[DEDUP] Reusing '{reuse_name}' instead of creating new skill")
-                inp = {"text": user_msg}
-                return self._execute_with_validation(
-                    reuse_name, inp, user_msg, user_msg)
-
-            if reason == "budget_exceeded":
-                cpr(C.YELLOW, "[FORGE] Creation budget exceeded — chat only mode")
-                return None
-
-            # reason == "new_skill_needed" — proceed with creation
-            new_skill_name = self._generate_skill_name(user_msg)
-            skill_desc = f"Skill odpowiadający na zapytanie: '{user_msg}'. " \
-                          f"Zadanie: odpowiedzieć na to pytanie/potrzebę użytkownika. " \
-                          f"Funkcjonalność: {goal or 'obsługa tego typu zapytań'}"
-
-            cpr(C.CYAN, f"[AUTO-CREATE] Tworzę skill '{new_skill_name}'...")
-
-            ok, msg = self.evolve_skill(new_skill_name, skill_desc)
-            if ok:
-                cpr(C.GREEN, f"[AUTO-CREATE] ✓ Skill '{new_skill_name}' stworzony!")
-                inp = {"text": user_msg}
-                return self._execute_with_validation(new_skill_name, inp, user_msg, user_msg)
-            else:
-                self.forge.record_create_error()
-                cpr(C.YELLOW, f"[AUTO-CREATE] ✗ Nie udało się stworzyć: {msg}")
-                return None  # Fallback to normal chat if creation fails
-
-        # Check if we should trigger auto-reflection before proceeding
+        # Pre-reflection check
         if self.failure_tracker.should_reflect() and self.reflection:
             self._run_auto_reflection("pre_request")
 
+        # Log intent
         skill_or_name = analysis.get('skill', analysis.get('name', '?'))
         cpr(C.DIM, f"[PIPE] Intent: {action} → {skill_or_name} | goal: {goal[:60]}")
         self.log.core("pipeline_intent", {"action": action, "skill": skill_or_name, "goal": goal})
 
-        if action == "use":
-            skill_name = analysis.get("skill")
-            provider = analysis.get("provider")  # Get provider from analysis if specified
-            if skill_name and skill_name in skills:
-                result = self._execute_with_validation(
-                    skill_name, inp, goal, user_msg, provider=provider)
-                # On failure, try fallback providers
-                if (result and result.get("type") == "failed"
-                        and self.provider_chain):
-                    fallback = self._try_fallback_providers(
-                        skill_name, inp, goal, user_msg)
-                    if fallback:
-                        return fallback
+        # Dispatch to handler via lookup table
+        dispatch = {
+            "chat": self._handle_action_chat,
+            "use": self._handle_action_use,
+            "evolve": self._handle_action_evolve,
+            "create": self._handle_action_create,
+        }
+        
+        handler = dispatch.get(action)
+        if handler:
+            result = handler(user_msg, skills, analysis, goal, inp)
+            if result is not None:
                 return result
-            # Skill not found - auto-create it
-            if skill_name:
-                cpr(C.CYAN, f"[EVO] Skill '{skill_name}' not found. Auto-creating...")
-                ok, msg = self.evolve_skill(skill_name, analysis.get("description", user_msg))
-                if ok:
-                    return self._execute_with_validation(skill_name, inp, goal, user_msg, provider=provider)
-                return {"type": "evo_failed", "message": msg}
-
-        if action == "evolve":
-            skill_name = analysis.get("skill", "")
-            feedback = analysis.get("feedback", user_msg)
-            if skill_name and skill_name in skills:
-                cpr(C.CYAN, f"[EVO] Evolving '{skill_name}'...")
-                ok, msg = self.sm.smart_evolve(skill_name, feedback, user_msg)
-                if ok:
-                    cpr(C.GREEN, f"[EVO] {msg}")
-                    return self._execute_with_validation(skill_name, inp, goal, user_msg)
-                return {"type": "evo_failed", "message": msg}
-
-        if action == "create":
-            name = analysis.get("name", "").replace(" ", "_").lower()
-            desc = analysis.get("description", user_msg)
-            if not name:
-                return None
-            cpr(C.CYAN, f"[EVO] Auto-creating skill '{name}'...")
-            ok, msg = self.evolve_skill(name, desc)
-            if ok:
-                return self._execute_with_validation(name, inp, goal, user_msg)
-            return {"type": "evo_failed", "message": msg}
-
+        
         # Track unhandled — no action taken for non-chat request
         self.failure_tracker.record_unhandled(user_msg, analysis)
         if self.failure_tracker.should_reflect() and self.reflection:

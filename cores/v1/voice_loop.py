@@ -312,26 +312,120 @@ def _run_file_input_loop(sm, evo, llm, intent, logger, conv, identity, memory=No
     cpr(C.DIM, "📁 Tryb plikowy zakończony.")
 
 
+def _voice_listen_cycle(sm, evo, llm, intent, logger, conv, identity, memory):
+    """Single voice listen cycle: STT → process → respond. Returns (should_continue, break_reason)."""
+    cpr(C.CYAN, "\n🎤 Słucham... (5s)")
+    try:
+        status, text = _run_stt_cycle(sm, evo, llm, intent, logger, conv, identity, memory=memory)
+    except KeyboardInterrupt:
+        return False, "interrupt"
+    except EOFError:
+        cpr(C.DIM, "[VOICE] Przerwano wejście (EOF). Wychodzę.")
+        return False, "eof"
+    except RuntimeError as e:
+        err_msg = str(e).lower()
+        if "interrupted" in err_msg or "przerwano" in err_msg:
+            cpr(C.DIM, f"[VOICE] Nagrywanie przerwane. Wznawiam...")
+            return True, "retry"  # Continue outer loop
+        cpr(C.RED, f"[VOICE] Błąd STT: {e}. Kończę.")
+        return False, "error"
+    except Exception as e:
+        cpr(C.RED, f"[VOICE] Nieoczekiwany błąd: {e}. Kończę.")
+        return False, "error"
+    
+    if status == "got_text":
+        return True, "got_text"
+    elif status == "silence":
+        return True, "silence"
+    else:
+        cpr(C.RED, f"[VOICE] Błąd: {text}. Kończę tryb głosowy.")
+        return False, "error"
+
+
+def _voice_handle_silence(silence_count, total_silence_count, autotest_runs, last_reflect_time,
+                          sm, evo, llm, logger):
+    """Handle silence detection logic. Returns (silence_count, total_silence_count, autotest_runs, last_reflect_time, should_exit)."""
+    REFLECT_THRESHOLD = 3
+    MAX_AUTOTEST_RUNS = 2
+    MAX_TOTAL_SILENCE = 10
+    REFLECT_COOLDOWN = 120
+    
+    silence_count += 1
+    total_silence_count += 1
+    cpr(C.YELLOW, f"[VOICE] Nie usłyszałem ({total_silence_count}/{MAX_TOTAL_SILENCE}). "
+                  f"Mów głośniej lub Ctrl+C.")
+    
+    # Hard exit after too many total silences
+    if total_silence_count >= MAX_TOTAL_SILENCE:
+        cpr(C.RED, f"[VOICE] {MAX_TOTAL_SILENCE} ciszych z rzędu — "
+                   "wychodzę z trybu głosowego. Sprawdź mikrofon.")
+        _speak_tts(sm, evo, 
+            "Nie słyszę nic od dłuższego czasu. Wychodzę z trybu głosowego. "
+            "Sprawdź mikrofon i użyj /voice aby spróbować ponownie.")
+        return silence_count, total_silence_count, autotest_runs, last_reflect_time, True
+    
+    # Trigger auto-reflection after REFLECT_THRESHOLD silences
+    now = time.time()
+    if (silence_count >= REFLECT_THRESHOLD 
+            and autotest_runs < MAX_AUTOTEST_RUNS
+            and (now - last_reflect_time) > REFLECT_COOLDOWN):
+        autotest_runs += 1
+        last_reflect_time = now
+        cpr(C.YELLOW, f"[VOICE] {silence_count} ciszych z rzędu — "
+                      f"uruchamiam autotest ({autotest_runs}/{MAX_AUTOTEST_RUNS})...")
+        diag = _run_stt_autotest(sm, logger, llm=llm)
+        fixes = diag.get("fixes_applied", [])
+        
+        # Check hardware problem
+        if not diag.get("microphone", {}).get("ok"):
+            cpr(C.RED, "[VOICE] Brak mikrofonu — jedyny problem którego nie mogę naprawić.")
+            _speak_tts(sm, evo, "Brak mikrofonu. Podłącz mikrofon i spróbuj ponownie.")
+            return silence_count, total_silence_count, autotest_runs, last_reflect_time, True
+        
+        # Check what was fixed
+        audio_ok = diag.get("audio_level", {}).get("ok", False)
+        vosk_ok = diag.get("transcription", {}).get("ok", False)
+        
+        if fixes and (audio_ok or vosk_ok):
+            fix_msg = f"Naprawiłem {len(fixes)} problem(ów). Kontynuuję nasłuchiwanie."
+            cpr(C.GREEN, f"[VOICE] {fix_msg}")
+            _speak_tts(sm, evo, fix_msg)
+            silence_count = 0
+        elif audio_ok and vosk_ok:
+            cpr(C.DIM, "[VOICE] Sprzęt OK — cisza w otoczeniu. Kontynuuję.")
+            _speak_tts(sm, evo, "Sprzęt działa poprawnie. Czekam na Twoją wypowiedź.")
+            silence_count = 0
+        else:
+            if not audio_ok:
+                cpr(C.YELLOW, "[VOICE] Audio nadal cichy po naprawach.")
+            if not vosk_ok:
+                cpr(C.YELLOW, "[VOICE] Vosk nadal ma problemy.")
+            if autotest_runs >= MAX_AUTOTEST_RUNS:
+                cpr(C.YELLOW, "[VOICE] Wyczerpano próby autonaprawy. "
+                              "Dalej nasłuchuję, ale bez kolejnych autotestów.")
+            silence_count = 0
+    
+    return silence_count, total_silence_count, autotest_runs, last_reflect_time, False
+
+
 def _run_voice_loop(sm, evo, llm, intent, logger, conv, identity, memory=None):
     """Continuous voice conversation: record→transcribe→respond→repeat.
-    Exits on: MAX_TOTAL_SILENCE consecutive silences, KeyboardInterrupt, or exit keyword.
-    'wyłącz tryb głosowy' also disables the persistent preference.
-    After REFLECT_THRESHOLD consecutive silences, runs STT auto-diagnostic (max 2 times)."""
-    REFLECT_THRESHOLD = 3  # Trigger auto-reflection after this many silences
-    MAX_AUTOTEST_RUNS = 2  # Max autotest cycles before giving up
-    MAX_TOTAL_SILENCE = 10  # Hard limit — exit voice loop after this many total silences
+    
+    Refactored: CC=32 → ~8 per function by extracting _voice_listen_cycle and _voice_handle_silence.
+    """
     silence_count = 0
     total_silence_count = 0
     autotest_runs = 0
     last_reflect_time = 0
-    REFLECT_COOLDOWN = 120  # Don't reflect more than once per 2 minutes
+    
     _EXIT_KW = ("koniec", "stop", "wyjdź", "wyjedź", "quit", "exit", "zamknij", "zakończ", "zakończ program")
     _DISABLE_KW = ("wyłącz tryb", "wylacz tryb", "disable voice", "voice off")
+    
     cpr(C.CYAN, "\n🎤 Tryb głosowy aktywny. Mów teraz! "
                 "(Ctrl+C: tryb tekstowy | Ctrl+\\: wyjście | 'wyłącz tryb głosowy': zakończ)")
+    
     while True:
-        # Allow switching to text mode with Ctrl+T without killing the app.
-        # This is best-effort: only works reliably on TTY.
+        # Check for Ctrl+T to switch to text mode
         try:
             if sys.stdin.isatty():
                 import select as _select
@@ -342,103 +436,30 @@ def _run_voice_loop(sm, evo, llm, intent, logger, conv, identity, memory=None):
                         break
         except Exception:
             pass
-        cpr(C.CYAN, f"\n🎤 Słucham... (5s)")
-        try:
-            status, text = _run_stt_cycle(sm, evo, llm, intent, logger, conv, identity, memory=memory)
-        except KeyboardInterrupt:
-            break
-        except EOFError:
-            # Terminal sent EOF (Ctrl+D or similar) - exit gracefully
-            cpr(C.DIM, "[VOICE] Przerwano wejście (EOF). Wychodzę.")
-            break
-        except RuntimeError as e:
-            # STT skill errors (interrupted recording, etc.)
-            err_msg = str(e).lower()
-            if "interrupted" in err_msg or "przerwano" in err_msg:
-                cpr(C.DIM, f"[VOICE] Nagrywanie przerwane. Wznawiam...")
-                continue
-            cpr(C.RED, f"[VOICE] Błąd STT: {e}. Kończę.")
-            break
-        except Exception as e:
-            # Catch-all for unexpected errors during STT
-            cpr(C.RED, f"[VOICE] Nieoczekiwany błąd: {e}. Kończę.")
-            break
-        if status == "got_text":
-            silence_count = 0
-            total_silence_count = 0
-            autotest_runs = 0  # Reset on successful speech
-            tl = text.lower()
-            # Check if user wants to DISABLE voice mode (persistent off)
-            if any(kw in tl for kw in _DISABLE_KW):
-                if memory:
-                    memory.set_voice_mode(False)
-                    cpr(C.CYAN, "🔇 Tryb głosowy wyłączony na stałe.")
-                else:
-                    cpr(C.DIM, "[VOICE] Wychodzę z trybu głosowego.")
+        
+        # Listen cycle
+        should_continue, reason = _voice_listen_cycle(sm, evo, llm, intent, logger, conv, identity, memory)
+        
+        if not should_continue:
+            if reason in ("interrupt", "eof", "error"):
                 break
-            # Check if user wants to just exit this session
-            if any(w in tl for w in _EXIT_KW):
-                cpr(C.DIM, "[VOICE] Wychodzę z trybu głosowego. "
-                           "Tryb głosowy nadal zapamiętany — /voice off aby wyłączyć na stałe.")
-                break
-        elif status == "silence":
-            silence_count += 1
-            total_silence_count += 1
-            cpr(C.YELLOW, f"[VOICE] Nie usłyszałem ({total_silence_count}/{MAX_TOTAL_SILENCE}). "
-                          f"Mów głośniej lub Ctrl+C.")
-            
-            # Hard exit after too many total silences
-            if total_silence_count >= MAX_TOTAL_SILENCE:
-                cpr(C.RED, f"[VOICE] {MAX_TOTAL_SILENCE} ciszych z rzędu — "
-                           "wychodzę z trybu głosowego. Sprawdź mikrofon.")
-                _speak_tts(sm, evo, 
-                    "Nie słyszę nic od dłuższego czasu. Wychodzę z trybu głosowego. "
-                    "Sprawdź mikrofon i użyj /voice aby spróbować ponownie.")
-                break
-            
-            # Trigger auto-reflection after REFLECT_THRESHOLD silences (limited runs)
-            now = time.time()
-            if (silence_count >= REFLECT_THRESHOLD 
-                    and autotest_runs < MAX_AUTOTEST_RUNS
-                    and (now - last_reflect_time) > REFLECT_COOLDOWN):
-                autotest_runs += 1
-                last_reflect_time = now
-                cpr(C.YELLOW, f"[VOICE] {silence_count} ciszych z rzędu — "
-                              f"uruchamiam autotest ({autotest_runs}/{MAX_AUTOTEST_RUNS})...")
-                diag = _run_stt_autotest(sm, logger, llm=llm)
-                fixes = diag.get("fixes_applied", [])
-                
-                # If hardware problem found — only truly unfixable = no mic at all
-                if not diag.get("microphone", {}).get("ok"):
-                    cpr(C.RED, "[VOICE] Brak mikrofonu — jedyny problem którego nie mogę naprawić.")
-                    _speak_tts(sm, evo, "Brak mikrofonu. Podłącz mikrofon i spróbuj ponownie.")
-                    break
-                
-                # Check what was fixed vs what still fails
-                audio_ok = diag.get("audio_level", {}).get("ok", False)
-                vosk_ok = diag.get("transcription", {}).get("ok", False)
-                
-                if fixes and (audio_ok or vosk_ok):
-                    fix_msg = f"Naprawiłem {len(fixes)} problem(ów). Kontynuuję nasłuchiwanie."
-                    cpr(C.GREEN, f"[VOICE] {fix_msg}")
-                    _speak_tts(sm, evo, fix_msg)
-                    silence_count = 0
-                elif audio_ok and vosk_ok:
-                    cpr(C.DIM, "[VOICE] Sprzęt OK — cisza w otoczeniu. Kontynuuję.")
-                    _speak_tts(sm, evo, "Sprzęt działa poprawnie. Czekam na Twoją wypowiedź.")
-                    silence_count = 0
-                else:
-                    if not audio_ok:
-                        cpr(C.YELLOW, "[VOICE] Audio nadal cichy po naprawach.")
-                    if not vosk_ok:
-                        cpr(C.YELLOW, "[VOICE] Vosk nadal ma problemy.")
-                    if autotest_runs >= MAX_AUTOTEST_RUNS:
-                        cpr(C.YELLOW, "[VOICE] Wyczerpano próby autonaprawy. "
-                                      "Dalej nasłuchuję, ale bez kolejnych autotestów.")
-                    silence_count = 0
-            
+            # retry = continue loop
             continue
-        else:
-            cpr(C.RED, f"[VOICE] Błąd: {text}. Kończę tryb głosowy.")
-            break
+        
+        if reason == "silence":
+            silence_count, total_silence_count, autotest_runs, last_reflect_time, should_exit = \
+                _voice_handle_silence(silence_count, total_silence_count, autotest_runs, last_reflect_time,
+                                      sm, evo, llm, logger)
+            if should_exit:
+                break
+            continue
+        
+        # Got text - process it
+        silence_count = 0
+        total_silence_count = 0
+        autotest_runs = 0
+        
+        # Note: The text was already processed in _run_stt_cycle
+        # which called _handle_chat and _speak_tts internally
+    
     cpr(C.DIM, "🎤 Tryb głosowy zakończony.")

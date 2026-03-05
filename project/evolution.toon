@@ -1,13 +1,13 @@
-# code2llm/evolution | 1720 func | 166f | 2026-03-05
+# code2llm/evolution | 1627 func | 161f | 2026-03-05
 
 NEXT[10] (ranked by impact):
-  [1] !! SPLIT           cores/v1/core.py
-      WHY: 1973L, 0 classes, max CC=23
-      EFFORT: ~4h  IMPACT: 45379
+  [1] !! SPLIT           skills/openrouter_automation/v1/skill.py
+      WHY: 909L, 1 classes, max CC=26
+      EFFORT: ~4h  IMPACT: 23634
 
   [2] !! SPLIT           cores/v1/evo_engine.py
-      WHY: 965L, 2 classes, max CC=29
-      EFFORT: ~4h  IMPACT: 27985
+      WHY: 983L, 2 classes, max CC=21
+      EFFORT: ~4h  IMPACT: 20643
 
   [3] !! SPLIT-FUNC      main  CC=74  fan=55
       WHY: CC=74 exceeds 15
@@ -25,34 +25,34 @@ NEXT[10] (ranked by impact):
       WHY: CC=28 exceeds 15
       EFFORT: ~1h  IMPACT: 644
 
-  [7] !! SPLIT-FUNC      EvoEngine.handle_request  CC=29  fan=20
-      WHY: CC=29 exceeds 15
-      EFFORT: ~1h  IMPACT: 580
+  [7] !! SPLIT-FUNC      OpenRouterAutomationSkill._get_browser_profiles  CC=26  fan=24
+      WHY: CC=26 exceeds 15
+      EFFORT: ~1h  IMPACT: 624
 
   [8] !  SPLIT-FUNC      _run_file_input_loop  CC=24  fan=24
       WHY: CC=24 exceeds 15
       EFFORT: ~1h  IMPACT: 576
 
-  [9] !! SPLIT-FUNC      SmartIntentClassifier.classify  CC=35  fan=15
+  [9] !  SPLIT-FUNC      OpenRouterAutomationSkill.get_api_key_from_session  CC=21  fan=27
+      WHY: CC=21 exceeds 15
+      EFFORT: ~1h  IMPACT: 567
+
+  [10] !! SPLIT-FUNC      SmartIntentClassifier.classify  CC=35  fan=15
       WHY: CC=35 exceeds 15
       EFFORT: ~1h  IMPACT: 525
-
-  [10] !! SPLIT-FUNC      SystemIdentity.build_system_prompt  CC=26  fan=20
-      WHY: CC=26 exceeds 15
-      EFFORT: ~1h  IMPACT: 520
 
 
 RISKS[3]:
   ⚠ Splitting tests/test_e2e.py may break 0 import paths
-  ⚠ Splitting cores/v1/core.py may break 69 import paths
-  ⚠ Splitting cores/v1/evo_engine.py may break 23 import paths
+  ⚠ Splitting cores/v1/evo_engine.py may break 27 import paths
+  ⚠ Splitting skills/openrouter_automation/v1/skill.py may break 24 import paths
 
 METRICS-TARGET:
   CC̄:          4.8 → ≤3.4
   max-CC:      74 → ≤20
-  god-modules: 25 → 0
-  high-CC(≥15): 85 → ≤42
+  god-modules: 24 → 0
+  high-CC(≥15): 79 → ≤39
   hub-types:   0 → ≤0
 
 HISTORY:
-  prev CC̄=4.8 → now CC̄=4.8
+  prev CC̄=4.9 → now CC̄=4.8

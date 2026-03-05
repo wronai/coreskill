@@ -59,4 +59,3 @@ if __name__ == '__main__':
     test_params_multiple_punctuation = {'text': 'Hello... World!! How are you??'}
     result_multiple_punctuation = execute(test_params_multiple_punctuation)
     print(f"Test Result (multiple punctuation): {result_multiple_punctuation}")
-```

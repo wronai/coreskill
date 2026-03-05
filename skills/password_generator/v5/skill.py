@@ -93,4 +93,3 @@ if __name__ == '__main__':
     assert len(result6['password']) == 12
 
     print("\nAll tests passed!")
-```

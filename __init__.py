@@ -3,7 +3,7 @@
 CoreSkill - Ewolucyjny system AI z ewoluującymi skillami
 """
 
-__version__ = "1.0.3"
+__version__ = "1.0.4"
 
 # Re-export core components for easy access
 from .cores.v1.config import load_state, save_state

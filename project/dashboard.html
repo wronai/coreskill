@@ -61,12 +61,12 @@
 
 <div class="grid">
   <div class="card"><div class="value">4.8</div><div class="label">Avg CC</div></div>
-  <div class="card"><div class="value">211</div><div class="label">Critical (CC≥10)</div></div>
-  <div class="card"><div class="value">1696</div><div class="label">Functions</div></div>
-  <div class="card"><div class="value">209</div><div class="label">Classes</div></div>
-  <div class="card"><div class="value">154</div><div class="label">Files</div></div>
-  <div class="card"><div class="value">51918</div><div class="label">Lines</div></div>
-  <div class="card"><div class="value">32</div><div class="label">Duplicates</div></div>
+  <div class="card"><div class="value">201</div><div class="label">Critical (CC≥10)</div></div>
+  <div class="card"><div class="value">1601</div><div class="label">Functions</div></div>
+  <div class="card"><div class="value">195</div><div class="label">Classes</div></div>
+  <div class="card"><div class="value">148</div><div class="label">Files</div></div>
+  <div class="card"><div class="value">48625</div><div class="label">Lines</div></div>
+  <div class="card"><div class="value">23</div><div class="label">Duplicates</div></div>
   <div class="card"><div class="value">0</div><div class="label">Cycles</div></div>
 </div>
 
@@ -75,8 +75,8 @@
     <h2 style="border:none;margin:0 0 .5rem;">Evolution (2026-03-05)</h2>
     <div class="evo-cards">
       <div class="card"><div class="value">4.8</div><div class="label">CC̄ →</div></div>
-      <div class="card"><div class="value">211</div><div class="label">Critical →</div></div>
-      <div class="card"><div class="value">51918</div><div class="label">Lines</div></div>
+      <div class="card"><div class="value">201</div><div class="label">Critical →</div></div>
+      <div class="card"><div class="value">48625</div><div class="label">Lines</div></div>
     </div>
     <p class="trend" style="margin-top:.5rem;">Run analysis multiple times to build a trend chart (≥3 data points needed).</p>
   </div>
@@ -100,16 +100,9 @@
             </tr>
             <tr class="critical">
                 <td><span class="badge critical">critical</span></td>
-                <td>detect_language</td>
-                <td>cc_exceeded</td>
-                <td>64</td>
-                <td>15</td>
-            </tr>
-            <tr class="critical">
-                <td><span class="badge critical">critical</span></td>
-                <td>_boot</td>
+                <td>boot</td>
                 <td>high_fan_out</td>
-                <td>60</td>
+                <td>61</td>
                 <td>10</td>
             </tr>
             <tr class="critical">
@@ -142,13 +135,6 @@
             </tr>
             <tr class="critical">
                 <td><span class="badge critical">critical</span></td>
-                <td>_run_voice_loop</td>
-                <td>cc_exceeded</td>
-                <td>32</td>
-                <td>15</td>
-            </tr>
-            <tr class="critical">
-                <td><span class="badge critical">critical</span></td>
                 <td>websocket_chat</td>
                 <td>high_fan_out</td>
                 <td>32</td>
@@ -170,13 +156,6 @@
             </tr>
             <tr class="critical">
                 <td><span class="badge critical">critical</span></td>
-                <td>EvoEngine.handle_request</td>
-                <td>cc_exceeded</td>
-                <td>29</td>
-                <td>15</td>
-            </tr>
-            <tr class="critical">
-                <td><span class="badge critical">critical</span></td>
                 <td>SelfReflection.run_diagnostic</td>
                 <td>cc_exceeded</td>
                 <td>28</td>
@@ -191,10 +170,31 @@
             </tr>
             <tr class="critical">
                 <td><span class="badge critical">critical</span></td>
-                <td>websocket_chat</td>
+                <td>OpenRouterAutomationSkill.get_api_key_from_session</td>
                 <td>high_fan_out</td>
                 <td>27</td>
                 <td>10</td>
+            </tr>
+            <tr class="critical">
+                <td><span class="badge critical">critical</span></td>
+                <td>ResourceMonitor.can_run</td>
+                <td>cc_exceeded</td>
+                <td>26</td>
+                <td>15</td>
+            </tr>
+            <tr class="critical">
+                <td><span class="badge critical">critical</span></td>
+                <td>SystemIdentity.build_system_prompt</td>
+                <td>cc_exceeded</td>
+                <td>26</td>
+                <td>15</td>
+            </tr>
+            <tr class="critical">
+                <td><span class="badge critical">critical</span></td>
+                <td>OpenRouterAutomationSkill._get_browser_profiles</td>
+                <td>cc_exceeded</td>
+                <td>26</td>
+                <td>15</td>
             </tr></tbody>
 </table>
 </div></div>
@@ -207,8 +207,8 @@
   <thead><tr><th>Function</th><th>Fan-out</th><th>Note</th></tr></thead>
   <tbody>
             <tr>
-                <td><strong>_boot</strong></td>
-                <td>60</td>
+                <td><strong>boot</strong></td>
+                <td>61</td>
                 <td>Initialize all components. Returns (cmd_ctx, conv, memory) tuple.</td>
             </tr>
             <tr>
@@ -232,9 +232,11 @@
                 <td>Run complete benchmark suite.</td>
             </tr>
             <tr>
-                <td><strong>websocket_chat</strong></td>
+                <td><strong>OpenRouterAutomationSkill.get_api_key_from_session</strong></td>
                 <td>27</td>
-                <td>Orchestrates 27 calls</td>
+                <td>Copy API key from existing browser session (user already logged in).
+
+Uses nlp2c</td>
             </tr>
             <tr>
                 <td><strong>SelfReflection.run_diagnostic</strong></td>
@@ -253,9 +255,9 @@
 Use</td>
             </tr>
             <tr>
-                <td><strong>SkillManager.exec_skill</strong></td>
-                <td>23</td>
-                <td>Orchestrates 23 calls</td>
+                <td><strong>OpenRouterAutomationSkill._get_browser_profiles</strong></td>
+                <td>24</td>
+                <td>Find available browser profiles with saved sessions.</td>
             </tr></tbody>
 </table>
 </div></div>
@@ -269,61 +271,61 @@ Use</td>
   <tbody>
             <tr>
                 <td>1</td>
-                <td>Split detect_language (CC=64 → target CC<10)</td>
-                <td><span class="badge high">high</span></td>
-                <td>low</td>
-            </tr>
-            <tr>
-                <td>2</td>
                 <td>Split ResourceMonitor.can_run (CC=26 → target CC<10)</td>
                 <td><span class="badge high">high</span></td>
                 <td>low</td>
             </tr>
             <tr>
-                <td>3</td>
+                <td>2</td>
                 <td>Split SelfReflection.run_diagnostic (CC=28 → target CC<10)</td>
                 <td><span class="badge high">high</span></td>
                 <td>low</td>
             </tr>
             <tr>
-                <td>4</td>
-                <td>Split _run_voice_loop (CC=32 → target CC<10)</td>
-                <td><span class="badge high">high</span></td>
-                <td>low</td>
-            </tr>
-            <tr>
-                <td>5</td>
-                <td>Split SystemIdentity.build_system_prompt (CC=26 → target CC<10)</td>
-                <td><span class="badge high">high</span></td>
-                <td>low</td>
-            </tr>
-            <tr>
-                <td>6</td>
+                <td>3</td>
                 <td>Split AutoRepair._diagnose_skill (CC=30 → target CC<10)</td>
                 <td><span class="badge high">high</span></td>
                 <td>low</td>
             </tr>
             <tr>
-                <td>7</td>
-                <td>Split EvoEngine.handle_request (CC=29 → target CC<10)</td>
+                <td>4</td>
+                <td>Split SystemIdentity.build_system_prompt (CC=26 → target CC<10)</td>
                 <td><span class="badge high">high</span></td>
                 <td>low</td>
             </tr>
             <tr>
-                <td>8</td>
+                <td>5</td>
                 <td>Split SkillPreflight.auto_fix_imports (CC=25 → target CC<10)</td>
                 <td><span class="badge high">high</span></td>
                 <td>low</td>
             </tr>
             <tr>
-                <td>9</td>
+                <td>6</td>
                 <td>Split SmartIntentClassifier.classify (CC=35 → target CC<10)</td>
                 <td><span class="badge high">high</span></td>
                 <td>low</td>
             </tr>
             <tr>
-                <td>10</td>
+                <td>7</td>
+                <td>Split OpenRouterAutomationSkill._get_browser_profiles (CC=26 → target CC<10)</td>
+                <td><span class="badge high">high</span></td>
+                <td>low</td>
+            </tr>
+            <tr>
+                <td>8</td>
+                <td>Split ShellSkill.execute (CC=28 → target CC<10)</td>
+                <td><span class="badge high">high</span></td>
+                <td>low</td>
+            </tr>
+            <tr>
+                <td>9</td>
                 <td>Split main (CC=74 → target CC<10)</td>
+                <td><span class="badge high">high</span></td>
+                <td>low</td>
+            </tr>
+            <tr>
+                <td>10</td>
+                <td>Split BenchmarkSkill.execute (CC=26 → target CC<10)</td>
                 <td><span class="badge high">high</span></td>
                 <td>low</td>
             </tr></tbody>
@@ -332,7 +334,7 @@ Use</td>
 </div>
 </div>
 
-<footer>Generated by code2llm on 2026-03-05 08:56</footer>
+<footer>Generated by code2llm on 2026-03-05 19:36</footer>
 
 <script>
 // Evolution chart disabled — fewer than 3 data points
@@ -341,9 +343,9 @@ const modCtx = document.getElementById('modChart').getContext('2d');
 new Chart(modCtx, {
   type: 'bar',
   data: {
-    labels: ['core.py', 'i18n.py', 'core_v1.py', '__init__.py', 'voice_loop.py', 'auto_repair.py', 'evo_engine.py', 'self_reflection.py', 'skill.py', 'resource_monitor.py', 'system_identity.py', 'skill.py', 'skill.py', 'preflight.py', 'intent_engine.py'],
-    datasets: [{ label: 'Max CC', data: [74, 64, 54, 35, 32, 30, 29, 28, 28, 26, 26, 26, 26, 25, 24],
-      backgroundColor: [74, 64, 54, 35, 32, 30, 29, 28, 28, 26, 26, 26, 26, 25, 24].map(v => v >= 15 ? '#ef4444' : v >= 10 ? '#eab308' : '#22c55e')
+    labels: ['core.py', 'core_v1.py', '__init__.py', 'auto_repair.py', 'self_reflection.py', 'skill.py', 'resource_monitor.py', 'system_identity.py', 'skill.py', 'skill.py', 'skill.py', 'preflight.py', 'intent_engine.py', 'llm_client.py', 'voice_loop.py'],
+    datasets: [{ label: 'Max CC', data: [74, 54, 35, 30, 28, 28, 26, 26, 26, 26, 26, 25, 24, 24, 24],
+      backgroundColor: [74, 54, 35, 30, 28, 28, 26, 26, 26, 26, 26, 25, 24, 24, 24].map(v => v >= 15 ? '#ef4444' : v >= 10 ? '#eab308' : '#22c55e')
     }]
   },
   options: {

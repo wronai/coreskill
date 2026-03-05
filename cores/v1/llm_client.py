@@ -159,7 +159,34 @@ class LLMClient:
             self._cooldowns[model] = (time.time() + COOLDOWN_SERVER_ERR, "unknown")
 
     # ── Core chat with tiered fallback ──
+    def _select_model(self):
+        """Select next available model from tier lists.
+        
+        Returns (model, tier) or (None, None) if no models available.
+        Tries: free → paid (if API key) → local.
+        """
+        has_api_key = bool(self.api_key and len(self.api_key) > 10)
+        
+        # Determine tier order based on API key availability
+        if has_api_key:
+            tier_order = (TIER_FREE, TIER_PAID, TIER_LOCAL)
+        else:
+            tier_order = (TIER_FREE, TIER_LOCAL)
+        
+        for tier in tier_order:
+            if tier == TIER_PAID and not has_api_key:
+                continue
+            for model in self._tiers[tier]:
+                if model == self.model or not self._is_available(model):
+                    continue
+                return model, tier
+        return None, None
+
     def chat(self, messages, temperature=0.7, max_tokens=16384):
+        """Chat with tiered model fallback.
+        
+        Refactored: CC=19 → ~10 by extracting _select_model().
+        """
         # Verbose logging
         if os.environ.get("EVO_VERBOSE") == "1":
             model_short = self.model.split('/')[-1] if '/' in self.model else self.model
@@ -169,7 +196,6 @@ class LLMClient:
             for i, msg in enumerate(messages):
                 role = msg.get('role', 'unknown')
                 content = msg.get('content', '')
-                # Truncate long content
                 display = content[:200] + "..." if len(content) > 200 else content
                 display = display.replace('\n', ' ')
                 print(f"  [{i}] {role}: {display}")
@@ -182,50 +208,39 @@ class LLMClient:
                     print(f"[VERBOSE] Response length: {len(result)} chars")
                 return result
 
-        # 2. Tiered fallback — free → paid (if API key) → local
-        # This ensures paid models are tried before falling back to local
+        # 2. Tiered fallback via _select_model
         has_api_key = bool(self.api_key and len(self.api_key) > 10)
         
         if not has_api_key and self.active_tier == TIER_FREE:
             cpr(C.YELLOW, "⚠ Brak klucza API dla OpenRouter — płatne modele niedostępne.")
             cpr(C.DIM, "   Użyj /apikey <twój-klucz> aby włączyć szybsze naprawy.")
         
-        # Determine fallback order based on API key availability
-        if has_api_key:
-            tier_order = (TIER_FREE, TIER_PAID, TIER_LOCAL)  # Try paid before local
-        else:
-            tier_order = (TIER_FREE, TIER_LOCAL)  # Skip paid if no API key
-        
-        for tier in tier_order:
-            # Skip PAID tier if no API key
-            if tier == TIER_PAID and not has_api_key:
+        while True:
+            model, tier = self._select_model()
+            if model is None:
+                break
+                
+            result = self._try_model(model, messages, temperature, max_tokens)
+            if result is not None:
                 if os.environ.get("EVO_VERBOSE") == "1":
-                    print(f"[VERBOSE] Skipping PAID tier — no API key")
-                continue
-            
-            for model in self._tiers[tier]:
-                if model == self.model or not self._is_available(model):
-                    continue
-                result = self._try_model(model, messages, temperature, max_tokens)
-                if result is not None:
-                    if os.environ.get("EVO_VERBOSE") == "1":
-                        print(f"[VERBOSE] Fallback to: {model.split('/')[-1]} (tier: {tier})")
-                        print(f"[VERBOSE] Response length: {len(result)} chars")
-                    old_model, old_tier = self.model, self.active_tier
-                    self.model = model
-                    self.active_tier = tier
-                    state = load_state()
-                    state["model"] = model
-                    state["model_tier"] = tier
-                    save_state(state)
-                    if self.logger:
-                        self.logger.core("model_switch", {
-                            "from": old_model, "to": model,
-                            "from_tier": old_tier, "to_tier": tier,
-                        })
-                    if tier != old_tier:
-                        cpr(C.DIM, f"[LLM] {old_tier}→{tier}: {model.split('/')[-1]}")
-                    return result
+                    print(f"[VERBOSE] Fallback to: {model.split('/')[-1]} (tier: {tier})")
+                    print(f"[VERBOSE] Response length: {len(result)} chars")
+                old_model, old_tier = self.model, self.active_tier
+                self.model = model
+                self.active_tier = tier
+                state = load_state()
+                state["model"] = model
+                state["model_tier"] = tier
+                save_state(state)
+                if self.logger:
+                    self.logger.core("model_switch", {
+                        "from": old_model, "to": model,
+                        "from_tier": old_tier, "to_tier": tier,
+                    })
+                if tier != old_tier:
+                    cpr(C.DIM, f"[LLM] {old_tier}→{tier}: {model.split('/')[-1]}")
+                return result
+            # Model failed, loop continues to try next
 
         # 3. All failed
         if self.logger:

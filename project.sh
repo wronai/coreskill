@@ -12,6 +12,6 @@ code2llm ./ -f toon,evolution,code2logic,project-yaml -o ./project --no-chunk
 #code2llm ./ -f project-yaml -o ./project --no-chunk
 #code2llm report --format html      # → dashboard.html
 #code2llm ./ -f all -o ./project --no-chunk
-code2llm report --format all       # → all views
-rm project/analysis.json
-rm project/analysis.yaml
+code2llm report --format all -i ./project/project.yaml -o ./project       # → all views
+rm -f project/analysis.json
+rm -f project/analysis.yaml

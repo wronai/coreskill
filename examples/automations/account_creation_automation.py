@@ -96,7 +96,7 @@ def account_creation_automation(service, email, platform=None):
         })
         
         if variations_result.get("success"):
-            variations = variations_result.get("variations', [])
+            variations = variations_result.get("variations", [])
             print(f"   Suggestions: {', '.join(variations[:3])}")
 
     # Step 4: Create complete account data
@@ -112,7 +112,7 @@ def account_creation_automation(service, email, platform=None):
     })
     
     if account_result.get("success"):
-        account_data = account_result.get("account_data', {})
+        account_data = account_result.get("account_data", {})
         print(f"   Service: {account_data.get('service')}")
         print(f"   Email: {account_data.get('email')}")
         print(f"   Username: {account_data.get('username')}")

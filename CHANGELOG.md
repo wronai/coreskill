@@ -1,5 +1,26 @@
 ## [Unreleased]
 
+## [1.0.4] - 2026-03-05
+
+### Docs
+- Update TODO2/README.md
+- Update project/README.md
+- Update project/context.md
+- Update project/status.md
+
+### Other
+- Update TODO2/docker-compose.yml
+- Update TODO2/index.html
+- Update TODO2/main.py
+- Update cores/v1/core.py
+- Update cores/v1/core_boot.py
+- Update cores/v1/core_dispatch.py
+- Update cores/v1/core_loop.py
+- Update cores/v1/evo_engine.py
+- Update cores/v1/i18n.py
+- Update cores/v1/llm_client.py
+- ... and 35 more files
+
 ## [1.0.3] - 2026-03-05
 
 ### Test
