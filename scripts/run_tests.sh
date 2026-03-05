@@ -2,7 +2,7 @@
 # evo-engine Docker Test Runner
 # Fully automated testing in isolated Docker environment
 
-set -e
+set -euo pipefail
 
 # Colors
 RED='\033[0;31m'
@@ -177,30 +177,34 @@ run_tests() {
             log "Running complete test suite..."
             if [[ "$VERBOSE" == "true" ]]; then
                 docker-compose -f docker-compose.test.yml run --rm test
+                TEST_EXIT_CODE=$?
             else
                 docker-compose -f docker-compose.test.yml run --rm test 2>&1 | tee test-results/output.log
+                TEST_EXIT_CODE=${PIPESTATUS[0]}
             fi
             ;;
         unit)
             log "Running unit tests..."
             docker-compose -f docker-compose.test.yml run --rm test-unit
+            TEST_EXIT_CODE=$?
             ;;
         integration)
             log "Running integration tests..."
             docker-compose -f docker-compose.test.yml run --rm test-integration
+            TEST_EXIT_CODE=$?
             ;;
         smoke)
             log "Running smoke tests..."
             docker-compose -f docker-compose.test.yml run --rm test-smoke
+            TEST_EXIT_CODE=$?
             ;;
         e2e)
             log "Running E2E tests..."
             docker-compose -f docker-compose.test.yml run --rm test python -m pytest tests/test_e2e.py -v --timeout=120
+            TEST_EXIT_CODE=$?
             ;;
     esac
-    
-    TEST_EXIT_CODE=$?
-    
+
     if [[ $TEST_EXIT_CODE -eq 0 ]]; then
         success "Tests passed!"
     else

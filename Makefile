@@ -118,13 +118,13 @@ CHAT_COMPOSE := docker compose -f docker-compose.chat.yml
 
 up: ## Start all chat UI services (backend + frontend + ollama)
 	@echo -e "$(BLUE)[CHAT]$(NC) Starting CoreSkill Demo..."
-	@$(CHAT_COMPOSE) down 2>/dev/null || true
+	@$(CHAT_COMPOSE) down --remove-orphans 2>/dev/null || true
 	@$(CHAT_COMPOSE) up -d --build --force-recreate
 	@echo -e "$(GREEN)[CHAT]$(NC) Ready at http://localhost:3000"
 
 down: ## Stop all chat UI services
 	@echo -e "$(YELLOW)[CHAT]$(NC) Stopping..."
-	@$(CHAT_COMPOSE) down
+	@$(CHAT_COMPOSE) down --remove-orphans
 	@echo -e "$(GREEN)[CHAT]$(NC) Stopped"
 
 web: up ## Start + open in browser

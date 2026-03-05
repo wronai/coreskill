@@ -1,9 +1,0 @@
-{
-  "name": "pound_to_yen_converter",
-  "version": "v13",
-  "parent": "v12",
-  "phase": "runtime",
-  "created_at": "2026-03-04T20:17:08.021789+00:00",
-  "quality_score": 0.765,
-  "is_regression": false
-}

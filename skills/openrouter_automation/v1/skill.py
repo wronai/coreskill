@@ -815,6 +815,7 @@ class OpenRouterAutomationSkill:
             import json
             import datetime
             import time
+import shutil
 
             req = urllib.request.Request(
                 "https://openrouter.ai/api/v1/auth/key",
