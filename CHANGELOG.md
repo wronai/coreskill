@@ -1,3 +1,35 @@
+## [1.0.2] - 2026-03-05
+
+### Summary
+
+refactor(docs): code analysis engine
+
+### Docs
+
+- docs: update README
+- docs: update context.md
+- docs: update context.md
+- docs: update context.md
+
+### Config
+
+- config: update goal.yaml
+
+### Other
+
+- update backend/tests/test_backend.py
+- scripts: update project.sh
+- update project/analysis.toon
+- update project/batch_1/analysis.toon
+- update project/batch_1/evolution.toon
+- update project/calls.mmd
+- update project/calls.png
+- update project/compact_flow.mmd
+- update project/compact_flow.png
+- update project/dashboard.html
+- ... and 10 more
+
+
 ## [1.0.2] - 2026-03-04
 
 ### Summary

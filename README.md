@@ -3,7 +3,7 @@
 Ewolucyjny system AI z ewoluującymi skillami. CoreSkill to inteligentny asystent, który potrafi samodzielnie tworzyć, naprawiać i rozwijać swoje zdolności (skills).
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 ## 🚀 Szybki start
 
@@ -166,3 +166,10 @@ MIT License - zobacz [LICENSE](LICENSE)
 
 **CoreSkill** - Think, evolve, create.
 
+## License
+
+Apache License 2.0 - see [LICENSE](LICENSE) for details.
+
+## Author
+
+Created by **Tom Sapletta** - [tom@sapletta.com](mailto:tom@sapletta.com)
