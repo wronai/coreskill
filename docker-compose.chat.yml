@@ -4,11 +4,13 @@
 # Usage:
 #   docker compose -f docker-compose.chat.yml up              # Web mode (open http://localhost:3000)
 #   docker compose -f docker-compose.chat.yml up --build      # Rebuild & start
-#   docker compose -f docker-compose.chat.yml --profile gpu up  # With GPU support for Ollama
 #
 # Desktop mode:
 #   docker compose -f docker-compose.chat.yml up -d
 #   Then run: ./desktop/run.sh     # Opens native window via webview
+#
+# Note: Uses local Ollama installation (not Docker containers)
+#       Backend connects via host.docker.internal:11434
 # ============================================================================
 
 services:
@@ -17,24 +19,23 @@ services:
   # --------------------------------------------------------------------------
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: coreskill-api
     ports:
       - "8001:8000"  # Host:8001 → Container:8000
     env_file:
       - .env
     environment:
-      - OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_HOST=http://host.docker.internal:11434
       - CORESKILL_MODE=demo
       - PYTHONUNBUFFERED=1
     volumes:
       - coreskill-data:/app/data
       - coreskill-logs:/app/logs
       - ./.evo_state.json:/app/.evo_state.json:ro
-    depends_on:
-      ollama:
-        condition: service_started
+      - ./cores:/app/cores:ro
+      - ./backend/main.py:/app/main.py:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -62,45 +63,13 @@ services:
       - coreskill-net
 
   # --------------------------------------------------------------------------
-  # Ollama — Local LLM inference (optional, for offline mode)
+  # Note: Ollama usługi usunięte - użyj lokalnej instalacji Ollama
+  # Backend łączy się przez host.docker.internal:11434
   # --------------------------------------------------------------------------
-  ollama:
-    image: ollama/ollama:latest
-    container_name: coreskill-ollama
-    # Port 11434 not exposed on host - only internal network access
-    # (backend connects via http://ollama:11434)
-    volumes:
-      - ollama-models:/root/.ollama
-    restart: unless-stopped
-    networks:
-      - coreskill-net
-
-  # --------------------------------------------------------------------------
-  # Ollama GPU variant (use with --profile gpu)
-  # --------------------------------------------------------------------------
-  ollama-gpu:
-    image: ollama/ollama:latest
-    container_name: coreskill-ollama-gpu
-    profiles: ["gpu"]
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama-models:/root/.ollama
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-    restart: unless-stopped
-    networks:
-      - coreskill-net
 
 volumes:
   coreskill-data:
   coreskill-logs:
-  ollama-models:
 
 networks:
   coreskill-net:

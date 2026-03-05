@@ -46,6 +46,7 @@ try:
     from .bandit_selector import UCB1BanditSelector
     from .metrics_collector import MetricsCollector
     from .drift_detector import DriftDetector
+    from .autonomy_loop import AutonomyLoop, LoopCycleResult
 except ImportError:
     # Fallback for standalone file loading
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))

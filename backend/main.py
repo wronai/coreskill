@@ -91,9 +91,10 @@ intent_engine = None
 try:
     from cores.v1.skill_manager import SkillManager
     from cores.v1.evo_engine import EvoEngine
-    from cores.v1.intent import IntentEngine
+    from cores.v1.intent_engine import IntentEngine
     from cores.v1.logger import Logger
-    from cores.v1.config import Config
+    from cores.v1.llm_client import LLMClient as CoreLLMClient
+    from cores.v1.config import DEFAULT_MODEL
     CORESKILL_AVAILABLE = True
     log.info("CoreSkill modules loaded successfully")
 except Exception as e:
@@ -424,21 +425,27 @@ async def lifespan(app: FastAPI):
 
 async def _init_coreskill():
     """Initialize CoreSkill components for skill execution."""
-    global skill_manager, evo_engine, intent_engine
+    global CORESKILL_AVAILABLE, skill_manager, evo_engine, intent_engine
     if not CORESKILL_AVAILABLE:
         log.warning("CoreSkill not available, skipping initialization")
         return
     
     try:
-        # Load config and logger
-        cfg = Config.from_file(_CORESKILL_ROOT / "config" / "system.json")
         logger = Logger("chat_backend")
-        
-        # Initialize components
-        skill_manager = SkillManager(cfg.paths["skills"], logger=logger)
-        intent_engine = IntentEngine()
-        evo_engine = EvoEngine(skill_manager, None, logger, intent_engine)
-        
+
+        model = _STATE.get("model") or DEFAULT_MODEL
+        core_llm = CoreLLMClient(api_key=OPENROUTER_KEY, model=model, logger=logger)
+
+        # SkillManager signature: (llm, logger, provider_selector=None)
+        skill_manager = SkillManager(core_llm, logger)
+
+        # IntentEngine signature: (llm, logger, state)
+        intent_state = dict(_STATE) if isinstance(_STATE, dict) else {}
+        intent_engine = IntentEngine(core_llm, logger, intent_state)
+
+        # EvoEngine signature: (sm, llm, logger, provider_chain=None, state=None)
+        evo_engine = EvoEngine(skill_manager, core_llm, logger, state=intent_state)
+
         log.info(f"CoreSkill initialized: {len(skill_manager.list_skills())} skills available")
     except Exception as e:
         log.error(f"Failed to initialize CoreSkill: {e}")
@@ -681,13 +688,14 @@ async def _execute_skill_for_chat(user_msg: str) -> tuple[bool, str]:
     try:
         # Get available skills
         skills = skill_manager.list_skills()
-        
-        # Check intent
-        analysis = intent_engine.classify(user_msg, skills)
-        action = analysis.action if analysis else "chat"
-        skill_name = analysis.skill if analysis else ""
-        
-        log.info(f"[Intent] action={action}, skill={skill_name}, confidence={analysis.confidence if analysis else 0}")
+
+        # Check intent (returns analysis dict)
+        analysis = intent_engine.analyze(user_msg, skills, conv=None)
+        action = (analysis or {}).get("action", "chat")
+        skill_name = (analysis or {}).get("skill", "")
+        conf = (analysis or {}).get("_conf", 0.0)
+
+        log.info(f"[Intent] action={action}, skill={skill_name}, confidence={conf}")
         
         # If chat intent, let LLM handle it
         if action == "chat" or not skill_name:
@@ -695,7 +703,7 @@ async def _execute_skill_for_chat(user_msg: str) -> tuple[bool, str]:
         
         # Execute skill via EvoEngine
         if evo_engine:
-            outcome = evo_engine.handle_request(user_msg, skills, analysis=analysis.__dict__ if analysis else None)
+            outcome = evo_engine.handle_request(user_msg, skills, analysis=analysis)
             if outcome and outcome.get("type") == "success":
                 result = outcome.get("result", {})
                 result_data = result.get("result", "") if isinstance(result, dict) else str(result)

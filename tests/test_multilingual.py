@@ -752,6 +752,66 @@ class TestEmbeddingSimilarityMultilingual(unittest.TestCase):
             f"than between-group ({avg_between:.3f})")
 
 
+class TestSmartIntentPrefilterMultilingual(unittest.TestCase):
+    """Verify SmartIntentClassifier keyword prefilter works with i18n keywords."""
+
+    @classmethod
+    def setUpClass(cls):
+        import tempfile
+        from cores.v1.smart_intent import SmartIntentClassifier
+        cls._tmpdir = tempfile.mkdtemp()
+        cls._classifier = SmartIntentClassifier(state_dir=Path(cls._tmpdir))
+
+    def test_tts_german(self):
+        r = self._classifier.classify("sprich diesen text")
+        self.assertEqual(r.action, "use")
+        self.assertEqual(r.skill, "tts")
+        self.assertEqual(r.tier, "keyword_prefilter")
+
+    def test_tts_french(self):
+        r = self._classifier.classify("lis ce texte à voix haute")
+        self.assertEqual(r.action, "use")
+        self.assertEqual(r.skill, "tts")
+
+    def test_tts_spanish(self):
+        r = self._classifier.classify("habla este texto")
+        self.assertEqual(r.action, "use")
+        self.assertEqual(r.skill, "tts")
+
+    def test_stt_italian(self):
+        r = self._classifier.classify("ascolta il microfono")
+        self.assertEqual(r.action, "use")
+        self.assertEqual(r.skill, "stt")
+
+    def test_stt_portuguese(self):
+        r = self._classifier.classify("ouve o microfone")
+        self.assertEqual(r.action, "use")
+        self.assertEqual(r.skill, "stt")
+
+    def test_search_dutch(self):
+        r = self._classifier.classify("zoek informatie over python")
+        self.assertEqual(r.action, "use")
+        self.assertEqual(r.skill, "web_search")
+
+    def test_shell_swedish(self):
+        r = self._classifier.classify("kör kommando ls -la")
+        self.assertEqual(r.action, "use")
+        self.assertEqual(r.skill, "shell")
+
+    def test_create_czech(self):
+        r = self._classifier.classify("vytvoř nový skill pro OCR")
+        self.assertEqual(r.action, "create")
+
+    def test_evolve_romanian(self):
+        r = self._classifier.classify("repară acest skill")
+        self.assertEqual(r.action, "evolve")
+
+    def test_voice_mode_german(self):
+        r = self._classifier.classify("lass uns reden")
+        self.assertEqual(r.action, "use")
+        self.assertEqual(r.skill, "stt")
+
+
 class TestLanguageCoverage(unittest.TestCase):
     """Verify that all 35 European languages have adequate keyword coverage."""
 
