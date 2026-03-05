@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+clear
 #source /home/tom/miniconda3/etc/profile.d/conda.sh
 #conda activate base
 # Use local editable install with fixes instead of PyPI version

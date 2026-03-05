@@ -417,7 +417,7 @@ async def lifespan(app: FastAPI):
     # Initialize CoreSkill
     await _init_coreskill()
     # Try to pull a small model on startup
-    asyncio.create_task(_pull_ollama_model())
+    # asyncio.create_task(_pull_ollama_model())  # TODO: implement this function
     yield
     await llm.close()
     log.info("CoreSkill Demo shutdown.")

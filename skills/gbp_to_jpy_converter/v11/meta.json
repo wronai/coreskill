@@ -1,9 +1,0 @@
-{
-  "name": "gbp_to_jpy_converter",
-  "version": "v11",
-  "parent": "v10",
-  "phase": "runtime",
-  "created_at": "2026-03-05T08:06:06.341330+00:00",
-  "quality_score": 0.765,
-  "is_regression": false
-}

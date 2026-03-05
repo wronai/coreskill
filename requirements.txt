@@ -3,3 +3,4 @@ nfo
 sentence-transformers
 numpy
 piper-tts
+taskfile
