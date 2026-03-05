@@ -11,6 +11,11 @@ import os
 import json
 from pathlib import Path
 
+import pytest
+
+if os.getenv("RUN_MANUAL_TESTS") != "1":
+    pytest.skip("manual test (requires real LLM/network); set RUN_MANUAL_TESTS=1", allow_module_level=True)
+
 # Add project root to path
 ROOT = Path(__file__).resolve().parents[2]  # manual → tests → root
 sys.path.insert(0, str(ROOT))
@@ -26,6 +31,7 @@ from cores.v1.bandit_selector import UCB1BanditSelector
 from cores.v1.config import load_state, SKILLS_DIR
 
 
+@pytest.mark.timeout(120)
 def test_auto_create_skill_on_unknown_intent():
     """Test: Gdy intent=chat (nieznane), system automatycznie tworzy skill."""
     print("\n" + "="*60)
@@ -95,6 +101,7 @@ def test_auto_create_skill_on_unknown_intent():
         return False, None
 
 
+@pytest.mark.timeout(120)
 def test_auto_create_skill_on_empty_results():
     """Test: Gdy web_search zwraca puste wyniki, system tworzy dedykowany skill."""
     print("\n" + "="*60)
