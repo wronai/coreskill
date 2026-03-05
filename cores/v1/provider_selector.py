@@ -14,6 +14,7 @@ Architecture:
 """
 import json
 import time
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -68,10 +69,14 @@ class ProviderSelector:
         # New structure: providers/ subdir
         prov_dir = cap_dir / "providers"
         if prov_dir.is_dir():
-            return sorted([
+            providers = sorted([
                 p.name for p in prov_dir.iterdir()
                 if p.is_dir() and not p.name.startswith(".")
             ])
+            # User preference / safety: never use espeak for TTS.
+            if capability == "tts":
+                providers = [p for p in providers if p != "espeak"]
+            return providers
 
         # Legacy structure: v1/, v2/ directly under capability
         # Treat as single "default" provider
@@ -152,6 +157,17 @@ class ProviderSelector:
         if len(providers) == 1:
             return providers[0]
 
+        manifest = self.load_manifest(capability)
+        strategy = manifest.get("selection_strategy", "best_available")
+        default_provider = manifest.get("default_provider")
+
+        # Prefer default if runnable (deterministic).
+        if strategy == "prefer_default" and default_provider and default_provider in providers:
+            info = self.get_provider_info(capability, default_provider)
+            can_run, _ = self._check_runnable(info)
+            if can_run:
+                return default_provider
+
         # Score each provider
         scored = []
         for pname in providers:
@@ -165,8 +181,6 @@ class ProviderSelector:
             # Nothing can run — only return manifest default if it is runnable.
             # Otherwise pick the first runnable provider (if any), else return a
             # deterministic fallback.
-            manifest = self.load_manifest(capability)
-            default_provider = manifest.get("default_provider")
             if default_provider and default_provider in providers:
                 info = self.get_provider_info(capability, default_provider)
                 can_run, _ = self._check_runnable(info)

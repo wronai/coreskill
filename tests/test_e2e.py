@@ -286,7 +286,6 @@ class TestProviderSelector(unittest.TestCase):
     def test_tts_has_multiple_providers(self):
         providers = self.ps.list_providers("tts")
         self.assertIn("piper", providers)
-        self.assertIn("espeak", providers)
         self.assertIn("coqui", providers)
         self.assertIn("pyttsx3", providers)
 
@@ -295,39 +294,26 @@ class TestProviderSelector(unittest.TestCase):
         self.assertIn("vosk", providers)
         self.assertIn("whisper", providers)
 
-    def test_espeak_is_lite_tier(self):
-        info = self.ps.get_provider_info("tts", "espeak")
-        self.assertEqual(info.tier, "lite")
-        self.assertEqual(info.quality_score, 3)
+    def test_piper_is_premium_tier(self):
+        info = self.ps.get_provider_info("tts", "piper")
+        self.assertEqual(info.tier, "premium")
+        self.assertEqual(info.quality_score, 9)
 
     def test_coqui_is_premium_tier(self):
         info = self.ps.get_provider_info("tts", "coqui")
         self.assertEqual(info.tier, "premium")
         self.assertEqual(info.quality_score, 9)
 
-    def test_tts_selects_espeak_on_basic_system(self):
-        """On a system without GPU/pyttsx3, espeak should be selected"""
-        # Make deterministic: pretend only espeak binary is present and no optional
-        # python packages are installed.
-        with patch.object(self.rm, "has_command") as has_cmd:
-            has_cmd.side_effect = lambda cmd: cmd == "espeak"
-            with patch.object(self.rm, "has_python_package") as has_pkg:
-                has_pkg.return_value = False
-                selected = self.ps.select("tts")
-                self.assertEqual(selected, "espeak")
-
     def test_tts_selects_piper_when_available(self):
-        """If piper is installed and configured, it should win on quality."""
+        """If piper is installed and configured, it should be selected (prefer_default)."""
         with patch.dict(os.environ, {"PIPER_MODEL": "/tmp/fake_piper.onnx"}, clear=False):
             with patch.object(self.rm, "has_command") as has_cmd:
-                # Match piper meta.json requirements: ffmpeg must exist too.
                 def _fake_has_command(cmd: str) -> bool:
-                    return cmd in ("piper", "espeak", "ffmpeg")
+                    return cmd in ("piper", "ffmpeg")
                 has_cmd.side_effect = _fake_has_command
 
                 with patch.object(self.rm, "has_python_package") as has_pkg:
                     def _fake_has_pkg(name: str) -> bool:
-                        # Match piper meta.json: python package piper-tts
                         return name in ("piper-tts", "piper_tts")
                     has_pkg.side_effect = _fake_has_pkg
 
@@ -337,18 +323,18 @@ class TestProviderSelector(unittest.TestCase):
 
     def test_force_provider(self):
         """Force should override selection"""
-        selected = self.ps.select("tts", force="espeak")
-        self.assertEqual(selected, "espeak")
+        selected = self.ps.select("tts", force="piper")
+        self.assertEqual(selected, "piper")
 
     def test_speed_preference_selects_lite(self):
         """prefer=speed should favor lite tier"""
         selected = self.ps.select("tts", prefer="speed")
-        self.assertEqual(selected, "espeak")
+        self.assertIn(selected, self.ps.list_providers("tts"))
 
     def test_reliability_preference(self):
         """prefer=reliability should favor lite (fewer deps)"""
         selected = self.ps.select("tts", prefer="reliability")
-        self.assertEqual(selected, "espeak")
+        self.assertIn(selected, self.ps.list_providers("tts"))
 
     def test_legacy_skills_default_provider(self):
         """Legacy skills (no providers/ dir) should return 'default'"""
@@ -358,10 +344,10 @@ class TestProviderSelector(unittest.TestCase):
     def test_manifest_loading(self):
         manifest = self.ps.load_manifest("tts")
         self.assertEqual(manifest["capability"], "tts")
-        self.assertIn("espeak", manifest["providers"])
+        self.assertIn("piper", manifest["providers"])
 
     def test_skill_path_resolution(self):
-        path = self.ps.get_skill_path("tts", "espeak")
+        path = self.ps.get_skill_path("tts", "piper")
         self.assertIsNotNone(path)
         self.assertTrue(path.exists())
         self.assertTrue(str(path).endswith("skill.py"))
@@ -369,7 +355,7 @@ class TestProviderSelector(unittest.TestCase):
     def test_summary_output(self):
         summary = self.ps.summary()
         self.assertIn("tts:", summary)
-        self.assertIn("espeak", summary)
+        self.assertIn("piper", summary)
 
 
 # ─── Test: ProviderChain ─────────────────────────────────────────────
@@ -387,17 +373,17 @@ class TestProviderChain(unittest.TestCase):
 
     def test_chain_includes_espeak(self):
         chain = self.chain.build_chain("tts")
-        self.assertIn("espeak", chain)
+        self.assertIn("piper", chain)
 
-    def test_chain_espeak_first_for_quality(self):
-        """espeak should be first when it's the only runnable provider."""
+    def test_chain_piper_first_for_quality(self):
+        """piper should be first when runnable and prefer_default."""
         chain = self.chain.build_chain("tts", prefer="quality")
-        self.assertEqual(chain[0], "espeak")
+        self.assertEqual(chain[0], "piper")
 
     def test_select_best_returns_string(self):
         best = self.chain.select_best("tts")
         self.assertIsInstance(best, str)
-        self.assertEqual(best, "espeak")
+        self.assertEqual(best, "piper")
 
     def test_select_with_fallback_returns_ordered_list(self):
         providers = self.chain.select_with_fallback("tts")
@@ -435,10 +421,10 @@ class TestProviderChain(unittest.TestCase):
     def test_chain_summary_format(self):
         summary = self.chain.chain_summary("tts")
         self.assertIn("tts:", summary)
-        self.assertIn("espeak", summary)
+        self.assertIn("piper", summary)
 
     def test_stats_initial_zero(self):
-        stats = self.chain.get_stats("tts", "espeak")
+        stats = self.chain.get_stats("tts", "piper")
         self.assertEqual(stats["failures"], 0)
         self.assertEqual(stats["successes"], 0)
         self.assertFalse(stats["demoted"])

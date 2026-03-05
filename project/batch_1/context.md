@@ -4,10 +4,10 @@
 
 - **Project**: /home/tom/github/wronai/coreskill
 - **Analysis Mode**: static
-- **Total Functions**: 1720
-- **Total Classes**: 209
-- **Modules**: 170
-- **Entry Points**: 1578
+- **Total Functions**: 1711
+- **Total Classes**: 208
+- **Modules**: 168
+- **Entry Points**: 1569
 
 ## Architecture by Module
 
@@ -105,7 +105,7 @@
 - **Classes**: 1
 - **File**: `skill.py`
 
-### skills.benchmark.v2.skill
+### skills.task_manager.v1.skill
 - **Functions**: 18
 - **Classes**: 1
 - **File**: `skill.py`
@@ -172,15 +172,15 @@ Returns (fixed, message, new_result).
 ### TODO2.main.websocket_chat
 - **Calls**: app.websocket, log.info, ws.accept, str, ws.send_json, active_connections.pop, chat_histories.pop, uuid.uuid4
 
-### skills.benchmark.v2.skill.BenchmarkSkill._recommend_models_live
-- **Calls**: params.get, params.get, params.get, self._get_models_from_tier, self._get_models_from_tier, live_results.sort, enumerate, self._get_model_param_size
-
 ### skills.benchmark.v3.skill.BenchmarkSkill._recommend_models_live
 - **Calls**: params.get, params.get, params.get, self._get_models_from_tier, self._get_models_from_tier, live_results.sort, enumerate, self._get_model_param_size
 
 ### examples.automations.document_processing_pipeline.document_processing_pipeline
 > Complete document processing workflow.
 - **Calls**: print, print, print, examples.automations.document_processing_pipeline.run_skill, print, print, print, examples.automations.document_processing_pipeline.run_skill
+
+### skills.benchmark.v2.skill.BenchmarkSkill._recommend_models_live
+- **Calls**: params.get, params.get, params.get, self._get_models_from_tier, self._get_models_from_tier, live_results.sort, enumerate, self._get_model_param_size
 
 ### cores.v1.llm_client.LLMClient.chat
 - **Calls**: self._is_available, bool, self._build_error_msg, os.environ.get, print, print, print, enumerate
@@ -389,15 +389,15 @@ Stores JSONL at logs/repair/re
 - **Methods**: 15
 - **Key Methods**: cores.v1.intent.SmartIntentClassifier.__init__, cores.v1.intent.SmartIntentClassifier._load_training, cores.v1.intent.SmartIntentClassifier._rebuild_skill_vectors, cores.v1.intent.SmartIntentClassifier.classify, cores.v1.intent.SmartIntentClassifier._embedding_classify, cores.v1.intent.SmartIntentClassifier._cosine_classify, cores.v1.intent.SmartIntentClassifier._extract_model_target, cores.v1.intent.SmartIntentClassifier._llm_classify, cores.v1.intent.SmartIntentClassifier._record_use, cores.v1.intent.SmartIntentClassifier.learn_from_correction
 
-### skills.benchmark.v2.skill.BenchmarkSkill
-> Analyzes and benchmarks LLM models for goal-based recommendations.
-- **Methods**: 15
-- **Key Methods**: skills.benchmark.v2.skill.BenchmarkSkill.__init__, skills.benchmark.v2.skill.BenchmarkSkill._load_config, skills.benchmark.v2.skill.BenchmarkSkill._get_models_from_tier, skills.benchmark.v2.skill.BenchmarkSkill._get_api_key, skills.benchmark.v2.skill.BenchmarkSkill._get_cached_recommendations, skills.benchmark.v2.skill.BenchmarkSkill.execute, skills.benchmark.v2.skill.BenchmarkSkill._recommend_models_live, skills.benchmark.v2.skill.BenchmarkSkill._get_model_param_size, skills.benchmark.v2.skill.BenchmarkSkill.BENCHMARK_PROFILES, skills.benchmark.v2.skill.BenchmarkSkill._call_model_for_benchmark
-
 ### skills.task_manager.v1.skill.TaskManagerSkill
 > Task and reminder management.
 - **Methods**: 15
 - **Key Methods**: skills.task_manager.v1.skill.TaskManagerSkill.__init__, skills.task_manager.v1.skill.TaskManagerSkill._ensure_storage, skills.task_manager.v1.skill.TaskManagerSkill._load_tasks, skills.task_manager.v1.skill.TaskManagerSkill._save_tasks, skills.task_manager.v1.skill.TaskManagerSkill._parse_due_date, skills.task_manager.v1.skill.TaskManagerSkill.add, skills.task_manager.v1.skill.TaskManagerSkill.list_tasks, skills.task_manager.v1.skill.TaskManagerSkill.complete, skills.task_manager.v1.skill.TaskManagerSkill.delete, skills.task_manager.v1.skill.TaskManagerSkill.update
+
+### skills.benchmark.v2.skill.BenchmarkSkill
+> Analyzes and benchmarks LLM models for goal-based recommendations.
+- **Methods**: 15
+- **Key Methods**: skills.benchmark.v2.skill.BenchmarkSkill.__init__, skills.benchmark.v2.skill.BenchmarkSkill._load_config, skills.benchmark.v2.skill.BenchmarkSkill._get_models_from_tier, skills.benchmark.v2.skill.BenchmarkSkill._get_api_key, skills.benchmark.v2.skill.BenchmarkSkill._get_cached_recommendations, skills.benchmark.v2.skill.BenchmarkSkill.execute, skills.benchmark.v2.skill.BenchmarkSkill._recommend_models_live, skills.benchmark.v2.skill.BenchmarkSkill._get_model_param_size, skills.benchmark.v2.skill.BenchmarkSkill.BENCHMARK_PROFILES, skills.benchmark.v2.skill.BenchmarkSkill._call_model_for_benchmark
 
 ### cores.v1.quality_gate.SkillQualityGate
 > Validates skill quality before registration.
@@ -451,6 +451,26 @@ Returns (valid: bool, reason: str).
 > One-line status string for display.
 - **Output to**: self.snapshot
 
+### cores.v1.skill_schema.SkillSchemaValidator.validate_manifest
+> Validate a skill manifest against schema.
+- **Output to**: self._validate_against_schema
+
+### cores.v1.skill_schema.SkillSchemaValidator.validate_output
+> Validate skill execute() output.
+- **Output to**: self._validate_against_schema
+
+### cores.v1.skill_schema.SkillSchemaValidator.validate_file
+> Validate a manifest.json file.
+- **Output to**: path.exists, ValidationResult, json.loads, self.validate_manifest, path.read_text
+
+### cores.v1.skill_schema.SkillSchemaValidator._validate_against_schema
+> Internal validation using simple schema checking.
+- **Output to**: self._schemas.get, schema.get, ValidationResult, None.items, None.items
+
+### cores.v1.skill_schema.validate_manifest_file
+> Quick validation of a manifest.json file.
+- **Output to**: SkillSchemaValidator, validator.validate_file
+
 ### cores.v1.skill_validator._validate_stt
 > STT-specific validation: check for hardware errors, silence, empty transcription.
 - **Output to**: result.get, isinstance, inner.get, inner.get, ValidationResult
@@ -474,26 +494,6 @@ Returns (valid: bool, reason: str).
 2. Check inner success flag
 3. Run s
 - **Output to**: result.get, ValidationResult, result.get, ValidationResult, isinstance
-
-### cores.v1.skill_schema.SkillSchemaValidator.validate_manifest
-> Validate a skill manifest against schema.
-- **Output to**: self._validate_against_schema
-
-### cores.v1.skill_schema.SkillSchemaValidator.validate_output
-> Validate skill execute() output.
-- **Output to**: self._validate_against_schema
-
-### cores.v1.skill_schema.SkillSchemaValidator.validate_file
-> Validate a manifest.json file.
-- **Output to**: path.exists, ValidationResult, json.loads, self.validate_manifest, path.read_text
-
-### cores.v1.skill_schema.SkillSchemaValidator._validate_against_schema
-> Internal validation using simple schema checking.
-- **Output to**: self._schemas.get, schema.get, ValidationResult, None.items, None.items
-
-### cores.v1.skill_schema.validate_manifest_file
-> Quick validation of a manifest.json file.
-- **Output to**: SkillSchemaValidator, validator.validate_file
 
 ### cores.v1.base_skill.SkillManifest.validate_input
 > Validate params against manifest input schema. Returns list of errors.

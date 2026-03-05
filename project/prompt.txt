@@ -11,9 +11,8 @@ Files for analysis:
 - project/README.md  (Documentation - complete guide to all generated files, usage examples, interpretation)
 
 Subproject Analysis Files (hierarchical chunking for large repository):
-- project/root/  [root] ~21KB - Contains: analysis.toon, evolution.toon
-- project/scripts_cores_seeds/  [L1] ~168KB - Contains: analysis.toon, evolution.toon
-- project/skills_examples/  [L1] ~270KB - Contains: analysis.toon, evolution.toon
+- project/batch_1/  [L1] ~60KB - Contains: analysis.toon, context.md, evolution.toon
+- project/skills_TODO2_examples/  [L1] ~106KB - Contains: analysis.toon, context.md, evolution.toon
 
 Task:
 - Summarize the architecture and main flows.

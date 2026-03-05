@@ -1,0 +1,16 @@
+{
+  "provider": "coqui",
+  "tier": "premium",
+  "quality_score": 9,
+  "requirements": {
+    "python_packages": [
+      "TTS"
+    ],
+    "min_ram_mb": 2048
+  },
+  "fallback_to": "espeak",
+  "tags": [
+    "neural",
+    "high-quality"
+  ]
+}
