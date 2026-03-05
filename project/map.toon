@@ -1,0 +1,1293 @@
+# coreskill | 170f 44311L | python:170
+# Keys: M=modules, D=details, i=imports, c=classes, f=functions, m=methods
+M[170]:
+  TODO2/main.py,537
+  backend/main.py,766
+  cli.py,329
+  core.py,609
+  cores/v1/__init__.py,107
+  cores/v1/adaptive_monitor.py,230
+  cores/v1/auto_repair.py,858
+  cores/v1/autonomy_loop.py,401
+  cores/v1/bandit_selector.py,177
+  cores/v1/base_skill.py,367
+  cores/v1/config.py,254
+  cores/v1/config_generator.py,277
+  cores/v1/core.py,1973
+  cores/v1/drift_detector.py,600
+  cores/v1/event_bus.py,164
+  cores/v1/evo_engine.py,965
+  cores/v1/evo_journal.py,422
+  cores/v1/fuzzy_router.py,80
+  cores/v1/garbage_collector.py,356
+  cores/v1/i18n.py,784
+  cores/v1/intent/__init__.py,518
+  cores/v1/intent/embedding.py,172
+  cores/v1/intent/ensemble.py,110
+  cores/v1/intent/knn_classifier.py,126
+  cores/v1/intent/local_llm.py,171
+  cores/v1/intent/training.py,619
+  cores/v1/intent_engine.py,610
+  cores/v1/learned_repair.py,339
+  cores/v1/llm_client.py,418
+  cores/v1/logger.py,148
+  cores/v1/metrics_collector.py,599
+  cores/v1/pipeline_manager.py,225
+  cores/v1/preflight.py,425
+  cores/v1/proactive_scheduler.py,231
+  cores/v1/prompts/__init__.py,184
+  cores/v1/provider_selector.py,498
+  cores/v1/quality_gate.py,444
+  cores/v1/reflection_engine.py,339
+  cores/v1/repair_journal.py,423
+  cores/v1/resilience.py,190
+  cores/v1/resource_monitor.py,201
+  cores/v1/self_healing/__init__.py,393
+  cores/v1/self_healing/diagnostics.py,288
+  cores/v1/self_reflection.py,462
+  cores/v1/session_config.py,526
+  cores/v1/skill_forge.py,325
+  cores/v1/skill_logger.py,303
+  cores/v1/skill_manager.py,694
+  cores/v1/skill_schema.py,456
+  cores/v1/skill_validator.py,200
+  cores/v1/smart_intent.py,659
+  cores/v1/stable_snapshot.py,399
+  cores/v1/supervisor.py,82
+  cores/v1/system_identity.py,271
+  cores/v1/user_memory.py,177
+  cores/v1/utils.py,120
+  cores/v1/voice_loop.py,444
+  __init__.py,24
+  examples/advanced/01_pipeline.py,79
+  examples/automations/document_processing_pipeline.py,105
+  examples/automations/ksef_invoice_automation.py,170
+  examples/automations/network_monitoring_automation.py,219
+  examples/automations/openrouter_api_key_automation.py,157
+  examples/automations/social_media_automation.py,126
+  examples/automations/task_management_automation.py,182
+  examples/basic/01_hello.py,51
+  examples/basic/02_memory.py,54
+  examples/check_clipboard_api_key.py,160
+  examples/openrouter_session_copy.py,72
+  examples/skills/01_create.py,142
+  main.py,110
+  scripts/benchmark_system.py,344
+  scripts/generate_manifests.py,199
+  scripts/get_openrouter_key.py,75
+  scripts/simulate.py,551
+  seeds/core_v1.py,357
+  seeds/echo_skill_v1.py,25
+  setup.py,45
+  skill.py,88
+  skills/_health_/v1/skill.py,454
+  skills/account_creator/v1/skill.py,438
+  skills/auto/v1/skill.py,311
+  skills/auto/v2/skill.py,322
+  skills/benchmark/v2/skill.py,416
+  skills/benchmark/v3/skill.py,428
+  skills/calculator_advanced/v1/skill.py,368
+  skills/chat/v1/skill.py,135
+  skills/clipboard/v1/skill.py,228
+  skills/content_search/providers/default/stable/skill.py,199
+  skills/converter/v1/skill.py,384
+  skills/core_loader/v1/skill.py,84
+  skills/currency_converter_gbp_to_jpy/v2/skill.py,130
+  skills/currency_converter_gbp_to_jpy/v3/skill.py,125
+  skills/deps/providers/default/stable/skill.py,194
+  skills/deps/v2/skill.py,94
+  skills/deps/v3/skill.py,184
+  skills/devops/providers/default/stable/skill.py,243
+  skills/devops/v3/skill.py,242
+  skills/devops/v4/skill.py,242
+  skills/diagnostic_runner/v1/skill.py,150
+  skills/document_editor/v1/skill.py,470
+  skills/document_publisher/v1/skill.py,547
+  skills/document_reader/v1/skill.py,466
+  skills/document_search/v1/skill.py,468
+  skills/echo/providers/default/stable/skill.py,84
+  skills/echo/v8/skill.py,84
+  skills/echo/v9/skill.py,102
+  skills/email_client/v1/skill.py,357
+  skills/evo_engine_bootstrap/v1/skill.py,74
+  skills/evo_engine_bootstrap/v2/skill.py,81
+  skills/file_manager/v1/skill.py,293
+  skills/first_installment/v1/skill.py,77
+  skills/first_installment/v2/skill.py,81
+  skills/gbp_to_jpy_converter/v8/skill.py,130
+  skills/gbp_to_jpy_converter/v9/skill.py,135
+  skills/git_ops/v1/skill.py,142
+  skills/health/v1/skill.py,129
+  skills/interior_inspection/v1/skill.py,113
+  skills/interior_inspection/v2/skill.py,120
+  skills/invalid_input_handler/v1/skill.py,113
+  skills/json_validator/v8/skill.py,152
+  skills/json_validator/v9/skill.py,152
+  skills/kalkulator/v47/skill.py,127
+  skills/kalkulator/v48/skill.py,4
+  skills/kalkulator/v49/skill.py,4
+  skills/kalkulator/v50/skill.py,4
+  skills/kalkulator/v51/skill.py,4
+  skills/kalkulator/v52/skill.py,4
+  skills/ksef_integration/v1/skill.py,354
+  skills/llm/v1/skill.py,139
+  skills/llm/v2/skill.py,147
+  skills/llm_router/v1/skill.py,124
+  skills/local_computer_discovery/v2/skill.py,299
+  skills/local_computer_discovery/v3/skill.py,315
+  skills/network_info/v1/skill.py,73
+  skills/network_tools/v1/skill.py,360
+  skills/notes/v1/skill.py,330
+  skills/openrouter/v1/skill.py,287
+  skills/password_generator/v6/skill.py,83
+  skills/pound_to_yen_converter/v8/skill.py,95
+  skills/pound_to_yen_converter/v9/skill.py,142
+  skills/process_manager/v1/skill.py,263
+  skills/qr_generator/v1/skill.py,186
+  skills/separator_line/v1/skill.py,53
+  skills/shell/v2/skill.py,240
+  skills/shell/v3/skill.py,219
+  skills/social_media_manager/v1/skill.py,442
+  skills/stt/providers/vosk/archive/v6/skill.py,154
+  skills/stt/providers/vosk/archive/v7/skill.py,198
+  skills/stt/providers/vosk/stable/skill.py,299
+  skills/system_info/v3/skill.py,85
+  skills/system_info/v4/skill.py,97
+  skills/task_manager/v1/skill.py,478
+  skills/text_processor_/v7/skill.py,61
+  skills/text_summarizer/v1/skill.py,244
+  skills/time/v1/skill.py,112
+  skills/tts/providers/coqui/stable/skill.py,28
+  skills/tts/providers/espeak/stable/skill.py,93
+  skills/tts/providers/piper/stable/skill.py,269
+  skills/tts/providers/pyttsx3/stable/skill.py,84
+  skills/url_codec/v1/skill.py,184
+  skills/weather/v2/skill.py,121
+  skills/weather/v3/skill.py,119
+  skills/weather_gdansk/v8/skill.py,213
+  skills/weather_gdansk/v9/skill.py,161
+  skills/web_automation/v1/skill.py,288
+  skills/web_search/providers/duckduckgo/archive/v1/skill.py,160
+  skills/web_search/providers/duckduckgo/stable/skill.py,166
+  skills/zarz_dzania/v7/skill.py,138
+  skills/zarz_dzania/v8/skill.py,140
+D:
+  core.py:
+    e: C,LLM,SkillLoader,SkillCreator,PipelineEngine,Supervisor,cpr,load_state,save_state,log_ev,gen_compose,main
+    C:
+    LLM: __init__(2),chat(3),gen_code(1),_clean(1)
+    SkillLoader: list_skills(-1),latest_v(0),load_module(1),run(2),get_registry(-1),find_skill_for(0)  # Load and execute skills dynamically...
+    SkillCreator: __init__(1),create(2),evolve(2),rollback(1)
+    PipelineEngine: __init__(1),build_from_text(1),execute_pipeline(2),save_pipeline(2),list_pipelines(0),load_pipeline(1)  # text2pipeline: natural language -> skill chain -> execute...
+    Supervisor: __init__(1),active(0),switch(0)
+    cpr(c;m)
+    load_state()
+    save_state(s)
+    log_ev(event;data)
+    gen_compose(skills;state)
+    main()
+  cores/v1/i18n.py:
+    e: normalize_diacritics,_flatten,match_any_keyword,detect_language
+    normalize_diacritics(text)
+    _flatten(d)
+    match_any_keyword(text;keyword_set)
+    detect_language(text)
+  seeds/core_v1.py:
+    e: C,LLMClient,SkillManager,PipelineManager,Supervisor,cpr,load_state,save_state,log_ev,_clean,gen_compose,main
+    C:
+    LLMClient: __init__(2),chat(3),gen_code(2),gen_pipeline(2)
+    SkillManager: __init__(1),list_skills(0),latest_v(1),create_skill(2),exec_skill(3),evolve(2),rollback(1)
+    PipelineManager: __init__(2),list_p(0),create_p(2),run_p(2)
+    Supervisor: __init__(1),active(0),switch(0),health(1),recover(0)
+    cpr(c;m)
+    load_state()
+    save_state(s)
+    log_ev(event;data)
+    _clean(code)
+    gen_compose(skills;state)
+    main()
+  cores/v1/intent/__init__.py:
+    e: IntentResult,SmartIntentClassifier,create_smart_classifier
+    IntentResult: to_analysis(0)  # Result of intent classification...
+    SmartIntentClassifier: __init__(2),_load_training(0),_rebuild_skill_vectors(0),classify(4),_embedding_classify(1),_cosine_classify(2),_extract_model_target(1),_llm_classify(3),_record_use(1),learn_from_correction(4),learn_from_success(3),_is_similar_to_training(2),_save_training(0),stats(0),__repr__(0)  # 3-tier ML intent classifier:
+1. Embeddings (sbert/tf-idf/bow...
+    create_smart_classifier(state_dir;llm_client)
+  cores/v1/voice_loop.py:
+    e: _extract_stt_text,_clean_for_tts,_speak_tts,_run_stt_cycle,_run_stt_autotest,_try_pulseaudio_fix,_generate_speech_file,_run_stt_from_file,_run_file_input_loop,_run_voice_loop
+    _extract_stt_text(outcome)
+    _clean_for_tts(text)
+    _speak_tts(sm;evo;text)
+    _run_stt_cycle(sm;evo;llm;intent;logger;conv;identity;duration;memory)
+    _run_stt_autotest(sm;logger;llm)
+    _try_pulseaudio_fix(diagnostics)
+    _generate_speech_file(text;lang)
+    _run_stt_from_file(sm;evo;wav_path;lang)
+    _run_file_input_loop(sm;evo;llm;intent;logger;conv;identity;memory)
+    _run_voice_loop(sm;evo;llm;intent;logger;conv;identity;memory)
+  cores/v1/auto_repair.py:
+    e: RepairTask,AutoRepair
+    RepairTask: __init__(4),__repr__(0)  # Single repair task with status tracking...
+    AutoRepair: __init__(3),_init_tiered_repair(0),_init_learned_strategy(0),run_boot_repair(0),repair_skill(1),_try_known_fix(1),on_repair_requested(1),_scan_all_skills(0),_list_all_skills(0),_diagnose_skill(1),_get_skill_path(1),_execute_repair_task(1),_journal_record(5),_plan_strategy(1),_apply_fix(2),_verify_fix(1),_reflect(2),_fix_strip_markdown(1),_fix_auto_imports(1),_fix_add_interface(2),_fix_pip_install(1),_fix_from_backup(2),_fix_llm_diagnose(2),_fix_llm_rewrite(2),validate_model(1),suggest_better_model(2),get_task_summary(0)  # Self-healing engine with task-based repair loop.
+
+Flow per t...
+  cores/v1/evo_engine.py:
+    e: FailureTracker,EvoEngine
+    FailureTracker: __init__(0),record_failure(3),record_unhandled(2),record_success(0),should_reflect(0),consume_failures(0),summary(0)  # Tracks consecutive failures and unhandled events.
+Triggers a...
+    EvoEngine: __init__(5),set_reflection(1),handle_request(3),_run_auto_reflection(1),_execute_with_validation(5),_exec_prepare(2),_exec_attempt(8),_exec_handle_success(5),_exec_handle_partial(7),_exec_handle_failure(9),_exec_finalize_failure(5),_try_fallback_providers(4),_validate_result(4),_autonomous_stt_repair(3),evolve_skill(2),_generate_skill_name(1)  # Generic evolutionary algorithm:
+1. Detect need → 2. Execute ...
+  cores/v1/self_reflection.py:
+    e: ReflectionEvent,DiagnosisReport,SelfReflection
+    ReflectionEvent:  # Zdarzenie wymagające autorefleksji...
+    DiagnosisReport:  # Raport diagnostyczny...
+    SelfReflection: __init__(4),start_operation(1),end_operation(2),record_skill_outcome(4),check_stall(0),_trigger_event(1),run_diagnostic(2),_print_report(1),attempt_auto_fix(1),_repair_broken_skills(1),on_reflection_needed(1),get_summary(0)  # Autonomiczny silnik autorefleksji systemu evo-engine...
+  skills/shell/v3/skill.py:
+    e: ShellSkill,_load_blocked_commands,get_info,health_check,execute
+    ShellSkill: _is_interactive(1),execute(1)
+    _load_blocked_commands()
+    get_info()
+    health_check()
+    execute(params)
+  cores/v1/resource_monitor.py:
+    e: ResourceMonitor
+    ResourceMonitor: __init__(0),snapshot(0),_cpu_count(0),_ram_total(0),_ram_available(0),_ram_from_proc(1),_disk_free(0),_detect_gpu(0),_installed_packages(0),has_command(1),has_python_package(1),can_run(1)  # Detects CPU, RAM, GPU, disk, installed packages...
+  cores/v1/system_identity.py:
+    e: SkillStatus,SystemIdentity
+    SkillStatus: __init__(5),to_dict(0)  # Runtime status of a single capability...
+    SystemIdentity: __init__(2),refresh_statuses(0),get_status(1),build_system_prompt(0),build_fallback_message(3),build_skill_context_for_llm(1),get_readiness_report(0)  # Builds dynamic system prompt that separates:
+- What the SYST...
+  skills/benchmark/v2/skill.py:
+    e: BenchmarkSkill,execute,get_info,health_check
+    BenchmarkSkill: __init__(0),_load_config(0),_get_models_from_tier(2),_get_api_key(0),_get_cached_recommendations(2),execute(1),_recommend_models_live(2),_get_model_param_size(1),BENCHMARK_PROFILES(0),_call_model_for_benchmark(4),_compare_models(1),_analyze_current_model(1),_run_live_benchmark(1),_list_goal_profiles(0),_list_benchmark_profiles(0)  # Analyzes and benchmarks LLM models for goal-based recommenda...
+    execute(params)
+    get_info()
+    health_check()
+  skills/benchmark/v3/skill.py:
+    e: BenchmarkSkill,execute,get_info,health_check
+    BenchmarkSkill: __init__(0),_load_config(0),_get_models_from_tier(2),_get_api_key(0),_get_cached_recommendations(2),_call_model_for_benchmark(4),execute(1),_recommend_models_live(2),_get_model_param_size(1),_compare_models(1),_analyze_current_model(1),_run_live_benchmark(1),_list_goal_profiles(0),_list_benchmark_profiles(0)  # Analyzes and benchmarks LLM models for goal-based recommenda...
+    execute(params)
+    get_info()
+    health_check()
+  cores/v1/preflight.py:
+    e: PreflightResult,SkillPreflight,EvolutionGuard
+    PreflightResult: __init__(4),__repr__(0),to_dict(0)  # Result of pre-flight validation...
+    SkillPreflight: check_all(1),check_syntax(1),check_imports(2),check_interface(1),auto_fix_imports(1)  # Pre-flight validation for skill files...
+    EvolutionGuard: __init__(0),fingerprint(1),record_error(3),is_repeating(2),get_error_summary(1),suggest_strategy(2),build_evolution_prompt_context(2),is_stub_skill(1),check_execution_result(3)  # Prevents evolution loops where the same error repeats.
+Track...
+  cores/v1/intent_engine.py:
+    e: IntentEngine
+    IntentEngine: __init__(3),save(0),_update_topics_from_result(1),_recent_topic(1),_build_context(1),record_skill_use(1),record_correction(3),record_success(3),record_unhandled(1),_is_trivial(1),_check_deterministic_config(1),_check_utility_queries(2),_needs_ml_reset(3),_process_ml_result(4),_check_voice_context_inference(3),_check_quality_config_fallback(1),analyze(3),_extract_shell_command(2),_extract_skill_name(1),_match_existing_skill(2),_detect_evolve_target(2),_extract_config_target(2),suggest_skills(0)  # Context-aware intent detection with ML-based classification...
+  cores/v1/llm_client.py:
+    e: LLMClient,_detect_ollama_models,discover_models
+    LLMClient: __init__(4),tier_info(0),_is_available(1),_report_ok(1),_report_fail(2),chat(3),_build_error_msg(0),_try_model(5),_get_unavailable_reason(1),gen_code(3),gen_pipeline(2),analyze_need(2)  # Tiered LLM routing: free remote → local (ollama) → paid remo...
+    _detect_ollama_models()
+    discover_models()
+  cli.py:
+    e: print_color,cmd_logs_reset,cmd_cache_reset,cmd_state_reset,cmd_status,cmd_shell,main_cli
+    print_color(color;message)
+    cmd_logs_reset(args)
+    cmd_cache_reset(args)
+    cmd_state_reset(args)
+    cmd_status(args)
+    cmd_shell(args)
+    main_cli()
+  scripts/generate_manifests.py:
+    e: infer_interface_from_skill,infer_constraints_from_skill,generate_manifest_for_skill,main
+    infer_interface_from_skill(skill_path)
+    infer_constraints_from_skill(skill_path)
+    generate_manifest_for_skill(skill_dir;registry)
+    main()
+  cores/v1/skill_schema.py:
+    e: ValidationResult,SkillSchemaValidator,BlueprintRegistry,validate_manifest_file,generate_skill_manifest,get_schema_validation_stats
+    ValidationResult: is_ok(0),summary(0)  # Result of schema validation...
+    SkillSchemaValidator: __init__(0),validate_manifest(1),validate_output(1),validate_file(1),_validate_against_schema(2)  # Validate skill manifests and outputs against JSON Schema...
+    BlueprintRegistry: __init__(0),get_blueprint(1),list_blueprints(0),register_blueprint(2),suggest_blueprint(1),generate_manifest(2)  # Registry of skill blueprints for auto-generation...
+    validate_manifest_file(path)
+    generate_skill_manifest(skill_name;query)
+    get_schema_validation_stats(skills_dir)
+  cores/v1/core.py:
+    e: gen_compose,_cmd_help,_cmd_quit,_cmd_skills,_cmd_create,_cmd_test,_cmd_run,_cmd_evolve,_cmd_rollback,_cmd_pipeline,_cmd_compose,_cmd_model,_cmd_models,_cmd_core,_cmd_switch,_cmd_log,_cmd_learn,_cmd_diagnose,_cmd_scan,_cmd_state,_cmd_correct,_cmd_profile,_cmd_suggest,_cmd_topic,_cmd_providers,_cmd_chain,_cmd_gc,_cmd_resources,_cmd_stt,_cmd_tts,_cmd_fix,_check_restart_loop,_ensure_api_key,_resolve_model,_init_components,_extract_stt_text,_handle_outcome,_build_env_context,_build_skills_info,_build_fallback_system_prompt,_handle_chat,_sanitize_chat_response,_check_proactive_learning,_cmd_health,_cmd_voice,_cmd_memories,_cmd_remember,_cmd_forget,_cmd_apikey,_cmd_autotune,_cmd_config,_cmd_reload_config,_cmd_reflect,_cmd_hw,_cmd_repairs,_cmd_snapshot,_cmd_autonomy,_boot,_handle_configure_intent,_handle_voice_intent,_handle_stt_outcome,_auto_save_preference,_flush_stdin,_read_line_with_shortcuts,_setup_signal_handlers,_try_auto_voice_mode,_dispatch_command,_process_chat_input,main
+    gen_compose(skills;state)
+    _cmd_help()
+    _cmd_quit()
+    _cmd_skills()
+    _cmd_create(a1;a2)
+    _cmd_test(a1)
+    _cmd_run(a1;a2)
+    _cmd_evolve(a1;a2)
+    _cmd_rollback(a1)
+    _cmd_pipeline(a1;a2)
+    _cmd_compose()
+    _cmd_model(a1)
+    _cmd_models(a1)
+    _cmd_core(a1)
+    _cmd_switch()
+    _cmd_log(a1)
+    _cmd_learn(a1)
+    _cmd_diagnose(a1)
+    _cmd_scan()
+    _cmd_state()
+    _cmd_correct(a1;a2)
+    _cmd_profile()
+    _cmd_suggest()
+    _cmd_topic()
+    _cmd_providers()
+    _cmd_chain()
+    _cmd_gc()
+    _cmd_resources()
+    _cmd_stt(a1)
+    _cmd_tts(a1)
+    _cmd_fix(a1)
+    _check_restart_loop(state)
+    _ensure_api_key(state)
+    _resolve_model(state)
+    _init_components(ak;mdl;models;logger;state)
+    _extract_stt_text(outcome)
+    _handle_outcome(outcome;intent;conv;identity)
+    _build_env_context()
+    _build_skills_info(sm)
+    _build_fallback_system_prompt(sm;identity)
+    _handle_chat(llm;sm;logger;conv;identity;memory)
+    _sanitize_chat_response(text;sm;logger)
+    _check_proactive_learning(intent)
+    _cmd_health(a1)
+    _cmd_voice(a1)
+    _cmd_memories()
+    _cmd_remember(a1;a2)
+    _cmd_forget(a1)
+    _cmd_apikey(a1;a2)
+    _cmd_autotune(a1)
+    _cmd_config(a1)
+    _cmd_reload_config()
+    _cmd_reflect(a1)
+    _cmd_hw(a1)
+    _cmd_repairs(a1)
+    _cmd_snapshot(a1;a2)
+    _cmd_autonomy(a1)
+    _boot()
+    _handle_configure_intent(analysis;session_cfg;conv;state;llm;sm;intent)
+    _handle_voice_intent(analysis;sm;evo;llm;intent;logger;conv;identity;memory)
+    _handle_stt_outcome(outcome;ui;sk;analysis;evo;intent;llm;sm;logger;conv;identity;memory)
+    _auto_save_preference(ui;memory)
+    _flush_stdin()
+    _read_line_with_shortcuts(prompt)
+    _setup_signal_handlers()
+    _try_auto_voice_mode(memory;cmd_ctx)
+    _dispatch_command(ui;cmd_ctx)
+    _process_chat_input(ui;cmd_ctx)
+    main()
+  skills/chat/v1/skill.py:
+    e: ChatSkill,get_info,health_check,execute
+    ChatSkill: execute(1),_generate_response(1)
+    get_info()
+    health_check()
+    execute(params)
+  skills/auto/v2/skill.py:
+    e: AutoSkillBuilder,get_info,health_check,execute
+    AutoSkillBuilder: execute(1),_parse_command(1),_execute_command(2),_get_weather(1),_get_time(0),_get_date(0),_translate_text(1),_calculate_expression(1),_speak_text(1),_search_web(1),_get_system_info(0),_get_public_ip(0),_get_news(0),_convert_units(1)
+    get_info()
+    health_check()
+    execute(params)
+  scripts/simulate.py:
+    e: SimulationResult,Simulator,main
+    SimulationResult: __init__(1),finish(0),to_dict(0)  # Result of a single scenario execution...
+    Simulator: __init__(1),_init_system(0),run_scenario(1),run_all(2),_iter_summary(1),_final_report(2)  # Runs automated chat scenarios against the evo-engine system...
+    main()
+  skills/document_search/v1/skill.py:
+    e: DocumentSearchSkill,get_info,health_check,execute
+    DocumentSearchSkill: __init__(0),search_by_name(4),search_by_content(5),_read_file_content(2),_find_matches(4),search_by_metadata(6),find_duplicates(2),index_directory(2),_parse_date(1),_parse_size(1),_human_readable_size(1),execute(1)  # Document search and indexing system...
+    get_info()
+    health_check()
+    execute(input_data)
+  cores/v1/session_config.py:
+    e: ConfigChange,SessionConfig
+    ConfigChange:  # Represents a single configuration change...
+    SessionConfig: __init__(2),get(3),set(3),reset(2),on_change(2),_notify(2),handle_configure_intent(1),_configure_llm(2),_configure_tts(2),_configure_stt(2),_configure_voice(2),_resolve_better_model(1),_resolve_worse_model(1),_resolve_faster_model(1),_resolve_free_model(0),_resolve_better_provider(2),_resolve_worse_provider(2),_resolve_fastest_provider(1),_extract_model_name(1),_extract_provider_name(2),get_last_change(0),format_change_feedback(1),get_session_summary(0)  # User-facing configuration manager.
+
+This is a SESSION-ONLY l...
+  cores/v1/drift_detector.py:
+    e: DriftReport,RemediationResult,DriftDetector,detect_drift,detect_all_drift,get_drift_summary,auto_remediate,auto_remediate_all
+    DriftReport: summary(0)  # Report of detected drift for a capability...
+    RemediationResult: summary(0)  # Result of auto-remediation attempt...
+    DriftDetector: __init__(0),detect(1),detect_all(0),_check_interface_drift(2),_check_version_drift(2),_check_provider_drift(2),_check_quality_drift(2),_find_latest_version(1),_count_versions(1),summary(0),auto_remediate(2),_rollback_provider(3),_rollback_legacy(2),remediate_all(1)  # Detects drift between manifest declarations and runtime stat...
+    detect_drift(capability)
+    detect_all_drift()
+    get_drift_summary()
+    auto_remediate(capability;severity_threshold)
+    auto_remediate_all(severity_threshold)
+  skills/deps/v3/skill.py:
+    e: DepsSkill,get_info,health_check,execute
+    DepsSkill: __init__(0),check_system(1),check_python_module(1),pip_install(2),execute(1),get_info(0),health_check(0)
+    get_info()
+    health_check()
+    execute(params)
+  skills/deps/providers/default/stable/skill.py:
+    e: DepsSkill,get_info,health_check,execute
+    DepsSkill: __init__(0),check_system(1),check_python_module(1),pip_install(2),scan_system(0),execute(1),get_info(0),health_check(0)
+    get_info()
+    health_check()
+    execute(params)
+  cores/v1/evo_journal.py:
+    e: EvolutionEntry,EvolutionJournal
+    EvolutionEntry: __init__(3),finish(4),to_dict(0)  # Single evolution attempt record...
+    EvolutionJournal: __init__(0),_load_summary(0),_save_summary(0),_append_entry(1),start_evolution(3),finish_evolution(8),reflect(3),get_skill_history(2),get_global_stats(0),format_report(0),_get_next_iteration(1),_get_last_score(1),_compute_quality(2),_suggest_strategy(3),_get_avoid_patterns(2),_top_strategies(0),_update_summary(1)  # Persistent journal for evolutionary cycles.
+
+Tracks:
+  - Per...
+  cores/v1/provider_selector.py:
+    e: ProviderInfo,ProviderSelector,ProviderChain
+    ProviderInfo: __init__(2)  # Parsed provider metadata...
+    ProviderSelector: __init__(2),list_capabilities(0),list_providers(1),load_manifest(1),load_meta(2),get_provider_info(2),select(4),_check_runnable(1),_score(3),_fallback(1),get_skill_path(3),summary(0)  # Selects the best available provider for a capability...
+    ProviderChain: __init__(2),_key(2),_get_stats(2),build_chain(3),_reorder_by_fallback(2),select_with_fallback(3),select_best(3),record_failure(3),record_success(3),_cooldown_expired(1),is_demoted(2),get_stats(2),chain_summary(1)  # Ordered provider fallback chain with auto-degradation.
+
+Trac...
+  cores/v1/skill_manager.py:
+    e: SkillManager,_load_bootstrap_skill,_load_skill_from_path
+    SkillManager: __init__(3),_collect_versions(1),list_skills(0),_is_rolled_back(1),latest_v(1),_active_provider(1),skill_path(2),create_skill(2),diagnose_skill(2),_raw_test(2),test_skill(2),_resolve_skill_path(2),_load_and_run(5),check_health(1),readiness_check(1),boot_health_check(0),get_health_context(0),_preflight_and_fix(2),exec_skill(4),_build_evolve_prompt(5),_determine_target_dir(2),_save_evolved_skill(7),_evaluate_and_log(5),smart_evolve(3),evolve(2),rollback(1)
+    _load_bootstrap_skill(name)
+    _load_skill_from_path(p;mod_name)
+  cores/v1/self_healing/diagnostics.py:
+    e: DiagnosticEngine
+    DiagnosticEngine: __init__(3),check_llm_health(0),check_system_commands(0),check_microphone(0),check_skills_health(0),check_vosk_model(0),check_tts_backend(0),check_disk_space(0),full_scan(1),llm_analyze_error(3),attempt_apt_install(1)  # Engine for running system diagnostic checks.
+
+Extracted from...
+  skills/stt/providers/vosk/stable/skill.py:
+    e: STTSkill,get_info,health_check,execute
+    STTSkill: __init__(0),_find_vosk_model(1),_check_audio_level(2),_record_wav(2),_ensure_wav(2),_transcribe_vosk(3),execute(1)
+    get_info()
+    health_check()
+    execute(input_data)
+  skills/account_creator/v1/skill.py:
+    e: AccountCreatorSkill,get_info,health_check,execute
+    AccountCreatorSkill: __init__(0),generate_password(5),_calculate_password_strength(1),check_password_strength(1),validate_email(1),validate_username(2),create_account_data(4),store_credentials(5),_load_credentials(0),_save_credentials(1),list_accounts(1),generate_account_variations(2),execute(1)  # Account creation and credential management...
+    get_info()
+    health_check()
+    execute(input_data)
+  backend/main.py:
+    e: LLMClient,TTSEngine,STTEngine,TTSRequest,_read_state,_get_key,lifespan,_init_coreskill,health,status,diagnose,tts_endpoint,stt_endpoint,websocket_chat,_execute_skill_for_chat,_handle_command
+    LLMClient: __init__(0),close(0),llm_chat(2),_try_ollama(1),_try_openrouter(1),_try_anthropic(1),_echo_response(1),get_status(0)  # Tiered LLM: Ollama (local free) → OpenRouter (remote free) →...
+    TTSEngine: synthesize(3)
+    STTEngine: __init__(0),_ensure_model(0),transcribe(2)
+    TTSRequest(BaseModel):
+    _read_state()
+    _get_key()
+    lifespan(app)
+    _init_coreskill()
+    health()
+    status()
+    diagnose()
+    tts_endpoint(req)
+    stt_endpoint(audio;lang)
+    websocket_chat(ws)
+    _execute_skill_for_chat(user_msg)
+    _handle_command(cmd;session_id)
+  cores/v1/quality_gate.py:
+    e: QualityReport,SkillQualityGate
+    QualityReport: summary(0)  # Structured quality assessment of a skill...
+    SkillQualityGate: __init__(1),evaluate(3),should_register(1),compare(2),on_skill_changed(1),_check_preflight(2),_check_manifest_schema(2),_check_drift(2),_check_health(2),_check_test_exec(3),_check_output(1),_check_code_quality(2),_load_module(1),_run_isolated_exec(2)  # Validates skill quality before registration.
+Each check cont...
+  cores/v1/garbage_collector.py:
+    e: EvolutionGarbageCollector
+    EvolutionGarbageCollector: __init__(1),is_stub(1),is_broken(1),scan_versions(1),cleanup_provider(2),cleanup_legacy(2),migrate_to_stable_latest(2),_copy_version(2),trim_archive(2),cleanup_all(2),summary(1)  # Cleans up failed evolution stubs, promotes stable versions...
+  cores/v1/smart_intent.py:
+    e: IntentResult,TrainingExample,SmartIntentClassifier,_load_default_training,create_smart_classifier
+    IntentResult: to_analysis(0)  # Result of intent classification...
+    TrainingExample: to_dict(0),from_dict(1)  # Single training example: phrase → intent + skill...
+    SmartIntentClassifier: __init__(2),_training_path(0),_load_training_data(0),_save_training_data(0),add_example(4),learn_from_correction(4),learn_from_success(3),_generate_variations(1),_ensure_embeddings(0),_keyword_prefilter(1),_embedding_fallback(2),classify(4),_tier1_embedding(1),_tier2_local_llm(3),_tier3_remote_llm(3),stats(0),info(0)  # ML-based intent classifier for evo-engine.
+
+Replaces all har...
+    _load_default_training()
+    create_smart_classifier(state_dir;llm_client)
+  cores/v1/metrics_collector.py:
+    e: SkillMetric,OperationMetric,SystemHealthSnapshot,MetricsCollector,get_collector,record_skill_execution,record_operation,get_skill_health,get_system_health_summary,compute_and_save_system_health
+    SkillMetric: to_json(0)  # Metrics for a single skill execution...
+    OperationMetric: to_json(0)  # Metrics for internal operations (evolve, create, validate, e...
+    SystemHealthSnapshot:  # System-wide health snapshot...
+    MetricsCollector: __init__(1),_ensure_dirs(0),record_skill_execution(7),get_skill_metrics(2),get_skill_health(1),record_operation(5),get_operation_stats(2),save_system_snapshot(1),load_system_snapshot(0),_count_skills(1),_get_recent_skill_metrics(1),_calculate_skill_stats(1),_get_top_errors(2),_get_slowest_skills(2),_count_reflections(1),compute_system_health(1),on_skill_failed(1),on_repair_completed(1),get_anomalies(1),_list_tracked_skills(0),_get_metrics_since(2),_get_baseline_rate(1),_get_baseline_p95(1),get_summary(0)  # Collect and persist performance metrics...
+    get_collector()
+    record_skill_execution()
+    record_operation()
+    get_skill_health(skill_name)
+    get_system_health_summary()
+    compute_and_save_system_health(skills_dir)
+  skills/invalid_input_handler/v1/skill.py:
+    e: InvalidInputHandler,get_info,health_check,execute
+    InvalidInputHandler: execute(1)
+    get_info()
+    health_check()
+    execute(params)
+  skills/document_editor/v1/skill.py:
+    e: DocumentEditorSkill,get_info,health_check,execute
+    DocumentEditorSkill: __init__(0),_read_file(1),_write_file(3),find_replace(6),insert_text(5),delete_lines(3),format_text(2),merge_files(3),split_file(4),apply_template(3),get_diff(2),execute(1)  # Document editing and manipulation...
+    get_info()
+    health_check()
+    execute(input_data)
+  skills/tts/providers/piper/stable/skill.py:
+    e: PiperTTSSkill,get_info,health_check,_get_cache_dir,_get_model_path,_download_file,_ensure_model,execute
+    PiperTTSSkill: __init__(0),_clean_for_tts(1),execute(1)  # Piper TTS with auto-model download and streaming playback...
+    get_info()
+    health_check()
+    _get_cache_dir()
+    _get_model_path(lang)
+    _download_file(url;dest;timeout)
+    _ensure_model(lang)
+    execute(params)
+  skills/local_computer_discovery/v3/skill.py:
+    e: LocalComputerDiscovery,get_info,health_check,execute
+    LocalComputerDiscovery: __init__(0),get_local_ip(0),get_network_range(1),discover_with_arp(0),discover_with_nmap(1),discover_with_arp_scan(1),discover_with_netstat(0),discover_with_ping(1),get_hostname(1),execute(1)
+    get_info()
+    health_check()
+    execute(params)
+  examples/automations/task_management_automation.py:
+    e: run_skill,task_management_automation,task_import_from_files
+    run_skill(skill_name;action;params)
+    task_management_automation()
+    task_import_from_files(file_path)
+  cores/v1/skill_forge.py:
+    e: ErrorBudget,SkillMatch,SkillForge,is_conversational
+    ErrorBudget: __init__(2),record_error(0),exhausted(0),time_until_reset(0)  # Prevents runaway skill creation after repeated failures...
+    SkillMatch:  # Result of semantic skill search...
+    SkillForge: __init__(1),index_skills(1),_load_skill_description(1),search(2),_search_embedding(2),_search_keyword(2),should_create(2),record_create_error(0),stats(0)  # Gated skill creation with semantic dedup.
+
+Prevents garbage ...
+    is_conversational(query)
+  cores/v1/stable_snapshot.py:
+    e: SnapshotInfo,StableSnapshot
+    SnapshotInfo:  # Metadata for a saved snapshot...
+    StableSnapshot: __init__(2),save_as_stable(2),create_branch(4),promote_branch(3),restore_stable(2),validate_against_stable(2),list_branches(2),_detect_provider(1),_find_current_version(2),_copy_skill_files(2),_archive_version(4),_check_health(1),_save_meta(2),_load_meta(1)  # Manages stable/bugfix/feature versions of skills.
+
+Key princ...
+  skills/stt/providers/vosk/archive/v7/skill.py:
+    e: STTSkill,get_info,health_check,check_readiness,execute
+    STTSkill: __init__(0),_record_wav(2),_ensure_wav(2),_find_model_path(1),_transcribe_vosk(2),execute(1)
+    get_info()
+    health_check()
+    check_readiness()
+    execute(input_data)
+  skills/currency_converter_gbp_to_jpy/v2/skill.py:
+    e: CurrencyConverterGBPtoJPY,get_info,health_check,execute
+    CurrencyConverterGBPtoJPY: execute(1)
+    get_info()
+    health_check()
+    execute(params)
+  scripts/benchmark_system.py:
+    e: BenchmarkResult,SystemMetrics,run_benchmark,measure_import,count_lines_in_file,get_version,count_skills_and_versions,validate_manifest_schemas,run_all_benchmarks,main
+    BenchmarkResult:  # Single benchmark measurement...
+    SystemMetrics:  # Collected system metrics...
+    run_benchmark(name;func)
+    measure_import(module_name)
+    count_lines_in_file(path)
+    get_version()
+    count_skills_and_versions(skills_dir)
+    validate_manifest_schemas(skills_dir)
+    run_all_benchmarks()
+    main()
+  skills/network_tools/v1/skill.py:
+    e: NetworkToolsSkill,get_info,health_check,execute
+    NetworkToolsSkill: ping(3),dns_lookup(1),check_port(3),_common_port_service(1),check_http(2),my_ip(0),network_info(0),execute(1)  # Network diagnostic tools...
+    get_info()
+    health_check()
+    execute(input_data)
+  skills/pound_to_yen_converter/v9/skill.py:
+    e: PoundToYenConverter,get_info,health_check,execute,execute_wrapper
+    PoundToYenConverter: execute(1)
+    get_info()
+    health_check()
+    execute(params)
+    execute_wrapper(params)
+  skills/currency_converter_gbp_to_jpy/v3/skill.py:
+    e: CurrencyConverterGBPtoJPY,get_info,health_check,execute
+    CurrencyConverterGBPtoJPY: execute(1)
+    get_info()
+    health_check()
+    execute(params)
+  skills/health/v1/skill.py:
+    e: HealthSkill,get_info,health_check,execute
+    HealthSkill: execute(1)
+    get_info()
+    health_check()
+    execute(params)
+  skills/content_search/providers/default/stable/skill.py:
+    e: ContentSearchSkill,DuckDuckGoParser,get_info,health_check,execute
+    ContentSearchSkill: __init__(0),execute(1),_search_duckduckgo(1)
+    DuckDuckGoParser(HTMLParser): __init__(0),handle_starttag(2),handle_endtag(1),handle_data(1)
+    get_info()
+    health_check()
+    execute(params)
+  cores/v1/autonomy_loop.py:
+    e: LoopCycleResult,AutonomyLoop
+    LoopCycleResult: summary(0)  # Result of a single autonomy loop cycle...
+    AutonomyLoop: __init__(6),run_cycle(2),_phase_scan(1),_phase_triage(1),_phase_repair(1),_repair_system(1),_phase_verify(1),_phase_record(1),scheduled_cycle(0),enable(0),disable(0),status(0),format_report(0),_now_iso(-1)  # Closed-loop orchestrator: scan → triage → repair → verify → ...
+  cores/v1/base_skill.py:
+    e: InputField,SkillManifest,BaseSkill,_make_module_functions,generate_scaffold,generate_manifest_yaml
+    InputField:  # Single input field from manifest...
+    SkillManifest: from_dict(1),from_file(1),to_dict(0),validate_input(1),get_defaults(0)  # Parsed skill manifest (from YAML or JSON)...
+    BaseSkill: execute(1),get_info(0),health_check(0),safe_execute(1),_get_manifest(0)  # Base class eliminating 55% of boilerplate errors in auto-gen...
+    _make_module_functions(skill_class)
+    generate_scaffold(manifest)
+    generate_manifest_yaml(name;description;inputs;tags)
+  cores/v1/reflection_engine.py:
+    e: SystemState,RuleMatch,ReflectionRuleEngine,ProactiveReflection,get_rule_engine,evaluate_reflection_rules,run_reflection_cycle
+    SystemState: to_dict(0)  # Current system state for rule matching...
+    RuleMatch:  # Matched rule with resolved action...
+    ReflectionRuleEngine: __init__(0),_load_rules(0),_register_default_actions(0),reload_rules(0),record_failure(1),record_success(0),evaluate_rules(1),_match_trigger(2),_get_priority(1),execute_action(2),run_cycle(1),_action_run_diagnostic(0),_action_reject_and_retry(1),_action_gc_trim(0),_action_auto_fix_imports(1),_action_rewrite_from_backup(1),_action_reduce_complexity(1),from_config(0),summary(0)  # Engine that evaluates and executes declarative reflection ru...
+    ProactiveReflection: __init__(2),check_and_reflect(1),_build_state(0),summary(0)  # High-level integration that wires rule engine into system...
+    get_rule_engine()
+    evaluate_reflection_rules(state)
+    run_reflection_cycle()
+  skills/calculator_advanced/v1/skill.py:
+    e: AdvancedCalculatorSkill,get_info,health_check,execute
+    AdvancedCalculatorSkill: __init__(0),_load_history(0),_save_history(0),calculate(2),set_variable(2),get_variables(0),clear_variables(0),solve_linear(2),convert_base(3),stats(1),execute(1)  # Advanced calculator with variables and scientific functions...
+    get_info()
+    health_check()
+    execute(input_data)
+  skills/local_computer_discovery/v2/skill.py:
+    e: LocalComputerDiscovery,get_info,health_check,execute
+    LocalComputerDiscovery: __init__(0),get_local_ip(0),get_network_range(1),discover_with_arp(0),discover_with_nmap(1),discover_with_arp_scan(1),discover_with_netstat(0),discover_with_ping(1),get_hostname(1),execute(1)
+    get_info()
+    health_check()
+    execute(params)
+  cores/v1/config_generator.py:
+    e: ConfigGenerator,get_config_generator
+    ConfigGenerator: __init__(1),generate_intent_examples(3),_basic_examples(2),extend_training_data(2),generate_topic_map(1),generate_provider_tiers(1),ensure_config_files(0),_generate_default_training(0),_generate_system_config(0)  # Generates configuration dynamically using LLM when files are...
+    get_config_generator(llm_client)
+  cores/v1/adaptive_monitor.py:
+    e: EWMATracker,AdaptiveResourceMonitor
+    EWMATracker: __init__(2),update(1)  # Exponentially Weighted Moving Average for a single metric...
+    AdaptiveResourceMonitor: __init__(2),sample(0),start(1),stop(0),pressure_score(0),check_alerts(0),snapshot(0),format_status(0)  # EWMA-enhanced resource monitoring with alert thresholds.
+
+Us...
+  cores/v1/event_bus.py:
+    e: SkillFailedEvent,ReflectionNeededEvent,RepairRequestedEvent,RepairCompletedEvent,DiagnosisReadyEvent,EventBus
+    SkillFailedEvent:
+    ReflectionNeededEvent:
+    RepairRequestedEvent:
+    RepairCompletedEvent:
+    DiagnosisReadyEvent:
+    EventBus: __init__(0),wire(6)  # Central registry for wiring signal handlers at boot time.
+
+U...
+  cores/v1/intent/ensemble.py:
+    e: Vote,EnsembleResult,EnsembleIntentClassifier
+    Vote:  # A single classifier's vote...
+    EnsembleResult:  # Combined ensemble result...
+    EnsembleIntentClassifier: __init__(1),reset(0),add_vote(1),decide(0)  # Combine multiple classifier votes with weighted confidence.
+...
+  skills/openrouter/v1/skill.py:
+    e: OpenRouterSkill,get_info,execute,health_check
+    OpenRouterSkill: __init__(0),execute(1),_fetch_models(0),_score_model(2),_discover_free(1),_search_models(1),_get_model_info(1),_get_recommended_use(2)  # OpenRouter API client for discovering and ranking free LLM m...
+    get_info()
+    execute(params)
+    health_check()
+  skills/auto/v1/skill.py:
+    e: AutoSkillBuilder,get_info,health_check,execute
+    AutoSkillBuilder: execute(1),_detect_capability(1),_execute_tts(1),_execute_http_get(1),_execute_system(1),_execute_file(1)
+    get_info()
+    health_check()
+    execute(params)
+  skills/process_manager/v1/skill.py:
+    e: ProcessManagerSkill,get_info,health_check,execute
+    ProcessManagerSkill: _parse_proc_stat(1),_get_proc_info(1),list_processes(1),find_process(2),kill_process(2),process_info(1),execute(1)  # Process management using stdlib and ps command...
+    get_info()
+    health_check()
+    execute(input_data)
+  skills/gbp_to_jpy_converter/v9/skill.py:
+    e: GBPToJPYConverter,get_info,health_check,execute
+    GBPToJPYConverter: execute(1)
+    get_info()
+    health_check()
+    execute(params)
+  skills/stt/providers/vosk/archive/v6/skill.py:
+    e: STTSkill,get_info,health_check,execute
+    STTSkill: __init__(0),_record_wav(2),_ensure_wav(2),_transcribe_vosk(2),execute(1)
+    get_info()
+    health_check()
+    execute(input_data)
+  skills/web_automation/v1/skill.py:
+    e: WebAutomationSkill,get_info,health_check,execute
+    WebAutomationSkill: __init__(0),_ensure_playwright(0),_get_page(1),navigate(3),click(2),type(4),fill(3),extract_text(2),get_attribute(3),screenshot(2),wait(1),wait_for_selector(2),evaluate(1),close(0),get_cookies(0),execute(1)  # Browser automation using Playwright...
+    get_info()
+    health_check()
+    execute(input_data)
+  examples/automations/network_monitoring_automation.py:
+    e: run_skill,network_monitoring_automation,generate_network_report
+    run_skill(skill_name;action;params)
+    network_monitoring_automation()
+    generate_network_report(results)
+  cores/v1/learned_repair.py:
+    e: LearnedRepairStrategy,TieredRepair,rule_based_strategy
+    LearnedRepairStrategy: __init__(0),fit(1),predict(4),predict_with_confidence(4),_extract_features(1),summary(0)  # DecisionTree that predicts best repair strategy from issue f...
+    TieredRepair: __init__(0),select(5),current_tier(2),reset(2),summary(0)  # 5-level repair escalation: each tier is progressively more a...
+    rule_based_strategy(issue_type;attempt;has_sm)
+  skills/gbp_to_jpy_converter/v8/skill.py:
+    e: get_info,health_check,execute,execute_module
+    get_info()
+    health_check()
+    execute(params)
+    execute_module(params)
+  skills/task_manager/v1/skill.py:
+    e: TaskManagerSkill,get_info,health_check,execute
+    TaskManagerSkill: __init__(0),_ensure_storage(0),_load_tasks(0),_save_tasks(1),_parse_due_date(1),add(6),list_tasks(4),complete(1),delete(1),update(6),due_soon(1),overdue(0),search(1),stats(0),execute(1)  # Task and reminder management...
+    get_info()
+    health_check()
+    execute(input_data)
+  skills/_health_/v1/skill.py:
+    e: HealthSkill,get_info,health_check,execute
+    HealthSkill: execute(1),_get_full_health_report(0),_get_cpu_usage(0),_get_memory_usage(0),_get_disk_usage(0),_get_system_uptime(0),_get_system_uptime_info(0),_get_process_count(0),_get_network_status(0),_get_cpu_info(0),_get_memory_info(0),_get_disk_info(0),_get_network_info(0)
+    get_info()
+    health_check()
+    execute(params)
+  skills/file_manager/v1/skill.py:
+    e: FileManagerSkill,get_info,health_check,execute
+    FileManagerSkill: _safe_path(2),list_dir(3),copy(3),move(2),delete(2),organize(2),find(3),info(1),execute(1)  # File operations using stdlib only...
+    get_info()
+    health_check()
+    execute(input_data)
+  cores/v1/repair_journal.py:
+    e: RepairAttempt,KnownFix,RepairJournal
+    RepairAttempt:  # Single repair attempt record...
+    KnownFix:  # A proven fix pattern extracted from successful attempts...
+    RepairJournal: __init__(1),record_attempt(10),record_success(2),get_known_fix(1),get_failed_fixes(1),get_history(2),get_stats(0),ask_llm_diagnosis(4),ask_llm_and_try(5),_error_signature(1),_append_journal(1),_update_known_fix(4),_save_known_fixes(0),_load_known_fixes(0),_load_recent_attempts(0),format_report(1)  # Persistent journal of all repair attempts with LLM-powered l...
+  cores/v1/skill_logger.py:
+    e: init_nfo,inject_logging,get_skill_logger,query_skill_errors,query_slow_calls,skill_health_summary,get_markdown_logs,get_errors_markdown,get_health_markdown
+    init_nfo()
+    inject_logging(mod;skill_name)
+    get_skill_logger(skill_name)
+    query_skill_errors(skill_name;last_n)
+    query_slow_calls(threshold_ms;last_n)
+    skill_health_summary(skill_name)
+    get_markdown_logs(last_n;skill_name)
+    get_errors_markdown(skill_name;last_n)
+    get_health_markdown()
+  cores/v1/logger.py:
+    e: Logger
+    Logger: __init__(1),_write(2),_write_markdown(2),_format_markdown(1),_entry(2),core(2),skill(3),read_skill_log(3),read_core_log(2),get_markdown_logs(2),learn_summary(1)  # Per-skill, per-core structured logging with learning...
+  cores/v1/prompts/__init__.py:
+    e: PromptManager,_load_prompt,get,render,get_metadata,list_available,clear_cache
+    PromptManager: get(3),render(3),get_metadata(1),list(0),clear_cache(0)  # Class-based interface for prompt management...
+    _load_prompt(name)
+    get(name;prompt_type;default)
+    render(name;variables;prompt_type)
+    get_metadata(name)
+    list_available()
+    clear_cache()
+  skills/converter/v1/skill.py:
+    e: ConverterSkill,get_info,health_check,execute
+    ConverterSkill: convert_unit(3),convert_temperature(3),convert_currency(3),convert_time(3),list_units(1),list_timezones(0),parse_and_convert(1),execute(1)  # Unit, time zone, and currency conversions...
+    get_info()
+    health_check()
+    execute(input_data)
+  skills/weather_gdansk/v8/skill.py:
+    e: WeatherGdanskParser,WeatherGdanskSkill,get_weather_gdansk,speak_weather,get_info,health_check,execute
+    WeatherGdanskParser(HTMLParser): __init__(0),handle_starttag(2),handle_endtag(1),handle_data(1)
+    WeatherGdanskSkill: execute(1)
+    get_weather_gdansk()
+    speak_weather(weather_data)
+    get_info()
+    health_check()
+    execute(params)
+  skills/text_summarizer/v1/skill.py:
+    e: TextSummarizerSkill,get_info,health_check,execute
+    TextSummarizerSkill: _tokenize_sentences(1),_tokenize_words(1),_score_sentences(2),summarize(3),extract_keywords(2),get_stats(1),execute(1)  # Text summarization using extractive methods (stdlib only)...
+    get_info()
+    health_check()
+    execute(input_data)
+  skills/notes/v1/skill.py:
+    e: NotesSkill,get_info,health_check,execute
+    NotesSkill: __init__(0),_ensure_storage(0),_load_notes(0),_save_notes(1),add(3),list_notes(2),get(1),search(2),update(4),delete(1),add_tag(2),list_tags(0),execute(1)  # Personal note management with tags and search...
+    get_info()
+    health_check()
+    execute(input_data)
+  skills/diagnostic_runner/v1/skill.py:
+    e: DiagnosticRunner,get_info,health_check,execute
+    DiagnosticRunner: execute(1),_check_llm(0),_check_microphone(0),_check_tts(0),_check_disk(0),_check_commands(0)  # Collects system diagnostics...
+    get_info()
+    health_check()
+    execute(input_data)
+  main.py:
+    e: log,load_state,save_state,check,bootstrap
+    log(msg;lvl)
+    load_state()
+    save_state(s)
+    check(version)
+    bootstrap()
+  TODO2/main.py:
+    e: LLMClient,TTSEngine,STTEngine,TTSRequest,lifespan,_pull_ollama_model,health,status,list_skills,tts_endpoint,stt_endpoint,websocket_chat,_handle_command
+    LLMClient: __init__(0),close(0),chat(2),_try_ollama(1),_try_openrouter(1),_try_anthropic(1),_echo_response(1),get_status(0)  # Tiered LLM: Ollama (local free) → OpenRouter (remote free) →...
+    TTSEngine: synthesize(3)
+    STTEngine: __init__(0),_ensure_model(0),transcribe(2)
+    TTSRequest(BaseModel):
+    lifespan(app)
+    _pull_ollama_model()
+    health()
+    status()
+    list_skills()
+    tts_endpoint(req)
+    stt_endpoint(audio;lang)
+    websocket_chat(ws)
+    _handle_command(cmd;session_id)
+  cores/v1/config.py:
+    e: C,_load_system_config,reload_system_config,get_system_config,get_config_value,get_code_model_patterns,_load_model_config,get_models_from_tier,cpr,load_state,save_state,_parse_models_override,get_models_from_config,get_categories,get_provider_tiers,get_blocked_commands
+    C:
+    _load_system_config()
+    reload_system_config()
+    get_system_config()
+    get_config_value(key_path;default)
+    get_code_model_patterns()
+    _load_model_config()
+    get_models_from_tier(tier_name;enabled_only)
+    cpr(c;m)
+    load_state()
+    save_state(s)
+    _parse_models_override(raw)
+    get_models_from_config(state)
+    get_categories()
+    get_provider_tiers()
+    get_blocked_commands()
+  cores/v1/intent/local_llm.py:
+    e: LocalLLMClassifier,_get_intent_result_class
+    LocalLLMClassifier: __init__(0),_detect(0),_build_skill_schema(1),classify(3)  # Uses local ollama model (Qwen 3B) for intent classification...
+    _get_intent_result_class()
+  skills/weather_gdansk/v9/skill.py:
+    e: WeatherGdanskParser,WeatherGdanskSkill,get_info,health_check,execute
+    WeatherGdanskParser(HTMLParser): __init__(0),handle_starttag(2),handle_endtag(1),handle_data(1)
+    WeatherGdanskSkill: execute(1)
+    get_info()
+    health_check()
+    execute(params)
+  skills/document_reader/v1/skill.py:
+    e: DocumentReaderSkill,get_info,health_check,execute
+    DocumentReaderSkill: _detect_file_type(1),_read_text_file(3),_read_pdf(2),_read_pdf_basic(2),_read_docx(1),_read_docx_basic(1),_read_html(1),read(2),extract(2),info(1),_format_size(1),search(3),execute(1)  # Extract text from various document formats...
+    get_info()
+    health_check()
+    execute(input_data)
+  skills/llm/v2/skill.py:
+    e: LLMExecutor,get_info,health_check,execute
+    LLMExecutor: __init__(0),execute(1)
+    get_info()
+    health_check()
+    execute(params)
+  skills/llm/v1/skill.py:
+    e: get_info,health_check,execute,execute_wrapper
+    get_info()
+    health_check()
+    execute(params)
+    execute_wrapper(params)
+  skills/tts/providers/espeak/stable/skill.py:
+    e: EspeakTTSSkill,get_info,health_check,execute
+    EspeakTTSSkill: __init__(0),_clean_for_tts(0),execute(1)  # Text-to-Speech using espeak/espeak-ng (non-blocking via subp...
+    get_info()
+    health_check()
+    execute(params)
+  skills/email_client/v1/skill.py:
+    e: EmailClientSkill,get_info,health_check,execute
+    EmailClientSkill: __init__(0),connect(6),_list_folders(0),list_folders(0),search(3),get_unread(2),read(2),extract_links(1),send(4),_decode_header(1),_get_text(1),disconnect(0),execute(1)  # Email client for IMAP/SMTP operations...
+    get_info()
+    health_check()
+    execute(input_data)
+  examples/check_clipboard_api_key.py:
+    e: get_clipboard_content,validate_openrouter_api_key,main
+    get_clipboard_content()
+    validate_openrouter_api_key(text)
+    main()
+  cores/v1/intent/embedding.py:
+    e: EmbeddingEngine
+    EmbeddingEngine: __init__(1),_try_init(0),encode(1),similarity(2),_bow_vector(1),_normalize_pl(0),install_hint(0)  # Sentence-transformers based embedding for intent similarity...
+  cores/v1/self_healing/__init__.py:
+    e: HealingStage,HealingTask,HealingResult,ErrorFingerprint,SelfReflectionEngine,SelfHealingOrchestrator,heal_skill
+    HealingStage(Enum):  # Stadia procesu naprawy...
+    HealingTask:  # Pojedyncze zadanie naprawy...
+    HealingResult:  # Wynik procesu naprawy...
+    ErrorFingerprint: create(1)  # Tworzy unikalny odcisk palca błędu...
+    SelfReflectionEngine: __init__(1),reflect(2),_learn_rule(3),_update_strategy_stats(2),get_best_strategy(2)  # Silnik autorefleksji i uczenia się z napraw...
+    SelfHealingOrchestrator: __init__(3),heal_skill(2),_execute_healing_cycle(1),_fix_syntax(2),_fix_imports(2),_fix_interface(2),_evolve_with_llm(2),_rewrite_skill(2),_get_skill_path(1),get_healing_report(0)  # Orkiestrator procesu autonaprawy z podziałem na zadania...
+    heal_skill(skill_name;error_info;llm_client;skill_manager;state)
+  skills/social_media_manager/v1/skill.py:
+    e: SocialMediaManagerSkill,get_info,health_check,execute
+    SocialMediaManagerSkill: __init__(0),_ensure_defaults(0),_load_posts(0),_save_posts(1),_load_templates(0),create_post(4),schedule_post(4),_parse_relative_time(1),generate_content(4),_generate_key_points(2),_suggest_hashtags(1),_extract_hashtags(1),analyze_text(1),_calculate_readability(1),_generate_recommendations(1),track_hashtags(2),list_scheduled_posts(2),execute(1)  # Social media content management and scheduling...
+    get_info()
+    health_check()
+    execute(input_data)
+  skills/document_publisher/v1/skill.py:
+    e: DocumentPublisherSkill,get_info,health_check,execute
+    DocumentPublisherSkill: __init__(0),_load_index(0),_save_index(1),_read_file(1),generate_html(4),_markdown_to_html(1),_plain_text_to_html(1),_escape_html(1),_apply_default_template(3),_apply_minimal_template(2),_generate_toc(1),version_document(2),create_index(2),_generate_index_html(2),publish_static_site(2),generate_share_link(2),_get_mime_type(1),list_published(0),execute(1)  # Document publishing and sharing system...
+    get_info()
+    health_check()
+    execute(input_data)
+  skills/echo/v9/skill.py:
+    e: EchoSkill,get_info,health_check,execute
+    EchoSkill: execute(1)
+    get_info()
+    health_check()
+    execute(params)
+  skills/kalkulator/v47/skill.py:
+    e: Kalkulator,get_info,health_check,execute
+    Kalkulator: execute(1),_extract_expression(1),_validate_expression(1),_calculate(1)
+    get_info()
+    health_check()
+    execute(params)
+  skills/system_info/v4/skill.py:
+    e: SystemInfoSkill,get_info,health_check,execute
+    SystemInfoSkill: execute(1)
+    get_info()
+    health_check()
+    execute(params)
+  cores/v1/bandit_selector.py:
+    e: ArmStats,UCB1BanditSelector
+    ArmStats:  # Stats for a single UCB1 arm (provider)...
+    UCB1BanditSelector: __init__(0),_key(2),_get_arm(2),select(3),_ucb1_score(3),record(4),get_stats(2),summary(2),reset(1)  # UCB1-based provider selection overlay.
+
+Usage:
+    bandit = ...
+  cores/v1/fuzzy_router.py:
+    e: FuzzyCommandRouter
+    FuzzyCommandRouter: __init__(1),resolve(1),add(2),remove(1)  # Dispatch slash commands with fuzzy matching for typo toleran...
+  cores/v1/pipeline_manager.py:
+    e: PipelineManager
+    PipelineManager: __init__(3),list_p(0),create_p(2),_get_nested_value(2),_substitute_vars(2),_process_input(2),_exec_step_with_retry(3),_resolve_execution_order(1),run_p(2)
+  skills/ksef_integration/v1/skill.py:
+    e: KSeFIntegrationSkill,get_info,health_check,execute
+    KSeFIntegrationSkill: __init__(0),_load_config(0),_save_config(1),_get_base_url(1),_make_request(5),login(4),get_token(2),save_token(2),send_invoice(2),get_invoice(2),check_status(2),get_config(0),execute(1)  # Integration with Polish KSeF system...
+    get_info()
+    health_check()
+    execute(input_data)
+  skills/shell/v2/skill.py:
+    e: ShellSkill,_load_blocked_commands,get_info,health_check,execute
+    ShellSkill: _is_interactive(1),_validate_command(1),_extract_timeout(2),_run_interactive(2),_run_non_interactive(2),_build_result(5),execute(1)
+    _load_blocked_commands()
+    get_info()
+    health_check()
+    execute(params)
+  skills/clipboard/v1/skill.py:
+    e: ClipboardSkill,get_info,health_check,execute
+    ClipboardSkill: _detect_backend(0),copy(1),paste(0),clear(0),execute(1)  # Clipboard operations with multiple backend support...
+    get_info()
+    health_check()
+    execute(input_data)
+  skills/devops/v3/skill.py:
+    e: DevOpsSkill,get_info,health_check,execute
+    DevOpsSkill: check_syntax(1),detect_imports(1),check_deps(1),find_system_alternatives(1),test_skill(2),health_check_skill(1),generate_fix_prompt(2),execute(1)  # Test, validate and deploy skills in isolated subprocess...
+    get_info()
+    health_check()
+    execute(params)
+  skills/devops/v4/skill.py:
+    e: DevOpsSkill,get_info,health_check,execute
+    DevOpsSkill: check_syntax(1),detect_imports(1),check_deps(1),find_system_alternatives(1),test_skill(2),health_check_skill(1),generate_fix_prompt(2),execute(1)  # Test, validate and deploy skills in isolated subprocess...
+    get_info()
+    health_check()
+    execute(params)
+  skills/devops/providers/default/stable/skill.py:
+    e: DevOpsSkill,get_info,health_check,execute
+    DevOpsSkill: check_syntax(1),detect_imports(1),check_deps(1),find_system_alternatives(1),test_skill(2),health_check_skill(1),generate_fix_prompt(2),execute(1)  # Test, validate and deploy skills in isolated subprocess...
+    get_info()
+    health_check()
+    execute(params)
+  skills/network_info/v1/skill.py:
+    e: get_info,execute,health_check
+    get_info()
+    execute(params)
+    health_check()
+  skills/zarz_dzania/v7/skill.py:
+    e: ZarzadzaniaSkill,get_info,health_check,execute
+    ZarzadzaniaSkill: execute(1),list_files(1),copy_file(1),file_info(1)
+    get_info()
+    health_check()
+    execute(params)
+  skills/zarz_dzania/v8/skill.py:
+    e: FileManagerSkill,get_info,health_check,execute
+    FileManagerSkill: execute(1),list_files(1),copy_file(1),file_info(1)
+    get_info()
+    health_check()
+    execute(params)
+  cores/v1/skill_validator.py:
+    e: ValidationResult,SkillValidator,_validate_stt,_validate_shell,_validate_tts,_validate_web_search
+    ValidationResult: __init__(2),to_dict(0),__repr__(0)  # Structured validation outcome...
+    SkillValidator: __init__(0),register(2),unregister(1),has_validator(1),validate(4),list_validators(0)  # Plugin registry for skill-specific result validation.
+
+Usage...
+    _validate_stt(result;goal;user_msg)
+    _validate_shell(result;goal;user_msg)
+    _validate_tts(result;goal;user_msg)
+    _validate_web_search(result;goal;user_msg)
+  skills/echo/v8/skill.py:
+    e: EchoSkill,get_info,health_check,execute
+    EchoSkill: execute(1)
+    get_info()
+    health_check()
+    execute(params)
+  skills/echo/providers/default/stable/skill.py:
+    e: EchoSkill,get_info,health_check,execute
+    EchoSkill: execute(1)
+    get_info()
+    health_check()
+    execute(params)
+  skills/deps/v2/skill.py:
+    e: DepsSkill,get_info,health_check
+    DepsSkill: __init__(0),check_system(1),check_python_module(1),pip_install(2),execute(1),get_info(0),health_check(0)
+    get_info()
+    health_check()
+  skills/system_info/v3/skill.py:
+    e: SystemInfoSkill,get_info,health_check,execute
+    SystemInfoSkill: execute(1)
+    get_info()
+    health_check()
+    execute(params)
+  skills/url_codec/v1/skill.py:
+    e: URLCodecSkill,get_info,health_check,execute
+    URLCodecSkill: urlencode(2),urldecode(1),base64encode(2),base64decode(3),htmlencode(1),htmldecode(1),execute(1)  # Encoding and decoding using stdlib only...
+    get_info()
+    health_check()
+    execute(input_data)
+  skills/llm_router/v1/skill.py:
+    e: LLMRouterSkill,get_info,health_check
+    LLMRouterSkill: execute(1),_discover_local(0),_discover_remote(0),_health_check(2),_full_status(1)  # Model discovery & health checking skill (evolvable).
+- Detec...
+    get_info()
+    health_check()
+  examples/automations/social_media_automation.py:
+    e: run_skill,social_media_automation
+    run_skill(skill_name;action;params)
+    social_media_automation(topic;schedule_time)
+  examples/openrouter_session_copy.py:
+    e: main
+    main()
+  cores/v1/user_memory.py:
+    e: UserMemory
+    UserMemory: __init__(1),add(2),remove(1),clear_all(0),set_voice_mode(1),has_directive(1),build_system_context(0),looks_like_preference(1),suggest_save(1),display(0)  # Persistent long-term memory for user preferences and directi...
+  cores/v1/supervisor.py:
+    e: Supervisor
+    Supervisor: __init__(2),active(0),active_version(0),list_cores(0),switch(0),health(1),create_next_core(1),promote_core(1),rollback_core(0),recover(0)  # Manages core versions: can create coreB/C/D, test, promote, ...
+  cores/v1/proactive_scheduler.py:
+    e: ScheduledTask,ProactiveScheduler,setup_default_tasks
+    ScheduledTask:  # A task registered with the scheduler...
+    ProactiveScheduler: __init__(0),register(4),unregister(1),enable(1),disable(1),start(0),stop(0),_tick(0),_execute_task(1),run_now(1),status(0),format_status(0)  # Thread-based periodic task scheduler.
+
+Usage:
+    scheduler ...
+    setup_default_tasks(scheduler;adaptive_monitor;gc;skill_manager;logger)
+  cores/v1/intent/knn_classifier.py:
+    e: EmbeddingKNNClassifier
+    EmbeddingKNNClassifier: __init__(0),fit(2),predict(1),predict_with_distances(1)  # KNN classifier over embedding vectors for intent classificat...
+  skills/qr_generator/v1/skill.py:
+    e: QRGeneratorSkill,get_info,health_check,execute
+    QRGeneratorSkill: _generate_with_qrencode(2),_generate_with_python(2),_generate_minimal(1),generate(3),generate_base64(2),execute(1)  # Generate QR codes with multiple backends...
+    get_info()
+    health_check()
+    execute(input_data)
+  skills/web_search/providers/duckduckgo/stable/skill.py:
+    e: SimpleHTMLTextExtractor,WebSearchSkill,get_info,health_check
+    SimpleHTMLTextExtractor(html.parser.HTMLParser): __init__(0),handle_starttag(2),handle_endtag(1),handle_data(1),get_text(0)  # Extract visible text from HTML...
+    WebSearchSkill: _fetch_url(2),search_duckduckgo(2),fetch_page_text(2),search_and_summarize(2),execute(1)  # Search the web and fetch page content using stdlib only...
+    get_info()
+    health_check()
+  skills/web_search/providers/duckduckgo/archive/v1/skill.py:
+    e: SimpleHTMLTextExtractor,WebSearchSkill,get_info,health_check
+    SimpleHTMLTextExtractor(html.parser.HTMLParser): __init__(0),handle_starttag(2),handle_endtag(1),handle_data(1),get_text(0)  # Extract visible text from HTML...
+    WebSearchSkill: _fetch_url(2),search_duckduckgo(2),fetch_page_text(2),search_and_summarize(2),execute(1)  # Search the web and fetch page content using stdlib only...
+    get_info()
+    health_check()
+  skills/tts/providers/pyttsx3/stable/skill.py:
+    e: Pyttsx3TTSSkill,get_info,health_check,execute
+    Pyttsx3TTSSkill: __init__(0),_clean_for_tts(0),execute(1)  # Text-to-Speech using espeak (non-blocking via subprocess.Pop...
+    get_info()
+    health_check()
+    execute(params)
+  examples/advanced/01_pipeline.py:
+    e: main
+    main()
+  cores/v1/utils.py:
+    e: _quiet_print,_quiet_warning,setup_litellm,clean_code,clean_json
+    _quiet_print()
+    _quiet_warning(msg;cat)
+    setup_litellm()
+    clean_code(code)
+    clean_json(text)
+  skill.py:
+    e: TTSSkill,get_info,health_check,_pip,_speak_pyttsx3,_speak_gtts,_speak_espeak,execute
+    TTSSkill: execute(1)
+    get_info()
+    health_check()
+    _pip(pkg)
+    _speak_pyttsx3(text;lang)
+    _speak_gtts(text;lang)
+    _speak_espeak(text;lang)
+    execute(input_data)
+  scripts/get_openrouter_key.py:
+    e: main
+    main()
+  cores/v1/resilience.py:
+    e: configure_structlog,get_struct_logger,_log_retry,with_retry,status
+    configure_structlog()
+    get_struct_logger(name)
+    _log_retry(retry_state)
+    with_retry(max_attempts;backoff_base;backoff_max;on_retry)
+    status()
+  skills/interior_inspection/v2/skill.py:
+    e: InteriorInspectionSkill,get_info,health_check,execute
+    InteriorInspectionSkill: __init__(0),execute(1),_extract_content(1)
+    get_info()
+    health_check()
+    execute(params)
+  skills/interior_inspection/v1/skill.py:
+    e: InteriorInspectionSkill,get_info,health_check,execute
+    InteriorInspectionSkill: __init__(0),execute(1),_extract_content(1)
+    get_info()
+    health_check()
+    execute(params)
+  skills/json_validator/v9/skill.py:
+    e: JsonValidator,get_info,health_check,execute
+    JsonValidator: execute(1)
+    get_info()
+    health_check()
+    execute(params)
+  skills/json_validator/v8/skill.py:
+    e: JsonValidator,get_info,health_check,execute
+    JsonValidator: execute(1)
+    get_info()
+    health_check()
+    execute(params)
+  skills/text_processor_/v7/skill.py:
+    e: TextProcessor,get_info,health_check,execute
+    TextProcessor: execute(1)
+    get_info()
+    health_check()
+    execute(params)
+  skills/first_installment/v2/skill.py:
+    e: FirstInstallmentSkill,get_info,health_check,execute
+    FirstInstallmentSkill: execute(1)
+    get_info()
+    health_check()
+    execute(params)
+  skills/first_installment/v1/skill.py:
+    e: get_info,health_check,execute,execute_module
+    get_info()
+    health_check()
+    execute(params)
+    execute_module(params)
+  examples/automations/ksef_invoice_automation.py:
+    e: run_skill,ksef_invoice_automation,ksef_batch_processing
+    run_skill(skill_name;action;params)
+    ksef_invoice_automation(token;certificate_path;action)
+    ksef_batch_processing(invoice_dir;token)
+  examples/automations/document_processing_pipeline.py:
+    e: run_skill,document_processing_pipeline
+    run_skill(skill_name;action;params)
+    document_processing_pipeline(source_dir)
+  skills/git_ops/v1/skill.py:
+    e: GitOpsSkill,get_info,health_check
+    GitOpsSkill: __init__(1),_run(2),init(1),status(1),add(2),commit(2),log(2),diff(1),tag(3),checkout(2),revert_file(2),commit_skill_version(3),execute(1)  # Manage local git repos for skill development and versioning...
+    get_info()
+    health_check()
+  skills/password_generator/v6/skill.py:
+    e: PasswordGenerator,get_info,health_check,execute
+    PasswordGenerator: execute(1)
+    get_info()
+    health_check()
+    execute(params)
+  skills/evo_engine_bootstrap/v2/skill.py:
+    e: EvoEngineBootstrapSkill,get_info,health_check,execute
+    EvoEngineBootstrapSkill: execute(1)
+    get_info()
+    health_check()
+    execute(params)
+  skills/evo_engine_bootstrap/v1/skill.py:
+    e: EvoEngineBootstrapSkill,get_info,health_check,execute
+    EvoEngineBootstrapSkill: execute(1)
+    get_info()
+    health_check()
+    execute(params)
+  skills/weather/v2/skill.py:
+    e: WeatherSkill,_extract_location,_fetch_weather,execute,health_check,get_info
+    WeatherSkill: execute(1)
+    _extract_location(text)
+    _fetch_weather(location)
+    execute(params)
+    health_check()
+    get_info()
+  skills/weather/v3/skill.py:
+    e: WeatherSkill,_extract_location,_fetch_weather,execute,health_check,get_info
+    WeatherSkill: execute(1)
+    _extract_location(text)
+    _fetch_weather(location)
+    execute(params)
+    health_check()
+    get_info()
+  skills/core_loader/v1/skill.py:
+    e: CoreLoaderSkill,get_info,health_check,execute
+    CoreLoaderSkill: execute(1)
+    get_info()
+    health_check()
+    execute(params)
+  skills/time/v1/skill.py:
+    e: get_info,execute,health_check
+    get_info()
+    execute(params)
+    health_check()
+  skills/pound_to_yen_converter/v8/skill.py:
+    e: get_info,health_check,parse_amount_from_text,get_exchange_rate,execute,execute_module
+    get_info()
+    health_check()
+    parse_amount_from_text(text)
+    get_exchange_rate()
+    execute(params)
+    execute_module(params)
+  examples/skills/01_create.py:
+    e: main
+    main()
+  examples/basic/02_memory.py:
+    e: main
+    main()
+  skills/tts/providers/coqui/stable/skill.py:
+    e: get_info,health_check,execute
+    get_info()
+    health_check()
+    execute(params)
+  skills/separator_line/v1/skill.py:
+    e: SeparatorLineSkill,get_info,health_check,execute
+    SeparatorLineSkill: execute(1)
+    get_info()
+    health_check()
+    execute(params)
+  examples/automations/openrouter_api_key_automation.py:
+    e: run_skill,openrouter_api_key_automation,email_summary_automation
+    run_skill(skill_name;action;params)
+    openrouter_api_key_automation(email_user;email_pass;openrouter_user;openrouter_pass)
+    email_summary_automation(email_user;email_pass;hours)
+  seeds/echo_skill_v1.py:
+    e: EchoSkill,get_info,health_check,execute
+    EchoSkill: execute(1)
+    get_info()
+    health_check()
+    execute(input_data)
+  skills/kalkulator/v50/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/kalkulator/v52/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/kalkulator/v48/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/kalkulator/v51/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  skills/kalkulator/v49/skill.py:
+    e: TestSkill,get_info,health_check
+    TestSkill: execute(1)
+    get_info()
+    health_check()
+  examples/basic/01_hello.py:
+    e: main
+    main()
+  setup.py:
+  __init__.py:
+  cores/v1/__init__.py:
+  cores/v1/intent/training.py:

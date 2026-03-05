@@ -1,0 +1,582 @@
+flowchart LR
+    subgraph TODO2_main
+        TODO2__main__lifespan["lifespan"]
+        TODO2__main___pull_ollama_model["_pull_ollama_model"]
+    end
+    subgraph backend_main
+        backend__main__lifespan["lifespan"]
+        backend__main___init_coreskill["_init_coreskill"]
+    end
+    subgraph cli
+        cli__cmd_logs_reset["cmd_logs_reset"]
+        cli__print_color["print_color"]
+        cli__cmd_shell["cmd_shell"]
+        cli__cmd_state_reset["cmd_state_reset"]
+        cli__cmd_cache_reset["cmd_cache_reset"]
+        cli__cmd_status["cmd_status"]
+    end
+    subgraph cores_v1
+        cores__v1__prompts__render["render"]
+        cores__evaluate["evaluate"]
+        cores__v1__core___check_restart_loop["_check_restart_loop"]
+        cores__v1__base_skill__BaseSkill___get_manifest["_get_manifest"]
+        cores__v1__core___auto_save_preference["_auto_save_preference"]
+        cores__v1__core___setup_signal_handlers["_setup_signal_handlers"]
+        cores___phase_repair["_phase_repair"]
+        cores__v1__skill_logger__inject_logging["inject_logging"]
+        cores__v1__resilience__configure_structlog["configure_structlog"]
+        cores__v1__config__get_blocked_commands["get_blocked_commands"]
+        cores__v1__user_memory__UserMemory__display["display"]
+        cores__record_skill_outcome["record_skill_outcome"]
+        cores__v1__skill_logger__init_nfo["init_nfo"]
+        cores__v1__core___cmd_test["_cmd_test"]
+        cores___get_intent_result_class["_get_intent_result_class"]
+        cores____init__["__init__"]
+        cores__v1__base_skill__generate_scaffold["generate_scaffold"]
+        cores__v1__voice_loop___speak_tts["_speak_tts"]
+        cores__v1__core___cmd_topic["_cmd_topic"]
+        cores__validate_against_stable["validate_against_stable"]
+        cores__smart_evolve["smart_evolve"]
+        cores__v1__core___cmd_snapshot["_cmd_snapshot"]
+        cores__v1__config__get_config_value["get_config_value"]
+        cores__v1__config___load_system_config["_load_system_config"]
+        cores__v1__config___load_model_config["_load_model_config"]
+        cores___exec_handle_failure["_exec_handle_failure"]
+        cores__v1__evo_engine__EvoEngine___exec_prepare["_exec_prepare"]
+        cores__v1__core___cmd_reload_config["_cmd_reload_config"]
+        cores__v1__llm_client__LLMClient____init__["__init__"]
+        cores__extend_training_data["extend_training_data"]
+        cores__v1__core___cmd_scan["_cmd_scan"]
+        cores__v1__prompts___load_prompt["_load_prompt"]
+        cores__v1__core___cmd_memories["_cmd_memories"]
+        cores__decide["decide"]
+        cores___list_all_skills["_list_all_skills"]
+        cores___check_deterministic_config["_check_deterministic_config"]
+        cores__v1__voice_loop___run_stt_from_file["_run_stt_from_file"]
+        cores__v1__core___cmd_compose["_cmd_compose"]
+        cores__v1__skill_manager___load_bootstrap_skill["_load_bootstrap_skill"]
+        cores__v1__metrics_collector__get_skill_health["get_skill_health"]
+        cores__record_operation["record_operation"]
+        cores__v1__voice_loop___run_voice_loop["_run_voice_loop"]
+        cores__run_boot_repair["run_boot_repair"]
+        cores__get_schema_validation_stats["get_schema_validation_stats"]
+        cores__restore_stable["restore_stable"]
+        cores___check_provider_drift["_check_provider_drift"]
+        cores__v1__skill_manager__SkillManager____init__["__init__"]
+        cores___preflight_and_fix["_preflight_and_fix"]
+        cores__v1__core__main["main"]
+        cores__setup_default_tasks["setup_default_tasks"]
+        cores___phase_scan["_phase_scan"]
+        cores__v1__core___cmd_chain["_cmd_chain"]
+        cores__v1__core___cmd_autotune["_cmd_autotune"]
+        cores__compute_system_health["compute_system_health"]
+        cores__v1__core___build_env_context["_build_env_context"]
+        cores__v1__learned_repair__rule_based_strategy["rule_based_strategy"]
+        cores__v1__config__get_provider_tiers["get_provider_tiers"]
+        cores__v1__supervisor__Supervisor__recover["recover"]
+        cores__v1__core___handle_voice_intent["_handle_voice_intent"]
+        cores___build_state["_build_state"]
+        cores__v1__i18n__match_any_keyword["match_any_keyword"]
+        cores__evaluate_reflection_rules["evaluate_reflection_rules"]
+        cores__v1__core___cmd_hw["_cmd_hw"]
+        cores__v1__logger__Logger____init__["__init__"]
+        cores__v1__llm_client__LLMClient__chat["chat"]
+        cores__status["status"]
+        cores__v1__user_memory__UserMemory__add["add"]
+        cores__attempt_auto_fix["attempt_auto_fix"]
+        cores__v1__core___cmd_apikey["_cmd_apikey"]
+        cores__from_dict["from_dict"]
+        cores__cleanup_provider["cleanup_provider"]
+        cores__record_skill_execution["record_skill_execution"]
+        cores__remove["remove"]
+        cores__v1__core___build_fallback_system_prompt["_build_fallback_system_prompt"]
+        cores__v1__core___cmd_fix["_cmd_fix"]
+        cores__save_as_stable["save_as_stable"]
+        cores___exec_step_with_retry["_exec_step_with_retry"]
+        cores__v1__user_memory__UserMemory__remove["remove"]
+        cores__v1__resilience___log_retry["_log_retry"]
+        cores__check_imports["check_imports"]
+        cores__v1__evo_engine__EvoEngine__handle_request["handle_request"]
+        cores__create_branch["create_branch"]
+        cores__v1__auto_repair__AutoRepair___plan_strategy["_plan_strategy"]
+        cores__v1__core___cmd_switch["_cmd_switch"]
+        cores__v1__intent_engine__IntentEngine__save["save"]
+        cores__v1__skill_logger__skill_health_summary["skill_health_summary"]
+        cores___resolve_execution_order["_resolve_execution_order"]
+        cores__v1__prompts__get_metadata["get_metadata"]
+        cores__classify["classify"]
+        cores__v1__core___sanitize_chat_response["_sanitize_chat_response"]
+        cores__v1__resilience__with_retry["with_retry"]
+        cores__v1__skill_forge__SkillForge__should_create["should_create"]
+        cores__v1__config___parse_models_override["_parse_models_override"]
+        cores__v1__core___ensure_api_key["_ensure_api_key"]
+        cores__summary["summary"]
+        cores__v1__core___dispatch_command["_dispatch_command"]
+        cores__v1__core___cmd_config["_cmd_config"]
+        cores__on_skill_changed["on_skill_changed"]
+        cores___load_training_data["_load_training_data"]
+        cores__get_system_health_summary["get_system_health_summary"]
+        cores__v1__config__get_models_from_config["get_models_from_config"]
+        cores__v1__i18n__detect_language["detect_language"]
+        cores__run_diagnostic["run_diagnostic"]
+        cores___run_auto_reflection["_run_auto_reflection"]
+        cores___exec_handle_partial["_exec_handle_partial"]
+        cores__v1__core___cmd_skills["_cmd_skills"]
+        cores__create_p["create_p"]
+        cores__v1__utils__clean_code["clean_code"]
+        cores__v1__voice_loop___extract_stt_text["_extract_stt_text"]
+        cores___repair_broken_skills["_repair_broken_skills"]
+        cores___check_interface_drift["_check_interface_drift"]
+        cores__check_system_commands["check_system_commands"]
+        cores__v1__skill_manager___load_skill_from_path["_load_skill_from_path"]
+        cores__v1__i18n___flatten["_flatten"]
+        cores__v1__core___cmd_correct["_cmd_correct"]
+        cores___keyword_prefilter["_keyword_prefilter"]
+        cores__v1__core___handle_stt_outcome["_handle_stt_outcome"]
+        cores__cleanup_legacy["cleanup_legacy"]
+        cores__v1__core___cmd_remember["_cmd_remember"]
+        cores__v1__llm_client__LLMClient___build_error_msg["_build_error_msg"]
+        cores__boot_health_check["boot_health_check"]
+        cores___list_tracked_skills["_list_tracked_skills"]
+        cores__v1__skill_logger__query_skill_errors["query_skill_errors"]
+        cores__v1__config__cpr["cpr"]
+        cores__ask_llm_and_try["ask_llm_and_try"]
+        cores__v1__config__get_categories["get_categories"]
+        cores__v1__core___cmd_log["_cmd_log"]
+        cores__v1__core___cmd_stt["_cmd_stt"]
+        cores__v1__auto_repair__AutoRepair___try_known_fix["_try_known_fix"]
+        cores__v1__metrics_collector__record_operation["record_operation"]
+        cores__v1__core___cmd_model["_cmd_model"]
+        cores__similarity["similarity"]
+        cores___exec_handle_success["_exec_handle_success"]
+        cores__v1__skill_forge__is_conversational["is_conversational"]
+        cores__v1__core___boot["_boot"]
+        cores__list_blueprints["list_blueprints"]
+        cores__promote_branch["promote_branch"]
+        cores__v1__resilience__get_struct_logger["get_struct_logger"]
+        cores__v1__core___handle_configure_intent["_handle_configure_intent"]
+        cores__v1__core___cmd_autonomy["_cmd_autonomy"]
+        cores___phase_triage["_phase_triage"]
+        cores___load_training["_load_training"]
+        cores___exec_finalize_failure["_exec_finalize_failure"]
+        cores__on_reflection_needed["on_reflection_needed"]
+        cores____init__["__init__"]
+        cores__get_skill_history["get_skill_history"]
+        cores__v1__base_skill__SkillManifest__from_file["from_file"]
+        cores__v1__core___cmd_rollback["_cmd_rollback"]
+        cores__v1__skill_logger__get_errors_markdown["get_errors_markdown"]
+        cores__v1__core___build_skills_info["_build_skills_info"]
+        cores__v1__llm_client__discover_models["discover_models"]
+        cores__v1__llm_client___detect_ollama_models["_detect_ollama_models"]
+        cores__v1__core___cmd_repairs["_cmd_repairs"]
+        cores__v1__core___check_proactive_learning["_check_proactive_learning"]
+        cores__v1__user_memory__UserMemory__clear_all["clear_all"]
+        cores__v1__skill_logger__get_skill_logger["get_skill_logger"]
+        cores__v1__reflection_engine__run_reflection_cycle["run_reflection_cycle"]
+        cores__v1__supervisor__Supervisor__promote_core["promote_core"]
+        cores__v1__metrics_collector__get_collector["get_collector"]
+        cores__compute_and_save_system_health["compute_and_save_system_health"]
+        cores__v1__core___cmd_resources["_cmd_resources"]
+        cores__v1__utils__clean_json["clean_json"]
+        cores__v1__core___cmd_suggest["_cmd_suggest"]
+        cores__v1__core___cmd_create["_cmd_create"]
+        cores__v1__core___cmd_tts["_cmd_tts"]
+        cores__check_interface["check_interface"]
+        cores__v1__config__get_system_config["get_system_config"]
+        cores__v1__core___read_line_with_shortcuts["_read_line_with_shortcuts"]
+        cores__v1__skill_logger__get_health_markdown["get_health_markdown"]
+        cores__fit["fit"]
+        cores___trigger_event["_trigger_event"]
+        cores__v1__core___cmd_run["_cmd_run"]
+        cores__v1__core___handle_chat["_handle_chat"]
+        cores__v1__supervisor__Supervisor__rollback_core["rollback_core"]
+        cores__v1__core___cmd_models["_cmd_models"]
+        cores__suggest_skills["suggest_skills"]
+        cores__v1__prompts__list_available["list_available"]
+        cores__v1__core___cmd_gc["_cmd_gc"]
+        cores__v1__prompts__PromptManager__list["list"]
+        cores__v1__core___cmd_health["_cmd_health"]
+        cores___normalize_pl["_normalize_pl"]
+        cores__resolve["resolve"]
+        cores__v1__core___cmd_providers["_cmd_providers"]
+        cores__v1__core___cmd_forget["_cmd_forget"]
+        cores___check_utility_queries["_check_utility_queries"]
+        cores__v1__skill_forge__SkillForge__index_skills["index_skills"]
+        cores___autonomous_stt_repair["_autonomous_stt_repair"]
+        cores___archive_version["_archive_version"]
+        cores__v1__core___try_auto_voice_mode["_try_auto_voice_mode"]
+        cores__v1__logger__Logger__learn_summary["learn_summary"]
+        cores___repair_system["_repair_system"]
+        cores__v1__i18n__normalize_diacritics["normalize_diacritics"]
+        cores___print_report["_print_report"]
+        cores___search_keyword["_search_keyword"]
+        cores__v1__config__get_code_model_patterns["get_code_model_patterns"]
+        cores__v1__core___flush_stdin["_flush_stdin"]
+        cores__v1__llm_client__LLMClient___try_model["_try_model"]
+        cores__v1__prompts__get["get"]
+        cores___try_fallback_providers["_try_fallback_providers"]
+        cores___load_rules["_load_rules"]
+        cores__v1__core___cmd_learn["_cmd_learn"]
+        cores__v1__core___cmd_profile["_cmd_profile"]
+        cores__v1__core___cmd_reflect["_cmd_reflect"]
+        cores__v1__voice_loop___run_file_input_loop["_run_file_input_loop"]
+        cores__v1__voice_loop___clean_for_tts["_clean_for_tts"]
+        cores___execute_with_validation["_execute_with_validation"]
+        cores__v1__voice_loop___run_stt_cycle["_run_stt_cycle"]
+        cores___tick["_tick"]
+        cores__v1__fuzzy_router__FuzzyCommandRouter__add["add"]
+        cores__auto_fix_imports["auto_fix_imports"]
+        cores__v1__autonomy_loop__AutonomyLoop__run_cycle["run_cycle"]
+        cores__v1__config__reload_system_config["reload_system_config"]
+        cores__create_skill["create_skill"]
+        cores__v1__voice_loop___generate_speech_file["_generate_speech_file"]
+        cores__consume_failures["consume_failures"]
+        cores___load_and_run["_load_and_run"]
+        cores___reorder_by_fallback["_reorder_by_fallback"]
+        cores__v1__evo_engine__EvoEngine__evolve_skill["evolve_skill"]
+        cores__v1__session_config__SessionConfig__set["set"]
+        cores__v1__evo_engine__EvoEngine___exec_attempt["_exec_attempt"]
+        cores___match_existing_skill["_match_existing_skill"]
+        cores__validate_input["validate_input"]
+        cores___execute_repair_task["_execute_repair_task"]
+        cores__v1__core___cmd_pipeline["_cmd_pipeline"]
+        cores__v1__core__gen_compose["gen_compose"]
+        cores__v1__supervisor__Supervisor__switch["switch"]
+        cores__v1__user_memory__UserMemory__set_voice_mode["set_voice_mode"]
+        cores__v1__reflection_engine__get_rule_engine["get_rule_engine"]
+        cores___evaluate_and_log["_evaluate_and_log"]
+        cores__v1__core___cmd_diagnose["_cmd_diagnose"]
+        cores__v1__core___cmd_core["_cmd_core"]
+        cores__v1__core___resolve_model["_resolve_model"]
+        cores__v1__core___cmd_evolve["_cmd_evolve"]
+        cores__v1__intent__SmartIntentClassifier__classify["classify"]
+        cores__v1__core___extract_stt_text["_extract_stt_text"]
+        cores__scheduled_cycle["scheduled_cycle"]
+        cores__v1__core___process_chat_input["_process_chat_input"]
+        cores__v1__core___cmd_voice["_cmd_voice"]
+    end
+    subgraph examples_check_clipboard_api_key
+        examples__get_clipboard_content["get_clipboard_content"]
+        examples__check_clipboard_api_key__main["main"]
+        examples__validate_openrouter_api_key["validate_openrouter_api_key"]
+    end
+    subgraph main
+        main__check["check"]
+        main__save_state["save_state"]
+        main__bootstrap["bootstrap"]
+        main__load_state["load_state"]
+        main__log["log"]
+    end
+    subgraph scripts_benchmark_system
+        scripts__benchmark_system__run_all_benchmarks["run_all_benchmarks"]
+        scripts__count_skills_and_versions["count_skills_and_versions"]
+        scripts__benchmark_system__main["main"]
+    end
+    subgraph scripts_generate_manifests
+        scripts__generate_manifests__main["main"]
+    end
+    subgraph scripts_simulate
+        scripts__simulate__Simulator___init_system["_init_system"]
+        scripts__simulate__Simulator___final_report["_final_report"]
+    end
+    subgraph seeds_echo_skill_v1
+        seeds__echo_skill_v1__EchoSkill__execute["execute"]
+    end
+    subgraph skill
+        skill___pip["_pip"]
+        skill___speak_pyttsx3["_speak_pyttsx3"]
+        skill___speak_gtts["_speak_gtts"]
+        skill__get_info["get_info"]
+    end
+    subgraph skills_converter
+        skills__list_units["list_units"]
+    end
+    subgraph skills_web_automation
+        skills__type["type"]
+    end
+    skill___speak_pyttsx3 --> skill___pip
+    skill___speak_gtts --> skill___pip
+    main__bootstrap --> main__log
+    main__bootstrap --> main__load_state
+    main__bootstrap --> main__check
+    cli__cmd_logs_reset --> cli__print_color
+    cli__cmd_cache_reset --> cli__print_color
+    cli__cmd_state_reset --> cli__print_color
+    cli__cmd_status --> cli__print_color
+    cli__cmd_shell --> cli__print_color
+    cli__cmd_shell --> examples__check_clipboard_api_key__main
+    seeds__echo_skill_v1__EchoSkill__execute --> skill__get_info
+    examples__check_clipboard_api_key__main --> examples__get_clipboard_content
+    examples__check_clipboard_api_key__main --> examples__validate_openrouter_api_key
+    scripts__generate_manifests__main --> cores__get_schema_validation_stats
+    scripts__simulate__Simulator___init_system --> cores__v1__skill_logger__init_nfo
+    scripts__simulate__Simulator___init_system --> main__load_state
+    scripts__simulate__Simulator___init_system --> cores__v1__config__get_models_from_config
+    scripts__simulate__Simulator___final_report --> cores__v1__prompts__PromptManager__list
+    scripts__benchmark_system__run_all_benchmarks --> scripts__count_skills_and_versions
+    scripts__benchmark_system__main --> scripts__benchmark_system__run_all_benchmarks
+    backend__main__lifespan --> backend__main___init_coreskill
+    backend__main__lifespan --> TODO2__main___pull_ollama_model
+    cores__v1__i18n___flatten --> cores__v1__session_config__SessionConfig__set
+    cores__v1__i18n__match_any_keyword --> cores__v1__i18n__normalize_diacritics
+    cores__v1__i18n__match_any_keyword --> cores__v1__session_config__SessionConfig__set
+    cores__v1__i18n__detect_language --> cores__v1__session_config__SessionConfig__set
+    cores__v1__autonomy_loop__AutonomyLoop__run_cycle --> cores__v1__config__cpr
+    cores___phase_scan --> cores__v1__config__cpr
+    cores___phase_triage --> cores__v1__config__cpr
+    cores___phase_repair --> cores__v1__config__cpr
+    cores___repair_system --> cores__v1__config__cpr
+    cores__scheduled_cycle --> cores__v1__config__cpr
+    TODO2__main__lifespan --> TODO2__main___pull_ollama_model
+    cores__v1__config__reload_system_config --> cores__v1__config___load_system_config
+    cores__v1__config__get_system_config --> cores__v1__config___load_system_config
+    cores__v1__config__get_config_value --> cores__v1__config___load_system_config
+    cores__v1__config__get_code_model_patterns --> cores__v1__config___load_model_config
+    cores__v1__config__get_code_model_patterns --> cores__v1__config__get_config_value
+    cores__v1__config__get_models_from_config --> cores__v1__config___parse_models_override
+    cores__v1__config__get_categories --> cores__v1__config__get_config_value
+    cores__v1__config__get_provider_tiers --> cores__v1__config__get_config_value
+    cores__v1__config__get_blocked_commands --> cores__v1__config__get_config_value
+    cores__evaluate --> cores__record_operation
+    cores__on_skill_changed --> cores__v1__prompts__PromptManager__list
+    cores__on_skill_changed --> cores__record_operation
+    cores__v1__user_memory__UserMemory__add --> main__save_state
+    cores__v1__user_memory__UserMemory__remove --> main__save_state
+    cores__v1__user_memory__UserMemory__clear_all --> main__save_state
+    cores__v1__user_memory__UserMemory__set_voice_mode --> cores__v1__prompts__PromptManager__list
+    cores__v1__user_memory__UserMemory__display --> cores__v1__config__cpr
+    cores__get_skill_history --> cores__v1__prompts__PromptManager__list
+    cores__record_skill_outcome --> cores__v1__config__cpr
+    cores___trigger_event --> cores__v1__config__cpr
+    cores__run_diagnostic --> cores__v1__config__cpr
+    cores___print_report --> cores__v1__config__cpr
+    cores__attempt_auto_fix --> cores__v1__config__cpr
+    cores___repair_broken_skills --> cores__v1__config__cpr
+    cores__on_reflection_needed --> cores__v1__config__cpr
+    cores__ask_llm_and_try --> cores__v1__config__cpr
+    cores__v1__skill_logger__inject_logging --> cores__v1__skill_logger__init_nfo
+    cores__v1__skill_logger__get_skill_logger --> cores__v1__skill_logger__init_nfo
+    cores__v1__skill_logger__get_errors_markdown --> cores__v1__skill_logger__query_skill_errors
+    cores__v1__skill_logger__get_health_markdown --> cores__v1__session_config__SessionConfig__set
+    cores__v1__skill_logger__get_health_markdown --> cores__v1__skill_logger__skill_health_summary
+    cores__v1__voice_loop___speak_tts --> cores__v1__voice_loop___clean_for_tts
+    cores__v1__voice_loop___run_stt_cycle --> cores__v1__voice_loop___extract_stt_text
+    cores__v1__voice_loop___run_stt_cycle --> cores__v1__config__cpr
+    cores__v1__voice_loop___run_stt_cycle --> cores__v1__core___handle_chat
+    cores__v1__voice_loop___run_file_input_loop --> cores__v1__config__cpr
+    cores__v1__voice_loop___run_file_input_loop --> cores__v1__voice_loop___generate_speech_file
+    cores__v1__voice_loop___run_file_input_loop --> cores__v1__voice_loop___run_stt_from_file
+    cores__v1__voice_loop___run_voice_loop --> cores__v1__config__cpr
+    cores__v1__voice_loop___run_voice_loop --> cores__v1__voice_loop___run_stt_cycle
+    cores__extend_training_data --> cores__v1__prompts__PromptManager__list
+    cores__v1__intent_engine__IntentEngine__save --> main__save_state
+    cores___check_deterministic_config --> cores__v1__i18n__match_any_keyword
+    cores___check_utility_queries --> cores__v1__prompts__PromptManager__list
+    cores___match_existing_skill --> cores__v1__i18n__match_any_keyword
+    cores__suggest_skills --> cores__v1__utils__clean_json
+    cores__run_boot_repair --> cores__v1__config__cpr
+    cores__v1__auto_repair__AutoRepair___try_known_fix --> cores__v1__config__cpr
+    cores___list_all_skills --> cores__v1__session_config__SessionConfig__set
+    cores___execute_repair_task --> cores__v1__config__cpr
+    cores__v1__auto_repair__AutoRepair___plan_strategy --> cores__v1__session_config__SessionConfig__set
+    cores__v1__auto_repair__AutoRepair___plan_strategy --> cores__v1__learned_repair__rule_based_strategy
+    cores__v1__auto_repair__AutoRepair___plan_strategy --> cores__v1__config__cpr
+    cores__v1__supervisor__Supervisor__switch --> main__save_state
+    cores__v1__supervisor__Supervisor__promote_core --> main__save_state
+    cores__v1__supervisor__Supervisor__rollback_core --> main__save_state
+    cores__v1__supervisor__Supervisor__recover --> main__save_state
+    cores__cleanup_provider --> cores__v1__session_config__SessionConfig__set
+    cores__cleanup_legacy --> cores__v1__session_config__SessionConfig__set
+    cores___load_training_data --> cores__from_dict
+    cores___keyword_prefilter --> cores__v1__i18n__match_any_keyword
+    cores__list_blueprints --> cores__v1__prompts__PromptManager__list
+    cores___reorder_by_fallback --> cores__v1__session_config__SessionConfig__set
+    cores__validate_input --> skills__type
+    cores__v1__base_skill__BaseSkill___get_manifest --> cores__v1__base_skill__SkillManifest__from_file
+    cores___load_rules --> cores__v1__config__get_config_value
+    cores__summary --> cores__v1__prompts__PromptManager__list
+    cores___build_state --> cores__get_schema_validation_stats
+    cores__evaluate_reflection_rules --> cores__v1__reflection_engine__get_rule_engine
+    cores__v1__reflection_engine__run_reflection_cycle --> cores__v1__reflection_engine__get_rule_engine
+    cores__v1__llm_client___detect_ollama_models --> cores__v1__session_config__SessionConfig__set
+    cores__v1__llm_client___detect_ollama_models --> cores__v1__config__get_code_model_patterns
+    cores__v1__llm_client__LLMClient____init__ --> cores__v1__session_config__SessionConfig__set
+    cores__v1__llm_client__LLMClient____init__ --> cores__v1__llm_client___detect_ollama_models
+    cores__v1__llm_client__LLMClient__chat --> cores__v1__config__cpr
+    cores__v1__llm_client__LLMClient___build_error_msg --> cores__v1__prompts__PromptManager__list
+    cores__v1__llm_client__LLMClient___try_model --> cores__v1__resilience__with_retry
+    cores____init__ --> cores__v1__prompts__PromptManager__list
+    cores__resolve --> cores__v1__config__cpr
+    cores__v1__fuzzy_router__FuzzyCommandRouter__add --> cores__v1__prompts__PromptManager__list
+    cores__remove --> cores__v1__prompts__PromptManager__list
+    cores__v1__skill_forge__is_conversational --> cores__v1__i18n__match_any_keyword
+    cores__v1__skill_forge__SkillForge__index_skills --> cores__v1__prompts__PromptManager__list
+    cores___search_keyword --> cores__v1__session_config__SessionConfig__set
+    cores__v1__skill_forge__SkillForge__should_create --> cores__v1__skill_forge__is_conversational
+    cores__v1__skill_forge__SkillForge__should_create --> cores__v1__config__cpr
+    cores__save_as_stable --> cores__v1__config__cpr
+    cores__create_branch --> cores__v1__config__cpr
+    cores__promote_branch --> cores__v1__config__cpr
+    cores__restore_stable --> cores__v1__config__cpr
+    cores__validate_against_stable --> cores__v1__prompts__PromptManager__list
+    cores___archive_version --> cores__v1__config__cpr
+    cores__consume_failures --> cores__v1__prompts__PromptManager__list
+    cores__v1__evo_engine__EvoEngine__handle_request --> cores__v1__config__cpr
+    cores___run_auto_reflection --> cores__v1__config__cpr
+    cores___execute_with_validation --> cores__v1__session_config__SessionConfig__set
+    cores__v1__evo_engine__EvoEngine___exec_prepare --> cores__v1__config__cpr
+    cores__v1__evo_engine__EvoEngine___exec_attempt --> cores__v1__config__cpr
+    cores___exec_handle_success --> cores__v1__config__cpr
+    cores___exec_handle_partial --> cores__v1__config__cpr
+    cores___exec_handle_failure --> cores__v1__config__cpr
+    cores___exec_finalize_failure --> cores__v1__config__cpr
+    cores___exec_finalize_failure --> cores__v1__prompts__PromptManager__list
+    cores___try_fallback_providers --> cores__v1__config__cpr
+    cores___autonomous_stt_repair --> cores__v1__config__cpr
+    cores__v1__evo_engine__EvoEngine__evolve_skill --> cores__v1__config__cpr
+    cores___check_interface_drift --> cores__v1__session_config__SessionConfig__set
+    cores___check_provider_drift --> cores__v1__session_config__SessionConfig__set
+    cores__v1__resilience__get_struct_logger --> cores__v1__resilience__configure_structlog
+    cores__v1__resilience___log_retry --> cores__v1__resilience__get_struct_logger
+    cores__v1__resilience__with_retry --> cores__v1__resilience___log_retry
+    cores____init__ --> cores__v1__config__get_config_value
+    cores__compute_system_health --> cores__get_schema_validation_stats
+    cores___list_tracked_skills --> cores__v1__session_config__SessionConfig__set
+    cores__record_skill_execution --> cores__v1__metrics_collector__get_collector
+    cores__v1__metrics_collector__record_operation --> cores__v1__metrics_collector__get_collector
+    cores__v1__metrics_collector__get_skill_health --> cores__v1__metrics_collector__get_collector
+    cores__get_system_health_summary --> cores__v1__metrics_collector__get_collector
+    cores__compute_and_save_system_health --> cores__v1__metrics_collector__get_collector
+    cores__v1__core___cmd_skills --> cores__v1__config__cpr
+    cores__v1__core___cmd_create --> cores__v1__config__cpr
+    cores__v1__core___cmd_test --> cores__v1__config__cpr
+    cores__v1__core___cmd_run --> cores__v1__config__cpr
+    cores__v1__core___cmd_evolve --> cores__v1__config__cpr
+    cores__v1__core___cmd_rollback --> cores__v1__config__cpr
+    cores__v1__core___cmd_pipeline --> cores__v1__config__cpr
+    cores__v1__core___cmd_compose --> cores__v1__config__cpr
+    cores__v1__core___cmd_compose --> cores__v1__core__gen_compose
+    cores__v1__core___cmd_model --> main__save_state
+    cores__v1__core___cmd_model --> cores__v1__config__cpr
+    cores__v1__core___cmd_models --> cores__v1__config__cpr
+    cores__v1__core___cmd_models --> cores__v1__llm_client__discover_models
+    cores__v1__core___cmd_models --> cores__v1__llm_client___detect_ollama_models
+    cores__v1__core___cmd_models --> main__save_state
+    cores__v1__core___cmd_core --> cores__v1__config__cpr
+    cores__v1__core___cmd_switch --> cores__v1__config__cpr
+    cores__v1__core___cmd_log --> cores__v1__config__cpr
+    cores__v1__core___cmd_learn --> cores__v1__config__cpr
+    cores__v1__core___cmd_diagnose --> cores__v1__config__cpr
+    cores__v1__core___cmd_scan --> cores__v1__config__cpr
+    cores__v1__core___cmd_correct --> cores__v1__config__cpr
+    cores__v1__core___cmd_profile --> cores__v1__config__cpr
+    cores__v1__core___cmd_suggest --> cores__v1__config__cpr
+    cores__v1__core___cmd_topic --> cores__v1__config__cpr
+    cores__v1__core___cmd_providers --> cores__v1__config__cpr
+    cores__v1__core___cmd_chain --> cores__v1__config__cpr
+    cores__v1__core___cmd_gc --> cores__v1__config__cpr
+    cores__v1__core___cmd_resources --> cores__v1__config__cpr
+    cores__v1__core___cmd_stt --> cores__v1__config__cpr
+    cores__v1__core___cmd_stt --> cores__v1__core___extract_stt_text
+    cores__v1__core___cmd_tts --> cores__v1__config__cpr
+    cores__v1__core___cmd_fix --> cores__v1__config__cpr
+    cores__v1__core___check_restart_loop --> cores__v1__config__cpr
+    cores__v1__core___ensure_api_key --> main__save_state
+    cores__v1__core___ensure_api_key --> cores__v1__config__cpr
+    cores__v1__core___resolve_model --> cores__v1__config__get_models_from_config
+    cores__v1__core___resolve_model --> main__save_state
+    cores__v1__core___resolve_model --> cores__v1__config__cpr
+    cores__v1__core___build_fallback_system_prompt --> cores__v1__prompts__PromptManager__list
+    cores__v1__core___handle_chat --> cores__v1__core___build_env_context
+    cores__v1__core___handle_chat --> cores__v1__core___build_skills_info
+    cores__v1__core___handle_chat --> cores__v1__config__cpr
+    cores__v1__core___handle_chat --> cores__v1__core___build_fallback_system_prompt
+    cores__v1__core___sanitize_chat_response --> cores__v1__session_config__SessionConfig__set
+    cores__v1__core___sanitize_chat_response --> cores__v1__config__cpr
+    cores__v1__core___check_proactive_learning --> cores__v1__config__cpr
+    cores__v1__core___cmd_health --> cores__v1__config__cpr
+    cores__v1__core___cmd_voice --> cores__v1__voice_loop___run_voice_loop
+    cores__v1__core___cmd_voice --> cores__v1__config__cpr
+    cores__v1__core___cmd_voice --> cores__v1__voice_loop___run_file_input_loop
+    cores__v1__core___cmd_memories --> cores__v1__config__cpr
+    cores__v1__core___cmd_remember --> cores__v1__config__cpr
+    cores__v1__core___cmd_forget --> cores__v1__config__cpr
+    cores__v1__core___cmd_apikey --> cores__v1__config__cpr
+    cores__v1__core___cmd_apikey --> main__save_state
+    cores__v1__core___cmd_autotune --> cores__v1__config__cpr
+    cores__v1__core___cmd_autotune --> main__save_state
+    cores__v1__core___cmd_config --> cores__v1__config__cpr
+    cores__v1__core___cmd_reload_config --> cores__v1__config__cpr
+    cores__v1__core___cmd_reload_config --> cores__v1__config__reload_system_config
+    cores__v1__core___cmd_reload_config --> cores__v1__config__get_config_value
+    cores__v1__core___cmd_reflect --> cores__v1__config__cpr
+    cores__v1__core___cmd_hw --> cores__v1__config__cpr
+    cores__v1__core___cmd_repairs --> cores__v1__config__cpr
+    cores__v1__core___cmd_snapshot --> cores__v1__config__cpr
+    cores__v1__core___cmd_autonomy --> cores__v1__config__cpr
+    cores__v1__core___boot --> main__load_state
+    cores__v1__core___boot --> cores__v1__core___check_restart_loop
+    cores__v1__core___boot --> cores__v1__config__cpr
+    cores__v1__core___boot --> cores__v1__core___ensure_api_key
+    cores__v1__core___handle_configure_intent --> cores__v1__config__cpr
+    cores__v1__core___handle_configure_intent --> cores__v1__core___check_proactive_learning
+    cores__v1__core___handle_configure_intent --> main__save_state
+    cores__v1__core___handle_voice_intent --> cores__v1__voice_loop___run_voice_loop
+    cores__v1__core___handle_voice_intent --> cores__v1__core___check_proactive_learning
+    cores__v1__core___handle_voice_intent --> cores__v1__config__cpr
+    cores__v1__core___handle_stt_outcome --> cores__v1__core___extract_stt_text
+    cores__v1__core___handle_stt_outcome --> cores__v1__config__cpr
+    cores__v1__core___handle_stt_outcome --> cores__v1__core___handle_chat
+    cores__v1__core___auto_save_preference --> cores__v1__config__cpr
+    cores__v1__core___setup_signal_handlers --> cores__v1__config__cpr
+    cores__v1__core___try_auto_voice_mode --> cores__v1__config__cpr
+    cores__v1__core___try_auto_voice_mode --> cores__v1__core___flush_stdin
+    cores__v1__core___try_auto_voice_mode --> cores__v1__voice_loop___run_voice_loop
+    cores__v1__core___dispatch_command --> cores__v1__config__cpr
+    cores__v1__core___process_chat_input --> cores__v1__core___handle_configure_intent
+    cores__v1__core___process_chat_input --> cores__v1__core___handle_voice_intent
+    cores__v1__core___process_chat_input --> cores__v1__core___auto_save_preference
+    cores__v1__core__main --> cores__v1__core___setup_signal_handlers
+    cores__v1__core__main --> cores__v1__core___boot
+    cores__v1__core__main --> cores__v1__core___try_auto_voice_mode
+    cores__v1__core__main --> cores__v1__core___process_chat_input
+    cores__v1__core__main --> cores__v1__core___read_line_with_shortcuts
+    cores__v1__core__main --> cores__v1__core___flush_stdin
+    cores__create_p --> cores__v1__utils__clean_code
+    cores__create_p --> cores__v1__prompts__PromptManager__list
+    cores__create_p --> cores__v1__utils__clean_json
+    cores___exec_step_with_retry --> cores__v1__config__cpr
+    cores___resolve_execution_order --> cores__v1__prompts__PromptManager__list
+    cores___resolve_execution_order --> cores__v1__config__cpr
+    cores__check_imports --> cores__v1__session_config__SessionConfig__set
+    cores__check_interface --> cores__v1__session_config__SessionConfig__set
+    cores__auto_fix_imports --> cores__v1__session_config__SessionConfig__set
+    cores__v1__logger__Logger____init__ --> cores__v1__resilience__get_struct_logger
+    cores__v1__logger__Logger__learn_summary --> cores__v1__session_config__SessionConfig__set
+    cores___tick --> cores__v1__prompts__PromptManager__list
+    cores__status --> cores__v1__prompts__PromptManager__list
+    cores__setup_default_tasks --> cores__v1__prompts__PromptManager__list
+    cores__setup_default_tasks --> cores__v1__config__cpr
+    cores__v1__skill_manager___load_bootstrap_skill --> cores__v1__skill_manager___load_skill_from_path
+    cores__v1__skill_manager__SkillManager____init__ --> cores__v1__skill_manager___load_bootstrap_skill
+    cores__create_skill --> cores__v1__base_skill__generate_scaffold
+    cores__create_skill --> cores__v1__utils__clean_code
+    cores___load_and_run --> cores__v1__skill_logger__inject_logging
+    cores__boot_health_check --> cores__v1__config__cpr
+    cores___preflight_and_fix --> cores__v1__config__cpr
+    cores___evaluate_and_log --> cores__v1__config__cpr
+    cores__smart_evolve --> cores__v1__utils__clean_code
+    cores__decide --> cores__v1__prompts__PromptManager__list
+    cores__similarity --> cores__v1__session_config__SessionConfig__set
+    cores___normalize_pl --> cores__v1__i18n__normalize_diacritics
+    cores___load_training --> cores__v1__prompts__PromptManager__list
+    cores__v1__intent__SmartIntentClassifier__classify --> cores__v1__i18n__match_any_keyword
+    cores__fit --> cores__v1__prompts__PromptManager__list
+    cores__classify --> cores___get_intent_result_class
+    cores__check_system_commands --> cores__v1__prompts__PromptManager__list
+    cores__check_system_commands --> cores__v1__session_config__SessionConfig__set
+    cores__v1__prompts__get --> cores__v1__prompts___load_prompt
+    cores__v1__prompts__render --> cores__v1__prompts___load_prompt
+    cores__v1__prompts__get_metadata --> cores__v1__prompts___load_prompt
+    cores__v1__prompts__PromptManager__list --> cores__v1__prompts__list_available
+    skills__list_units --> cores__v1__prompts__PromptManager__list

@@ -1,0 +1,4075 @@
+version: '1'
+project:
+  name: coreskill
+  repo: /home/tom/github/wronai/coreskill
+  language: python
+  analyzed_at: '2026-03-05T08:56:11Z'
+  tool: code2llm
+  stats:
+    files: 154
+    lines: 51918
+    functions: 1696
+    classes: 209
+health:
+  cc_avg: 4.8
+  critical_count: 211
+  critical_limit: 10
+  duplicates: 32
+  cycles: 0
+  alerts:
+  - type: cc_exceeded
+    target: main
+    value: 74
+    limit: 15
+    severity: critical
+  - type: cc_exceeded
+    target: detect_language
+    value: 64
+    limit: 15
+    severity: critical
+  - type: high_fan_out
+    target: _boot
+    value: 60
+    limit: 10
+    severity: critical
+  - type: high_fan_out
+    target: main
+    value: 55
+    limit: 10
+    severity: critical
+  - type: cc_exceeded
+    target: main
+    value: 54
+    limit: 15
+    severity: critical
+  - type: high_fan_out
+    target: main
+    value: 40
+    limit: 10
+    severity: critical
+  - type: cc_exceeded
+    target: SmartIntentClassifier.classify
+    value: 35
+    limit: 15
+    severity: critical
+  - type: cc_exceeded
+    target: _run_voice_loop
+    value: 32
+    limit: 15
+    severity: critical
+  - type: high_fan_out
+    target: websocket_chat
+    value: 32
+    limit: 10
+    severity: critical
+  - type: cc_exceeded
+    target: AutoRepair._diagnose_skill
+    value: 30
+    limit: 15
+    severity: critical
+  - type: high_fan_out
+    target: run_all_benchmarks
+    value: 30
+    limit: 10
+    severity: critical
+  - type: cc_exceeded
+    target: EvoEngine.handle_request
+    value: 29
+    limit: 15
+    severity: critical
+  - type: cc_exceeded
+    target: SelfReflection.run_diagnostic
+    value: 28
+    limit: 15
+    severity: critical
+  - type: cc_exceeded
+    target: ShellSkill.execute
+    value: 28
+    limit: 15
+    severity: critical
+  - type: high_fan_out
+    target: websocket_chat
+    value: 27
+    limit: 10
+    severity: critical
+  - type: cc_exceeded
+    target: ResourceMonitor.can_run
+    value: 26
+    limit: 15
+    severity: critical
+  - type: cc_exceeded
+    target: SystemIdentity.build_system_prompt
+    value: 26
+    limit: 15
+    severity: critical
+  - type: cc_exceeded
+    target: BenchmarkSkill.execute
+    value: 26
+    limit: 15
+    severity: critical
+  - type: cc_exceeded
+    target: BenchmarkSkill.execute
+    value: 26
+    limit: 15
+    severity: critical
+  - type: high_fan_out
+    target: SelfReflection.run_diagnostic
+    value: 26
+    limit: 10
+    severity: critical
+modules:
+- path: core.py
+  lines: 609
+  classes: 6
+  methods: 29
+  cc_max: 74
+  inbound_deps: 1
+  exports:
+  - name: C
+    type: class
+    cc_avg: 0.0
+  - name: LLM
+    type: class
+    cc_avg: 2.0
+  - name: SkillLoader
+    type: class
+    cc_avg: 6.2
+    methods:
+    - name: run
+      cc: 10
+      fan_out: 10
+  - name: SkillCreator
+    type: class
+    cc_avg: 3.0
+    methods:
+    - name: create
+      cc: 2
+      fan_out: 12
+    - name: evolve
+      cc: 3
+      fan_out: 13
+  - name: PipelineEngine
+    type: class
+    cc_avg: 4.0
+    methods:
+    - name: build_from_text
+      cc: 3
+      fan_out: 11
+    - name: execute_pipeline
+      cc: 14
+      fan_out: 11
+  - name: Supervisor
+    type: class
+    cc_avg: 1.3
+  - name: cpr
+    type: function
+    cc: 1
+  - name: load_state
+    type: function
+    cc: 2
+  - name: save_state
+    type: function
+    cc: 1
+  - name: log_ev
+    type: function
+    cc: 2
+  - name: gen_compose
+    type: function
+    cc: 3
+  - name: main
+    type: function
+    cc: 74
+    flag: split
+    fan_out: 55
+- path: cores/v1/i18n.py
+  lines: 784
+  classes: 0
+  methods: 4
+  cc_max: 64
+  inbound_deps: 5
+  exports:
+  - name: normalize_diacritics
+    type: function
+    cc: 3
+  - name: match_any_keyword
+    type: function
+    cc: 10
+  - name: detect_language
+    type: function
+    cc: 64
+    flag: split
+- path: seeds/core_v1.py
+  lines: 357
+  classes: 5
+  methods: 27
+  cc_max: 54
+  inbound_deps: 0
+  exports:
+  - name: C
+    type: class
+    cc_avg: 0.0
+  - name: LLMClient
+    type: class
+    cc_avg: 1.5
+  - name: SkillManager
+    type: class
+    cc_avg: 6.6
+    methods:
+    - name: create_skill
+      cc: 2
+      fan_out: 13
+    - name: exec_skill
+      cc: 19
+      flag: split
+      fan_out: 23
+    - name: evolve
+      cc: 3
+      fan_out: 14
+    - name: rollback
+      cc: 7
+      fan_out: 12
+  - name: PipelineManager
+    type: class
+    cc_avg: 2.8
+    methods:
+    - name: create_p
+      cc: 2
+      fan_out: 10
+    - name: run_p
+      cc: 6
+      fan_out: 12
+  - name: Supervisor
+    type: class
+    cc_avg: 1.6
+  - name: cpr
+    type: function
+    cc: 1
+  - name: load_state
+    type: function
+    cc: 2
+  - name: save_state
+    type: function
+    cc: 1
+  - name: log_ev
+    type: function
+    cc: 2
+  - name: gen_compose
+    type: function
+    cc: 3
+  - name: main
+    type: function
+    cc: 54
+    flag: split
+    fan_out: 40
+- path: cores/v1/intent/__init__.py
+  lines: 518
+  classes: 2
+  methods: 17
+  cc_max: 35
+  inbound_deps: 0
+  exports:
+  - name: IntentResult
+    type: class
+    cc_avg: 6.0
+  - name: SmartIntentClassifier
+    type: class
+    cc_avg: 6.1
+    methods:
+    - name: _rebuild_skill_vectors
+      cc: 10
+    - name: classify
+      cc: 35
+      flag: split
+      fan_out: 15
+  - name: create_smart_classifier
+    type: function
+    cc: 2
+- path: cores/v1/voice_loop.py
+  lines: 444
+  classes: 0
+  methods: 10
+  cc_max: 32
+  inbound_deps: 1
+- path: cores/v1/auto_repair.py
+  lines: 858
+  classes: 2
+  methods: 29
+  cc_max: 30
+  inbound_deps: 0
+  exports:
+  - name: RepairTask
+    type: class
+    cc_avg: 1.0
+  - name: AutoRepair
+    type: class
+    cc_avg: 7.9
+    methods:
+    - name: run_boot_repair
+      cc: 14
+      fan_out: 12
+    - name: _try_known_fix
+      cc: 11
+      fan_out: 10
+    - name: _diagnose_skill
+      cc: 30
+      flag: split
+      fan_out: 15
+    - name: _plan_strategy
+      cc: 12
+    - name: _apply_fix
+      cc: 10
+    - name: _verify_fix
+      cc: 13
+    - name: _fix_strip_markdown
+      cc: 13
+      fan_out: 14
+    - name: _fix_add_interface
+      cc: 8
+      fan_out: 11
+- path: cores/v1/evo_engine.py
+  lines: 965
+  classes: 2
+  methods: 23
+  cc_max: 29
+  inbound_deps: 0
+  exports:
+  - name: FailureTracker
+    type: class
+    cc_avg: 1.3
+  - name: EvoEngine
+    type: class
+    cc_avg: 12.2
+    methods:
+    - name: handle_request
+      cc: 29
+      flag: split
+      fan_out: 20
+    - name: _run_auto_reflection
+      cc: 19
+      flag: split
+      fan_out: 15
+    - name: _exec_attempt
+      cc: 13
+      fan_out: 14
+    - name: _exec_handle_failure
+      cc: 18
+      flag: split
+      fan_out: 18
+    - name: _exec_finalize_failure
+      cc: 9
+      fan_out: 11
+    - name: _try_fallback_providers
+      cc: 17
+      flag: split
+      fan_out: 21
+    - name: _validate_result
+      cc: 21
+      flag: split
+    - name: _autonomous_stt_repair
+      cc: 20
+      flag: split
+      fan_out: 14
+    - name: evolve_skill
+      cc: 11
+      fan_out: 16
+- path: cores/v1/self_reflection.py
+  lines: 462
+  classes: 3
+  methods: 12
+  cc_max: 28
+  inbound_deps: 0
+  exports:
+  - name: ReflectionEvent
+    type: class
+    cc_avg: 0.0
+  - name: DiagnosisReport
+    type: class
+    cc_avg: 0.0
+  - name: SelfReflection
+    type: class
+    cc_avg: 8.1
+    methods:
+    - name: record_skill_outcome
+      cc: 14
+      fan_out: 13
+    - name: run_diagnostic
+      cc: 28
+      flag: split
+      fan_out: 26
+    - name: _print_report
+      cc: 14
+    - name: _repair_broken_skills
+      cc: 10
+- path: skills/shell/v3/skill.py
+  lines: 219
+  classes: 1
+  methods: 6
+  cc_max: 28
+  inbound_deps: 0
+  exports:
+  - name: ShellSkill
+    type: class
+    cc_avg: 15.0
+    methods:
+    - name: execute
+      cc: 28
+      flag: split
+      fan_out: 23
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 2
+  - name: execute
+    type: function
+    cc: 1
+- path: cores/v1/resource_monitor.py
+  lines: 201
+  classes: 1
+  methods: 12
+  cc_max: 26
+  inbound_deps: 0
+  exports:
+  - name: ResourceMonitor
+    type: class
+    cc_avg: 4.6
+    methods:
+    - name: can_run
+      cc: 26
+      flag: split
+      fan_out: 19
+- path: cores/v1/system_identity.py
+  lines: 271
+  classes: 2
+  methods: 9
+  cc_max: 26
+  inbound_deps: 0
+  exports:
+  - name: SkillStatus
+    type: class
+    cc_avg: 1.5
+  - name: SystemIdentity
+    type: class
+    cc_avg: 7.3
+    methods:
+    - name: refresh_statuses
+      cc: 11
+    - name: build_system_prompt
+      cc: 26
+      flag: split
+      fan_out: 20
+- path: skills/benchmark/v2/skill.py
+  lines: 416
+  classes: 1
+  methods: 18
+  cc_max: 26
+  inbound_deps: 0
+  exports:
+  - name: BenchmarkSkill
+    type: class
+    cc_avg: 5.9
+    methods:
+    - name: execute
+      cc: 26
+      flag: split
+      fan_out: 12
+    - name: _recommend_models_live
+      cc: 18
+      flag: split
+      fan_out: 22
+    - name: _run_live_benchmark
+      cc: 8
+      fan_out: 10
+  - name: execute
+    type: function
+    cc: 5
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 1
+- path: skills/benchmark/v3/skill.py
+  lines: 428
+  classes: 1
+  methods: 17
+  cc_max: 26
+  inbound_deps: 0
+  exports:
+  - name: BenchmarkSkill
+    type: class
+    cc_avg: 6.1
+    methods:
+    - name: _call_model_for_benchmark
+      cc: 2
+      fan_out: 11
+    - name: execute
+      cc: 26
+      flag: split
+      fan_out: 12
+    - name: _recommend_models_live
+      cc: 18
+      flag: split
+      fan_out: 22
+    - name: _run_live_benchmark
+      cc: 8
+      fan_out: 10
+  - name: execute
+    type: function
+    cc: 5
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 1
+- path: cores/v1/preflight.py
+  lines: 425
+  classes: 3
+  methods: 17
+  cc_max: 25
+  inbound_deps: 0
+  exports:
+  - name: PreflightResult
+    type: class
+    cc_avg: 1.7
+  - name: SkillPreflight
+    type: class
+    cc_avg: 13.0
+    methods:
+    - name: check_imports
+      cc: 20
+      flag: split
+      fan_out: 16
+    - name: check_interface
+      cc: 13
+      fan_out: 11
+    - name: auto_fix_imports
+      cc: 25
+      flag: split
+      fan_out: 18
+  - name: EvolutionGuard
+    type: class
+    cc_avg: 6.2
+    methods:
+    - name: suggest_strategy
+      cc: 12
+    - name: is_stub_skill
+      cc: 21
+      flag: split
+      fan_out: 11
+- path: cores/v1/intent_engine.py
+  lines: 610
+  classes: 1
+  methods: 23
+  cc_max: 24
+  inbound_deps: 0
+  exports:
+  - name: IntentEngine
+    type: class
+    cc_avg: 7.1
+    methods:
+    - name: _process_ml_result
+      cc: 14
+      fan_out: 10
+    - name: analyze
+      cc: 18
+      flag: split
+      fan_out: 17
+    - name: _extract_shell_command
+      cc: 18
+      flag: split
+      fan_out: 15
+    - name: _match_existing_skill
+      cc: 18
+      flag: split
+    - name: _extract_config_target
+      cc: 24
+      flag: split
+- path: cores/v1/llm_client.py
+  lines: 418
+  classes: 1
+  methods: 14
+  cc_max: 24
+  inbound_deps: 1
+  exports:
+  - name: LLMClient
+    type: class
+    cc_avg: 9.8
+    methods:
+    - name: _report_fail
+      cc: 15
+      flag: split
+    - name: chat
+      cc: 24
+      flag: split
+      fan_out: 17
+    - name: _build_error_msg
+      cc: 13
+    - name: _try_model
+      cc: 15
+      flag: split
+      fan_out: 11
+    - name: analyze_need
+      cc: 24
+      flag: split
+      fan_out: 12
+  - name: discover_models
+    type: function
+    cc: 8
+    fan_out: 10
+- path: cli.py
+  lines: 329
+  classes: 0
+  methods: 7
+  cc_max: 23
+  inbound_deps: 0
+  exports:
+  - name: print_color
+    type: function
+    cc: 1
+  - name: cmd_logs_reset
+    type: function
+    cc: 20
+    flag: split
+    fan_out: 14
+  - name: cmd_cache_reset
+    type: function
+    cc: 23
+    flag: split
+    fan_out: 19
+  - name: cmd_state_reset
+    type: function
+    cc: 4
+  - name: cmd_status
+    type: function
+    cc: 19
+    flag: split
+    fan_out: 14
+  - name: cmd_shell
+    type: function
+    cc: 2
+  - name: main_cli
+    type: function
+    cc: 10
+    fan_out: 18
+- path: cores/v1/core.py
+  lines: 1973
+  classes: 0
+  methods: 69
+  cc_max: 23
+  inbound_deps: 1
+  exports:
+  - name: gen_compose
+    type: function
+    cc: 3
+  - name: main
+    type: function
+    cc: 11
+    fan_out: 12
+- path: cores/v1/skill_schema.py
+  lines: 456
+  classes: 3
+  methods: 16
+  cc_max: 23
+  inbound_deps: 3
+  exports:
+  - name: ValidationResult
+    type: class
+    cc_avg: 3.0
+  - name: SkillSchemaValidator
+    type: class
+    cc_avg: 6.0
+    methods:
+    - name: _validate_against_schema
+      cc: 23
+      flag: split
+  - name: BlueprintRegistry
+    type: class
+    cc_avg: 1.8
+  - name: validate_manifest_file
+    type: function
+    cc: 1
+  - name: generate_skill_manifest
+    type: function
+    cc: 1
+  - name: get_schema_validation_stats
+    type: function
+    cc: 7
+- path: scripts/generate_manifests.py
+  lines: 199
+  classes: 0
+  methods: 4
+  cc_max: 23
+  inbound_deps: 0
+  exports:
+  - name: infer_interface_from_skill
+    type: function
+    cc: 10
+  - name: infer_constraints_from_skill
+    type: function
+    cc: 4
+  - name: generate_manifest_for_skill
+    type: function
+    cc: 23
+    flag: split
+    fan_out: 16
+  - name: main
+    type: function
+    cc: 14
+    fan_out: 16
+- path: skills/auto/v2/skill.py
+  lines: 322
+  classes: 1
+  methods: 17
+  cc_max: 23
+  inbound_deps: 0
+  exports:
+  - name: AutoSkillBuilder
+    type: class
+    cc_avg: 4.9
+    methods:
+    - name: _parse_command
+      cc: 23
+      flag: split
+    - name: _execute_command
+      cc: 12
+      fan_out: 11
+    - name: _get_weather
+      cc: 3
+      fan_out: 13
+    - name: _search_web
+      cc: 4
+      fan_out: 10
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 2
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/chat/v1/skill.py
+  lines: 135
+  classes: 1
+  methods: 5
+  cc_max: 23
+  inbound_deps: 0
+  exports:
+  - name: ChatSkill
+    type: class
+    cc_avg: 13.5
+    methods:
+    - name: _generate_response
+      cc: 23
+      flag: split
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 3
+  - name: execute
+    type: function
+    cc: 1
+- path: scripts/simulate.py
+  lines: 551
+  classes: 2
+  methods: 10
+  cc_max: 22
+  inbound_deps: 0
+  exports:
+  - name: SimulationResult
+    type: class
+    cc_avg: 1.0
+  - name: Simulator
+    type: class
+    cc_avg: 11.0
+    methods:
+    - name: _init_system
+      cc: 7
+      fan_out: 21
+    - name: run_scenario
+      cc: 21
+      flag: split
+      fan_out: 22
+    - name: run_all
+      cc: 5
+      fan_out: 15
+    - name: _iter_summary
+      cc: 10
+    - name: _final_report
+      cc: 22
+      flag: split
+      fan_out: 20
+  - name: main
+    type: function
+    cc: 8
+- path: skills/document_search/v1/skill.py
+  lines: 468
+  classes: 1
+  methods: 15
+  cc_max: 22
+  inbound_deps: 0
+  exports:
+  - name: DocumentSearchSkill
+    type: class
+    cc_avg: 7.6
+    methods:
+    - name: search_by_name
+      cc: 10
+      fan_out: 18
+    - name: search_by_content
+      cc: 15
+      flag: split
+      fan_out: 23
+    - name: _find_matches
+      cc: 3
+      fan_out: 10
+    - name: search_by_metadata
+      cc: 22
+      flag: split
+      fan_out: 20
+    - name: find_duplicates
+      cc: 12
+      fan_out: 15
+    - name: index_directory
+      cc: 8
+      fan_out: 13
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 1
+  - name: execute
+    type: function
+    cc: 1
+- path: cores/v1/session_config.py
+  lines: 526
+  classes: 2
+  methods: 23
+  cc_max: 21
+  inbound_deps: 28
+  exports:
+  - name: ConfigChange
+    type: class
+    cc_avg: 0.0
+  - name: SessionConfig
+    type: class
+    cc_avg: 5.4
+    methods:
+    - name: handle_configure_intent
+      cc: 21
+      flag: split
+      fan_out: 11
+    - name: _configure_llm
+      cc: 14
+- path: cores/v1/drift_detector.py
+  lines: 600
+  classes: 3
+  methods: 21
+  cc_max: 19
+  inbound_deps: 0
+  exports:
+  - name: DriftReport
+    type: class
+    cc_avg: 3.0
+  - name: RemediationResult
+    type: class
+    cc_avg: 2.0
+  - name: DriftDetector
+    type: class
+    cc_avg: 7.9
+    methods:
+    - name: detect
+      cc: 13
+      fan_out: 13
+    - name: _check_interface_drift
+      cc: 10
+    - name: _find_latest_version
+      cc: 19
+      flag: split
+      fan_out: 11
+    - name: _rollback_provider
+      cc: 10
+      fan_out: 12
+    - name: _rollback_legacy
+      cc: 9
+      fan_out: 13
+  - name: detect_drift
+    type: function
+    cc: 1
+  - name: detect_all_drift
+    type: function
+    cc: 1
+  - name: get_drift_summary
+    type: function
+    cc: 1
+  - name: auto_remediate
+    type: function
+    cc: 3
+  - name: auto_remediate_all
+    type: function
+    cc: 1
+- path: skills/deps/providers/default/stable/skill.py
+  lines: 194
+  classes: 1
+  methods: 11
+  cc_max: 19
+  inbound_deps: 0
+  exports:
+  - name: DepsSkill
+    type: class
+    cc_avg: 4.9
+    methods:
+    - name: execute
+      cc: 19
+      flag: split
+      fan_out: 11
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 1
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/deps/v3/skill.py
+  lines: 184
+  classes: 1
+  methods: 10
+  cc_max: 19
+  inbound_deps: 0
+  exports:
+  - name: DepsSkill
+    type: class
+    cc_avg: 5.1
+    methods:
+    - name: execute
+      cc: 19
+      flag: split
+      fan_out: 11
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 1
+  - name: execute
+    type: function
+    cc: 1
+- path: cores/v1/evo_journal.py
+  lines: 422
+  classes: 2
+  methods: 20
+  cc_max: 18
+  inbound_deps: 0
+  exports:
+  - name: EvolutionEntry
+    type: class
+    cc_avg: 2.0
+  - name: EvolutionJournal
+    type: class
+    cc_avg: 5.0
+    methods:
+    - name: reflect
+      cc: 9
+      fan_out: 10
+    - name: get_skill_history
+      cc: 7
+      fan_out: 11
+    - name: _compute_quality
+      cc: 12
+    - name: _suggest_strategy
+      cc: 18
+      flag: split
+    - name: _update_summary
+      cc: 11
+- path: cores/v1/provider_selector.py
+  lines: 498
+  classes: 3
+  methods: 26
+  cc_max: 18
+  inbound_deps: 0
+  exports:
+  - name: ProviderInfo
+    type: class
+    cc_avg: 1.0
+  - name: ProviderSelector
+    type: class
+    cc_avg: 7.7
+    methods:
+    - name: list_capabilities
+      cc: 9
+      fan_out: 10
+    - name: load_meta
+      cc: 11
+      fan_out: 12
+    - name: select
+      cc: 18
+      flag: split
+      fan_out: 10
+    - name: _score
+      cc: 15
+      flag: split
+    - name: get_skill_path
+      cc: 18
+      flag: split
+  - name: ProviderChain
+    type: class
+    cc_avg: 3.5
+    methods:
+    - name: build_chain
+      cc: 9
+      fan_out: 12
+    - name: _reorder_by_fallback
+      cc: 10
+- path: cores/v1/self_healing/diagnostics.py
+  lines: 288
+  classes: 1
+  methods: 11
+  cc_max: 18
+  inbound_deps: 0
+  exports:
+  - name: DiagnosticEngine
+    type: class
+    cc_avg: 6.5
+    methods:
+    - name: full_scan
+      cc: 18
+      flag: split
+      fan_out: 13
+- path: cores/v1/skill_manager.py
+  lines: 694
+  classes: 1
+  methods: 28
+  cc_max: 18
+  inbound_deps: 0
+  exports:
+  - name: SkillManager
+    type: class
+    cc_avg: 6.8
+    methods:
+    - name: list_skills
+      cc: 11
+      fan_out: 12
+    - name: latest_v
+      cc: 18
+      flag: split
+      fan_out: 13
+    - name: create_skill
+      cc: 9
+      fan_out: 25
+    - name: diagnose_skill
+      cc: 11
+    - name: _resolve_skill_path
+      cc: 10
+      fan_out: 10
+    - name: _load_and_run
+      cc: 6
+      fan_out: 20
+    - name: check_health
+      cc: 6
+      fan_out: 10
+    - name: readiness_check
+      cc: 7
+      fan_out: 10
+    - name: get_health_context
+      cc: 12
+    - name: exec_skill
+      cc: 11
+    - name: _build_evolve_prompt
+      cc: 9
+      fan_out: 12
+    - name: smart_evolve
+      cc: 5
+      fan_out: 15
+    - name: rollback
+      cc: 8
+      fan_out: 13
+- path: skills/account_creator/v1/skill.py
+  lines: 438
+  classes: 1
+  methods: 16
+  cc_max: 18
+  inbound_deps: 0
+  exports:
+  - name: AccountCreatorSkill
+    type: class
+    cc_avg: 7.2
+    methods:
+    - name: generate_password
+      cc: 18
+      flag: split
+    - name: check_password_strength
+      cc: 12
+    - name: validate_username
+      cc: 11
+    - name: create_account_data
+      cc: 7
+      fan_out: 10
+    - name: store_credentials
+      cc: 7
+      fan_out: 11
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 1
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/stt/providers/vosk/stable/skill.py
+  lines: 299
+  classes: 1
+  methods: 10
+  cc_max: 18
+  inbound_deps: 0
+  exports:
+  - name: STTSkill
+    type: class
+    cc_avg: 9.7
+    methods:
+    - name: _find_vosk_model
+      cc: 12
+      fan_out: 10
+    - name: _check_audio_level
+      cc: 18
+      flag: split
+      fan_out: 10
+    - name: _ensure_wav
+      cc: 4
+      fan_out: 10
+    - name: _transcribe_vosk
+      cc: 11
+      fan_out: 10
+    - name: execute
+      cc: 13
+      fan_out: 12
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 3
+  - name: execute
+    type: function
+    cc: 1
+- path: backend/main.py
+  lines: 766
+  classes: 4
+  methods: 24
+  cc_max: 17
+  inbound_deps: 1
+  exports:
+  - name: LLMClient
+    type: class
+    cc_avg: 4.4
+  - name: TTSEngine
+    type: class
+    cc_avg: 4.0
+  - name: STTEngine
+    type: class
+    cc_avg: 2.3
+  - name: TTSRequest
+    type: class
+    cc_avg: 0.0
+  - name: lifespan
+    type: function
+    cc: 1
+  - name: health
+    type: function
+    cc: 1
+  - name: status
+    type: function
+    cc: 1
+  - name: diagnose
+    type: function
+    cc: 8
+    fan_out: 10
+  - name: tts_endpoint
+    type: function
+    cc: 2
+  - name: stt_endpoint
+    type: function
+    cc: 2
+  - name: websocket_chat
+    type: function
+    cc: 11
+    fan_out: 32
+- path: cores/v1/garbage_collector.py
+  lines: 356
+  classes: 1
+  methods: 11
+  cc_max: 17
+  inbound_deps: 0
+  exports:
+  - name: EvolutionGarbageCollector
+    type: class
+    cc_avg: 8.5
+    methods:
+    - name: scan_versions
+      cc: 11
+      fan_out: 10
+    - name: cleanup_provider
+      cc: 12
+    - name: cleanup_legacy
+      cc: 17
+      flag: split
+      fan_out: 16
+    - name: migrate_to_stable_latest
+      cc: 10
+      fan_out: 11
+    - name: trim_archive
+      cc: 9
+      fan_out: 10
+    - name: cleanup_all
+      cc: 9
+      fan_out: 15
+- path: cores/v1/metrics_collector.py
+  lines: 599
+  classes: 4
+  methods: 32
+  cc_max: 17
+  inbound_deps: 1
+  exports:
+  - name: SkillMetric
+    type: class
+    cc_avg: 1.0
+  - name: OperationMetric
+    type: class
+    cc_avg: 1.0
+  - name: SystemHealthSnapshot
+    type: class
+    cc_avg: 0.0
+  - name: MetricsCollector
+    type: class
+    cc_avg: 5.0
+    methods:
+    - name: get_skill_health
+      cc: 10
+    - name: compute_system_health
+      cc: 3
+      fan_out: 12
+    - name: get_anomalies
+      cc: 17
+      flag: split
+      fan_out: 10
+    - name: _get_baseline_rate
+      cc: 9
+      fan_out: 11
+    - name: _get_baseline_p95
+      cc: 8
+      fan_out: 12
+  - name: get_collector
+    type: function
+    cc: 2
+  - name: record_skill_execution
+    type: function
+    cc: 1
+  - name: record_operation
+    type: function
+    cc: 1
+  - name: get_skill_health
+    type: function
+    cc: 1
+  - name: get_system_health_summary
+    type: function
+    cc: 1
+  - name: compute_and_save_system_health
+    type: function
+    cc: 1
+- path: cores/v1/quality_gate.py
+  lines: 444
+  classes: 2
+  methods: 15
+  cc_max: 17
+  inbound_deps: 0
+  exports:
+  - name: QualityReport
+    type: class
+    cc_avg: 4.0
+  - name: SkillQualityGate
+    type: class
+    cc_avg: 5.8
+    methods:
+    - name: evaluate
+      cc: 6
+      fan_out: 13
+    - name: _check_drift
+      cc: 12
+      fan_out: 10
+    - name: _check_code_quality
+      cc: 17
+      flag: split
+      fan_out: 11
+- path: cores/v1/smart_intent.py
+  lines: 659
+  classes: 3
+  methods: 22
+  cc_max: 17
+  inbound_deps: 0
+  exports:
+  - name: IntentResult
+    type: class
+    cc_avg: 4.0
+  - name: TrainingExample
+    type: class
+    cc_avg: 2.0
+  - name: SmartIntentClassifier
+    type: class
+    cc_avg: 4.8
+    methods:
+    - name: _load_training_data
+      cc: 7
+      fan_out: 11
+    - name: classify
+      cc: 10
+    - name: _tier1_embedding
+      cc: 17
+      flag: split
+      fan_out: 14
+  - name: create_smart_classifier
+    type: function
+    cc: 2
+- path: skills/document_editor/v1/skill.py
+  lines: 470
+  classes: 1
+  methods: 15
+  cc_max: 17
+  inbound_deps: 0
+  exports:
+  - name: DocumentEditorSkill
+    type: class
+    cc_avg: 8.0
+    methods:
+    - name: find_replace
+      cc: 17
+      flag: split
+      fan_out: 15
+    - name: insert_text
+      cc: 16
+      flag: split
+      fan_out: 11
+    - name: format_text
+      cc: 17
+      flag: split
+      fan_out: 14
+    - name: merge_files
+      cc: 6
+      fan_out: 10
+    - name: split_file
+      cc: 5
+      fan_out: 12
+    - name: get_diff
+      cc: 5
+      fan_out: 10
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 1
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/invalid_input_handler/v1/skill.py
+  lines: 113
+  classes: 1
+  methods: 4
+  cc_max: 17
+  inbound_deps: 0
+  exports:
+  - name: InvalidInputHandler
+    type: class
+    cc_avg: 17.0
+    methods:
+    - name: execute
+      cc: 17
+      flag: split
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 3
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/local_computer_discovery/v3/skill.py
+  lines: 315
+  classes: 1
+  methods: 13
+  cc_max: 17
+  inbound_deps: 0
+  exports:
+  - name: LocalComputerDiscovery
+    type: class
+    cc_avg: 6.1
+    methods:
+    - name: execute
+      cc: 17
+      flag: split
+      fan_out: 17
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 5
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/tts/providers/piper/stable/skill.py
+  lines: 269
+  classes: 1
+  methods: 10
+  cc_max: 17
+  inbound_deps: 0
+  exports:
+  - name: PiperTTSSkill
+    type: class
+    cc_avg: 7.7
+    methods:
+    - name: execute
+      cc: 17
+      flag: split
+      fan_out: 14
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 9
+  - name: execute
+    type: function
+    cc: 1
+- path: cores/v1/skill_forge.py
+  lines: 325
+  classes: 3
+  methods: 14
+  cc_max: 16
+  inbound_deps: 0
+  exports:
+  - name: ErrorBudget
+    type: class
+    cc_avg: 2.2
+  - name: SkillMatch
+    type: class
+    cc_avg: 0.0
+  - name: SkillForge
+    type: class
+    cc_avg: 5.9
+    methods:
+    - name: _load_skill_description
+      cc: 16
+      flag: split
+      fan_out: 13
+    - name: _search_keyword
+      cc: 8
+      fan_out: 12
+  - name: is_conversational
+    type: function
+    cc: 12
+    fan_out: 10
+- path: cores/v1/stable_snapshot.py
+  lines: 399
+  classes: 2
+  methods: 14
+  cc_max: 16
+  inbound_deps: 0
+  exports:
+  - name: SnapshotInfo
+    type: class
+    cc_avg: 0.0
+  - name: StableSnapshot
+    type: class
+    cc_avg: 6.5
+    methods:
+    - name: save_as_stable
+      cc: 6
+      fan_out: 14
+    - name: create_branch
+      cc: 7
+      fan_out: 12
+    - name: promote_branch
+      cc: 6
+      fan_out: 12
+    - name: validate_against_stable
+      cc: 16
+      flag: split
+      fan_out: 15
+    - name: list_branches
+      cc: 10
+    - name: _find_current_version
+      cc: 10
+    - name: _copy_skill_files
+      cc: 9
+      fan_out: 10
+    - name: _check_health
+      cc: 9
+      fan_out: 10
+- path: skills/currency_converter_gbp_to_jpy/v2/skill.py
+  lines: 130
+  classes: 1
+  methods: 4
+  cc_max: 16
+  inbound_deps: 0
+  exports:
+  - name: CurrencyConverterGBPtoJPY
+    type: class
+    cc_avg: 16.0
+    methods:
+    - name: execute
+      cc: 16
+      flag: split
+      fan_out: 16
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 2
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/stt/providers/vosk/archive/v7/skill.py
+  lines: 198
+  classes: 1
+  methods: 10
+  cc_max: 16
+  inbound_deps: 0
+  exports:
+  - name: STTSkill
+    type: class
+    cc_avg: 6.3
+    methods:
+    - name: _ensure_wav
+      cc: 4
+      fan_out: 10
+    - name: _find_model_path
+      cc: 10
+    - name: execute
+      cc: 13
+      fan_out: 11
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 2
+  - name: check_readiness
+    type: function
+    cc: 16
+    flag: split
+    fan_out: 15
+  - name: execute
+    type: function
+    cc: 1
+- path: scripts/benchmark_system.py
+  lines: 344
+  classes: 2
+  methods: 8
+  cc_max: 15
+  inbound_deps: 0
+  exports:
+  - name: BenchmarkResult
+    type: class
+    cc_avg: 0.0
+  - name: SystemMetrics
+    type: class
+    cc_avg: 0.0
+  - name: run_benchmark
+    type: function
+    cc: 3
+  - name: measure_import
+    type: function
+    cc: 2
+  - name: count_lines_in_file
+    type: function
+    cc: 2
+  - name: get_version
+    type: function
+    cc: 2
+  - name: count_skills_and_versions
+    type: function
+    cc: 15
+    flag: split
+    fan_out: 12
+  - name: validate_manifest_schemas
+    type: function
+    cc: 7
+  - name: run_all_benchmarks
+    type: function
+    cc: 14
+    fan_out: 30
+  - name: main
+    type: function
+    cc: 10
+    fan_out: 16
+- path: skills/content_search/providers/default/stable/skill.py
+  lines: 199
+  classes: 2
+  methods: 10
+  cc_max: 15
+  inbound_deps: 0
+  exports:
+  - name: ContentSearchSkill
+    type: class
+    cc_avg: 4.7
+    methods:
+    - name: _search_duckduckgo
+      cc: 7
+      fan_out: 13
+  - name: DuckDuckGoParser
+    type: class
+    cc_avg: 7.8
+    methods:
+    - name: handle_starttag
+      cc: 15
+      flag: split
+    - name: handle_endtag
+      cc: 11
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 2
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/currency_converter_gbp_to_jpy/v3/skill.py
+  lines: 125
+  classes: 1
+  methods: 4
+  cc_max: 15
+  inbound_deps: 0
+  exports:
+  - name: CurrencyConverterGBPtoJPY
+    type: class
+    cc_avg: 15.0
+    methods:
+    - name: execute
+      cc: 15
+      flag: split
+      fan_out: 16
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 2
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/health/v1/skill.py
+  lines: 129
+  classes: 1
+  methods: 4
+  cc_max: 15
+  inbound_deps: 0
+  exports:
+  - name: HealthSkill
+    type: class
+    cc_avg: 15.0
+    methods:
+    - name: execute
+      cc: 15
+      flag: split
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 14
+    fan_out: 11
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/network_tools/v1/skill.py
+  lines: 360
+  classes: 1
+  methods: 11
+  cc_max: 15
+  inbound_deps: 0
+  exports:
+  - name: NetworkToolsSkill
+    type: class
+    cc_avg: 7.2
+    methods:
+    - name: ping
+      cc: 11
+      fan_out: 12
+    - name: dns_lookup
+      cc: 10
+    - name: check_port
+      cc: 4
+      fan_out: 10
+    - name: check_http
+      cc: 15
+      flag: split
+      fan_out: 15
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 1
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/pound_to_yen_converter/v9/skill.py
+  lines: 142
+  classes: 1
+  methods: 5
+  cc_max: 15
+  inbound_deps: 0
+  exports:
+  - name: PoundToYenConverter
+    type: class
+    cc_avg: 1.0
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 2
+  - name: execute
+    type: function
+    cc: 15
+    flag: split
+    fan_out: 12
+  - name: execute_wrapper
+    type: function
+    cc: 1
+- path: cores/v1/autonomy_loop.py
+  lines: 401
+  classes: 2
+  methods: 15
+  cc_max: 14
+  inbound_deps: 0
+  exports:
+  - name: LoopCycleResult
+    type: class
+    cc_avg: 2.0
+  - name: AutonomyLoop
+    type: class
+    cc_avg: 4.7
+    methods:
+    - name: run_cycle
+      cc: 7
+      fan_out: 16
+    - name: _phase_triage
+      cc: 14
+      fan_out: 14
+- path: cores/v1/base_skill.py
+  lines: 367
+  classes: 3
+  methods: 13
+  cc_max: 14
+  inbound_deps: 1
+  exports:
+  - name: InputField
+    type: class
+    cc_avg: 0.0
+  - name: SkillManifest
+    type: class
+    cc_avg: 7.2
+    methods:
+    - name: to_dict
+      cc: 14
+  - name: BaseSkill
+    type: class
+    cc_avg: 3.6
+    methods:
+    - name: safe_execute
+      cc: 10
+  - name: generate_scaffold
+    type: function
+    cc: 8
+  - name: generate_manifest_yaml
+    type: function
+    cc: 7
+- path: cores/v1/reflection_engine.py
+  lines: 339
+  classes: 4
+  methods: 27
+  cc_max: 14
+  inbound_deps: 0
+  exports:
+  - name: SystemState
+    type: class
+    cc_avg: 1.0
+  - name: RuleMatch
+    type: class
+    cc_avg: 0.0
+  - name: ReflectionRuleEngine
+    type: class
+    cc_avg: 2.2
+    methods:
+    - name: _match_trigger
+      cc: 14
+  - name: ProactiveReflection
+    type: class
+    cc_avg: 4.2
+    methods:
+    - name: _build_state
+      cc: 12
+      fan_out: 14
+  - name: get_rule_engine
+    type: function
+    cc: 2
+  - name: evaluate_reflection_rules
+    type: function
+    cc: 1
+  - name: run_reflection_cycle
+    type: function
+    cc: 1
+- path: skills/calculator_advanced/v1/skill.py
+  lines: 368
+  classes: 1
+  methods: 14
+  cc_max: 14
+  inbound_deps: 0
+  exports:
+  - name: AdvancedCalculatorSkill
+    type: class
+    cc_avg: 5.9
+    methods:
+    - name: calculate
+      cc: 11
+      fan_out: 10
+    - name: solve_linear
+      cc: 14
+      fan_out: 11
+    - name: convert_base
+      cc: 10
+    - name: stats
+      cc: 9
+      fan_out: 10
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 2
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/local_computer_discovery/v2/skill.py
+  lines: 299
+  classes: 1
+  methods: 13
+  cc_max: 14
+  inbound_deps: 0
+  exports:
+  - name: LocalComputerDiscovery
+    type: class
+    cc_avg: 5.8
+    methods:
+    - name: execute
+      cc: 14
+      fan_out: 16
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 5
+  - name: execute
+    type: function
+    cc: 1
+- path: cores/v1/adaptive_monitor.py
+  lines: 230
+  classes: 2
+  methods: 10
+  cc_max: 13
+  inbound_deps: 0
+  exports:
+  - name: EWMATracker
+    type: class
+    cc_avg: 1.5
+  - name: AdaptiveResourceMonitor
+    type: class
+    cc_avg: 4.1
+    methods:
+    - name: check_alerts
+      cc: 13
+- path: cores/v1/config_generator.py
+  lines: 277
+  classes: 1
+  methods: 10
+  cc_max: 13
+  inbound_deps: 1
+  exports:
+  - name: ConfigGenerator
+    type: class
+    cc_avg: 4.6
+    methods:
+    - name: generate_topic_map
+      cc: 13
+  - name: get_config_generator
+    type: function
+    cc: 2
+- path: cores/v1/event_bus.py
+  lines: 164
+  classes: 6
+  methods: 2
+  cc_max: 13
+  inbound_deps: 0
+  exports:
+  - name: SkillFailedEvent
+    type: class
+    cc_avg: 0.0
+  - name: ReflectionNeededEvent
+    type: class
+    cc_avg: 0.0
+  - name: RepairRequestedEvent
+    type: class
+    cc_avg: 0.0
+  - name: RepairCompletedEvent
+    type: class
+    cc_avg: 0.0
+  - name: DiagnosisReadyEvent
+    type: class
+    cc_avg: 0.0
+  - name: EventBus
+    type: class
+    cc_avg: 7.0
+    methods:
+    - name: wire
+      cc: 13
+- path: cores/v1/intent/ensemble.py
+  lines: 110
+  classes: 3
+  methods: 4
+  cc_max: 13
+  inbound_deps: 0
+  exports:
+  - name: Vote
+    type: class
+    cc_avg: 0.0
+  - name: EnsembleResult
+    type: class
+    cc_avg: 0.0
+  - name: EnsembleIntentClassifier
+    type: class
+    cc_avg: 4.5
+    methods:
+    - name: decide
+      cc: 13
+- path: skills/auto/v1/skill.py
+  lines: 311
+  classes: 1
+  methods: 9
+  cc_max: 13
+  inbound_deps: 0
+  exports:
+  - name: AutoSkillBuilder
+    type: class
+    cc_avg: 9.3
+    methods:
+    - name: execute
+      cc: 9
+      fan_out: 10
+    - name: _detect_capability
+      cc: 13
+    - name: _execute_http_get
+      cc: 8
+      fan_out: 10
+    - name: _execute_file
+      cc: 11
+      fan_out: 12
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 2
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/gbp_to_jpy_converter/v9/skill.py
+  lines: 135
+  classes: 1
+  methods: 4
+  cc_max: 13
+  inbound_deps: 0
+  exports:
+  - name: GBPToJPYConverter
+    type: class
+    cc_avg: 13.0
+    methods:
+    - name: execute
+      cc: 13
+      fan_out: 14
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 3
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/openrouter/v1/skill.py
+  lines: 287
+  classes: 1
+  methods: 11
+  cc_max: 13
+  inbound_deps: 0
+  exports:
+  - name: OpenRouterSkill
+    type: class
+    cc_avg: 6.9
+    methods:
+    - name: _score_model
+      cc: 12
+    - name: _discover_free
+      cc: 9
+      fan_out: 10
+    - name: _search_models
+      cc: 13
+      fan_out: 10
+  - name: get_info
+    type: function
+    cc: 1
+  - name: execute
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 1
+- path: skills/process_manager/v1/skill.py
+  lines: 263
+  classes: 1
+  methods: 10
+  cc_max: 13
+  inbound_deps: 0
+  exports:
+  - name: ProcessManagerSkill
+    type: class
+    cc_avg: 7.6
+    methods:
+    - name: _get_proc_info
+      cc: 13
+      fan_out: 19
+    - name: list_processes
+      cc: 11
+      fan_out: 12
+    - name: find_process
+      cc: 9
+      fan_out: 10
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 3
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/stt/providers/vosk/archive/v6/skill.py
+  lines: 154
+  classes: 1
+  methods: 8
+  cc_max: 13
+  inbound_deps: 0
+  exports:
+  - name: STTSkill
+    type: class
+    cc_avg: 5.2
+    methods:
+    - name: _ensure_wav
+      cc: 4
+      fan_out: 10
+    - name: _transcribe_vosk
+      cc: 6
+      fan_out: 10
+    - name: execute
+      cc: 13
+      fan_out: 11
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 2
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/web_automation/v1/skill.py
+  lines: 288
+  classes: 1
+  methods: 19
+  cc_max: 13
+  inbound_deps: 3
+  exports:
+  - name: WebAutomationSkill
+    type: class
+    cc_avg: 3.1
+    methods:
+    - name: execute
+      cc: 13
+      fan_out: 13
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 3
+  - name: execute
+    type: function
+    cc: 1
+- path: cores/v1/learned_repair.py
+  lines: 339
+  classes: 2
+  methods: 12
+  cc_max: 12
+  inbound_deps: 1
+  exports:
+  - name: LearnedRepairStrategy
+    type: class
+    cc_avg: 4.7
+    methods:
+    - name: fit
+      cc: 9
+      fan_out: 12
+  - name: TieredRepair
+    type: class
+    cc_avg: 3.4
+  - name: rule_based_strategy
+    type: function
+    cc: 12
+- path: skills/_health_/v1/skill.py
+  lines: 454
+  classes: 1
+  methods: 16
+  cc_max: 12
+  inbound_deps: 0
+  exports:
+  - name: HealthSkill
+    type: class
+    cc_avg: 6.9
+    methods:
+    - name: execute
+      cc: 11
+      fan_out: 10
+    - name: _get_full_health_report
+      cc: 7
+      fan_out: 12
+    - name: _get_network_status
+      cc: 12
+      fan_out: 11
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 7
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/file_manager/v1/skill.py
+  lines: 293
+  classes: 1
+  methods: 12
+  cc_max: 12
+  inbound_deps: 0
+  exports:
+  - name: FileManagerSkill
+    type: class
+    cc_avg: 7.9
+    methods:
+    - name: list_dir
+      cc: 12
+      fan_out: 14
+    - name: organize
+      cc: 10
+      fan_out: 13
+    - name: find
+      cc: 11
+    - name: info
+      cc: 7
+      fan_out: 11
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 2
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/gbp_to_jpy_converter/v8/skill.py
+  lines: 130
+  classes: 0
+  methods: 4
+  cc_max: 12
+  inbound_deps: 0
+  exports:
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 3
+  - name: execute
+    type: function
+    cc: 12
+    fan_out: 14
+  - name: execute_module
+    type: function
+    cc: 1
+- path: skills/task_manager/v1/skill.py
+  lines: 478
+  classes: 1
+  methods: 18
+  cc_max: 12
+  inbound_deps: 0
+  exports:
+  - name: TaskManagerSkill
+    type: class
+    cc_avg: 5.3
+    methods:
+    - name: _parse_due_date
+      cc: 7
+      fan_out: 10
+    - name: list_tasks
+      cc: 12
+    - name: due_soon
+      cc: 7
+      fan_out: 14
+    - name: overdue
+      cc: 7
+      fan_out: 13
+    - name: stats
+      cc: 6
+      fan_out: 11
+    - name: execute
+      cc: 10
+      fan_out: 10
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 2
+  - name: execute
+    type: function
+    cc: 1
+- path: cores/v1/logger.py
+  lines: 148
+  classes: 1
+  methods: 11
+  cc_max: 11
+  inbound_deps: 0
+  exports:
+  - name: Logger
+    type: class
+    cc_avg: 3.9
+    methods:
+    - name: learn_summary
+      cc: 11
+      fan_out: 10
+- path: cores/v1/prompts/__init__.py
+  lines: 184
+  classes: 1
+  methods: 11
+  cc_max: 11
+  inbound_deps: 31
+  exports:
+  - name: PromptManager
+    type: class
+    cc_avg: 1.0
+  - name: get
+    type: function
+    cc: 11
+  - name: render
+    type: function
+    cc: 11
+  - name: get_metadata
+    type: function
+    cc: 2
+  - name: list_available
+    type: function
+    cc: 3
+  - name: clear_cache
+    type: function
+    cc: 1
+- path: cores/v1/repair_journal.py
+  lines: 423
+  classes: 3
+  methods: 16
+  cc_max: 11
+  inbound_deps: 0
+  exports:
+  - name: RepairAttempt
+    type: class
+    cc_avg: 0.0
+  - name: KnownFix
+    type: class
+    cc_avg: 0.0
+  - name: RepairJournal
+    type: class
+    cc_avg: 4.9
+    methods:
+    - name: ask_llm_diagnosis
+      cc: 10
+      fan_out: 11
+    - name: ask_llm_and_try
+      cc: 11
+      fan_out: 10
+    - name: _update_known_fix
+      cc: 10
+- path: cores/v1/skill_logger.py
+  lines: 303
+  classes: 0
+  methods: 9
+  cc_max: 11
+  inbound_deps: 2
+  exports:
+  - name: init_nfo
+    type: function
+    cc: 3
+  - name: inject_logging
+    type: function
+    cc: 3
+  - name: get_skill_logger
+    type: function
+    cc: 2
+  - name: query_skill_errors
+    type: function
+    cc: 5
+  - name: query_slow_calls
+    type: function
+    cc: 4
+  - name: skill_health_summary
+    type: function
+    cc: 6
+  - name: get_markdown_logs
+    type: function
+    cc: 11
+    fan_out: 12
+  - name: get_errors_markdown
+    type: function
+    cc: 4
+  - name: get_health_markdown
+    type: function
+    cc: 8
+    fan_out: 14
+- path: skills/converter/v1/skill.py
+  lines: 384
+  classes: 1
+  methods: 11
+  cc_max: 11
+  inbound_deps: 0
+  exports:
+  - name: ConverterSkill
+    type: class
+    cc_avg: 6.1
+    methods:
+    - name: execute
+      cc: 11
+      fan_out: 11
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 1
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/diagnostic_runner/v1/skill.py
+  lines: 150
+  classes: 1
+  methods: 9
+  cc_max: 11
+  inbound_deps: 0
+  exports:
+  - name: DiagnosticRunner
+    type: class
+    cc_avg: 5.2
+    methods:
+    - name: execute
+      cc: 11
+      fan_out: 13
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 1
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/notes/v1/skill.py
+  lines: 330
+  classes: 1
+  methods: 16
+  cc_max: 11
+  inbound_deps: 0
+  exports:
+  - name: NotesSkill
+    type: class
+    cc_avg: 4.1
+    methods:
+    - name: search
+      cc: 11
+      fan_out: 13
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 2
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/text_summarizer/v1/skill.py
+  lines: 244
+  classes: 1
+  methods: 10
+  cc_max: 11
+  inbound_deps: 0
+  exports:
+  - name: TextSummarizerSkill
+    type: class
+    cc_avg: 5.6
+    methods:
+    - name: summarize
+      cc: 11
+      fan_out: 16
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 1
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/weather_gdansk/v8/skill.py
+  lines: 213
+  classes: 2
+  methods: 10
+  cc_max: 11
+  inbound_deps: 0
+  exports:
+  - name: WeatherGdanskParser
+    type: class
+    cc_avg: 6.5
+    methods:
+    - name: handle_starttag
+      cc: 10
+    - name: handle_endtag
+      cc: 11
+  - name: WeatherGdanskSkill
+    type: class
+    cc_avg: 5.0
+  - name: get_weather_gdansk
+    type: function
+    cc: 4
+  - name: speak_weather
+    type: function
+    cc: 4
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 3
+  - name: execute
+    type: function
+    cc: 1
+- path: TODO2/main.py
+  lines: 537
+  classes: 4
+  methods: 21
+  cc_max: 10
+  inbound_deps: 1
+  exports:
+  - name: LLMClient
+    type: class
+    cc_avg: 3.5
+  - name: TTSEngine
+    type: class
+    cc_avg: 4.0
+  - name: STTEngine
+    type: class
+    cc_avg: 2.3
+  - name: TTSRequest
+    type: class
+    cc_avg: 0.0
+  - name: lifespan
+    type: function
+    cc: 1
+  - name: health
+    type: function
+    cc: 1
+  - name: status
+    type: function
+    cc: 1
+  - name: list_skills
+    type: function
+    cc: 1
+  - name: tts_endpoint
+    type: function
+    cc: 2
+  - name: stt_endpoint
+    type: function
+    cc: 2
+  - name: websocket_chat
+    type: function
+    cc: 10
+    fan_out: 27
+- path: cores/v1/config.py
+  lines: 254
+  classes: 1
+  methods: 15
+  cc_max: 10
+  inbound_deps: 21
+  exports:
+  - name: C
+    type: class
+    cc_avg: 0.0
+  - name: reload_system_config
+    type: function
+    cc: 1
+  - name: get_system_config
+    type: function
+    cc: 1
+  - name: get_config_value
+    type: function
+    cc: 4
+  - name: get_code_model_patterns
+    type: function
+    cc: 3
+  - name: get_models_from_tier
+    type: function
+    cc: 5
+  - name: cpr
+    type: function
+    cc: 1
+  - name: load_state
+    type: function
+    cc: 3
+  - name: save_state
+    type: function
+    cc: 8
+    fan_out: 11
+  - name: get_models_from_config
+    type: function
+    cc: 4
+  - name: get_categories
+    type: function
+    cc: 1
+  - name: get_provider_tiers
+    type: function
+    cc: 1
+  - name: get_blocked_commands
+    type: function
+    cc: 1
+- path: cores/v1/intent/local_llm.py
+  lines: 171
+  classes: 1
+  methods: 5
+  cc_max: 10
+  inbound_deps: 0
+  exports:
+  - name: LocalLLMClassifier
+    type: class
+    cc_avg: 6.5
+    methods:
+    - name: _build_skill_schema
+      cc: 10
+    - name: classify
+      cc: 10
+      fan_out: 12
+- path: main.py
+  lines: 110
+  classes: 0
+  methods: 5
+  cc_max: 10
+  inbound_deps: 12
+  exports:
+  - name: log
+    type: function
+    cc: 1
+  - name: load_state
+    type: function
+    cc: 2
+  - name: save_state
+    type: function
+    cc: 1
+  - name: check
+    type: function
+    cc: 1
+  - name: bootstrap
+    type: function
+    cc: 10
+    fan_out: 20
+- path: skills/document_reader/v1/skill.py
+  lines: 466
+  classes: 1
+  methods: 16
+  cc_max: 10
+  inbound_deps: 0
+  exports:
+  - name: DocumentReaderSkill
+    type: class
+    cc_avg: 5.2
+    methods:
+    - name: _read_pdf
+      cc: 8
+      fan_out: 13
+    - name: _read_pdf_basic
+      cc: 10
+    - name: _read_docx
+      cc: 8
+      fan_out: 11
+    - name: _read_html
+      cc: 2
+      fan_out: 12
+    - name: search
+      cc: 6
+      fan_out: 11
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 3
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/email_client/v1/skill.py
+  lines: 357
+  classes: 1
+  methods: 16
+  cc_max: 10
+  inbound_deps: 0
+  exports:
+  - name: EmailClientSkill
+    type: class
+    cc_avg: 4.8
+    methods:
+    - name: search
+      cc: 6
+      fan_out: 11
+    - name: read
+      cc: 10
+      fan_out: 14
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 2
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/llm/v1/skill.py
+  lines: 139
+  classes: 0
+  methods: 4
+  cc_max: 10
+  inbound_deps: 0
+  exports:
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 3
+  - name: execute
+    type: function
+    cc: 10
+    fan_out: 13
+  - name: execute_wrapper
+    type: function
+    cc: 1
+- path: skills/llm/v2/skill.py
+  lines: 147
+  classes: 1
+  methods: 5
+  cc_max: 10
+  inbound_deps: 0
+  exports:
+  - name: LLMExecutor
+    type: class
+    cc_avg: 5.5
+    methods:
+    - name: execute
+      cc: 10
+      fan_out: 16
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 3
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/tts/providers/espeak/stable/skill.py
+  lines: 93
+  classes: 1
+  methods: 6
+  cc_max: 10
+  inbound_deps: 0
+  exports:
+  - name: EspeakTTSSkill
+    type: class
+    cc_avg: 5.0
+    methods:
+    - name: execute
+      cc: 10
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 3
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/weather_gdansk/v9/skill.py
+  lines: 161
+  classes: 2
+  methods: 8
+  cc_max: 10
+  inbound_deps: 0
+  exports:
+  - name: WeatherGdanskParser
+    type: class
+    cc_avg: 5.8
+    methods:
+    - name: handle_starttag
+      cc: 10
+  - name: WeatherGdanskSkill
+    type: class
+    cc_avg: 9.0
+    methods:
+    - name: execute
+      cc: 9
+      fan_out: 12
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 3
+  - name: execute
+    type: function
+    cc: 1
+- path: cores/v1/intent/embedding.py
+  lines: 172
+  classes: 1
+  methods: 7
+  cc_max: 9
+  inbound_deps: 0
+  exports:
+  - name: EmbeddingEngine
+    type: class
+    cc_avg: 4.1
+- path: cores/v1/self_healing/__init__.py
+  lines: 393
+  classes: 6
+  methods: 17
+  cc_max: 9
+  inbound_deps: 0
+  exports:
+  - name: HealingStage
+    type: class
+    cc_avg: 0.0
+  - name: HealingTask
+    type: class
+    cc_avg: 0.0
+  - name: HealingResult
+    type: class
+    cc_avg: 0.0
+  - name: ErrorFingerprint
+    type: class
+    cc_avg: 1.0
+  - name: SelfReflectionEngine
+    type: class
+    cc_avg: 3.6
+  - name: SelfHealingOrchestrator
+    type: class
+    cc_avg: 3.6
+  - name: heal_skill
+    type: function
+    cc: 1
+- path: skills/document_publisher/v1/skill.py
+  lines: 547
+  classes: 1
+  methods: 22
+  cc_max: 9
+  inbound_deps: 0
+  exports:
+  - name: DocumentPublisherSkill
+    type: class
+    cc_avg: 3.7
+    methods:
+    - name: generate_html
+      cc: 8
+      fan_out: 22
+    - name: version_document
+      cc: 5
+      fan_out: 17
+    - name: create_index
+      cc: 7
+      fan_out: 17
+    - name: publish_static_site
+      cc: 9
+      fan_out: 16
+    - name: generate_share_link
+      cc: 5
+      fan_out: 20
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 1
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/echo/v9/skill.py
+  lines: 102
+  classes: 1
+  methods: 4
+  cc_max: 9
+  inbound_deps: 0
+  exports:
+  - name: EchoSkill
+    type: class
+    cc_avg: 9.0
+    methods:
+    - name: execute
+      cc: 9
+      fan_out: 14
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 1
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/kalkulator/v47/skill.py
+  lines: 127
+  classes: 1
+  methods: 7
+  cc_max: 9
+  inbound_deps: 0
+  exports:
+  - name: Kalkulator
+    type: class
+    cc_avg: 5.2
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 1
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/social_media_manager/v1/skill.py
+  lines: 442
+  classes: 1
+  methods: 21
+  cc_max: 9
+  inbound_deps: 0
+  exports:
+  - name: SocialMediaManagerSkill
+    type: class
+    cc_avg: 4.2
+    methods:
+    - name: schedule_post
+      cc: 5
+      fan_out: 12
+    - name: _parse_relative_time
+      cc: 9
+      fan_out: 11
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 1
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/system_info/v4/skill.py
+  lines: 97
+  classes: 1
+  methods: 4
+  cc_max: 9
+  inbound_deps: 0
+  exports:
+  - name: SystemInfoSkill
+    type: class
+    cc_avg: 9.0
+    methods:
+    - name: execute
+      cc: 9
+      fan_out: 18
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 2
+  - name: execute
+    type: function
+    cc: 1
+- path: cores/v1/bandit_selector.py
+  lines: 177
+  classes: 2
+  methods: 9
+  cc_max: 8
+  inbound_deps: 0
+  exports:
+  - name: ArmStats
+    type: class
+    cc_avg: 0.0
+  - name: UCB1BanditSelector
+    type: class
+    cc_avg: 3.0
+- path: cores/v1/fuzzy_router.py
+  lines: 80
+  classes: 1
+  methods: 4
+  cc_max: 8
+  inbound_deps: 0
+  exports:
+  - name: FuzzyCommandRouter
+    type: class
+    cc_avg: 2.8
+- path: cores/v1/pipeline_manager.py
+  lines: 225
+  classes: 1
+  methods: 9
+  cc_max: 8
+  inbound_deps: 0
+  exports:
+  - name: PipelineManager
+    type: class
+    cc_avg: 4.6
+    methods:
+    - name: create_p
+      cc: 2
+      fan_out: 12
+    - name: _exec_step_with_retry
+      cc: 8
+      fan_out: 11
+- path: skills/clipboard/v1/skill.py
+  lines: 228
+  classes: 1
+  methods: 8
+  cc_max: 8
+  inbound_deps: 0
+  exports:
+  - name: ClipboardSkill
+    type: class
+    cc_avg: 7.2
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 3
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/devops/providers/default/stable/skill.py
+  lines: 243
+  classes: 1
+  methods: 11
+  cc_max: 8
+  inbound_deps: 0
+  exports:
+  - name: DevOpsSkill
+    type: class
+    cc_avg: 5.9
+    methods:
+    - name: detect_imports
+      cc: 7
+      fan_out: 11
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 1
+  - name: execute
+    type: function
+    cc: 2
+- path: skills/devops/v3/skill.py
+  lines: 242
+  classes: 1
+  methods: 11
+  cc_max: 8
+  inbound_deps: 0
+  exports:
+  - name: DevOpsSkill
+    type: class
+    cc_avg: 5.9
+    methods:
+    - name: detect_imports
+      cc: 7
+      fan_out: 11
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 1
+  - name: execute
+    type: function
+    cc: 2
+- path: skills/devops/v4/skill.py
+  lines: 242
+  classes: 1
+  methods: 11
+  cc_max: 8
+  inbound_deps: 0
+  exports:
+  - name: DevOpsSkill
+    type: class
+    cc_avg: 5.9
+    methods:
+    - name: detect_imports
+      cc: 7
+      fan_out: 11
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 1
+  - name: execute
+    type: function
+    cc: 2
+- path: skills/ksef_integration/v1/skill.py
+  lines: 354
+  classes: 1
+  methods: 16
+  cc_max: 8
+  inbound_deps: 0
+  exports:
+  - name: KSeFIntegrationSkill
+    type: class
+    cc_avg: 4.2
+    methods:
+    - name: _make_request
+      cc: 7
+      fan_out: 11
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 2
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/network_info/v1/skill.py
+  lines: 73
+  classes: 0
+  methods: 3
+  cc_max: 8
+  inbound_deps: 0
+  exports:
+  - name: get_info
+    type: function
+    cc: 1
+  - name: execute
+    type: function
+    cc: 8
+  - name: health_check
+    type: function
+    cc: 3
+- path: skills/shell/v2/skill.py
+  lines: 240
+  classes: 1
+  methods: 11
+  cc_max: 8
+  inbound_deps: 0
+  exports:
+  - name: ShellSkill
+    type: class
+    cc_avg: 5.3
+    methods:
+    - name: _run_non_interactive
+      cc: 7
+      fan_out: 11
+    - name: execute
+      cc: 8
+      fan_out: 10
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 2
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/zarz_dzania/v7/skill.py
+  lines: 138
+  classes: 1
+  methods: 7
+  cc_max: 8
+  inbound_deps: 0
+  exports:
+  - name: ZarzadzaniaSkill
+    type: class
+    cc_avg: 5.2
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 1
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/zarz_dzania/v8/skill.py
+  lines: 140
+  classes: 1
+  methods: 7
+  cc_max: 8
+  inbound_deps: 0
+  exports:
+  - name: FileManagerSkill
+    type: class
+    cc_avg: 5.2
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 1
+  - name: execute
+    type: function
+    cc: 1
+- path: cores/v1/skill_validator.py
+  lines: 200
+  classes: 2
+  methods: 13
+  cc_max: 7
+  inbound_deps: 0
+  exports:
+  - name: ValidationResult
+    type: class
+    cc_avg: 1.0
+  - name: SkillValidator
+    type: class
+    cc_avg: 2.0
+- path: skills/deps/v2/skill.py
+  lines: 94
+  classes: 1
+  methods: 9
+  cc_max: 7
+  inbound_deps: 0
+  exports:
+  - name: DepsSkill
+    type: class
+    cc_avg: 2.6
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 1
+- path: skills/echo/providers/default/stable/skill.py
+  lines: 84
+  classes: 1
+  methods: 4
+  cc_max: 7
+  inbound_deps: 0
+  exports:
+  - name: EchoSkill
+    type: class
+    cc_avg: 7.0
+    methods:
+    - name: execute
+      cc: 7
+      fan_out: 12
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 1
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/echo/v8/skill.py
+  lines: 84
+  classes: 1
+  methods: 4
+  cc_max: 7
+  inbound_deps: 0
+  exports:
+  - name: EchoSkill
+    type: class
+    cc_avg: 7.0
+    methods:
+    - name: execute
+      cc: 7
+      fan_out: 12
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 1
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/llm_router/v1/skill.py
+  lines: 124
+  classes: 1
+  methods: 7
+  cc_max: 7
+  inbound_deps: 0
+  exports:
+  - name: LLMRouterSkill
+    type: class
+    cc_avg: 4.4
+    methods:
+    - name: _discover_remote
+      cc: 5
+      fan_out: 14
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 1
+- path: skills/system_info/v3/skill.py
+  lines: 85
+  classes: 1
+  methods: 4
+  cc_max: 7
+  inbound_deps: 0
+  exports:
+  - name: SystemInfoSkill
+    type: class
+    cc_avg: 7.0
+    methods:
+    - name: execute
+      cc: 7
+      fan_out: 17
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 2
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/url_codec/v1/skill.py
+  lines: 184
+  classes: 1
+  methods: 10
+  cc_max: 7
+  inbound_deps: 0
+  exports:
+  - name: URLCodecSkill
+    type: class
+    cc_avg: 3.6
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 2
+  - name: execute
+    type: function
+    cc: 1
+- path: cores/v1/intent/knn_classifier.py
+  lines: 126
+  classes: 1
+  methods: 4
+  cc_max: 6
+  inbound_deps: 0
+  exports:
+  - name: EmbeddingKNNClassifier
+    type: class
+    cc_avg: 3.5
+- path: cores/v1/proactive_scheduler.py
+  lines: 231
+  classes: 2
+  methods: 13
+  cc_max: 6
+  inbound_deps: 1
+  exports:
+  - name: ScheduledTask
+    type: class
+    cc_avg: 0.0
+  - name: ProactiveScheduler
+    type: class
+    cc_avg: 2.3
+  - name: setup_default_tasks
+    type: function
+    cc: 4
+    fan_out: 13
+- path: cores/v1/supervisor.py
+  lines: 82
+  classes: 1
+  methods: 10
+  cc_max: 6
+  inbound_deps: 0
+  exports:
+  - name: Supervisor
+    type: class
+    cc_avg: 1.9
+- path: cores/v1/user_memory.py
+  lines: 177
+  classes: 1
+  methods: 10
+  cc_max: 6
+  inbound_deps: 0
+  exports:
+  - name: UserMemory
+    type: class
+    cc_avg: 3.2
+- path: cores/v1/utils.py
+  lines: 120
+  classes: 0
+  methods: 5
+  cc_max: 6
+  inbound_deps: 4
+  exports:
+  - name: setup_litellm
+    type: function
+    cc: 2
+  - name: clean_code
+    type: function
+    cc: 4
+  - name: clean_json
+    type: function
+    cc: 6
+- path: skills/qr_generator/v1/skill.py
+  lines: 186
+  classes: 1
+  methods: 9
+  cc_max: 6
+  inbound_deps: 0
+  exports:
+  - name: QRGeneratorSkill
+    type: class
+    cc_avg: 3.8
+    methods:
+    - name: generate_base64
+      cc: 5
+      fan_out: 11
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 3
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/tts/providers/pyttsx3/stable/skill.py
+  lines: 84
+  classes: 1
+  methods: 6
+  cc_max: 6
+  inbound_deps: 0
+  exports:
+  - name: Pyttsx3TTSSkill
+    type: class
+    cc_avg: 3.7
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 3
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/web_search/providers/duckduckgo/archive/v1/skill.py
+  lines: 160
+  classes: 2
+  methods: 12
+  cc_max: 6
+  inbound_deps: 0
+  exports:
+  - name: SimpleHTMLTextExtractor
+    type: class
+    cc_avg: 1.8
+  - name: WebSearchSkill
+    type: class
+    cc_avg: 4.2
+    methods:
+    - name: search_duckduckgo
+      cc: 6
+      fan_out: 10
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 2
+- path: skills/web_search/providers/duckduckgo/stable/skill.py
+  lines: 166
+  classes: 2
+  methods: 12
+  cc_max: 6
+  inbound_deps: 0
+  exports:
+  - name: SimpleHTMLTextExtractor
+    type: class
+    cc_avg: 1.8
+  - name: WebSearchSkill
+    type: class
+    cc_avg: 4.2
+    methods:
+    - name: search_duckduckgo
+      cc: 6
+      fan_out: 10
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 5
+- path: cores/v1/resilience.py
+  lines: 190
+  classes: 0
+  methods: 5
+  cc_max: 5
+  inbound_deps: 2
+  exports:
+  - name: configure_structlog
+    type: function
+    cc: 3
+  - name: get_struct_logger
+    type: function
+    cc: 2
+  - name: with_retry
+    type: function
+    cc: 2
+    fan_out: 11
+  - name: status
+    type: function
+    cc: 1
+- path: scripts/get_openrouter_key.py
+  lines: 75
+  classes: 0
+  methods: 1
+  cc_max: 5
+  inbound_deps: 0
+  exports:
+  - name: main
+    type: function
+    cc: 5
+- path: skill.py
+  lines: 88
+  classes: 1
+  methods: 8
+  cc_max: 5
+  inbound_deps: 33
+  exports:
+  - name: TTSSkill
+    type: class
+    cc_avg: 4.0
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 1
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/first_installment/v1/skill.py
+  lines: 77
+  classes: 0
+  methods: 4
+  cc_max: 5
+  inbound_deps: 0
+  exports:
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 2
+  - name: execute
+    type: function
+    cc: 5
+  - name: execute_module
+    type: function
+    cc: 1
+- path: skills/first_installment/v2/skill.py
+  lines: 81
+  classes: 1
+  methods: 4
+  cc_max: 5
+  inbound_deps: 0
+  exports:
+  - name: FirstInstallmentSkill
+    type: class
+    cc_avg: 5.0
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 2
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/interior_inspection/v1/skill.py
+  lines: 113
+  classes: 1
+  methods: 6
+  cc_max: 5
+  inbound_deps: 0
+  exports:
+  - name: InteriorInspectionSkill
+    type: class
+    cc_avg: 3.0
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 3
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/interior_inspection/v2/skill.py
+  lines: 120
+  classes: 1
+  methods: 6
+  cc_max: 5
+  inbound_deps: 0
+  exports:
+  - name: InteriorInspectionSkill
+    type: class
+    cc_avg: 3.0
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 4
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/json_validator/v8/skill.py
+  lines: 152
+  classes: 1
+  methods: 4
+  cc_max: 5
+  inbound_deps: 0
+  exports:
+  - name: JsonValidator
+    type: class
+    cc_avg: 5.0
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 1
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/json_validator/v9/skill.py
+  lines: 152
+  classes: 1
+  methods: 4
+  cc_max: 5
+  inbound_deps: 0
+  exports:
+  - name: JsonValidator
+    type: class
+    cc_avg: 5.0
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 1
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/text_processor_/v7/skill.py
+  lines: 61
+  classes: 1
+  methods: 4
+  cc_max: 5
+  inbound_deps: 0
+  exports:
+  - name: TextProcessor
+    type: class
+    cc_avg: 5.0
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 1
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/core_loader/v1/skill.py
+  lines: 84
+  classes: 1
+  methods: 4
+  cc_max: 4
+  inbound_deps: 0
+  exports:
+  - name: CoreLoaderSkill
+    type: class
+    cc_avg: 4.0
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 3
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/evo_engine_bootstrap/v1/skill.py
+  lines: 74
+  classes: 1
+  methods: 4
+  cc_max: 4
+  inbound_deps: 0
+  exports:
+  - name: EvoEngineBootstrapSkill
+    type: class
+    cc_avg: 4.0
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 3
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/evo_engine_bootstrap/v2/skill.py
+  lines: 81
+  classes: 1
+  methods: 4
+  cc_max: 4
+  inbound_deps: 0
+  exports:
+  - name: EvoEngineBootstrapSkill
+    type: class
+    cc_avg: 4.0
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 4
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/git_ops/v1/skill.py
+  lines: 142
+  classes: 1
+  methods: 15
+  cc_max: 4
+  inbound_deps: 0
+  exports:
+  - name: GitOpsSkill
+    type: class
+    cc_avg: 2.3
+    methods:
+    - name: execute
+      cc: 2
+      fan_out: 13
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 2
+- path: skills/password_generator/v6/skill.py
+  lines: 83
+  classes: 1
+  methods: 4
+  cc_max: 4
+  inbound_deps: 0
+  exports:
+  - name: PasswordGenerator
+    type: class
+    cc_avg: 4.0
+    methods:
+    - name: execute
+      cc: 4
+      fan_out: 11
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 1
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/weather/v2/skill.py
+  lines: 121
+  classes: 1
+  methods: 6
+  cc_max: 4
+  inbound_deps: 0
+  exports:
+  - name: WeatherSkill
+    type: class
+    cc_avg: 4.0
+  - name: execute
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 3
+  - name: get_info
+    type: function
+    cc: 1
+- path: skills/weather/v3/skill.py
+  lines: 119
+  classes: 1
+  methods: 6
+  cc_max: 4
+  inbound_deps: 1
+  exports:
+  - name: WeatherSkill
+    type: class
+    cc_avg: 3.0
+  - name: execute
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 3
+  - name: get_info
+    type: function
+    cc: 1
+- path: skills/pound_to_yen_converter/v8/skill.py
+  lines: 95
+  classes: 0
+  methods: 6
+  cc_max: 3
+  inbound_deps: 0
+  exports:
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 2
+  - name: parse_amount_from_text
+    type: function
+    cc: 3
+  - name: get_exchange_rate
+    type: function
+    cc: 2
+  - name: execute
+    type: function
+    cc: 3
+  - name: execute_module
+    type: function
+    cc: 1
+- path: skills/time/v1/skill.py
+  lines: 112
+  classes: 0
+  methods: 3
+  cc_max: 3
+  inbound_deps: 0
+  exports:
+  - name: get_info
+    type: function
+    cc: 1
+  - name: execute
+    type: function
+    cc: 3
+  - name: health_check
+    type: function
+    cc: 3
+- path: skills/separator_line/v1/skill.py
+  lines: 53
+  classes: 1
+  methods: 4
+  cc_max: 2
+  inbound_deps: 0
+  exports:
+  - name: SeparatorLineSkill
+    type: class
+    cc_avg: 2.0
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 2
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/tts/providers/coqui/stable/skill.py
+  lines: 28
+  classes: 0
+  methods: 3
+  cc_max: 2
+  inbound_deps: 0
+  exports:
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 2
+  - name: execute
+    type: function
+    cc: 1
+- path: seeds/echo_skill_v1.py
+  lines: 25
+  classes: 1
+  methods: 4
+  cc_max: 1
+  inbound_deps: 0
+  exports:
+  - name: EchoSkill
+    type: class
+    cc_avg: 1.0
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 1
+  - name: execute
+    type: function
+    cc: 1
+- path: skills/kalkulator/v48/skill.py
+  lines: 4
+  classes: 1
+  methods: 3
+  cc_max: 1
+  inbound_deps: 0
+  exports:
+  - name: TestSkill
+    type: class
+    cc_avg: 1.0
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 1
+- path: skills/kalkulator/v49/skill.py
+  lines: 4
+  classes: 1
+  methods: 3
+  cc_max: 1
+  inbound_deps: 0
+  exports:
+  - name: TestSkill
+    type: class
+    cc_avg: 1.0
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 1
+- path: skills/kalkulator/v50/skill.py
+  lines: 4
+  classes: 1
+  methods: 3
+  cc_max: 1
+  inbound_deps: 0
+  exports:
+  - name: TestSkill
+    type: class
+    cc_avg: 1.0
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 1
+- path: skills/kalkulator/v51/skill.py
+  lines: 4
+  classes: 1
+  methods: 3
+  cc_max: 1
+  inbound_deps: 0
+  exports:
+  - name: TestSkill
+    type: class
+    cc_avg: 1.0
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 1
+- path: skills/kalkulator/v52/skill.py
+  lines: 4
+  classes: 1
+  methods: 3
+  cc_max: 1
+  inbound_deps: 0
+  exports:
+  - name: TestSkill
+    type: class
+    cc_avg: 1.0
+  - name: get_info
+    type: function
+    cc: 1
+  - name: health_check
+    type: function
+    cc: 1
+- path: __init__.py
+  lines: 24
+  classes: 0
+  methods: 0
+  cc_max: 0
+  inbound_deps: 0
+- path: cores/v1/__init__.py
+  lines: 107
+  classes: 0
+  methods: 0
+  cc_max: 0
+  inbound_deps: 0
+- path: cores/v1/intent/training.py
+  lines: 619
+  classes: 0
+  methods: 0
+  cc_max: 0
+  inbound_deps: 0
+- path: setup.py
+  lines: 45
+  classes: 0
+  methods: 0
+  cc_max: 0
+  inbound_deps: 0
+hotspots:
+- name: _boot
+  fan_out: 60
+  note: Initialize all components. Returns (cmd_ctx, conv, memory) tuple.
+- name: main
+  fan_out: 55
+  note: Orchestrates 55 calls
+- name: main
+  fan_out: 40
+  note: Orchestrates 40 calls
+- name: websocket_chat
+  fan_out: 32
+  note: Orchestrates 32 calls
+- name: run_all_benchmarks
+  fan_out: 30
+  note: Run complete benchmark suite.
+- name: websocket_chat
+  fan_out: 27
+  note: Orchestrates 27 calls
+- name: SelfReflection.run_diagnostic
+  fan_out: 26
+  note: Uruchom pełną diagnostykę systemu.
+- name: SkillManager.create_skill
+  fan_out: 25
+  note: Orchestrates 25 calls
+- name: _run_file_input_loop
+  fan_out: 24
+  note: 'File-based speech input: type text → TTS generates WAV → STT transcribes
+    it.
+
+    Use'
+- name: SkillManager.exec_skill
+  fan_out: 23
+  note: Orchestrates 23 calls
+refactoring:
+  priorities:
+  - action: Split detect_language (CC=64 → target CC<10)
+    impact: high
+    effort: low
+    module: i18n.py
+  - action: Split ResourceMonitor.can_run (CC=26 → target CC<10)
+    impact: high
+    effort: low
+    module: resource_monitor.py
+  - action: Split SelfReflection.run_diagnostic (CC=28 → target CC<10)
+    impact: high
+    effort: low
+    module: self_reflection.py
+  - action: Split _run_voice_loop (CC=32 → target CC<10)
+    impact: high
+    effort: low
+    module: voice_loop.py
+  - action: Split SystemIdentity.build_system_prompt (CC=26 → target CC<10)
+    impact: high
+    effort: low
+    module: system_identity.py
+  - action: Split AutoRepair._diagnose_skill (CC=30 → target CC<10)
+    impact: high
+    effort: low
+    module: auto_repair.py
+  - action: Split EvoEngine.handle_request (CC=29 → target CC<10)
+    impact: high
+    effort: low
+    module: evo_engine.py
+  - action: Split SkillPreflight.auto_fix_imports (CC=25 → target CC<10)
+    impact: high
+    effort: low
+    module: preflight.py
+  - action: Split SmartIntentClassifier.classify (CC=35 → target CC<10)
+    impact: high
+    effort: low
+    module: __init__.py
+  - action: Split main (CC=74 → target CC<10)
+    impact: high
+    effort: low
+    module: core.py
+  - action: Split main (CC=54 → target CC<10)
+    impact: high
+    effort: low
+    module: core_v1.py
+  - action: Split ShellSkill.execute (CC=28 → target CC<10)
+    impact: high
+    effort: low
+    module: skill.py
+  - action: Split BenchmarkSkill.execute (CC=26 → target CC<10)
+    impact: high
+    effort: low
+    module: skill.py
+  - action: Split BenchmarkSkill.execute (CC=26 → target CC<10)
+    impact: high
+    effort: low
+    module: skill.py
+  - action: Split god module core.py (609L, 6 classes)
+    impact: high
+    effort: high
+evolution:
+- date: '2026-03-05'
+  cc_avg: 4.8
+  critical: 211
+  lines: 51918
+  note: Automated analysis

@@ -1,0 +1,112 @@
+flowchart TD
+    TODO2_main["TODO2.main<br/>21 funcs"]
+    backend_main["backend.main<br/>24 funcs"]
+    cli["cli<br/>7 funcs"]
+    core["core<br/>6 funcs"]
+    core_LLM["core.LLM<br/>4 funcs"]
+    core_PipelineEngine["core.PipelineEngine<br/>6 funcs"]
+    core_SkillCreator["core.SkillCreator<br/>4 funcs"]
+    core_SkillLoader["core.SkillLoader<br/>6 funcs"]
+    core_Supervisor["core.Supervisor<br/>3 funcs"]
+    cores_v1["cores.v1<br/>758 funcs"]
+    examples_advanced["examples.advanced<br/>1 funcs"]
+    examples_basic["examples.basic<br/>2 funcs"]
+    examples_check_clipboard_api_key["examples.check_clipboard_api_key<br/>3 funcs"]
+    examples_skills["examples.skills<br/>1 funcs"]
+    main["main<br/>5 funcs"]
+    scripts_benchmark_system["scripts.benchmark_system<br/>8 funcs"]
+    scripts_generate_manifests["scripts.generate_manifests<br/>4 funcs"]
+    scripts_simulate["scripts.simulate<br/>10 funcs"]
+    seeds_core_v1["seeds.core_v1<br/>27 funcs"]
+    seeds_echo_skill_v1["seeds.echo_skill_v1<br/>4 funcs"]
+    skill["skill<br/>7 funcs"]
+    skill_TTSSkill["skill.TTSSkill<br/>1 funcs"]
+    skills__health_["skills._health_<br/>16 funcs"]
+    skills_benchmark["skills.benchmark<br/>35 funcs"]
+    skills_calculator_advanced["skills.calculator_advanced<br/>14 funcs"]
+    skills_chat["skills.chat<br/>5 funcs"]
+    skills_content_search["skills.content_search<br/>10 funcs"]
+    skills_converter["skills.converter<br/>11 funcs"]
+    skills_core_loader["skills.core_loader<br/>4 funcs"]
+    skills_devops["skills.devops<br/>33 funcs"]
+    skills_diagnostic_runner["skills.diagnostic_runner<br/>9 funcs"]
+    skills_document_editor["skills.document_editor<br/>15 funcs"]
+    skills_document_publisher["skills.document_publisher<br/>22 funcs"]
+    skills_document_search["skills.document_search<br/>15 funcs"]
+    skills_echo["skills.echo<br/>12 funcs"]
+    skills_email_client["skills.email_client<br/>16 funcs"]
+    skills_evo_engine_bootstrap["skills.evo_engine_bootstrap<br/>8 funcs"]
+    skills_file_manager["skills.file_manager<br/>12 funcs"]
+    skills_first_installment["skills.first_installment<br/>8 funcs"]
+    skills_health["skills.health<br/>4 funcs"]
+    skills_interior_inspection["skills.interior_inspection<br/>12 funcs"]
+    skills_kalkulator["skills.kalkulator<br/>22 funcs"]
+    skills_local_computer_discovery["skills.local_computer_discovery<br/>26 funcs"]
+    skills_notes["skills.notes<br/>16 funcs"]
+    skills_openrouter["skills.openrouter<br/>11 funcs"]
+    skills_separator_line["skills.separator_line<br/>4 funcs"]
+    skills_system_info["skills.system_info<br/>8 funcs"]
+    skills_text_summarizer["skills.text_summarizer<br/>10 funcs"]
+    skills_tts["skills.tts<br/>25 funcs"]
+    skills_url_codec["skills.url_codec<br/>10 funcs"]
+    skills_weather["skills.weather<br/>12 funcs"]
+    skills_weather_gdansk["skills.weather_gdansk<br/>18 funcs"]
+    skills_web_automation["skills.web_automation<br/>19 funcs"]
+    skills_zarz_dzania["skills.zarz_dzania<br/>14 funcs"]
+    cores_v1 ==>|18| main
+    core ==>|11| core_SkillLoader
+    cores_v1 ==>|7| skills_web_automation
+    skills_echo ==>|6| skill
+    scripts_simulate ==>|4| cores_v1
+    core_PipelineEngine ==>|4| core_SkillLoader
+    skills_interior_inspection ==>|4| skill
+    skills_health ==>|4| skill
+    cli -->|3| main
+    core_SkillCreator -->|3| seeds_core_v1
+    core_PipelineEngine -->|3| cores_v1
+    skills_devops -->|3| cores_v1
+    skills_devops -->|3| skill
+    skills_document_search -->|3| cores_v1
+    scripts_generate_manifests -->|2| cores_v1
+    skills_converter -->|2| cores_v1
+    skills_weather_gdansk -->|2| skill
+    skills_evo_engine_bootstrap -->|2| skill
+    skills_weather -->|2| skill
+    skills_notes -->|2| cores_v1
+    seeds_core_v1 -->|2| cores_v1
+    seeds_core_v1 -->|2| main
+    core_SkillCreator -->|2| core_SkillLoader
+    skills_document_editor -->|2| cores_v1
+    skills_system_info -->|2| skill
+    skills_benchmark -->|2| skill
+    skills_local_computer_discovery -->|2| cores_v1
+    skills_local_computer_discovery -->|2| skill
+    skills_zarz_dzania -->|2| skill
+    examples_skills -->|2| skill_TTSSkill
+    examples_basic -->|2| main
+    cli -->|1| examples_check_clipboard_api_key
+    seeds_echo_skill_v1 -->|1| skill
+    scripts_simulate -->|1| main
+    scripts_benchmark_system -->|1| cores_v1
+    backend_main -->|1| TODO2_main
+    skills_document_publisher -->|1| cores_v1
+    skills_openrouter -->|1| skill
+    skills_text_summarizer -->|1| cores_v1
+    skills_chat -->|1| skill
+    skills_calculator_advanced -->|1| skills_web_automation
+    skills_kalkulator -->|1| skill
+    core_LLM -->|1| seeds_core_v1
+    core_Supervisor -->|1| main
+    core -->|1| cores_v1
+    skills_url_codec -->|1| cores_v1
+    skills_core_loader -->|1| skill
+    skills_first_installment -->|1| skill
+    skills_tts -->|1| backend_main
+    skills_separator_line -->|1| skill
+    skills_diagnostic_runner -->|1| cores_v1
+    skills__health_ -->|1| skill
+    skills_file_manager -->|1| cores_v1
+    skills_email_client -->|1| cores_v1
+    examples_skills -->|1| skill
+    skills_content_search -->|1| skill
+    examples_advanced -->|1| main

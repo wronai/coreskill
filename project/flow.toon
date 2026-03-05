@@ -1,0 +1,597 @@
+# coreskill/flow | 1720 func | 12 pipelines | 10 hub-types | 2026-03-05
+
+PIPELINES[12] (Core:11, IO:1):
+  Cores [Core]: ? → ?
+              → main()                                  CC=11   pure ▶
+              → _process_chat_input(ui:str, cmd_ctx:dict) → None CC=7    IO
+              → _handle_voice_intent(analysis, sm, evo, llm, intent, logger, conv, identity, memory) CC=6    IO
+              → _run_voice_loop(sm, evo, llm, intent, logger, conv, identity, memory) CC=32   IO  !!
+              → _run_stt_cycle(sm, evo, llm, intent, logger, conv, identity, duration, memory) CC=18   IO  !!
+              → _handle_chat(llm, sm, logger, conv, identity, memory) CC=13   mutation
+              → _sanitize_chat_response(text, sm, logger) CC=9    mutation
+              → set(category:str, setting:str, value:Any) → ConfigChange CC=2    mutation
+              → _notify(key:str, change:ConfigChange)   CC=3    pure ■
+              PURITY: 2/9 pure  BOTTLENECK: _run_voice_loop(CC=32)
+
+  Cores [Core]: prompt → ?
+              → gen_code(prompt, ctx, learning)         CC=4    pure ▶
+              → chat(messages, temperature, max_tokens) CC=24   IO  !!
+              → _try_model(model, messages, temperature, max_tokens, is_primary) CC=15   pure  !!
+              → with_retry(max_attempts:int, backoff_base:float, backoff_max:float, on_retry:Optional[Callable]) CC=2    pure
+              → _log_retry(retry_state:RetryCallState)  CC=5    pure
+              → get_struct_logger(name:str)             CC=2    pure
+              → configure_structlog()                   CC=3    mutation ■
+              PURITY: 5/7 pure  BOTTLENECK: chat(CC=24)
+
+  Cores [Core]: prompt → ?
+              → gen_pipeline(prompt, skills)            CC=2    IO ▶
+              → chat(messages, temperature, max_tokens) CC=24   IO  !!
+              → _try_model(model, messages, temperature, max_tokens, is_primary) CC=15   pure  !!
+              → with_retry(max_attempts:int, backoff_base:float, backoff_max:float, on_retry:Optional[Callable]) CC=2    pure
+              → _log_retry(retry_state:RetryCallState)  CC=5    pure
+              → get_struct_logger(name:str)             CC=2    pure
+              → configure_structlog()                   CC=3    mutation ■
+              PURITY: 4/7 pure  BOTTLENECK: chat(CC=24)
+
+  Cores [Core]: user_msg → ?
+              → analyze_need(user_msg, skills) → AnalysisResult CC=24   IO  !! ▶
+              → chat(messages, temperature, max_tokens) CC=24   IO  !!
+              → _try_model(model, messages, temperature, max_tokens, is_primary) CC=15   pure  !!
+              → with_retry(max_attempts:int, backoff_base:float, backoff_max:float, on_retry:Optional[Callable]) CC=2    pure
+              → _log_retry(retry_state:RetryCallState)  CC=5    pure
+              → get_struct_logger(name:str)             CC=2    pure
+              → configure_structlog()                   CC=3    mutation ■
+              PURITY: 4/7 pure  BOTTLENECK: analyze_need(CC=24)
+
+  Cores [Core]: a1 → ?
+              → _cmd_voice(a1, **ctx)                   CC=7    pure ▶
+              → _run_voice_loop(sm, evo, llm, intent, logger, conv, identity, memory) CC=32   IO  !!
+              → _run_stt_cycle(sm, evo, llm, intent, logger, conv, identity, duration, memory) CC=18   IO  !!
+              → _handle_chat(llm, sm, logger, conv, identity, memory) CC=13   mutation
+              → _sanitize_chat_response(text, sm, logger) CC=9    mutation
+              → set(category:str, setting:str, value:Any) → ConfigChange CC=2    mutation
+              → _notify(key:str, change:ConfigChange)   CC=3    pure ■
+              PURITY: 2/7 pure  BOTTLENECK: _run_voice_loop(CC=32)
+
+  Cores [Core]: name → ?
+              → evolve(name, feedback)                  CC=1    pure ▶
+              → smart_evolve(name, feedback, user_msg)  CC=5    IO
+              → diagnose_skill(name, version)           CC=11   pure
+              → _raw_test(name, version)                CC=5    pure
+              → skill_path(name, version)               CC=5    pure
+              → latest_v(name)                          CC=18   mutation  !!
+              → _is_rolled_back(vdir)                   CC=4    IO ■
+              PURITY: 4/7 pure  BOTTLENECK: latest_v(CC=18)
+
+  Cores [Core]: sender → ?
+              → on_repair_requested(sender, **kwargs)   CC=3    IO ▶
+              → repair_skill(skill_name)                CC=7    mutation
+              → _execute_repair_task(task)              CC=9    pure
+              → _plan_strategy(task)                    CC=12   pure
+              → set(category:str, setting:str, value:Any) → ConfigChange CC=2    mutation
+              → _notify(key:str, change:ConfigChange)   CC=3    pure ■
+              PURITY: 3/6 pure  BOTTLENECK: _plan_strategy(CC=12)
+
+  V1 [IO]: Path → ?
+              → validate_file(path:Path) → ValidationResult CC=4    IO ▶
+              → validate_manifest(data:dict) → ValidationResult CC=1    pure
+              → _validate_against_schema(data:dict, schema_name:str) → ValidationResult CC=23   mutation  !!
+              → type(selector, text, clear_first, timeout) CC=3    pure
+              → _get_page(headless)                     CC=2    mutation
+              → _ensure_playwright()                    CC=3    pure ■
+              PURITY: 3/6 pure  BOTTLENECK: _validate_against_schema(CC=23)
+
+  Cores [Core]: str → ?
+              → should_create(query:str, existing_skills:dict) → Tuple[bool, str] CC=8    mutation ▶
+              → search(query:str, top_k:int) → List[SkillMatch] CC=3    pure
+              → _search_embedding(query:str, top_k:int) → List[SkillMatch] CC=6    mutation
+              → _search_keyword(query:str, top_k:int) → List[SkillMatch] CC=8    mutation
+              → set(category:str, setting:str, value:Any) → ConfigChange CC=2    mutation
+              → _notify(key:str, change:ConfigChange)   CC=3    pure ■
+              PURITY: 2/6 pure  BOTTLENECK: should_create(CC=8)
+
+  Cores [Core]: ? → ?
+              → summary() → dict                        CC=7    pure ▶
+              → detect_all() → list[DriftReport]        CC=5    mutation
+              → detect(capability:str) → DriftReport    CC=13   IO
+              → _check_provider_drift(capability:str, manifest:dict) → list[str] CC=8    mutation
+              → set(category:str, setting:str, value:Any) → ConfigChange CC=2    mutation
+              → _notify(key:str, change:ConfigChange)   CC=3    pure ■
+              PURITY: 2/6 pure  BOTTLENECK: detect(CC=13)
+
+  Cores [Core]: str → ?
+              → remediate_all(severity_threshold:str) → list[RemediationResult] CC=4    mutation ▶
+              → auto_remediate(capability:str, report:DriftReport) → RemediationResult CC=9    pure
+              → detect(capability:str) → DriftReport    CC=13   IO
+              → _check_provider_drift(capability:str, manifest:dict) → list[str] CC=8    mutation
+              → set(category:str, setting:str, value:Any) → ConfigChange CC=2    mutation
+              → _notify(key:str, change:ConfigChange)   CC=3    pure ■
+              PURITY: 2/6 pure  BOTTLENECK: detect(CC=13)
+
+  Cores [Core]: name → ?
+              → test_skill(name, version)               CC=2    IO ▶
+              → diagnose_skill(name, version)           CC=11   pure
+              → _raw_test(name, version)                CC=5    pure
+              → skill_path(name, version)               CC=5    pure
+              → latest_v(name)                          CC=18   mutation  !!
+              → _is_rolled_back(vdir)                   CC=4    IO ■
+              PURITY: 3/6 pure  BOTTLENECK: latest_v(CC=18)
+
+
+TRANSFORMS (fan-out ≥10):
+  _boot()                                                 fan=60   !! mutation-heavy
+  main()                                                  fan=55   !! script-in-disguise
+  main()                                                  fan=40   !! script-in-disguise
+  websocket_chat(ws:WebSocket)                            fan=32   !! mutation-heavy
+  run_all_benchmarks() → SystemMetrics                    fan=30   !! mutation-heavy
+  websocket_chat(ws:WebSocket)                            fan=27   !! side-effects
+  run_diagnostic(skill_name:str, specific_error:str) → DiagnosisReport fan=26   !! side-effects
+  create_skill(name, desc)                                fan=25   !! side-effects
+  _run_file_input_loop(sm, evo, llm, intent, logger, conv, identity, memory) → AnalysisResult fan=24   !! side-effects
+  exec_skill(name, version, inp)                          fan=23   !! side-effects
+  execute(params:dict) → dict                             fan=23   !! side-effects
+  search_by_content(query, path, extensions, recursive, case_sensitive) fan=23   !! side-effects
+  run_scenario(scenario:dict) → SimulationResult          fan=22   !! side-effects
+  generate_html(source_file, title, template, include_toc) fan=22   !! side-effects
+  _recommend_models_live(params:Dict, goal_str:str) → Dict[str, Any] fan=22   !! side-effects
+
+CONTRACTS:
+  Pipeline: Cores
+    main()
+      IN:  ()
+      OUT: None
+
+    _process_chat_input(ui:str, cmd_ctx:dict) → None
+      IN:  ui:str, cmd_ctx:dict
+      OUT: None
+      SIDE-EFFECT: IO(save)
+
+    _handle_voice_intent(analysis, sm, evo, llm, intent, logger, conv, identity, memory)
+      IN:  analysis, sm, evo, llm, intent, logger, conv, identity, memory
+      OUT: None
+      SIDE-EFFECT: IO(save)
+
+    _run_voice_loop(sm, evo, llm, intent, logger, conv, identity, memory)
+      IN:  sm, evo, llm, intent, logger, conv, identity, memory
+      OUT: None
+      SIDE-EFFECT: IO(read)
+      SMELL: CC=32 → split
+
+    _run_stt_cycle(sm, evo, llm, intent, logger, conv, identity, duration, memory)
+      IN:  sm, evo, llm, intent, logger, conv, identity, duration, memory
+      OUT: None
+      SIDE-EFFECT: IO(dumps)
+      SMELL: CC=18 → split
+
+    _handle_chat(llm, sm, logger, conv, identity, memory)
+      IN:  llm, sm, logger, conv, identity, memory
+      OUT: None
+      SIDE-EFFECT: pure
+
+    _sanitize_chat_response(text, sm, logger)
+      IN:  text, sm, logger
+      OUT: None
+      SIDE-EFFECT: pure
+
+    set(category:str, setting:str, value:Any) → ConfigChange
+      IN:  category:str, setting:str, value:Any
+      OUT: ConfigChange
+      SIDE-EFFECT: mutates self._last_change
+
+    _notify(key:str, change:ConfigChange)
+      IN:  key:str, change:ConfigChange
+      OUT: None
+
+  Pipeline: Cores
+    gen_code(prompt, ctx, learning)
+      IN:  prompt, ctx, learning
+      OUT: None
+
+    chat(messages, temperature, max_tokens)
+      IN:  messages, temperature, max_tokens
+      OUT: None
+      SIDE-EFFECT: IO(print, print, print); mutates self.model, self.active_tier
+      SMELL: CC=24 → split
+
+    _try_model(model, messages, temperature, max_tokens, is_primary)
+      IN:  model, messages, temperature, max_tokens, is_primary
+      OUT: None
+      SMELL: CC=15 → split
+
+    with_retry(max_attempts:int, backoff_base:float, backoff_max:float, on_retry:Optional[Callable])
+      IN:  max_attempts:int, backoff_base:float, backoff_max:float, on_retry:Optional[Callable]
+      OUT: None
+
+    _log_retry(retry_state:RetryCallState)
+      IN:  retry_state:RetryCallState
+      OUT: None
+
+    get_struct_logger(name:str)
+      IN:  name:str
+      OUT: None
+
+    configure_structlog()
+      IN:  ()
+      OUT: None
+      SIDE-EFFECT: global(_STRUCTLOG_CONFIGURED)
+
+  Pipeline: Cores
+    gen_pipeline(prompt, skills)
+      IN:  prompt, skills
+      OUT: None
+      SIDE-EFFECT: IO(dumps, dumps)
+
+    chat(messages, temperature, max_tokens)
+      IN:  messages, temperature, max_tokens
+      OUT: None
+      SIDE-EFFECT: IO(print, print, print); mutates self.model, self.active_tier
+      SMELL: CC=24 → split
+
+    _try_model(model, messages, temperature, max_tokens, is_primary)
+      IN:  model, messages, temperature, max_tokens, is_primary
+      OUT: None
+      SMELL: CC=15 → split
+
+    with_retry(max_attempts:int, backoff_base:float, backoff_max:float, on_retry:Optional[Callable])
+      IN:  max_attempts:int, backoff_base:float, backoff_max:float, on_retry:Optional[Callable]
+      OUT: None
+
+    _log_retry(retry_state:RetryCallState)
+      IN:  retry_state:RetryCallState
+      OUT: None
+
+    get_struct_logger(name:str)
+      IN:  name:str
+      OUT: None
+
+    configure_structlog()
+      IN:  ()
+      OUT: None
+      SIDE-EFFECT: global(_STRUCTLOG_CONFIGURED)
+
+  Pipeline: Cores
+    analyze_need(user_msg, skills) → AnalysisResult
+      IN:  user_msg, skills
+      OUT: AnalysisResult
+      SIDE-EFFECT: IO(dumps, loads)
+      SMELL: CC=24 → split
+
+    chat(messages, temperature, max_tokens)
+      IN:  messages, temperature, max_tokens
+      OUT: None
+      SIDE-EFFECT: IO(print, print, print); mutates self.model, self.active_tier
+      SMELL: CC=24 → split
+
+    _try_model(model, messages, temperature, max_tokens, is_primary)
+      IN:  model, messages, temperature, max_tokens, is_primary
+      OUT: None
+      SMELL: CC=15 → split
+
+    with_retry(max_attempts:int, backoff_base:float, backoff_max:float, on_retry:Optional[Callable])
+      IN:  max_attempts:int, backoff_base:float, backoff_max:float, on_retry:Optional[Callable]
+      OUT: None
+
+    _log_retry(retry_state:RetryCallState)
+      IN:  retry_state:RetryCallState
+      OUT: None
+
+    get_struct_logger(name:str)
+      IN:  name:str
+      OUT: None
+
+    configure_structlog()
+      IN:  ()
+      OUT: None
+      SIDE-EFFECT: global(_STRUCTLOG_CONFIGURED)
+
+  Pipeline: Cores
+    _cmd_voice(a1, **ctx)
+      IN:  a1, **ctx
+      OUT: None
+
+    _run_voice_loop(sm, evo, llm, intent, logger, conv, identity, memory)
+      IN:  sm, evo, llm, intent, logger, conv, identity, memory
+      OUT: None
+      SIDE-EFFECT: IO(read)
+      SMELL: CC=32 → split
+
+    _run_stt_cycle(sm, evo, llm, intent, logger, conv, identity, duration, memory)
+      IN:  sm, evo, llm, intent, logger, conv, identity, duration, memory
+      OUT: None
+      SIDE-EFFECT: IO(dumps)
+      SMELL: CC=18 → split
+
+    _handle_chat(llm, sm, logger, conv, identity, memory)
+      IN:  llm, sm, logger, conv, identity, memory
+      OUT: None
+      SIDE-EFFECT: pure
+
+    _sanitize_chat_response(text, sm, logger)
+      IN:  text, sm, logger
+      OUT: None
+      SIDE-EFFECT: pure
+
+    set(category:str, setting:str, value:Any) → ConfigChange
+      IN:  category:str, setting:str, value:Any
+      OUT: ConfigChange
+      SIDE-EFFECT: mutates self._last_change
+
+    _notify(key:str, change:ConfigChange)
+      IN:  key:str, change:ConfigChange
+      OUT: None
+
+  Pipeline: Cores
+    evolve(name, feedback)
+      IN:  name, feedback
+      OUT: None
+
+    smart_evolve(name, feedback, user_msg)
+      IN:  name, feedback, user_msg
+      OUT: None
+      SIDE-EFFECT: IO(read_text)
+
+    diagnose_skill(name, version)
+      IN:  name, version
+      OUT: None
+
+    _raw_test(name, version)
+      IN:  name, version
+      OUT: None
+
+    skill_path(name, version)
+      IN:  name, version
+      OUT: None
+
+    latest_v(name)
+      IN:  name
+      OUT: None
+      SIDE-EFFECT: pure
+      SMELL: CC=18 → split
+
+    _is_rolled_back(vdir)
+      IN:  vdir
+      OUT: None
+      SIDE-EFFECT: IO(loads, read_text)
+
+  Pipeline: Cores
+    on_repair_requested(sender, **kwargs)
+      IN:  sender, **kwargs
+      OUT: None
+      SIDE-EFFECT: IO(send)
+
+    repair_skill(skill_name)
+      IN:  skill_name
+      OUT: None
+      SIDE-EFFECT: pure
+
+    _execute_repair_task(task)
+      IN:  task
+      OUT: None
+
+    _plan_strategy(task)
+      IN:  task
+      OUT: None
+
+    set(category:str, setting:str, value:Any) → ConfigChange
+      IN:  category:str, setting:str, value:Any
+      OUT: ConfigChange
+      SIDE-EFFECT: mutates self._last_change
+
+    _notify(key:str, change:ConfigChange)
+      IN:  key:str, change:ConfigChange
+      OUT: None
+
+  Pipeline: V1
+    validate_file(path:Path) → ValidationResult
+      IN:  path:Path
+      OUT: ValidationResult
+      SIDE-EFFECT: IO(loads, read_text)
+      INVARIANT: raises on invalid input
+
+    validate_manifest(data:dict) → ValidationResult
+      IN:  data:dict
+      OUT: ValidationResult
+      INVARIANT: raises on invalid input
+
+    _validate_against_schema(data:dict, schema_name:str) → ValidationResult
+      IN:  data:dict, schema_name:str
+      OUT: ValidationResult
+      SIDE-EFFECT: pure
+      INVARIANT: raises on invalid input
+      SMELL: CC=23 → split
+
+    type(selector, text, clear_first, timeout)
+      IN:  selector, text, clear_first, timeout
+      OUT: None
+
+    _get_page(headless)
+      IN:  headless
+      OUT: None
+      SIDE-EFFECT: mutates self.p, self.browser, self.context
+
+    _ensure_playwright()
+      IN:  ()
+      OUT: None
+
+  Pipeline: Cores
+    should_create(query:str, existing_skills:dict) → Tuple[bool, str]
+      IN:  query:str, existing_skills:dict
+      OUT: Tuple[bool, str]
+      SIDE-EFFECT: mutates self._create_count, self._reuse_count
+
+    search(query:str, top_k:int) → List[SkillMatch]
+      IN:  query:str, top_k:int
+      OUT: List[SkillMatch]
+
+    _search_embedding(query:str, top_k:int) → List[SkillMatch]
+      IN:  query:str, top_k:int
+      OUT: List[SkillMatch]
+      SIDE-EFFECT: pure
+
+    _search_keyword(query:str, top_k:int) → List[SkillMatch]
+      IN:  query:str, top_k:int
+      OUT: List[SkillMatch]
+      SIDE-EFFECT: pure
+
+    set(category:str, setting:str, value:Any) → ConfigChange
+      IN:  category:str, setting:str, value:Any
+      OUT: ConfigChange
+      SIDE-EFFECT: mutates self._last_change
+
+    _notify(key:str, change:ConfigChange)
+      IN:  key:str, change:ConfigChange
+      OUT: None
+
+  Pipeline: Cores
+    summary() → dict
+      IN:  ()
+      OUT: dict
+
+    detect_all() → list[DriftReport]
+      IN:  ()
+      OUT: list[DriftReport]
+      SIDE-EFFECT: pure
+
+    detect(capability:str) → DriftReport
+      IN:  capability:str
+      OUT: DriftReport
+      SIDE-EFFECT: IO(loads, read_text)
+
+    _check_provider_drift(capability:str, manifest:dict) → list[str]
+      IN:  capability:str, manifest:dict
+      OUT: list[str]
+      SIDE-EFFECT: pure
+      INVARIANT: raises on invalid input
+
+    set(category:str, setting:str, value:Any) → ConfigChange
+      IN:  category:str, setting:str, value:Any
+      OUT: ConfigChange
+      SIDE-EFFECT: mutates self._last_change
+
+    _notify(key:str, change:ConfigChange)
+      IN:  key:str, change:ConfigChange
+      OUT: None
+
+  Pipeline: Cores
+    remediate_all(severity_threshold:str) → list[RemediationResult]
+      IN:  severity_threshold:str
+      OUT: list[RemediationResult]
+      SIDE-EFFECT: pure
+
+    auto_remediate(capability:str, report:DriftReport) → RemediationResult
+      IN:  capability:str, report:DriftReport
+      OUT: RemediationResult
+
+    detect(capability:str) → DriftReport
+      IN:  capability:str
+      OUT: DriftReport
+      SIDE-EFFECT: IO(loads, read_text)
+
+    _check_provider_drift(capability:str, manifest:dict) → list[str]
+      IN:  capability:str, manifest:dict
+      OUT: list[str]
+      SIDE-EFFECT: pure
+      INVARIANT: raises on invalid input
+
+    set(category:str, setting:str, value:Any) → ConfigChange
+      IN:  category:str, setting:str, value:Any
+      OUT: ConfigChange
+      SIDE-EFFECT: mutates self._last_change
+
+    _notify(key:str, change:ConfigChange)
+      IN:  key:str, change:ConfigChange
+      OUT: None
+
+  Pipeline: Cores
+    test_skill(name, version)
+      IN:  name, version
+      OUT: None
+      SIDE-EFFECT: IO(dumps)
+
+    diagnose_skill(name, version)
+      IN:  name, version
+      OUT: None
+
+    _raw_test(name, version)
+      IN:  name, version
+      OUT: None
+
+    skill_path(name, version)
+      IN:  name, version
+      OUT: None
+
+    latest_v(name)
+      IN:  name
+      OUT: None
+      SIDE-EFFECT: pure
+      SMELL: CC=18 → split
+
+    _is_rolled_back(vdir)
+      IN:  vdir
+      OUT: None
+      SIDE-EFFECT: IO(loads, read_text)
+
+
+DATA_TYPES (by cross-function usage) [1031 annotated, 0 inferred / 1720 functions]:
+  str                  consumed:450 produced:138  !! HUB-TYPE → split interface
+  dict                 consumed:215 produced:353  !! HUB-TYPE → split interface
+  bool                 consumed:35  produced:28   !! HUB-TYPE → split interface
+  int                  consumed:45  produced:17   !! HUB-TYPE → split interface
+  Path                 consumed:53  produced:7    !! HUB-TYPE → split interface
+  float                consumed:22  produced:20   !! HUB-TYPE → split interface
+  str, Any             consumed:7   produced:34 
+  Dict                 consumed:24  produced:15   !! HUB-TYPE → split interface
+  list                 consumed:11  produced:17   !! HUB-TYPE → split interface
+  AnalysisResult       consumed:0   produced:23   output-heavy
+  list[dict]           consumed:10  produced:4    !! HUB-TYPE → split interface
+  IntentResult         consumed:2   produced:11 
+  QualityReport        consumed:10  produced:1    !! HUB-TYPE → split interface
+  tuple                consumed:0   produced:10   output-heavy
+  ValidationResult     consumed:0   produced:10   output-heavy
+  ConfigChange         consumed:2   produced:7  
+  str | None           consumed:6   produced:2  
+  dict | None          consumed:0   produced:6    output-heavy
+  list[SkillMetric]    consumed:3   produced:2  
+  str, str             consumed:3   produced:2  
+
+  HUB TYPES (consumed ≥10):
+    str → 450 consumers → split into:
+      - (analyze consumers to suggest sub-interfaces)
+    dict → 215 consumers → split into:
+      - replace with typed alternatives (dataclass/TypedDict)
+    bool → 35 consumers → split into:
+      - (analyze consumers to suggest sub-interfaces)
+    int → 45 consumers → split into:
+      - (analyze consumers to suggest sub-interfaces)
+    Path → 53 consumers → split into:
+      - (analyze consumers to suggest sub-interfaces)
+    float → 22 consumers → split into:
+      - (analyze consumers to suggest sub-interfaces)
+    Dict → 24 consumers → split into:
+      - (analyze consumers to suggest sub-interfaces)
+    list → 11 consumers → split into:
+      - (analyze consumers to suggest sub-interfaces)
+    list[dict] → 10 consumers → split into:
+      - (analyze consumers to suggest sub-interfaces)
+    QualityReport → 10 consumers → split into:
+      - (analyze consumers to suggest sub-interfaces)
+
+SIDE_EFFECTS:
+  IO:        _speak_gtts, TTSSkill.execute, execute, log, load_state, save_state, bootstrap, print_color, cmd_logs_reset, cmd_cache_reset
+  Cache:     main_cli, SkillManager.get_health_context, PromptManager.clear_cache, BenchmarkSkill.execute, BenchmarkSkill.execute, check_readiness, STTSkill._find_model_path, _get_model_path, _ensure_model
+  Mutation:  generate_manifest_for_skill, SimulationResult.__init__, SimulationResult.finish, Simulator._iter_summary, LLMClient.__init__, LLMClient.llm_chat, STTEngine.__init__, STTEngine._ensure_model, _init_coreskill, _handle_command
+  Pure:      get_info, health_check, _pip, _speak_pyttsx3, _speak_espeak, check, cmd_shell, get_info, health_check, EchoSkill.execute
+
+  PIPELINE PURITY:
+    Cores           ░░░░ 22% pure
+    Cores           ██░░ 71% pure
+    Cores           ██░░ 57% pure
+    Cores           ██░░ 57% pure
+    Cores           █░░░ 28% pure
+    Cores           ██░░ 57% pure
+    Cores           ██░░ 50% pure
+    V1              ██░░ 50% pure
+    Cores           █░░░ 33% pure
+    Cores           █░░░ 33% pure
+    Cores           █░░░ 33% pure
+    Cores           ██░░ 50% pure

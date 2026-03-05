@@ -430,26 +430,26 @@ Format: sk-or-v1-[64 znaki hex]
 ### cores.v1.config._parse_models_override
 - **Output to**: isinstance, isinstance, None.strip, x.strip, None.strip
 
-### cores.v1.evo_journal.EvolutionJournal.format_report
-> Human-readable evolution report.
-- **Output to**: self.get_global_stats, stats.get, None.join, lines.append, None.join
-
 ### cores.v1.repair_journal.RepairJournal.format_report
 > Human-readable repair report.
 - **Output to**: self.get_stats, self.get_history, None.join, lines.append, lines.append
+
+### cores.v1.evo_journal.EvolutionJournal.format_report
+> Human-readable evolution report.
+- **Output to**: self.get_global_stats, stats.get, None.join, lines.append, None.join
 
 ### cores.v1.intent_engine.IntentEngine._process_ml_result
 > Process successful ML classification result and build analysis.
 - **Output to**: bool, self.log.core, result.to_analysis, self._update_topics_from_result, self._extract_shell_command
 
+### cores.v1.adaptive_monitor.AdaptiveResourceMonitor.format_status
+> One-line status string for display.
+- **Output to**: self.snapshot
+
 ### cores.v1.auto_repair.AutoRepair.validate_model
 > Check if a model is suitable for chat (not code-only).
 Returns (valid: bool, reason: str).
 - **Output to**: model_name.lower
-
-### cores.v1.adaptive_monitor.AdaptiveResourceMonitor.format_status
-> One-line status string for display.
-- **Output to**: self.snapshot
 
 ### cores.v1.skill_validator._validate_stt
 > STT-specific validation: check for hardware errors, silence, empty transcription.

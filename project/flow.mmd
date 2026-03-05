@@ -1,0 +1,1613 @@
+flowchart TD
+    subgraph TODO2_main
+        TODO2__main__LLMClient____init__["__init__"]
+        TODO2__main__LLMClient__close["close"]
+        TODO2__main__LLMClient__chat["chat"]
+        TODO2__main__LLMClient___try_ollama["_try_ollama"]
+        TODO2__main__LLMClient___try_openrouter["_try_openrouter"]
+        TODO2__main__LLMClient___try_anthropic["_try_anthropic"]
+        TODO2__main__LLMClient___echo_response["_echo_response"]
+        TODO2__main__LLMClient__get_status["get_status"]
+        TODO2__main__TTSEngine__synthesize["synthesize"]
+        TODO2__main__STTEngine____init__["__init__"]
+        TODO2__main__STTEngine___ensure_model["_ensure_model"]
+        TODO2__main__STTEngine__transcribe["transcribe"]
+        TODO2__main__lifespan["lifespan"]
+        TODO2__main___pull_ollama_model["_pull_ollama_model"]
+        TODO2__main__health["health"]
+        TODO2__main__status["status"]
+        TODO2__main__list_skills["list_skills"]
+        TODO2__main__tts_endpoint["tts_endpoint"]
+        TODO2__main__stt_endpoint["stt_endpoint"]
+        TODO2__main__websocket_chat("websocket_chat CC=10")
+        TODO2__main___handle_command["_handle_command"]
+    end
+    subgraph backend_main
+        backend__main___read_state["_read_state"]
+        backend__main___get_key["_get_key"]
+        backend__main__LLMClient____init__["__init__"]
+        backend__main__LLMClient__close["close"]
+        backend__main__LLMClient__llm_chat("llm_chat CC=9")
+        backend__main__LLMClient___try_ollama["_try_ollama"]
+        backend__main__LLMClient___try_openrouter["_try_openrouter"]
+        backend__main__LLMClient___try_anthropic["_try_anthropic"]
+        backend__main__LLMClient___echo_response["_echo_response"]
+        backend__main__LLMClient__get_status["get_status"]
+        backend__main__TTSEngine__synthesize["synthesize"]
+        backend__main__STTEngine____init__["__init__"]
+        backend__main__STTEngine___ensure_model["_ensure_model"]
+        backend__main__STTEngine__transcribe["transcribe"]
+        backend__main__lifespan["lifespan"]
+        backend__main___init_coreskill["_init_coreskill"]
+        backend__main__health["health"]
+        backend__main__status["status"]
+        backend__main__diagnose("diagnose CC=8")
+        backend__main__tts_endpoint["tts_endpoint"]
+        backend__main__stt_endpoint["stt_endpoint"]
+        backend__main__websocket_chat("websocket_chat CC=11")
+        backend__main___execute_skill_for_chat{{_execute_skill_for_chat CC=17}}
+        backend__main___handle_command["_handle_command"]
+    end
+    subgraph cli
+        cli__print_color["print_color"]
+        cli__cmd_logs_reset{{cmd_logs_reset CC=20}}
+        cli__cmd_cache_reset{{cmd_cache_reset CC=23}}
+        cli__cmd_state_reset["cmd_state_reset"]
+        cli__cmd_status{{cmd_status CC=19}}
+        cli__cmd_shell["cmd_shell"]
+        cli__main_cli("main_cli CC=10")
+    end
+    subgraph core
+        core__cpr["cpr"]
+        core__load_state["load_state"]
+        core__save_state["save_state"]
+        core__log_ev["log_ev"]
+        core__gen_compose["gen_compose"]
+        core__main{{main CC=74}}
+    end
+    subgraph core_LLM
+        core__LLM____init__["__init__"]
+        core__LLM__chat["chat"]
+        core__LLM__gen_code["gen_code"]
+        core__LLM___clean["_clean"]
+    end
+    subgraph core_PipelineEngine
+        core__PipelineEngine____init__["__init__"]
+        core__PipelineEngine__build_from_text["build_from_text"]
+        core__PipelineEngine__execute_pipeline("execute_pipeline CC=14")
+        core__PipelineEngine__save_pipeline["save_pipeline"]
+        core__PipelineEngine__list_pipelines["list_pipelines"]
+        core__PipelineEngine__load_pipeline["load_pipeline"]
+    end
+    subgraph core_SkillCreator
+        core__SkillCreator____init__["__init__"]
+        core__SkillCreator__create["create"]
+        core__SkillCreator__evolve["evolve"]
+        core__SkillCreator__rollback["rollback"]
+    end
+    subgraph core_SkillLoader
+        core__SkillLoader__list_skills("list_skills CC=9")
+        core__SkillLoader__latest_v["latest_v"]
+        core__SkillLoader__load_module["load_module"]
+        core__SkillLoader__run("run CC=10")
+        core__SkillLoader__get_registry["get_registry"]
+        core__SkillLoader__find_skill_for["find_skill_for"]
+    end
+    subgraph core_Supervisor
+        core__Supervisor____init__["__init__"]
+        core__Supervisor__active["active"]
+        core__Supervisor__switch["switch"]
+    end
+    subgraph cores_v1
+        cores__v1__i18n__normalize_diacritics["normalize_diacritics"]
+        cores__v1__i18n___flatten["_flatten"]
+        cores__v1__i18n__match_any_keyword("match_any_keyword CC=10")
+        cores__v1__i18n__detect_language{{detect_language CC=64}}
+        cores__v1__autonomy_loop__LoopCycleResult__summary["summary"]
+        cores__v1__autonomy_loop__AutonomyLoop____init__["__init__"]
+        cores__v1__autonomy_loop__AutonomyLoop__run_cycle["run_cycle"]
+        cores___phase_scan["_phase_scan"]
+        cores___phase_triage("_phase_triage CC=14")
+        cores___phase_repair["_phase_repair"]
+        cores___repair_system["_repair_system"]
+        cores___phase_verify("_phase_verify CC=8")
+        cores___phase_record["_phase_record"]
+        cores__scheduled_cycle["scheduled_cycle"]
+        cores__v1__autonomy_loop__AutonomyLoop__enable["enable"]
+        cores__v1__autonomy_loop__AutonomyLoop__disable["disable"]
+        cores__v1__autonomy_loop__AutonomyLoop__status["status"]
+        cores__format_report["format_report"]
+        cores__v1__autonomy_loop__AutonomyLoop___now_iso["_now_iso"]
+        cores____init__["__init__"]
+        cores___key["_key"]
+        cores___get_arm["_get_arm"]
+        cores__select("select CC=8")
+        cores___ucb1_score["_ucb1_score"]
+        cores__record["record"]
+        cores__get_stats["get_stats"]
+        cores__summary["summary"]
+        cores__reset["reset"]
+        cores__v1__config___load_system_config["_load_system_config"]
+        cores__v1__config__reload_system_config["reload_system_config"]
+        cores__v1__config__get_system_config["get_system_config"]
+        cores__v1__config__get_config_value["get_config_value"]
+        cores__v1__config__get_code_model_patterns["get_code_model_patterns"]
+        cores__v1__config___load_model_config["_load_model_config"]
+        cores__v1__config__get_models_from_tier["get_models_from_tier"]
+        cores__v1__config__cpr["cpr"]
+        cores__v1__config__load_state["load_state"]
+        cores__v1__config__save_state("save_state CC=8")
+        cores__v1__config___parse_models_override("_parse_models_override CC=10")
+        cores__v1__config__get_models_from_config["get_models_from_config"]
+        cores__v1__config__get_categories["get_categories"]
+        cores__v1__config__get_provider_tiers["get_provider_tiers"]
+        cores__v1__config__get_blocked_commands["get_blocked_commands"]
+        cores__v1__quality_gate__QualityReport__summary["summary"]
+        cores____init__["__init__"]
+        cores__evaluate["evaluate"]
+        cores__should_register["should_register"]
+        cores__v1__quality_gate__SkillQualityGate__compare["compare"]
+        cores__on_skill_changed("on_skill_changed CC=9")
+        cores___check_preflight["_check_preflight"]
+        cores___check_manifest_schema["_check_manifest_schema"]
+        cores___check_drift("_check_drift CC=12")
+        cores___check_health["_check_health"]
+        cores___check_test_exec["_check_test_exec"]
+        cores___check_output["_check_output"]
+        cores___check_code_quality{{_check_code_quality CC=17}}
+        cores___load_module["_load_module"]
+        cores___run_isolated_exec["_run_isolated_exec"]
+        cores____init__["__init__"]
+        cores__snapshot["snapshot"]
+    end
+    subgraph examples_advanced
+        examples__advanced__01_pipeline__main["main"]
+    end
+    subgraph examples_automations
+        examples__run_skill["run_skill"]
+        examples__network_monitoring_automation("network_monitoring_automation CC=13")
+        examples__generate_network_report["generate_network_report"]
+        examples__run_skill["run_skill"]
+        examples__task_management_automation{{task_management_automation CC=17}}
+        examples__task_import_from_files["task_import_from_files"]
+        examples__run_skill["run_skill"]
+        examples__social_media_automation["social_media_automation"]
+        examples__run_skill["run_skill"]
+        examples__ksef_invoice_automation["ksef_invoice_automation"]
+        examples__ksef_batch_processing["ksef_batch_processing"]
+        examples__run_skill["run_skill"]
+        examples__openrouter_api_key_automation["openrouter_api_key_automation"]
+        examples__email_summary_automation["email_summary_automation"]
+        examples__run_skill["run_skill"]
+        examples__document_processing_pipeline["document_processing_pipeline"]
+    end
+    subgraph examples_basic
+        examples__basic__02_memory__main["main"]
+        examples__basic__01_hello__main["main"]
+    end
+    subgraph examples_check_clipboard_api_key
+        examples__get_clipboard_content("get_clipboard_content CC=9")
+        examples__validate_openrouter_api_key("validate_openrouter_api_key CC=9")
+        examples__check_clipboard_api_key__main["main"]
+    end
+    subgraph examples_openrouter_session_copy
+        examples__openrouter_session_copy__main["main"]
+    end
+    subgraph examples_skills
+        examples__skills__01_create__main["main"]
+    end
+    subgraph main
+        main__log["log"]
+        main__load_state["load_state"]
+        main__save_state["save_state"]
+        main__check["check"]
+        main__bootstrap("bootstrap CC=10")
+    end
+    subgraph scripts_benchmark_system
+        scripts__benchmark_system__run_benchmark["run_benchmark"]
+        scripts__benchmark_system__measure_import["measure_import"]
+        scripts__benchmark_system__count_lines_in_file["count_lines_in_file"]
+        scripts__benchmark_system__get_version["get_version"]
+        scripts__count_skills_and_versions{{count_skills_and_versions CC=15}}
+        scripts__validate_manifest_schemas["validate_manifest_schemas"]
+        scripts__benchmark_system__run_all_benchmarks("run_all_benchmarks CC=14")
+        scripts__benchmark_system__main("main CC=10")
+    end
+    subgraph scripts_generate_manifests
+        scripts__infer_interface_from_skill("infer_interface_from_skill CC=10")
+        scripts__infer_constraints_from_skill["infer_constraints_from_skill"]
+        scripts__generate_manifest_for_skill{{generate_manifest_for_skill CC=23}}
+        scripts__generate_manifests__main("main CC=14")
+    end
+    subgraph scripts_get_openrouter_key
+        scripts__get_openrouter_key__main["main"]
+    end
+    subgraph scripts_simulate
+        scripts__simulate__SimulationResult____init__["__init__"]
+        scripts__simulate__SimulationResult__finish["finish"]
+        scripts__simulate__SimulationResult__to_dict["to_dict"]
+        scripts__simulate__Simulator____init__["__init__"]
+        scripts__simulate__Simulator___init_system["_init_system"]
+        scripts__simulate__Simulator__run_scenario{{run_scenario CC=21}}
+        scripts__simulate__Simulator__run_all["run_all"]
+        scripts__simulate__Simulator___iter_summary("_iter_summary CC=10")
+        scripts__simulate__Simulator___final_report{{_final_report CC=22}}
+        scripts__simulate__main("main CC=8")
+    end
+    subgraph seeds_core_v1
+        seeds__core_v1__cpr["cpr"]
+        seeds__core_v1__load_state["load_state"]
+        seeds__core_v1__save_state["save_state"]
+        seeds__core_v1__log_ev["log_ev"]
+        seeds__core_v1__LLMClient____init__["__init__"]
+        seeds__core_v1__LLMClient__chat["chat"]
+        seeds__core_v1__LLMClient__gen_code["gen_code"]
+        seeds__core_v1__LLMClient__gen_pipeline["gen_pipeline"]
+        seeds__core_v1___clean["_clean"]
+        seeds__core_v1__SkillManager____init__["__init__"]
+        seeds__core_v1__SkillManager__list_skills("list_skills CC=8")
+        seeds__core_v1__SkillManager__latest_v["latest_v"]
+        seeds__core_v1__SkillManager__create_skill["create_skill"]
+        seeds__core_v1__SkillManager__exec_skill{{exec_skill CC=19}}
+        seeds__core_v1__SkillManager__evolve["evolve"]
+        seeds__core_v1__SkillManager__rollback["rollback"]
+        seeds__core_v1__PipelineManager____init__["__init__"]
+        seeds__core_v1__PipelineManager__list_p["list_p"]
+        seeds__core_v1__PipelineManager__create_p["create_p"]
+        seeds__core_v1__PipelineManager__run_p["run_p"]
+        seeds__core_v1__gen_compose["gen_compose"]
+        seeds__core_v1__Supervisor____init__["__init__"]
+        seeds__core_v1__Supervisor__active["active"]
+        seeds__core_v1__Supervisor__switch["switch"]
+        seeds__core_v1__Supervisor__health["health"]
+        seeds__core_v1__Supervisor__recover["recover"]
+        seeds__core_v1__main{{main CC=54}}
+    end
+    subgraph seeds_echo_skill_v1
+        seeds__echo_skill_v1__get_info["get_info"]
+        seeds__echo_skill_v1__health_check["health_check"]
+        seeds__echo_skill_v1__EchoSkill__execute["execute"]
+        seeds__echo_skill_v1__execute["execute"]
+    end
+    subgraph skill
+        skill__get_info["get_info"]
+        skill__health_check["health_check"]
+        skill___pip["_pip"]
+        skill___speak_pyttsx3["_speak_pyttsx3"]
+        skill___speak_gtts["_speak_gtts"]
+        skill___speak_espeak["_speak_espeak"]
+        skill__execute["execute"]
+    end
+    subgraph skill_TTSSkill
+        skill__TTSSkill__execute["execute"]
+    end
+    subgraph skills__health_
+        skills___health___v1__skill__get_info["get_info"]
+        skills___health___v1__skill__health_check["health_check"]
+        skills___health___v1__skill__HealthSkill__execute("execute CC=11")
+        skills___get_full_health_report["_get_full_health_report"]
+        skills___get_cpu_usage["_get_cpu_usage"]
+        skills___get_memory_usage("_get_memory_usage CC=8")
+        skills___get_disk_usage["_get_disk_usage"]
+        skills___get_system_uptime["_get_system_uptime"]
+        skills___get_system_uptime_info["_get_system_uptime_info"]
+        skills___get_process_count["_get_process_count"]
+        skills___get_network_status("_get_network_status CC=12")
+        skills___get_cpu_info("_get_cpu_info CC=8")
+        skills___get_memory_info["_get_memory_info"]
+        skills___get_disk_info["_get_disk_info"]
+        skills___get_network_info("_get_network_info CC=9")
+        skills___health___v1__skill__execute["execute"]
+    end
+    subgraph skills_account_creator
+        skills__account_creator__v1__skill__get_info["get_info"]
+        skills__account_creator__v1__skill__health_check["health_check"]
+        skills____init__["__init__"]
+        skills__generate_password{{generate_password CC=18}}
+        skills___calculate_password_strength("_calculate_password_strength CC=8")
+        skills__check_password_strength("check_password_strength CC=12")
+        skills__validate_email["validate_email"]
+        skills__validate_username("validate_username CC=11")
+        skills__create_account_data["create_account_data"]
+        skills__store_credentials["store_credentials"]
+        skills___load_credentials["_load_credentials"]
+        skills___save_credentials["_save_credentials"]
+        skills__list_accounts["list_accounts"]
+        skills__generate_account_variations["generate_account_variations"]
+        skills__execute("execute CC=9")
+        skills__account_creator__v1__skill__execute["execute"]
+    end
+    subgraph skills_auto
+        skills__auto__v2__skill__get_info["get_info"]
+        skills__auto__v2__skill__health_check["health_check"]
+        skills__auto__v2__skill__AutoSkillBuilder__execute["execute"]
+        skills___parse_command{{_parse_command CC=23}}
+        skills___execute_command("_execute_command CC=12")
+        skills___get_weather["_get_weather"]
+        skills___get_time["_get_time"]
+        skills___get_date["_get_date"]
+        skills___translate_text["_translate_text"]
+        skills___calculate_expression["_calculate_expression"]
+        skills___speak_text["_speak_text"]
+        skills___search_web["_search_web"]
+        skills___get_system_info["_get_system_info"]
+        skills___get_public_ip["_get_public_ip"]
+        skills___get_news["_get_news"]
+        skills___convert_units["_convert_units"]
+        skills__auto__v2__skill__execute["execute"]
+        skills__auto__v1__skill__get_info["get_info"]
+        skills__auto__v1__skill__health_check["health_check"]
+        skills__auto__v1__skill__AutoSkillBuilder__execute("execute CC=9")
+        skills___detect_capability("_detect_capability CC=13")
+        skills___execute_tts["_execute_tts"]
+        skills___execute_http_get("_execute_http_get CC=8")
+        skills___execute_system("_execute_system CC=8")
+        skills___execute_file("_execute_file CC=11")
+        skills__auto__v1__skill__execute["execute"]
+    end
+    subgraph skills_benchmark
+        skills____init__["__init__"]
+        skills___load_config["_load_config"]
+        skills___get_models_from_tier["_get_models_from_tier"]
+        skills___get_api_key["_get_api_key"]
+        skills___get_cached_recommendations["_get_cached_recommendations"]
+        skills__execute{{execute CC=26}}
+        skills___recommend_models_live{{_recommend_models_live CC=18}}
+        skills___get_model_param_size["_get_model_param_size"]
+        skills__BENCHMARK_PROFILES["BENCHMARK_PROFILES"]
+        skills___call_model_for_benchmark["_call_model_for_benchmark"]
+        skills___compare_models["_compare_models"]
+        skills___analyze_current_model["_analyze_current_model"]
+        skills___run_live_benchmark("_run_live_benchmark CC=8")
+        skills___list_goal_profiles["_list_goal_profiles"]
+        skills___list_benchmark_profiles["_list_benchmark_profiles"]
+        skills__benchmark__v2__skill__execute["execute"]
+        skills__benchmark__v2__skill__get_info["get_info"]
+        skills__benchmark__v2__skill__health_check["health_check"]
+        skills____init__["__init__"]
+        skills___load_config["_load_config"]
+        skills___get_models_from_tier["_get_models_from_tier"]
+        skills___get_api_key["_get_api_key"]
+        skills___get_cached_recommendations["_get_cached_recommendations"]
+        skills___call_model_for_benchmark["_call_model_for_benchmark"]
+        skills__execute{{execute CC=26}}
+        skills___recommend_models_live{{_recommend_models_live CC=18}}
+        skills___get_model_param_size["_get_model_param_size"]
+        skills___compare_models["_compare_models"]
+        skills___analyze_current_model["_analyze_current_model"]
+        skills___run_live_benchmark("_run_live_benchmark CC=8")
+        skills___list_goal_profiles["_list_goal_profiles"]
+        skills___list_benchmark_profiles["_list_benchmark_profiles"]
+        skills__benchmark__v3__skill__execute["execute"]
+        skills__benchmark__v3__skill__get_info["get_info"]
+        skills__benchmark__v3__skill__health_check["health_check"]
+    end
+    subgraph skills_calculator_advanced
+        skills__calculator_advanced__v1__skill__get_info["get_info"]
+        skills__health_check["health_check"]
+        skills____init__["__init__"]
+        skills___load_history["_load_history"]
+        skills___save_history["_save_history"]
+        skills__calculate("calculate CC=11")
+        skills__set_variable["set_variable"]
+        skills__get_variables["get_variables"]
+        skills__clear_variables["clear_variables"]
+        skills__solve_linear("solve_linear CC=14")
+        skills__convert_base("convert_base CC=10")
+        skills__stats("stats CC=9")
+        skills__execute("execute CC=8")
+        skills__calculator_advanced__v1__skill__execute["execute"]
+    end
+    subgraph skills_chat
+        skills__chat__v1__skill__get_info["get_info"]
+        skills__chat__v1__skill__health_check["health_check"]
+        skills__chat__v1__skill__ChatSkill__execute["execute"]
+        skills___generate_response{{_generate_response CC=23}}
+        skills__chat__v1__skill__execute["execute"]
+    end
+    subgraph skills_clipboard
+        skills__clipboard__v1__skill__get_info["get_info"]
+        skills__clipboard__v1__skill__health_check["health_check"]
+        skills___detect_backend["_detect_backend"]
+        skills__clipboard__v1__skill__ClipboardSkill__copy("copy CC=8")
+        skills__paste("paste CC=8")
+        skills__clear("clear CC=8")
+        skills__execute["execute"]
+        skills__clipboard__v1__skill__execute["execute"]
+    end
+    subgraph skills_content_search
+        skills____init__["__init__"]
+        skills__execute["execute"]
+        skills___search_duckduckgo["_search_duckduckgo"]
+        skills____init__["__init__"]
+        skills__handle_starttag{{handle_starttag CC=15}}
+        skills__handle_endtag("handle_endtag CC=11")
+        skills__handle_data["handle_data"]
+        skills__get_info["get_info"]
+        skills__health_check["health_check"]
+        skills__execute["execute"]
+    end
+    subgraph skills_converter
+        skills__converter__v1__skill__get_info["get_info"]
+        skills__converter__v1__skill__health_check["health_check"]
+        skills__convert_unit("convert_unit CC=8")
+        skills__convert_temperature("convert_temperature CC=8")
+        skills__convert_currency["convert_currency"]
+        skills__convert_time("convert_time CC=8")
+        skills__list_units["list_units"]
+        skills__list_timezones["list_timezones"]
+        skills__parse_and_convert["parse_and_convert"]
+        skills__execute("execute CC=11")
+        skills__converter__v1__skill__execute["execute"]
+    end
+    subgraph skills_core_loader
+        skills__core_loader__v1__skill__get_info["get_info"]
+        skills__core_loader__v1__skill__health_check["health_check"]
+        skills__execute["execute"]
+        skills__core_loader__v1__skill__execute["execute"]
+    end
+    subgraph skills_currency_converter_gbp_to_jpy
+        skills__execute{{execute CC=16}}
+        skills__get_info["get_info"]
+        skills__health_check["health_check"]
+        skills__execute["execute"]
+        skills__execute{{execute CC=15}}
+        skills__get_info["get_info"]
+        skills__health_check["health_check"]
+        skills__execute["execute"]
+    end
+    subgraph skills_deps
+        skills__deps__v2__skill__DepsSkill____init__["__init__"]
+        skills__deps__v2__skill__DepsSkill__check_system["check_system"]
+        skills__check_python_module["check_python_module"]
+        skills__deps__v2__skill__DepsSkill__pip_install["pip_install"]
+        skills__deps__v2__skill__DepsSkill__execute["execute"]
+        skills__deps__v2__skill__DepsSkill__get_info["get_info"]
+        skills__deps__v2__skill__DepsSkill__health_check["health_check"]
+        skills__deps__v2__skill__get_info["get_info"]
+        skills__deps__v2__skill__health_check["health_check"]
+        skills__deps__v3__skill__DepsSkill____init__["__init__"]
+        skills__deps__v3__skill__DepsSkill__check_system["check_system"]
+        skills__check_python_module["check_python_module"]
+        skills__deps__v3__skill__DepsSkill__pip_install["pip_install"]
+        skills__deps__v3__skill__DepsSkill__execute{{execute CC=19}}
+        skills__deps__v3__skill__DepsSkill__get_info["get_info"]
+        skills__deps__v3__skill__DepsSkill__health_check["health_check"]
+        skills__deps__v3__skill__get_info["get_info"]
+        skills__deps__v3__skill__health_check["health_check"]
+        skills__deps__v3__skill__execute["execute"]
+        skills____init__["__init__"]
+        skills__check_system["check_system"]
+        skills__check_python_module["check_python_module"]
+        skills__pip_install["pip_install"]
+        skills__scan_system["scan_system"]
+        skills__execute{{execute CC=19}}
+        skills__get_info["get_info"]
+        skills__health_check["health_check"]
+        skills__get_info["get_info"]
+        skills__health_check["health_check"]
+        skills__execute["execute"]
+    end
+    subgraph skills_devops
+        skills__check_syntax["check_syntax"]
+        skills__detect_imports["detect_imports"]
+        skills__devops__v3__skill__DevOpsSkill__check_deps["check_deps"]
+        skills__find_system_alternatives["find_system_alternatives"]
+        skills__devops__v3__skill__DevOpsSkill__test_skill("test_skill CC=8")
+        skills__health_check_skill["health_check_skill"]
+        skills__generate_fix_prompt("generate_fix_prompt CC=8")
+        skills__devops__v3__skill__DevOpsSkill__execute("execute CC=8")
+        skills__devops__v3__skill__get_info["get_info"]
+        skills__devops__v3__skill__health_check["health_check"]
+        skills__devops__v3__skill__execute["execute"]
+        skills__check_syntax["check_syntax"]
+        skills__detect_imports["detect_imports"]
+        skills__devops__v4__skill__DevOpsSkill__check_deps["check_deps"]
+        skills__find_system_alternatives["find_system_alternatives"]
+        skills__devops__v4__skill__DevOpsSkill__test_skill("test_skill CC=8")
+        skills__health_check_skill["health_check_skill"]
+        skills__generate_fix_prompt("generate_fix_prompt CC=8")
+        skills__devops__v4__skill__DevOpsSkill__execute("execute CC=8")
+        skills__devops__v4__skill__get_info["get_info"]
+        skills__devops__v4__skill__health_check["health_check"]
+        skills__devops__v4__skill__execute["execute"]
+        skills__check_syntax["check_syntax"]
+        skills__detect_imports["detect_imports"]
+        skills__check_deps["check_deps"]
+        skills__find_system_alternatives["find_system_alternatives"]
+        skills__test_skill("test_skill CC=8")
+        skills__health_check_skill["health_check_skill"]
+        skills__generate_fix_prompt("generate_fix_prompt CC=8")
+        skills__execute("execute CC=8")
+        skills__get_info["get_info"]
+        skills__health_check["health_check"]
+        skills__execute["execute"]
+    end
+    subgraph skills_diagnostic_runner
+        skills__diagnostic_runner__v1__skill__get_info["get_info"]
+        skills__diagnostic_runner__v1__skill__health_check["health_check"]
+        skills__execute("execute CC=11")
+        skills___check_llm["_check_llm"]
+        skills___check_microphone("_check_microphone CC=8")
+        skills___check_tts["_check_tts"]
+        skills___check_disk["_check_disk"]
+        skills___check_commands["_check_commands"]
+        skills__diagnostic_runner__v1__skill__execute["execute"]
+    end
+    subgraph skills_document_editor
+        skills__document_editor__v1__skill__get_info["get_info"]
+        skills__document_editor__v1__skill__health_check["health_check"]
+        skills____init__["__init__"]
+        skills___read_file["_read_file"]
+        skills___write_file["_write_file"]
+        skills__find_replace{{find_replace CC=17}}
+        skills__insert_text{{insert_text CC=16}}
+        skills__delete_lines("delete_lines CC=8")
+        skills__format_text{{format_text CC=17}}
+        skills__merge_files["merge_files"]
+        skills__split_file["split_file"]
+        skills__apply_template["apply_template"]
+        skills__get_diff["get_diff"]
+        skills__execute("execute CC=9")
+        skills__document_editor__v1__skill__execute["execute"]
+    end
+    subgraph skills_document_publisher
+        skills__document_publisher__v1__skill__get_info["get_info"]
+        skills__health_check["health_check"]
+        skills____init__["__init__"]
+        skills___load_index["_load_index"]
+        skills___save_index["_save_index"]
+        skills___read_file["_read_file"]
+        skills__generate_html("generate_html CC=8")
+        skills___markdown_to_html["_markdown_to_html"]
+        skills___plain_text_to_html["_plain_text_to_html"]
+        skills___escape_html["_escape_html"]
+        skills___apply_default_template["_apply_default_template"]
+        skills___apply_minimal_template["_apply_minimal_template"]
+        skills___generate_toc["_generate_toc"]
+        skills__version_document["version_document"]
+        skills__create_index["create_index"]
+        skills___generate_index_html["_generate_index_html"]
+        skills__publish_static_site("publish_static_site CC=9")
+        skills__generate_share_link["generate_share_link"]
+        skills___get_mime_type["_get_mime_type"]
+        skills__list_published["list_published"]
+        skills__execute["execute"]
+        skills__document_publisher__v1__skill__execute["execute"]
+    end
+    subgraph skills_document_reader
+        skills__document_reader__v1__skill__get_info["get_info"]
+        skills__document_reader__v1__skill__health_check["health_check"]
+        skills___detect_file_type["_detect_file_type"]
+        skills___read_text_file["_read_text_file"]
+        skills___read_pdf("_read_pdf CC=8")
+        skills___read_pdf_basic("_read_pdf_basic CC=10")
+        skills___read_docx("_read_docx CC=8")
+        skills___read_docx_basic["_read_docx_basic"]
+        skills___read_html["_read_html"]
+        skills__read["read"]
+        skills__extract["extract"]
+        skills__info["info"]
+        skills___format_size["_format_size"]
+        skills__search["search"]
+        skills__execute["execute"]
+        skills__document_reader__v1__skill__execute["execute"]
+    end
+    subgraph skills_document_search
+        skills__document_search__v1__skill__get_info["get_info"]
+        skills__document_search__v1__skill__health_check["health_check"]
+        skills____init__["__init__"]
+        skills__search_by_name("search_by_name CC=10")
+        skills__search_by_content{{search_by_content CC=15}}
+        skills___read_file_content["_read_file_content"]
+        skills___find_matches["_find_matches"]
+        skills__search_by_metadata{{search_by_metadata CC=22}}
+        skills__find_duplicates("find_duplicates CC=12")
+        skills__index_directory("index_directory CC=8")
+        skills___parse_date["_parse_date"]
+        skills___parse_size["_parse_size"]
+        skills___human_readable_size["_human_readable_size"]
+        skills__execute["execute"]
+        skills__document_search__v1__skill__execute["execute"]
+    end
+    subgraph skills_echo
+        skills__echo__v9__skill__get_info["get_info"]
+        skills__echo__v9__skill__health_check["health_check"]
+        skills__echo__v9__skill__EchoSkill__execute("execute CC=9")
+        skills__echo__v9__skill__execute["execute"]
+        skills__echo__v8__skill__get_info["get_info"]
+        skills__echo__v8__skill__health_check["health_check"]
+        skills__echo__v8__skill__EchoSkill__execute["execute"]
+        skills__echo__v8__skill__execute["execute"]
+        skills__get_info["get_info"]
+        skills__health_check["health_check"]
+        skills__execute["execute"]
+        skills__execute["execute"]
+    end
+    subgraph skills_email_client
+        skills__email_client__v1__skill__get_info["get_info"]
+        skills__email_client__v1__skill__health_check["health_check"]
+        skills____init__["__init__"]
+        skills__connect("connect CC=8")
+        skills___list_folders["_list_folders"]
+        skills__list_folders["list_folders"]
+        skills__search["search"]
+        skills__get_unread["get_unread"]
+        skills__read("read CC=10")
+        skills__extract_links["extract_links"]
+        skills__send["send"]
+        skills___decode_header["_decode_header"]
+        skills___get_text["_get_text"]
+        skills__disconnect["disconnect"]
+        skills__execute("execute CC=9")
+        skills__email_client__v1__skill__execute["execute"]
+    end
+    subgraph skills_evo_engine_bootstrap
+        skills__evo_engine_bootstrap__v2__skill__get_info["get_info"]
+        skills__health_check["health_check"]
+        skills__execute["execute"]
+        skills__evo_engine_bootstrap__v2__skill__execute["execute"]
+        skills__evo_engine_bootstrap__v1__skill__get_info["get_info"]
+        skills__health_check["health_check"]
+        skills__execute["execute"]
+        skills__evo_engine_bootstrap__v1__skill__execute["execute"]
+    end
+    subgraph skills_file_manager
+        skills__file_manager__v1__skill__get_info["get_info"]
+        skills__file_manager__v1__skill__health_check["health_check"]
+        skills___safe_path["_safe_path"]
+        skills__list_dir("list_dir CC=12")
+        skills__copy("copy CC=9")
+        skills__move["move"]
+        skills__delete["delete"]
+        skills__organize("organize CC=10")
+        skills__find("find CC=11")
+        skills__info["info"]
+        skills__execute("execute CC=8")
+        skills__file_manager__v1__skill__execute["execute"]
+    end
+    subgraph skills_first_installment
+        skills__first_installment__v2__skill__get_info["get_info"]
+        skills__first_installment__v2__skill__health_check["health_check"]
+        skills__execute["execute"]
+        skills__first_installment__v2__skill__execute["execute"]
+        skills__first_installment__v1__skill__get_info["get_info"]
+        skills__first_installment__v1__skill__health_check["health_check"]
+        skills__first_installment__v1__skill__execute["execute"]
+        skills__execute_module["execute_module"]
+    end
+    subgraph skills_gbp_to_jpy_converter
+        skills__gbp_to_jpy_converter__v9__skill__get_info["get_info"]
+        skills__health_check["health_check"]
+        skills__execute("execute CC=13")
+        skills__gbp_to_jpy_converter__v9__skill__execute["execute"]
+        skills__gbp_to_jpy_converter__v8__skill__get_info["get_info"]
+        skills__health_check["health_check"]
+        skills__gbp_to_jpy_converter__v8__skill__execute("execute CC=12")
+        skills__execute_module["execute_module"]
+    end
+    subgraph skills_git_ops
+        skills__git_ops__v1__skill__GitOpsSkill____init__["__init__"]
+        skills__git_ops__v1__skill__GitOpsSkill___run["_run"]
+        skills__git_ops__v1__skill__GitOpsSkill__init["init"]
+        skills__git_ops__v1__skill__GitOpsSkill__status["status"]
+        skills__git_ops__v1__skill__GitOpsSkill__add["add"]
+        skills__git_ops__v1__skill__GitOpsSkill__commit["commit"]
+        skills__git_ops__v1__skill__GitOpsSkill__log["log"]
+        skills__git_ops__v1__skill__GitOpsSkill__diff["diff"]
+        skills__git_ops__v1__skill__GitOpsSkill__tag["tag"]
+        skills__git_ops__v1__skill__GitOpsSkill__checkout["checkout"]
+        skills__revert_file["revert_file"]
+        skills__commit_skill_version["commit_skill_version"]
+        skills__git_ops__v1__skill__GitOpsSkill__execute["execute"]
+        skills__git_ops__v1__skill__get_info["get_info"]
+        skills__git_ops__v1__skill__health_check["health_check"]
+    end
+    subgraph skills_health
+        skills__health__v1__skill__get_info["get_info"]
+        skills__health__v1__skill__health_check("health_check CC=14")
+        skills__health__v1__skill__HealthSkill__execute{{execute CC=15}}
+        skills__health__v1__skill__execute["execute"]
+    end
+    subgraph skills_interior_inspection
+        skills____init__["__init__"]
+        skills__execute["execute"]
+        skills___extract_content["_extract_content"]
+        skills__interior_inspection__v2__skill__get_info["get_info"]
+        skills__health_check["health_check"]
+        skills__interior_inspection__v2__skill__execute["execute"]
+        skills____init__["__init__"]
+        skills__execute["execute"]
+        skills___extract_content["_extract_content"]
+        skills__interior_inspection__v1__skill__get_info["get_info"]
+        skills__health_check["health_check"]
+        skills__interior_inspection__v1__skill__execute["execute"]
+    end
+    subgraph skills_invalid_input_handler
+        skills__invalid_input_handler__v1__skill__get_info["get_info"]
+        skills__health_check["health_check"]
+        skills__execute{{execute CC=17}}
+        skills__invalid_input_handler__v1__skill__execute["execute"]
+    end
+    subgraph skills_json_validator
+        skills__json_validator__v9__skill__get_info["get_info"]
+        skills__json_validator__v9__skill__health_check["health_check"]
+        skills__execute["execute"]
+        skills__json_validator__v9__skill__execute["execute"]
+        skills__json_validator__v8__skill__get_info["get_info"]
+        skills__json_validator__v8__skill__health_check["health_check"]
+        skills__execute["execute"]
+        skills__json_validator__v8__skill__execute["execute"]
+    end
+    subgraph skills_kalkulator
+        skills__kalkulator__v50__skill__TestSkill__execute["execute"]
+        skills__kalkulator__v50__skill__get_info["get_info"]
+        skills__kalkulator__v50__skill__health_check["health_check"]
+        skills__kalkulator__v47__skill__get_info["get_info"]
+        skills__kalkulator__v47__skill__health_check["health_check"]
+        skills__execute["execute"]
+        skills___extract_expression["_extract_expression"]
+        skills___validate_expression("_validate_expression CC=9")
+        skills___calculate["_calculate"]
+        skills__kalkulator__v47__skill__execute["execute"]
+        skills__kalkulator__v52__skill__TestSkill__execute["execute"]
+        skills__kalkulator__v52__skill__get_info["get_info"]
+        skills__kalkulator__v52__skill__health_check["health_check"]
+        skills__kalkulator__v48__skill__TestSkill__execute["execute"]
+        skills__kalkulator__v48__skill__get_info["get_info"]
+        skills__kalkulator__v48__skill__health_check["health_check"]
+        skills__kalkulator__v51__skill__TestSkill__execute["execute"]
+        skills__kalkulator__v51__skill__get_info["get_info"]
+        skills__kalkulator__v51__skill__health_check["health_check"]
+        skills__kalkulator__v49__skill__TestSkill__execute["execute"]
+        skills__kalkulator__v49__skill__get_info["get_info"]
+        skills__kalkulator__v49__skill__health_check["health_check"]
+    end
+    subgraph skills_ksef_integration
+        skills__ksef_integration__v1__skill__get_info["get_info"]
+        skills__ksef_integration__v1__skill__health_check["health_check"]
+        skills____init__["__init__"]
+        skills___load_config["_load_config"]
+        skills___save_config["_save_config"]
+        skills___get_base_url["_get_base_url"]
+        skills___make_request["_make_request"]
+        skills__login["login"]
+        skills__get_token["get_token"]
+        skills__save_token["save_token"]
+        skills__send_invoice["send_invoice"]
+        skills__get_invoice["get_invoice"]
+        skills__check_status["check_status"]
+        skills__get_config["get_config"]
+        skills__execute("execute CC=8")
+        skills__ksef_integration__v1__skill__execute["execute"]
+    end
+    subgraph skills_llm
+        skills__llm__v2__skill__get_info["get_info"]
+        skills__llm__v2__skill__health_check["health_check"]
+        skills__llm__v2__skill__LLMExecutor____init__["__init__"]
+        skills__llm__v2__skill__LLMExecutor__execute("execute CC=10")
+        skills__llm__v2__skill__execute["execute"]
+        skills__llm__v1__skill__get_info["get_info"]
+        skills__llm__v1__skill__health_check["health_check"]
+        skills__llm__v1__skill__execute("execute CC=10")
+        skills__llm__v1__skill__execute_wrapper["execute_wrapper"]
+    end
+    subgraph skills_llm_router
+        skills__execute["execute"]
+        skills___discover_local["_discover_local"]
+        skills___discover_remote["_discover_remote"]
+        skills___health_check["_health_check"]
+        skills___full_status["_full_status"]
+        skills__llm_router__v1__skill__get_info["get_info"]
+        skills__llm_router__v1__skill__health_check["health_check"]
+    end
+    subgraph skills_local_computer_discovery
+        skills__get_info["get_info"]
+        skills__health_check["health_check"]
+        skills____init__["__init__"]
+        skills__get_local_ip["get_local_ip"]
+        skills__get_network_range["get_network_range"]
+        skills__discover_with_arp["discover_with_arp"]
+        skills__discover_with_nmap["discover_with_nmap"]
+        skills__discover_with_arp_scan("discover_with_arp_scan CC=8")
+        skills__discover_with_netstat("discover_with_netstat CC=9")
+        skills__discover_with_ping["discover_with_ping"]
+        skills__get_hostname["get_hostname"]
+        skills__execute("execute CC=14")
+        skills__execute["execute"]
+        skills__get_info["get_info"]
+        skills__health_check["health_check"]
+        skills____init__["__init__"]
+        skills__get_local_ip["get_local_ip"]
+        skills__get_network_range["get_network_range"]
+        skills__discover_with_arp["discover_with_arp"]
+        skills__discover_with_nmap["discover_with_nmap"]
+        skills__discover_with_arp_scan("discover_with_arp_scan CC=8")
+        skills__discover_with_netstat("discover_with_netstat CC=9")
+        skills__discover_with_ping["discover_with_ping"]
+        skills__get_hostname["get_hostname"]
+        skills__execute{{execute CC=17}}
+        skills__execute["execute"]
+    end
+    subgraph skills_network_info
+        skills__network_info__v1__skill__get_info["get_info"]
+        skills__network_info__v1__skill__execute("execute CC=8")
+        skills__network_info__v1__skill__health_check["health_check"]
+    end
+    subgraph skills_network_tools
+        skills__network_tools__v1__skill__get_info["get_info"]
+        skills__network_tools__v1__skill__health_check["health_check"]
+        skills__ping("ping CC=11")
+        skills__dns_lookup("dns_lookup CC=10")
+        skills__check_port["check_port"]
+        skills___common_port_service["_common_port_service"]
+        skills__check_http{{check_http CC=15}}
+        skills__my_ip["my_ip"]
+        skills__network_info["network_info"]
+        skills__execute["execute"]
+        skills__network_tools__v1__skill__execute["execute"]
+    end
+    subgraph skills_notes
+        skills__notes__v1__skill__get_info["get_info"]
+        skills__notes__v1__skill__health_check["health_check"]
+        skills__notes__v1__skill__NotesSkill____init__["__init__"]
+        skills___ensure_storage["_ensure_storage"]
+        skills__notes__v1__skill__NotesSkill___load_notes["_load_notes"]
+        skills__notes__v1__skill__NotesSkill___save_notes["_save_notes"]
+        skills__notes__v1__skill__NotesSkill__add["add"]
+        skills__notes__v1__skill__NotesSkill__list_notes["list_notes"]
+        skills__notes__v1__skill__NotesSkill__get["get"]
+        skills__notes__v1__skill__NotesSkill__search("search CC=11")
+        skills__notes__v1__skill__NotesSkill__update["update"]
+        skills__notes__v1__skill__NotesSkill__delete["delete"]
+        skills__notes__v1__skill__NotesSkill__add_tag["add_tag"]
+        skills__notes__v1__skill__NotesSkill__list_tags["list_tags"]
+        skills__notes__v1__skill__NotesSkill__execute("execute CC=9")
+        skills__notes__v1__skill__execute["execute"]
+    end
+    subgraph skills_openrouter
+        skills____init__["__init__"]
+        skills__execute["execute"]
+        skills___fetch_models["_fetch_models"]
+        skills___score_model("_score_model CC=12")
+        skills___discover_free("_discover_free CC=9")
+        skills___search_models("_search_models CC=13")
+        skills___get_model_info["_get_model_info"]
+        skills___get_recommended_use("_get_recommended_use CC=9")
+        skills__openrouter__v1__skill__get_info["get_info"]
+        skills__openrouter__v1__skill__execute["execute"]
+        skills__openrouter__v1__skill__health_check["health_check"]
+    end
+    subgraph skills_password_generator
+        skills__password_generator__v6__skill__get_info["get_info"]
+        skills__health_check["health_check"]
+        skills__execute["execute"]
+        skills__password_generator__v6__skill__execute["execute"]
+    end
+    subgraph skills_pound_to_yen_converter
+        skills__get_info["get_info"]
+        skills__health_check["health_check"]
+        skills__pound_to_yen_converter__v9__skill__execute{{execute CC=15}}
+        skills__execute_wrapper["execute_wrapper"]
+        skills__execute["execute"]
+        skills__get_info["get_info"]
+        skills__health_check["health_check"]
+        skills__parse_amount_from_text["parse_amount_from_text"]
+        skills__get_exchange_rate["get_exchange_rate"]
+        skills__pound_to_yen_converter__v8__skill__execute["execute"]
+        skills__execute_module["execute_module"]
+    end
+    subgraph skills_process_manager
+        skills__process_manager__v1__skill__get_info["get_info"]
+        skills__process_manager__v1__skill__health_check["health_check"]
+        skills___parse_proc_stat["_parse_proc_stat"]
+        skills___get_proc_info("_get_proc_info CC=13")
+        skills__list_processes("list_processes CC=11")
+        skills__find_process("find_process CC=9")
+        skills__kill_process["kill_process"]
+        skills__process_info("process_info CC=8")
+        skills__execute["execute"]
+        skills__process_manager__v1__skill__execute["execute"]
+    end
+    subgraph skills_qr_generator
+        skills__qr_generator__v1__skill__get_info["get_info"]
+        skills__qr_generator__v1__skill__health_check["health_check"]
+        skills___generate_with_qrencode["_generate_with_qrencode"]
+        skills___generate_with_python["_generate_with_python"]
+        skills___generate_minimal["_generate_minimal"]
+        skills__generate["generate"]
+        skills__generate_base64["generate_base64"]
+        skills__execute["execute"]
+        skills__qr_generator__v1__skill__execute["execute"]
+    end
+    subgraph skills_separator_line
+        skills__separator_line__v1__skill__get_info["get_info"]
+        skills__separator_line__v1__skill__health_check["health_check"]
+        skills__execute["execute"]
+        skills__separator_line__v1__skill__execute["execute"]
+    end
+    subgraph skills_shell
+        skills__shell__v3__skill___load_blocked_commands["_load_blocked_commands"]
+        skills__shell__v3__skill__get_info["get_info"]
+        skills__shell__v3__skill__health_check["health_check"]
+        skills___is_interactive["_is_interactive"]
+        skills__shell__v3__skill__ShellSkill__execute{{execute CC=28}}
+        skills__shell__v3__skill__execute["execute"]
+        skills__shell__v2__skill___load_blocked_commands["_load_blocked_commands"]
+        skills__shell__v2__skill__get_info["get_info"]
+        skills__shell__v2__skill__health_check["health_check"]
+        skills___is_interactive["_is_interactive"]
+        skills___validate_command["_validate_command"]
+        skills___extract_timeout["_extract_timeout"]
+        skills___run_interactive["_run_interactive"]
+        skills___run_non_interactive["_run_non_interactive"]
+        skills___build_result("_build_result CC=8")
+        skills__shell__v2__skill__ShellSkill__execute("execute CC=8")
+        skills__shell__v2__skill__execute["execute"]
+    end
+    subgraph skills_social_media_manager
+        skills__social_media_manager__v1__skill__get_info["get_info"]
+        skills__health_check["health_check"]
+        skills____init__["__init__"]
+        skills___ensure_defaults["_ensure_defaults"]
+        skills___load_posts["_load_posts"]
+        skills___save_posts["_save_posts"]
+        skills___load_templates["_load_templates"]
+        skills__create_post["create_post"]
+        skills__schedule_post["schedule_post"]
+        skills___parse_relative_time("_parse_relative_time CC=9")
+        skills__generate_content["generate_content"]
+        skills___generate_key_points["_generate_key_points"]
+        skills___suggest_hashtags["_suggest_hashtags"]
+        skills___extract_hashtags["_extract_hashtags"]
+        skills__analyze_text["analyze_text"]
+        skills___calculate_readability["_calculate_readability"]
+        skills___generate_recommendations["_generate_recommendations"]
+        skills__track_hashtags["track_hashtags"]
+        skills__list_scheduled_posts("list_scheduled_posts CC=8")
+        skills__execute["execute"]
+        skills__social_media_manager__v1__skill__execute["execute"]
+    end
+    subgraph skills_stt
+        skills__get_info["get_info"]
+        skills__health_check["health_check"]
+        skills____init__["__init__"]
+        skills___record_wav["_record_wav"]
+        skills___ensure_wav["_ensure_wav"]
+        skills___transcribe_vosk["_transcribe_vosk"]
+        skills__execute("execute CC=13")
+        skills__execute["execute"]
+        skills__get_info["get_info"]
+        skills__health_check["health_check"]
+        skills____init__["__init__"]
+        skills___find_vosk_model("_find_vosk_model CC=12")
+        skills___check_audio_level{{_check_audio_level CC=18}}
+        skills___record_wav("_record_wav CC=9")
+        skills___ensure_wav["_ensure_wav"]
+        skills___transcribe_vosk("_transcribe_vosk CC=11")
+        skills__execute("execute CC=13")
+        skills__execute["execute"]
+        skills__get_info["get_info"]
+        skills__health_check["health_check"]
+        skills__check_readiness{{check_readiness CC=16}}
+        skills____init__["__init__"]
+        skills___record_wav["_record_wav"]
+        skills___ensure_wav["_ensure_wav"]
+        skills___find_model_path("_find_model_path CC=10")
+        skills___transcribe_vosk("_transcribe_vosk CC=8")
+        skills__execute("execute CC=13")
+        skills__execute["execute"]
+    end
+    subgraph skills_system_info
+        skills__system_info__v3__skill__get_info["get_info"]
+        skills__system_info__v3__skill__health_check["health_check"]
+        skills__execute["execute"]
+        skills__system_info__v3__skill__execute["execute"]
+        skills__system_info__v4__skill__get_info["get_info"]
+        skills__system_info__v4__skill__health_check["health_check"]
+        skills__execute("execute CC=9")
+        skills__system_info__v4__skill__execute["execute"]
+    end
+    subgraph skills_task_manager
+        skills__task_manager__v1__skill__get_info["get_info"]
+        skills__task_manager__v1__skill__health_check["health_check"]
+        skills____init__["__init__"]
+        skills___ensure_storage["_ensure_storage"]
+        skills___load_tasks["_load_tasks"]
+        skills___save_tasks["_save_tasks"]
+        skills___parse_due_date["_parse_due_date"]
+        skills__add["add"]
+        skills__list_tasks("list_tasks CC=12")
+        skills__complete["complete"]
+        skills__delete["delete"]
+        skills__update("update CC=8")
+        skills__due_soon["due_soon"]
+        skills__overdue["overdue"]
+        skills__search["search"]
+        skills__stats["stats"]
+        skills__execute("execute CC=10")
+        skills__task_manager__v1__skill__execute["execute"]
+    end
+    subgraph skills_text_processor_
+        skills__text_processor___v7__skill__get_info["get_info"]
+        skills__text_processor___v7__skill__health_check["health_check"]
+        skills__execute["execute"]
+        skills__text_processor___v7__skill__execute["execute"]
+    end
+    subgraph skills_text_summarizer
+        skills__text_summarizer__v1__skill__get_info["get_info"]
+        skills__text_summarizer__v1__skill__health_check["health_check"]
+        skills___tokenize_sentences["_tokenize_sentences"]
+        skills___tokenize_words["_tokenize_words"]
+        skills___score_sentences["_score_sentences"]
+        skills__summarize("summarize CC=11")
+        skills__extract_keywords("extract_keywords CC=9")
+        skills__get_stats["get_stats"]
+        skills__execute["execute"]
+        skills__text_summarizer__v1__skill__execute["execute"]
+    end
+    subgraph skills_time
+        skills__time__v1__skill__get_info["get_info"]
+        skills__time__v1__skill__execute["execute"]
+        skills__time__v1__skill__health_check["health_check"]
+    end
+    subgraph skills_tts
+        skills____init__["__init__"]
+        skills___clean_for_tts["_clean_for_tts"]
+        skills__execute("execute CC=10")
+        skills__get_info["get_info"]
+        skills__health_check["health_check"]
+        skills__execute["execute"]
+        skills__get_info["get_info"]
+        skills__health_check["health_check"]
+        skills__execute["execute"]
+        skills____init__["__init__"]
+        skills___clean_for_tts["_clean_for_tts"]
+        skills__execute["execute"]
+        skills__get_info["get_info"]
+        skills__health_check["health_check"]
+        skills__execute["execute"]
+        skills__get_info["get_info"]
+        skills__health_check("health_check CC=9")
+        skills___get_cache_dir["_get_cache_dir"]
+        skills___get_model_path["_get_model_path"]
+        skills___download_file["_download_file"]
+        skills___ensure_model["_ensure_model"]
+        skills____init__["__init__"]
+        skills___clean_for_tts["_clean_for_tts"]
+        skills__execute{{execute CC=17}}
+        skills__execute["execute"]
+    end
+    subgraph skills_url_codec
+        skills__url_codec__v1__skill__get_info["get_info"]
+        skills__url_codec__v1__skill__health_check["health_check"]
+        skills__urlencode["urlencode"]
+        skills__urldecode["urldecode"]
+        skills__base64encode["base64encode"]
+        skills__base64decode["base64decode"]
+        skills__htmlencode["htmlencode"]
+        skills__htmldecode["htmldecode"]
+        skills__execute["execute"]
+        skills__url_codec__v1__skill__execute["execute"]
+    end
+    subgraph skills_weather
+        skills__weather__v2__skill___extract_location["_extract_location"]
+        skills__weather__v2__skill___fetch_weather["_fetch_weather"]
+        skills__weather__v2__skill__WeatherSkill__execute["execute"]
+        skills__weather__v2__skill__execute["execute"]
+        skills__weather__v2__skill__health_check["health_check"]
+        skills__weather__v2__skill__get_info["get_info"]
+        skills__weather__v3__skill___extract_location["_extract_location"]
+        skills__weather__v3__skill___fetch_weather["_fetch_weather"]
+        skills__weather__v3__skill__WeatherSkill__execute["execute"]
+        skills__weather__v3__skill__execute["execute"]
+        skills__weather__v3__skill__health_check["health_check"]
+        skills__weather__v3__skill__get_info["get_info"]
+    end
+    subgraph skills_weather_gdansk
+        skills____init__["__init__"]
+        skills__handle_starttag("handle_starttag CC=10")
+        skills__handle_endtag["handle_endtag"]
+        skills__handle_data("handle_data CC=9")
+        skills__weather_gdansk__v9__skill__get_info["get_info"]
+        skills__weather_gdansk__v9__skill__health_check["health_check"]
+        skills__execute("execute CC=9")
+        skills__weather_gdansk__v9__skill__execute["execute"]
+        skills____init__["__init__"]
+        skills__handle_starttag("handle_starttag CC=10")
+        skills__handle_endtag("handle_endtag CC=11")
+        skills__handle_data["handle_data"]
+        skills__get_weather_gdansk["get_weather_gdansk"]
+        skills__weather_gdansk__v8__skill__speak_weather["speak_weather"]
+        skills__execute["execute"]
+        skills__weather_gdansk__v8__skill__get_info["get_info"]
+        skills__weather_gdansk__v8__skill__health_check["health_check"]
+        skills__weather_gdansk__v8__skill__execute["execute"]
+    end
+    subgraph skills_web_automation
+        skills__web_automation__v1__skill__get_info["get_info"]
+        skills__web_automation__v1__skill__health_check["health_check"]
+        skills____init__["__init__"]
+        skills___ensure_playwright["_ensure_playwright"]
+        skills___get_page["_get_page"]
+        skills__navigate["navigate"]
+        skills__click["click"]
+        skills__type["type"]
+        skills__fill["fill"]
+        skills__extract_text["extract_text"]
+        skills__get_attribute["get_attribute"]
+        skills__screenshot["screenshot"]
+        skills__wait["wait"]
+        skills__wait_for_selector["wait_for_selector"]
+        skills__evaluate["evaluate"]
+        skills__close["close"]
+        skills__get_cookies["get_cookies"]
+        skills__execute("execute CC=13")
+        skills__web_automation__v1__skill__execute["execute"]
+    end
+    subgraph skills_web_search
+        skills____init__["__init__"]
+        skills__handle_starttag["handle_starttag"]
+        skills__handle_endtag["handle_endtag"]
+        skills__handle_data["handle_data"]
+        skills__get_text["get_text"]
+        skills___fetch_url["_fetch_url"]
+        skills__search_duckduckgo["search_duckduckgo"]
+        skills__fetch_page_text["fetch_page_text"]
+        skills__search_and_summarize["search_and_summarize"]
+        skills__execute["execute"]
+        skills__get_info["get_info"]
+        skills__health_check["health_check"]
+        skills____init__["__init__"]
+        skills__handle_starttag["handle_starttag"]
+        skills__handle_endtag["handle_endtag"]
+        skills__handle_data["handle_data"]
+        skills__get_text["get_text"]
+        skills___fetch_url["_fetch_url"]
+        skills__search_duckduckgo["search_duckduckgo"]
+        skills__fetch_page_text["fetch_page_text"]
+        skills__search_and_summarize["search_and_summarize"]
+        skills__execute["execute"]
+        skills__get_info["get_info"]
+        skills__health_check["health_check"]
+    end
+    subgraph skills_zarz_dzania
+        skills__zarz_dzania__v7__skill__get_info["get_info"]
+        skills__zarz_dzania__v7__skill__health_check["health_check"]
+        skills__execute("execute CC=8")
+        skills__list_files["list_files"]
+        skills__copy_file["copy_file"]
+        skills__file_info["file_info"]
+        skills__zarz_dzania__v7__skill__execute["execute"]
+        skills__zarz_dzania__v8__skill__get_info["get_info"]
+        skills__zarz_dzania__v8__skill__health_check["health_check"]
+        skills__execute("execute CC=8")
+        skills__list_files["list_files"]
+        skills__copy_file["copy_file"]
+        skills__file_info["file_info"]
+        skills__zarz_dzania__v8__skill__execute["execute"]
+    end
+    skill___speak_pyttsx3 --> skill___pip
+    skill___speak_gtts --> skill___pip
+    main__bootstrap --> main__log
+    main__bootstrap --> main__load_state
+    main__bootstrap --> main__check
+    main__bootstrap --> main__save_state
+    cli__cmd_logs_reset --> cli__print_color
+    cli__cmd_cache_reset --> cli__print_color
+    cli__cmd_cache_reset --> main__load_state
+    cli__cmd_state_reset --> cli__print_color
+    cli__cmd_status --> cli__print_color
+    cli__cmd_status --> main__load_state
+    cli__cmd_shell --> cli__print_color
+    cli__cmd_shell --> examples__check_clipboard_api_key__main
+    seeds__echo_skill_v1__EchoSkill__execute --> skill__get_info
+    examples__check_clipboard_api_key__main --> examples__get_clipboard_content
+    examples__check_clipboard_api_key__main --> examples__validate_openrouter_api_key
+    scripts__generate_manifest_for_skill --> scripts__infer_interface_from_skill
+    scripts__generate_manifest_for_skill --> scripts__infer_constraints_from_skill
+    scripts__generate_manifests__main --> cores__get_schema_validation_stats
+    scripts__simulate__Simulator___init_system --> cores__v1__skill_logger__init_nfo
+    scripts__simulate__Simulator___init_system --> main__load_state
+    scripts__simulate__Simulator___init_system --> cores__v1__config__get_models_from_config
+    scripts__simulate__Simulator___final_report --> cores__v1__prompts__PromptManager__list
+    scripts__benchmark_system__run_all_benchmarks --> scripts__count_skills_and_versions
+    scripts__benchmark_system__run_all_benchmarks --> scripts__validate_manifest_schemas
+    scripts__benchmark_system__main --> scripts__benchmark_system__run_all_benchmarks
+    backend__main__lifespan --> backend__main___init_coreskill
+    backend__main__lifespan --> TODO2__main___pull_ollama_model
+    cores__v1__i18n___flatten --> cores__v1__session_config__SessionConfig__set
+    cores__v1__i18n__match_any_keyword --> cores__v1__i18n__normalize_diacritics
+    cores__v1__i18n__match_any_keyword --> cores__v1__session_config__SessionConfig__set
+    cores__v1__i18n__detect_language --> cores__v1__session_config__SessionConfig__set
+    cores__v1__autonomy_loop__AutonomyLoop__run_cycle --> cores__v1__config__cpr
+    cores___phase_scan --> cores__v1__config__cpr
+    cores___phase_triage --> cores__v1__config__cpr
+    cores___phase_repair --> cores__v1__config__cpr
+    cores___repair_system --> cores__v1__config__cpr
+    cores__scheduled_cycle --> cores__v1__config__cpr
+    TODO2__main__lifespan --> TODO2__main___pull_ollama_model
+    cores__v1__config__reload_system_config --> cores__v1__config___load_system_config
+    cores__v1__config__get_system_config --> cores__v1__config___load_system_config
+    cores__v1__config__get_config_value --> cores__v1__config___load_system_config
+    cores__v1__config__get_code_model_patterns --> cores__v1__config___load_model_config
+    cores__v1__config__get_code_model_patterns --> cores__v1__config__get_config_value
+    cores__v1__config__get_models_from_config --> cores__v1__config___parse_models_override
+    cores__v1__config__get_categories --> cores__v1__config__get_config_value
+    cores__v1__config__get_provider_tiers --> cores__v1__config__get_config_value
+    cores__v1__config__get_blocked_commands --> cores__v1__config__get_config_value
+    cores__evaluate --> cores__record_operation
+    cores__on_skill_changed --> cores__v1__prompts__PromptManager__list
+    cores__on_skill_changed --> cores__record_operation
+    cores__fit --> cores__v1__prompts__PromptManager__list
+    cores__fit --> cores__v1__session_config__SessionConfig__set
+    cores__v1__user_memory__UserMemory__add --> main__save_state
+    cores__v1__user_memory__UserMemory__remove --> main__save_state
+    cores__v1__user_memory__UserMemory__clear_all --> main__save_state
+    cores__v1__user_memory__UserMemory__set_voice_mode --> cores__v1__prompts__PromptManager__list
+    cores__v1__user_memory__UserMemory__display --> cores__v1__config__cpr
+    cores__get_skill_history --> cores__v1__prompts__PromptManager__list
+    cores__record_skill_outcome --> cores__v1__config__cpr
+    cores___trigger_event --> cores__v1__config__cpr
+    cores__run_diagnostic --> cores__v1__config__cpr
+    cores___print_report --> cores__v1__config__cpr
+    cores__attempt_auto_fix --> cores__v1__config__cpr
+    cores___repair_broken_skills --> cores__v1__config__cpr
+    cores__on_reflection_needed --> cores__v1__config__cpr
+    cores__ask_llm_and_try --> cores__v1__config__cpr
+    cores__v1__skill_logger__inject_logging --> cores__v1__skill_logger__init_nfo
+    cores__v1__skill_logger__get_skill_logger --> cores__v1__skill_logger__init_nfo
+    cores__v1__skill_logger__get_errors_markdown --> cores__v1__skill_logger__query_skill_errors
+    cores__v1__skill_logger__get_health_markdown --> cores__v1__session_config__SessionConfig__set
+    cores__v1__skill_logger__get_health_markdown --> cores__v1__skill_logger__skill_health_summary
+    cores__v1__voice_loop___speak_tts --> cores__v1__voice_loop___clean_for_tts
+    cores__v1__voice_loop___run_stt_cycle --> cores__v1__voice_loop___extract_stt_text
+    cores__v1__voice_loop___run_stt_cycle --> cores__v1__config__cpr
+    cores__v1__voice_loop___run_stt_cycle --> cores__v1__core___handle_chat
+    cores__v1__voice_loop___run_stt_cycle --> cores__v1__voice_loop___speak_tts
+    cores__v1__voice_loop___run_file_input_loop --> cores__v1__config__cpr
+    cores__v1__voice_loop___run_file_input_loop --> cores__v1__voice_loop___generate_speech_file
+    cores__v1__voice_loop___run_file_input_loop --> cores__v1__voice_loop___run_stt_from_file
+    cores__v1__voice_loop___run_file_input_loop --> cores__v1__voice_loop___extract_stt_text
+    cores__v1__voice_loop___run_voice_loop --> cores__v1__config__cpr
+    cores__v1__voice_loop___run_voice_loop --> cores__v1__voice_loop___run_stt_cycle
+    cores__extend_training_data --> cores__v1__prompts__PromptManager__list
+    cores__v1__intent_engine__IntentEngine__save --> main__save_state
+    cores___check_deterministic_config --> cores__v1__i18n__match_any_keyword
+    cores___check_utility_queries --> cores__v1__prompts__PromptManager__list
+    cores__v1__intent_engine__IntentEngine__analyze --> cores__v1__prompts__PromptManager__list
+    cores___match_existing_skill --> cores__v1__i18n__match_any_keyword
+    cores__suggest_skills --> cores__v1__utils__clean_json
+    cores__run_boot_repair --> cores__v1__config__cpr
+    cores__v1__auto_repair__AutoRepair___try_known_fix --> cores__v1__config__cpr
+    cores___list_all_skills --> cores__v1__session_config__SessionConfig__set
+    cores___execute_repair_task --> cores__v1__config__cpr
+    cores__v1__auto_repair__AutoRepair___plan_strategy --> cores__v1__session_config__SessionConfig__set
+    cores__v1__auto_repair__AutoRepair___plan_strategy --> cores__v1__learned_repair__rule_based_strategy
+    cores__v1__auto_repair__AutoRepair___plan_strategy --> cores__v1__config__cpr
+    cores__v1__supervisor__Supervisor__switch --> main__save_state
+    cores__v1__supervisor__Supervisor__promote_core --> main__save_state
+    cores__v1__supervisor__Supervisor__rollback_core --> main__save_state
+    cores__v1__supervisor__Supervisor__recover --> main__save_state
+    cores__cleanup_provider --> cores__v1__session_config__SessionConfig__set
+    cores__cleanup_legacy --> cores__v1__session_config__SessionConfig__set
+    cores___load_training_data --> cores__from_dict
+    cores___keyword_prefilter --> cores__v1__i18n__match_any_keyword
+    cores__list_blueprints --> cores__v1__prompts__PromptManager__list
+    cores___reorder_by_fallback --> cores__v1__session_config__SessionConfig__set
+    cores__validate_input --> skills__type
+    cores__v1__base_skill__BaseSkill___get_manifest --> cores__v1__base_skill__SkillManifest__from_file
+    cores___load_rules --> cores__v1__config__get_config_value
+    cores__summary --> cores__v1__prompts__PromptManager__list
+    cores___build_state --> cores__get_schema_validation_stats
+    cores__evaluate_reflection_rules --> cores__v1__reflection_engine__get_rule_engine
+    cores__v1__reflection_engine__run_reflection_cycle --> cores__v1__reflection_engine__get_rule_engine
+    cores__v1__llm_client___detect_ollama_models --> cores__v1__session_config__SessionConfig__set
+    cores__v1__llm_client___detect_ollama_models --> cores__v1__config__get_code_model_patterns
+    cores__v1__llm_client__LLMClient____init__ --> cores__v1__session_config__SessionConfig__set
+    cores__v1__llm_client__LLMClient____init__ --> cores__v1__llm_client___detect_ollama_models
+    cores__v1__llm_client__LLMClient__chat --> cores__v1__config__cpr
+    cores__v1__llm_client__LLMClient___build_error_msg --> cores__v1__prompts__PromptManager__list
+    cores__v1__llm_client__LLMClient___try_model --> cores__v1__resilience__with_retry
+    cores__v1__llm_client__LLMClient__analyze_need --> cores__v1__session_config__SessionConfig__set
+    cores____init__ --> cores__v1__prompts__PromptManager__list
+    cores__resolve --> cores__v1__config__cpr
+    cores__v1__fuzzy_router__FuzzyCommandRouter__add --> cores__v1__prompts__PromptManager__list
+    cores__remove --> cores__v1__prompts__PromptManager__list
+    cores__v1__skill_forge__is_conversational --> cores__v1__i18n__match_any_keyword
+    cores__v1__skill_forge__SkillForge__index_skills --> cores__v1__prompts__PromptManager__list
+    cores___search_keyword --> cores__v1__session_config__SessionConfig__set
+    cores__v1__skill_forge__SkillForge__should_create --> cores__v1__skill_forge__is_conversational
+    cores__v1__skill_forge__SkillForge__should_create --> cores__v1__config__cpr
+    cores__save_as_stable --> cores__v1__config__cpr
+    cores__create_branch --> cores__v1__config__cpr
+    cores__promote_branch --> cores__v1__config__cpr
+    cores__restore_stable --> cores__v1__config__cpr
+    cores__validate_against_stable --> cores__v1__prompts__PromptManager__list
+    cores___archive_version --> cores__v1__config__cpr
+    cores__consume_failures --> cores__v1__prompts__PromptManager__list
+    cores__v1__evo_engine__EvoEngine__handle_request --> cores__v1__config__cpr
+    cores___run_auto_reflection --> cores__v1__config__cpr
+    cores___execute_with_validation --> cores__v1__session_config__SessionConfig__set
+    cores__v1__evo_engine__EvoEngine___exec_prepare --> cores__v1__config__cpr
+    cores__v1__evo_engine__EvoEngine___exec_attempt --> cores__v1__config__cpr
+    cores___exec_handle_success --> cores__v1__config__cpr
+    cores___exec_handle_partial --> cores__v1__config__cpr
+    cores___exec_handle_failure --> cores__v1__config__cpr
+    cores___exec_finalize_failure --> cores__v1__config__cpr
+    cores___exec_finalize_failure --> cores__v1__prompts__PromptManager__list
+    cores___try_fallback_providers --> cores__v1__config__cpr
+    cores___autonomous_stt_repair --> cores__v1__config__cpr
+    cores__v1__evo_engine__EvoEngine__evolve_skill --> cores__v1__config__cpr
+    cores___check_interface_drift --> cores__v1__session_config__SessionConfig__set
+    cores___check_provider_drift --> cores__v1__session_config__SessionConfig__set
+    cores__v1__resilience__get_struct_logger --> cores__v1__resilience__configure_structlog
+    cores__v1__resilience___log_retry --> cores__v1__resilience__get_struct_logger
+    cores__v1__resilience__with_retry --> cores__v1__resilience___log_retry
+    cores____init__ --> cores__v1__config__get_config_value
+    cores__compute_system_health --> cores__get_schema_validation_stats
+    cores___list_tracked_skills --> cores__v1__session_config__SessionConfig__set
+    cores__record_skill_execution --> cores__v1__metrics_collector__get_collector
+    cores__v1__metrics_collector__record_operation --> cores__v1__metrics_collector__get_collector
+    cores__v1__metrics_collector__get_skill_health --> cores__v1__metrics_collector__get_collector
+    cores__get_system_health_summary --> cores__v1__metrics_collector__get_collector
+    cores__compute_and_save_system_health --> cores__v1__metrics_collector__get_collector
+    cores__v1__core___cmd_skills --> cores__v1__config__cpr
+    cores__v1__core___cmd_create --> cores__v1__config__cpr
+    cores__v1__core___cmd_test --> cores__v1__config__cpr
+    cores__v1__core___cmd_run --> cores__v1__config__cpr
+    cores__v1__core___cmd_evolve --> cores__v1__config__cpr
+    cores__v1__core___cmd_rollback --> cores__v1__config__cpr
+    cores__v1__core___cmd_pipeline --> cores__v1__config__cpr
+    cores__v1__core___cmd_compose --> cores__v1__config__cpr
+    cores__v1__core___cmd_compose --> cores__v1__core__gen_compose
+    cores__v1__core___cmd_model --> main__save_state
+    cores__v1__core___cmd_model --> cores__v1__config__cpr
+    cores__v1__core___cmd_models --> cores__v1__config__cpr
+    cores__v1__core___cmd_models --> cores__v1__llm_client__discover_models
+    cores__v1__core___cmd_models --> cores__v1__llm_client___detect_ollama_models
+    cores__v1__core___cmd_models --> main__save_state
+    cores__v1__core___cmd_core --> cores__v1__config__cpr
+    cores__v1__core___cmd_switch --> cores__v1__config__cpr
+    cores__v1__core___cmd_log --> cores__v1__config__cpr
+    cores__v1__core___cmd_learn --> cores__v1__config__cpr
+    cores__v1__core___cmd_diagnose --> cores__v1__config__cpr
+    cores__v1__core___cmd_scan --> cores__v1__config__cpr
+    cores__v1__core___cmd_correct --> cores__v1__config__cpr
+    cores__v1__core___cmd_profile --> cores__v1__config__cpr
+    cores__v1__core___cmd_suggest --> cores__v1__config__cpr
+    cores__v1__core___cmd_topic --> cores__v1__config__cpr
+    cores__v1__core___cmd_providers --> cores__v1__config__cpr
+    cores__v1__core___cmd_chain --> cores__v1__config__cpr
+    cores__v1__core___cmd_gc --> cores__v1__config__cpr
+    cores__v1__core___cmd_resources --> cores__v1__config__cpr
+    cores__v1__core___cmd_stt --> cores__v1__config__cpr
+    cores__v1__core___cmd_stt --> cores__v1__core___extract_stt_text
+    cores__v1__core___cmd_stt --> cores__v1__core___handle_chat
+    cores__v1__core___cmd_tts --> cores__v1__config__cpr
+    cores__v1__core___cmd_fix --> cores__v1__config__cpr
+    cores__v1__core___check_restart_loop --> cores__v1__config__cpr
+    cores__v1__core___ensure_api_key --> main__save_state
+    cores__v1__core___ensure_api_key --> cores__v1__config__cpr
+    cores__v1__core___resolve_model --> cores__v1__config__get_models_from_config
+    cores__v1__core___resolve_model --> main__save_state
+    cores__v1__core___resolve_model --> cores__v1__config__cpr
+    cores__v1__core___build_fallback_system_prompt --> cores__v1__prompts__PromptManager__list
+    cores__v1__core___handle_chat --> cores__v1__core___build_env_context
+    cores__v1__core___handle_chat --> cores__v1__core___build_skills_info
+    cores__v1__core___handle_chat --> cores__v1__config__cpr
+    cores__v1__core___handle_chat --> cores__v1__core___build_fallback_system_prompt
+    cores__v1__core___handle_chat --> cores__v1__core___sanitize_chat_response
+    cores__v1__core___sanitize_chat_response --> cores__v1__session_config__SessionConfig__set
+    cores__v1__core___sanitize_chat_response --> cores__v1__config__cpr
+    cores__v1__core___check_proactive_learning --> cores__v1__config__cpr
+    cores__v1__core___cmd_health --> cores__v1__config__cpr
+    cores__v1__core___cmd_voice --> cores__v1__voice_loop___run_voice_loop
+    cores__v1__core___cmd_voice --> cores__v1__config__cpr
+    cores__v1__core___cmd_voice --> cores__v1__voice_loop___run_file_input_loop
+    cores__v1__core___cmd_memories --> cores__v1__config__cpr
+    cores__v1__core___cmd_remember --> cores__v1__config__cpr
+    cores__v1__core___cmd_forget --> cores__v1__config__cpr
+    cores__v1__core___cmd_apikey --> cores__v1__config__cpr
+    cores__v1__core___cmd_apikey --> main__save_state
+    cores__v1__core___cmd_autotune --> cores__v1__config__cpr
+    cores__v1__core___cmd_autotune --> main__save_state
+    cores__v1__core___cmd_config --> cores__v1__config__cpr
+    cores__v1__core___cmd_reload_config --> cores__v1__config__cpr
+    cores__v1__core___cmd_reload_config --> cores__v1__config__reload_system_config
+    cores__v1__core___cmd_reload_config --> cores__v1__config__get_config_value
+    cores__v1__core___cmd_reflect --> cores__v1__config__cpr
+    cores__v1__core___cmd_hw --> cores__v1__config__cpr
+    cores__v1__core___cmd_repairs --> cores__v1__config__cpr
+    cores__v1__core___cmd_snapshot --> cores__v1__config__cpr
+    cores__v1__core___cmd_autonomy --> cores__v1__config__cpr
+    cores__v1__core___boot --> main__load_state
+    cores__v1__core___boot --> cores__v1__core___check_restart_loop
+    cores__v1__core___boot --> cores__v1__config__cpr
+    cores__v1__core___boot --> cores__v1__core___ensure_api_key
+    cores__v1__core___boot --> cores__v1__core___resolve_model
+    cores__v1__core___boot --> cores__v1__core___init_components
+    cores__v1__core___boot --> cores__v1__config_generator__get_config_generator
+    cores__v1__core___handle_configure_intent --> cores__v1__config__cpr
+    cores__v1__core___handle_configure_intent --> cores__v1__core___check_proactive_learning
+    cores__v1__core___handle_configure_intent --> main__save_state
+    cores__v1__core___handle_voice_intent --> cores__v1__voice_loop___run_voice_loop
+    cores__v1__core___handle_voice_intent --> cores__v1__core___check_proactive_learning
+    cores__v1__core___handle_voice_intent --> cores__v1__config__cpr
+    cores__v1__core___handle_stt_outcome --> cores__v1__core___extract_stt_text
+    cores__v1__core___handle_stt_outcome --> cores__v1__config__cpr
+    cores__v1__core___handle_stt_outcome --> cores__v1__core___handle_chat
+    cores__v1__core___handle_stt_outcome --> cores__v1__voice_loop___speak_tts
+    cores__v1__core___auto_save_preference --> cores__v1__config__cpr
+    cores__v1__core___setup_signal_handlers --> cores__v1__config__cpr
+    cores__v1__core___try_auto_voice_mode --> cores__v1__config__cpr
+    cores__v1__core___try_auto_voice_mode --> cores__v1__core___flush_stdin
+    cores__v1__core___try_auto_voice_mode --> cores__v1__voice_loop___run_voice_loop
+    cores__v1__core___dispatch_command --> cores__v1__config__cpr
+    cores__v1__core___process_chat_input --> cores__v1__core___handle_configure_intent
+    cores__v1__core___process_chat_input --> cores__v1__core___handle_voice_intent
+    cores__v1__core___process_chat_input --> cores__v1__core___auto_save_preference
+    cores__v1__core___process_chat_input --> cores__v1__core___check_proactive_learning
+    cores__v1__core___process_chat_input --> cores__v1__config__cpr
+    cores__v1__core___process_chat_input --> cores__v1__core___handle_stt_outcome
+    cores__v1__core__main --> cores__v1__core___setup_signal_handlers
+    cores__v1__core__main --> cores__v1__core___boot
+    cores__v1__core__main --> cores__v1__core___try_auto_voice_mode
+    cores__v1__core__main --> cores__v1__core___process_chat_input
+    cores__v1__core__main --> cores__v1__core___read_line_with_shortcuts
+    cores__v1__core__main --> cores__v1__core___flush_stdin
+    cores__v1__core__main --> cores__v1__core___dispatch_command
+    cores__v1__core__main --> cores__v1__config__cpr
+    cores__v1__core__main --> cores__v1__voice_loop___run_voice_loop
+    cores__create_p --> cores__v1__utils__clean_code
+    cores__create_p --> cores__v1__prompts__PromptManager__list
+    cores__create_p --> cores__v1__utils__clean_json
+    cores___exec_step_with_retry --> cores__v1__config__cpr
+    cores___resolve_execution_order --> cores__v1__prompts__PromptManager__list
+    cores___resolve_execution_order --> cores__v1__config__cpr
+    cores__check_imports --> cores__v1__session_config__SessionConfig__set
+    cores__check_interface --> cores__v1__session_config__SessionConfig__set
+    cores__auto_fix_imports --> cores__v1__session_config__SessionConfig__set
+    cores__v1__logger__Logger____init__ --> cores__v1__resilience__get_struct_logger
+    cores__v1__logger__Logger__learn_summary --> cores__v1__session_config__SessionConfig__set
+    cores___tick --> cores__v1__prompts__PromptManager__list
+    cores__status --> cores__v1__prompts__PromptManager__list
+    cores__setup_default_tasks --> cores__v1__prompts__PromptManager__list
+    cores__setup_default_tasks --> cores__v1__config__cpr
+    cores__v1__skill_manager___load_bootstrap_skill --> cores__v1__skill_manager___load_skill_from_path
+    cores__v1__skill_manager__SkillManager____init__ --> cores__v1__skill_manager___load_bootstrap_skill
+    cores__list_skills --> cores__v1__session_config__SessionConfig__set
+    cores__create_skill --> cores__v1__base_skill__generate_scaffold
+    cores__create_skill --> cores__v1__utils__clean_code
+    cores___load_and_run --> cores__v1__skill_logger__inject_logging
+    cores__boot_health_check --> cores__v1__config__cpr
+    cores___preflight_and_fix --> cores__v1__config__cpr
+    cores___evaluate_and_log --> cores__v1__config__cpr
+    cores__smart_evolve --> cores__v1__utils__clean_code
+    cores__decide --> cores__v1__prompts__PromptManager__list
+    cores__similarity --> cores__v1__session_config__SessionConfig__set
+    cores___normalize_pl --> cores__v1__i18n__normalize_diacritics
+    cores___load_training --> cores__v1__prompts__PromptManager__list
+    cores__v1__intent__SmartIntentClassifier__classify --> cores__v1__i18n__match_any_keyword
+    cores__classify --> cores___get_intent_result_class
+    cores__check_system_commands --> cores__v1__prompts__PromptManager__list
+    cores__check_system_commands --> cores__v1__session_config__SessionConfig__set
+    cores__v1__prompts__get --> cores__v1__prompts___load_prompt
+    cores__v1__prompts__render --> cores__v1__prompts___load_prompt
+    cores__v1__prompts__get_metadata --> cores__v1__prompts___load_prompt
+    cores__v1__prompts__PromptManager__list --> cores__v1__prompts__list_available
+    skills__list_units --> cores__v1__prompts__PromptManager__list
+    skills__weather_gdansk__v9__skill__execute --> skill__execute
+    skills__execute --> skills__get_weather_gdansk
+    skills__execute --> skills__weather_gdansk__v8__skill__speak_weather
+    skills__weather_gdansk__v8__skill__execute --> skill__execute
+    skills__list_published --> cores__v1__prompts__PromptManager__list
+    skills__time__v1__skill__health_check --> skills__time__v1__skill__execute
+    skills__openrouter__v1__skill__execute --> skill__execute
+    skills__echo__v9__skill__EchoSkill__execute --> skill__get_info
+    skills__echo__v9__skill__execute --> skill__execute
+    skills__echo__v8__skill__EchoSkill__execute --> skill__get_info
+    skills__echo__v8__skill__execute --> skill__execute
+    skills__execute --> skill__get_info
+    skills__execute --> skill__execute
+    skills__extract_keywords --> cores__v1__session_config__SessionConfig__set
+    skills__evo_engine_bootstrap__v2__skill__execute --> skill__execute
+    skills__evo_engine_bootstrap__v1__skill__execute --> skill__execute
+    skills__chat__v1__skill__execute --> skill__execute
+    skills__weather__v2__skill__WeatherSkill__execute --> skills__weather__v2__skill___fetch_weather
+    skills__weather__v2__skill__WeatherSkill__execute --> skills__weather__v2__skill___extract_location
+    skills__weather__v2__skill__execute --> skill__execute
+    skills__weather__v3__skill__WeatherSkill__execute --> skills__weather__v2__skill___extract_location
+    skills__weather__v3__skill__WeatherSkill__execute --> skills__weather__v2__skill___fetch_weather
+    skills__weather__v3__skill__execute --> skill__execute
+    skills__calculate --> skills__type
+    skills__notes__v1__skill__NotesSkill__list_tags --> cores__v1__session_config__SessionConfig__set
+    skills__notes__v1__skill__NotesSkill__list_tags --> cores__v1__prompts__PromptManager__list
+    skills__kalkulator__v47__skill__execute --> skill__execute
+    seeds__core_v1__LLMClient__chat --> seeds__core_v1__log_ev
+    seeds__core_v1__SkillManager__create_skill --> seeds__core_v1___clean
+    seeds__core_v1__SkillManager__create_skill --> seeds__core_v1__log_ev
+    seeds__core_v1__SkillManager__evolve --> seeds__core_v1___clean
+    seeds__core_v1__SkillManager__evolve --> seeds__core_v1__log_ev
+    seeds__core_v1__SkillManager__rollback --> seeds__core_v1__log_ev
+    seeds__core_v1__PipelineManager__create_p --> seeds__core_v1___clean
+    seeds__core_v1__PipelineManager__create_p --> cores__v1__prompts__PromptManager__list
+    seeds__core_v1__PipelineManager__run_p --> cores__v1__config__cpr
+    seeds__core_v1__Supervisor__switch --> main__save_state
+    seeds__core_v1__Supervisor__switch --> seeds__core_v1__log_ev
+    seeds__core_v1__Supervisor__recover --> main__save_state
+    seeds__core_v1__main --> seeds__core_v1__load_state
+    seeds__core_v1__main --> seeds__core_v1__cpr
+    seeds__core_v1__main --> seeds__core_v1__save_state
+    core__LLM__chat --> seeds__core_v1__log_ev
+    core__SkillLoader__load_module --> core__SkillLoader__latest_v
+    core__SkillLoader__run --> core__SkillLoader__load_module
+    core__SkillLoader__get_registry --> core__SkillLoader__list_skills
+    core__SkillLoader__find_skill_for --> core__SkillLoader__get_registry
+    core__SkillCreator__create --> core__SkillLoader__latest_v
+    core__SkillCreator__create --> seeds__core_v1__log_ev
+    core__SkillCreator__evolve --> core__SkillLoader__latest_v
+    core__SkillCreator__evolve --> seeds__core_v1__log_ev
+    core__SkillCreator__rollback --> seeds__core_v1__log_ev
+    core__PipelineEngine__build_from_text --> core__SkillLoader__list_skills
+    core__PipelineEngine__build_from_text --> core__SkillLoader__get_registry
+    core__PipelineEngine__build_from_text --> cores__v1__prompts__PromptManager__list
+    core__PipelineEngine__execute_pipeline --> cores__v1__config__cpr
+    core__PipelineEngine__execute_pipeline --> core__SkillLoader__run
+    core__Supervisor__switch --> main__save_state
+    core__main --> core__load_state
+    core__main --> core__cpr
+    core__main --> core__save_state
+    core__main --> core__SkillLoader__list_skills
+    skills__health_check --> skill__execute
+    skills__interior_inspection__v2__skill__execute --> skill__execute
+    skills__interior_inspection__v1__skill__execute --> skill__execute
+    skills__pound_to_yen_converter__v8__skill__execute --> skills__parse_amount_from_text
+    skills__pound_to_yen_converter__v8__skill__execute --> skills__get_exchange_rate
+    skills__execute_module --> skills__pound_to_yen_converter__v8__skill__execute
+    skills__llm__v1__skill__execute_wrapper --> skills__llm__v1__skill__execute
+    skills__get_diff --> cores__v1__prompts__PromptManager__list
+    skills__system_info__v3__skill__execute --> skill__execute
+    skills__system_info__v4__skill__execute --> skill__execute
+    skills__execute_module --> skills__gbp_to_jpy_converter__v8__skill__execute
+    skills__benchmark__v2__skill__execute --> skill__execute
+    skills__benchmark__v3__skill__execute --> skill__execute
+    skills__base64decode --> cores__v1__prompts__PromptManager__list
+    skills__core_loader__v1__skill__execute --> skill__execute
+    skills__detect_imports --> cores__v1__session_config__SessionConfig__set
+    skills__devops__v3__skill__execute --> skill__execute
+    skills__devops__v4__skill__execute --> skill__execute
+    skills__first_installment__v2__skill__execute --> skill__execute
+    skills__execute_module --> skills__first_installment__v1__skill__execute
+    skills__search_by_content --> cores__v1__session_config__SessionConfig__set
+    skills__search_by_content --> cores__v1__prompts__PromptManager__list
+    skills__search_by_metadata --> cores__v1__session_config__SessionConfig__set
+    skills__network_info__v1__skill__health_check --> skills__network_info__v1__skill__execute
+    skills__health__v1__skill__HealthSkill__execute --> skill__health_check
+    skills__health__v1__skill__execute --> skill__execute
+    skills__health_check --> skills___get_model_path
+    skills___get_model_path --> skills___get_cache_dir
+    skills___ensure_model --> skills___get_model_path
+    skills___ensure_model --> skills___get_cache_dir
+    skills___ensure_model --> skills___download_file
+    skills__execute --> backend__main__STTEngine___ensure_model
+    skills__execute --> cores__v1__session_config__SessionConfig__set
+    skills__separator_line__v1__skill__execute --> skill__execute
+    skills___check_commands --> cores__v1__prompts__PromptManager__list
+    skills___health___v1__skill__execute --> skill__execute
+    skills__zarz_dzania__v7__skill__execute --> skill__execute
+    skills__zarz_dzania__v8__skill__execute --> skill__execute
+    skills__info --> cores__v1__prompts__PromptManager__list
+    skills__extract_links --> cores__v1__session_config__SessionConfig__set
+    examples__network_monitoring_automation --> examples__generate_network_report
+    examples__task_management_automation --> examples__run_skill
+    examples__social_media_automation --> examples__run_skill
+    examples__document_processing_pipeline --> examples__run_skill
+    examples__basic__02_memory__main --> main__load_state
+    examples__basic__01_hello__main --> main__load_state
+    examples__advanced__01_pipeline__main --> main__load_state
+
+    classDef highCC fill:#ff6b6b,stroke:#c92a2a,color:#fff
+    classDef medCC fill:#ffd43b,stroke:#f08c00,color:#000
+    class cli__cmd_logs_reset,cli__cmd_cache_reset,cli__cmd_status,scripts__generate_manifest_for_skill,scripts__simulate__Simulator__run_scenario,scripts__simulate__Simulator___final_report,scripts__count_skills_and_versions,backend__main___execute_skill_for_chat,cores__v1__i18n__detect_language,cores___check_code_quality,cores__can_run,cores___suggest_strategy,cores__run_diagnostic,cores__v1__voice_loop___extract_stt_text,cores__v1__voice_loop___run_stt_cycle,cores__v1__voice_loop___run_file_input_loop,cores__v1__voice_loop___run_voice_loop,cores__v1__intent_engine__IntentEngine__analyze,cores___extract_shell_command,cores___match_existing_skill,cores___extract_config_target,cores___diagnose_skill,cores__build_system_prompt,cores__cleanup_legacy,cores___tier1_embedding,cores___validate_against_schema,cores__select,cores___score,cores__get_skill_path,cores__v1__llm_client__LLMClient___report_fail highCC
+    class main__bootstrap,cli__main_cli,examples__get_clipboard_content,examples__validate_openrouter_api_key,scripts__infer_interface_from_skill,scripts__generate_manifests__main,scripts__simulate__Simulator___iter_summary,scripts__simulate__main,scripts__benchmark_system__run_all_benchmarks,scripts__benchmark_system__main,backend__main__LLMClient__llm_chat,backend__main__diagnose,backend__main__websocket_chat,cores__v1__i18n__match_any_keyword,cores___phase_triage,cores___phase_verify,TODO2__main__websocket_chat,cores__select,cores__v1__config__save_state,cores__v1__config___parse_models_override,cores__on_skill_changed,cores___check_drift,cores___detect_gpu,cores__fit,cores__v1__learned_repair__rule_based_strategy,cores__v1__evo_journal__EvolutionJournal__reflect,cores___compute_quality,cores___update_summary,cores__record_skill_outcome,cores___print_report medCC
