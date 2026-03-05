@@ -14,23 +14,36 @@ Ewolucyjny system AI z ewoluującymi skillami. CoreSkill to inteligentny asysten
 git clone https://github.com/wronai/coreskill.git
 cd coreskill
 
+# Utworzenie środowiska conda (zalecane)
+conda create -n coreskill python=3.12 -y
+conda activate coreskill
+
 # Instalacja zależności
 pip install -r requirements.txt
 
-# Lub instalacja jako pakiet Python
+# Instalacja jako pakiet Python (opcjonalnie)
 pip install -e .
+
+# Lub użyj gotowego skryptu aktywacyjnego
+./activate.sh
 ```
 
 ### Pierwsze uruchomienie
 
 ```bash
 # Interaktywna powłoka
-coreskill
-coreskill --verbose
+python main.py
+python main.py --verbose
 
-# Lub bez instalacji
-python3 main.py
-python3 main.py --verbose
+# CLI tools
+python cli.py --help
+python cli.py status
+
+# Taskfile (zalecane do zarządzania)
+taskfile run start      # Uruchom serwer chat
+taskfile run dev        # Tryb deweloperski
+taskfile run test       # Uruchom testy
+taskfile list           # Pokaż wszystkie komendy
 ```
 
 ## ✨ Kluczowe funkcje
