@@ -745,16 +745,8 @@ _DISTINCTIVE_WORDS: Dict[str, Tuple[str, ...]] = {
 }
 
 
-def detect_language(text: str) -> str:
-    """Fast language detection using Unicode script analysis + distinctive char scoring.
-    
-    Returns ISO 639-1 code. Uses lookup tables for O(1) character classification
-    instead of chained if/elif. CC reduced from 64 to ~8.
-    """
-    if not text or not text.strip():
-        return "en"
-    
-    # ─── Phase 1: Unicode Script Detection (dominant script wins) ───
+def _detect_by_script(text: str) -> str:
+    """Phase 1: Detect language by dominant Unicode script. Returns lang code or ''."""
     script_counts: Dict[str, int] = {}
     for char in text:
         cp = ord(char)
@@ -762,33 +754,39 @@ def detect_language(text: str) -> str:
             if start <= cp <= end:
                 script_counts[script] = script_counts.get(script, 0) + 1
                 break
-    
-    if script_counts:
-        dominant = max(script_counts, key=lambda k: script_counts[k])
-        if script_counts[dominant] > len(text) * 0.1:  # At least 10% of chars
-            lang = _SCRIPT_TO_LANG.get(dominant)
-            if lang:
-                return lang
-    
-    # ─── Phase 2: Distinctive Character Scoring (Latin-script languages) ───
+    if not script_counts:
+        return ""
+    dominant = max(script_counts, key=lambda k: script_counts[k])
+    if script_counts[dominant] > len(text) * 0.1:
+        return _SCRIPT_TO_LANG.get(dominant, "")
+    return ""
+
+
+def _score_by_chars_and_keywords(text: str) -> str:
+    """Phase 2+3: Score Latin-script languages by distinctive chars + keywords. Returns lang code or ''."""
     tl = text.lower()
     char_set = set(tl)
-    
     scores: Dict[str, int] = {}
     for lang, chars in _DISTINCTIVE_CHARS.items():
         match_count = len(char_set.intersection(chars))
         if match_count > 0:
-            # Weight by rarity: fewer chars = more distinctive
             distinctiveness = 10 // len(chars)
             scores[lang] = match_count * distinctiveness
-    
-    # ─── Phase 3: Keyword Detection (tie-breaker for Latin) ───
     words = set(tl.split())
     for lang, keywords in _DISTINCTIVE_WORDS.items():
         if any(kw in words for kw in keywords):
-            scores[lang] = scores.get(lang, 0) + 5  # Boost for keyword match
-    
+            scores[lang] = scores.get(lang, 0) + 5
     if scores:
         return max(scores, key=lambda k: scores[k])
+    return ""
+
+
+def detect_language(text: str) -> str:
+    """Fast language detection using Unicode script analysis + distinctive char scoring.
     
-    return "en"
+    Returns ISO 639-1 code. Uses lookup tables for O(1) character classification
+    instead of chained if/elif.
+    """
+    if not text or not text.strip():
+        return "en"
+    return _detect_by_script(text) or _score_by_chars_and_keywords(text) or "en"

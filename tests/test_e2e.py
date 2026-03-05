@@ -30,7 +30,7 @@ from cores.v1.resource_monitor import ResourceMonitor
 from cores.v1.provider_selector import ProviderSelector, ProviderInfo, ProviderChain
 from cores.v1.preflight import SkillPreflight, EvolutionGuard, PreflightResult
 from cores.v1.system_identity import SystemIdentity, SkillStatus
-from cores.v1.core import _extract_stt_text
+from cores.v1 import _extract_stt_text
 from cores.v1.supervisor import Supervisor
 from cores.v1.pipeline_manager import PipelineManager
 

@@ -1,10 +1,8 @@
 {
   "name": "kalkulator",
   "version": "v50",
-  "parent": "v49",
-  "phase": "runtime",
-  "created_at": "2026-03-05T11:36:36.064005+00:00",
-  "quality_score": 0.91,
-  "is_regression": false,
-  "rolled_back": true
+  "description": "stw\u00f3rz mi kalkulator",
+  "created_at": "2026-03-05T18:38:54.820391+00:00",
+  "checksum": "5a32ada54fc9bc32be0791643b6697d7",
+  "quality_score": 0.91
 }
