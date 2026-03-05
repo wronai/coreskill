@@ -1,5 +1,16 @@
 ## [Unreleased]
 
+## [1.0.5] - 2026-03-05
+
+### Test
+- Update tests/test_e2e.py
+
+### Other
+- Update cores/v1/i18n.py
+- Update cores/v1/metrics_analyzer.py
+- Update cores/v1/metrics_collector.py
+- Update cores/v1/repair_task.py
+
 ## [1.0.4] - 2026-03-05
 
 ### Docs
