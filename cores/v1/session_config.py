@@ -124,6 +124,40 @@ class SessionConfig:
     
     # ── Intent Handlers ───────────────────────────────────────────────
     
+    _QUERY_WORDS = ("jaki ", "jaki?", "który ", "która ", "what ", "which ", "current ", "aktualn")
+    _QUALITY_WORDS = ("lepszy", "lepsza", "gorszy", "gorsza", "szybszy", "szybsza",
+                      "better", "worse", "faster", "slower")
+    _VOICE_INDICATORS = ("głos", "głosik", "mowa", "mówić", "voice", "tts",
+                         "speech", "syntezator", "speak")
+    _LLM_PATTERNS = ("gemini", "gpt", "claude", "llama", "qwen", "model")
+
+    def _is_query_not_configure(self, ul, category):
+        """Return ConfigChange if message is a query, not a configure request."""
+        if not any(ul.startswith(w) or w in ul for w in self._QUERY_WORDS):
+            return None
+        if re.search(r'\b(ustaw|zmień|przełącz|set|change|switch)\b', ul):
+            return None
+        if self.llm and category in ("", "llm"):
+            return ConfigChange(
+                category="llm", setting="model",
+                old_value=self.llm.model, new_value=self.llm.model,
+                success=True, message=f"Aktualny model: {self.llm.model}"
+            )
+        return None
+
+    def _resolve_category(self, category, target, ul, original):
+        """Resolve ambiguous category to a concrete one."""
+        if not category:
+            if any(w in ul for w in self._QUALITY_WORDS):
+                if not any(v in ul for v in self._VOICE_INDICATORS):
+                    print(f"[SessionConfig] Ambiguous config '{original}' → defaulting to LLM (fallback)")
+                    return "llm"
+        if category in ("tts", "stt") and target:
+            if any(p in ul for p in self._LLM_PATTERNS):
+                print(f"[SessionConfig] Override: '{original}' contains LLM patterns → switching to LLM config")
+                return "llm"
+        return category
+
     def handle_configure_intent(self, intent_result: dict) -> ConfigChange:
         """
         Handle 'configure' intent from IntentEngine.
@@ -132,60 +166,27 @@ class SessionConfig:
         - category: 'llm', 'tts', 'stt', 'voice'
         - target: specific target (model name, provider name, 'better', 'best', 'worse')
         - original_msg: user's original message (for context)
-        
-        FALLBACK: If category is ambiguous or empty, prioritize LLM configuration
-        as the default for quality-related requests (better/worse/faster).
         """
         category = intent_result.get("category", "")
         target = intent_result.get("target", "")
         original = intent_result.get("original_msg", "")
-        
-        # Detect query messages — "jaki model", "what LLM" etc. are NOT configure
         ul = original.lower()
-        query_words = ("jaki ", "jaki?", "który ", "która ", "what ", "which ", "current ", "aktualn")
-        if any(ul.startswith(w) or w in ul for w in query_words):
-            # Use word boundary to avoid "ustawiony" matching "ustaw"
-            if not re.search(r'\b(ustaw|zmień|przełącz|set|change|switch)\b', ul):
-                # It's a query, not a configure request
-                if self.llm and category in ("", "llm"):
-                    return ConfigChange(
-                        category="llm", setting="model",
-                        old_value=self.llm.model, new_value=self.llm.model,
-                        success=True, message=f"Aktualny model: {self.llm.model}"
-                    )
         
-        # FALLBACK: Check for ambiguity - if no clear category but quality words present
-        # Prioritize LLM as default for "better/worse/faster" when ambiguous
-        if not category or category == "":
-            ul = original.lower()
-            quality_words = ("lepszy", "lepsza", "gorszy", "gorsza", "szybszy", "szybsza",
-                           "better", "worse", "faster", "slower")
-            if any(w in ul for w in quality_words):
-                # Check if it's clearly about voice/TTS (głos, mowa, voice, tts, speech)
-                voice_indicators = ("głos", "głosik", "mowa", "mówić", "voice", "tts", 
-                                   "speech", "syntezator", "speak")
-                if not any(v in ul for v in voice_indicators):
-                    # Default to LLM when ambiguous quality request without voice context
-                    category = "llm"
-                    print(f"[SessionConfig] Ambiguous config '{original}' → defaulting to LLM (fallback)")
+        query_result = self._is_query_not_configure(ul, category)
+        if query_result:
+            return query_result
         
-        # Second fallback: If target is provider name that exists in TTS, but no voice context
-        # Still check if user might mean LLM model with similar name
-        if category in ("tts", "stt") and target:
-            # Check if this looks like an LLM model request despite classification
-            llm_patterns = ("gemini", "gpt", "claude", "llama", "qwen", "model")
-            if any(p in original.lower() for p in llm_patterns):
-                print(f"[SessionConfig] Override: '{original}' contains LLM patterns → switching to LLM config")
-                category = "llm"
+        category = self._resolve_category(category, target, ul, original)
         
-        if category == "llm":
-            return self._configure_llm(target, original)
-        elif category == "tts":
-            return self._configure_tts(target, original)
-        elif category == "stt":
-            return self._configure_stt(target, original)
-        elif category == "voice":
-            return self._configure_voice(target, original)
+        _HANDLERS = {
+            "llm": self._configure_llm,
+            "tts": self._configure_tts,
+            "stt": self._configure_stt,
+            "voice": self._configure_voice,
+        }
+        handler = _HANDLERS.get(category)
+        if handler:
+            return handler(target, original)
         
         return ConfigChange(
             category="unknown",

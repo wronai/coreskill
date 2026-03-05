@@ -12,6 +12,20 @@ from .config import C, cpr
 from .utils import mprint
 
 
+_STT_TEXT_KEYS = ("spoken", "text", "transcript", "recognized", "value")
+
+
+def _find_text_in_dict(obj: dict, keys=_STT_TEXT_KEYS) -> str:
+    """Search dict for first non-empty string value among keys."""
+    if not isinstance(obj, dict):
+        return ""
+    for key in keys:
+        val = obj.get(key)
+        if isinstance(val, str) and val.strip():
+            return val.strip()
+    return ""
+
+
 def _extract_stt_text(outcome: dict) -> str:
     """Extract transcribed text from STT outcome.
     
@@ -21,7 +35,6 @@ def _extract_stt_text(outcome: dict) -> str:
         return ""
 
     # EvoEngine typically returns: outcome = {type, skill, result: {success, result: {...}}}
-    # Some skills may return different nesting, so we normalize defensively.
     result = outcome.get("result", {})
     inner = result.get("result", {}) if isinstance(result, dict) else {}
     if not isinstance(inner, dict):
@@ -29,23 +42,16 @@ def _extract_stt_text(outcome: dict) -> str:
 
     # Try various possible keys (prefer inner first)
     for obj in (inner, result, outcome):
-        if not isinstance(obj, dict):
-            continue
-        for key in ["spoken", "text", "transcript", "recognized", "value"]:
-            val = obj.get(key)
-            if isinstance(val, str) and val.strip():
-                return val.strip()
+        found = _find_text_in_dict(obj)
+        if found:
+            return found
 
-    # Check nested structure
+    # Check nested "output" structure
     for obj in (inner, result):
-        if not isinstance(obj, dict):
-            continue
-        output = obj.get("output")
-        if isinstance(output, dict):
-            for key in ["spoken", "text", "transcript"]:
-                val = output.get(key)
-                if isinstance(val, str) and val.strip():
-                    return val.strip()
+        if isinstance(obj, dict) and isinstance(obj.get("output"), dict):
+            found = _find_text_in_dict(obj["output"], ("spoken", "text", "transcript"))
+            if found:
+                return found
     
     return ""
 
@@ -124,6 +130,54 @@ def _speak_tts(sm, evo, text: str) -> None:
         )
 
 
+def _record_stt_audio(evo, sk, duration=5):
+    """Record audio via STT skill. Returns (stt_text, error_msg). One will be empty."""
+    outcome = evo.handle_request(
+        "[voice]", sk,
+        analysis={"action": "use", "skill": "stt",
+                  "input": {"duration_s": duration, "lang": "pl"},
+                  "goal": "voice_conversation"}
+    )
+    if not outcome or outcome.get("type") != "success":
+        return "", outcome.get("goal", "stt failed") if outcome else "stt failed"
+    return _extract_stt_text(outcome), ""
+
+
+def _append_skill_outcome_to_conv(conv, skill_name, skill_outcome, verbose_hint=""):
+    """Append skill result or failure message to conversation. Returns True if success."""
+    if not skill_outcome:
+        return False
+    otype = skill_outcome.get("type", "")
+    if otype == "success":
+        r = skill_outcome.get("result", {})
+        res_data = r.get("result", {}) if isinstance(r, dict) else r
+        summary = (_json.dumps(res_data, ensure_ascii=False, default=str)[:600]
+                   if isinstance(res_data, dict) else str(res_data)[:600])
+        conv.append({"role": "system", "content":
+            f"Skill '{skill_name}' wykonany pomyślnie. Wynik: {summary}\n"
+            f"Podsumuj wynik krótko po polsku{verbose_hint}."})
+        return True
+    if otype in ("failed", "evo_failed"):
+        msg = skill_outcome.get("message", skill_outcome.get("goal", "?"))
+        conv.append({"role": "system", "content":
+            f"Skill '{skill_name}' nie powiódł się: {str(msg)[:200]}\n"
+            f"Poinformuj użytkownika po polsku i zaproponuj alternatywę."})
+    return False
+
+
+def _dispatch_voice_intent(stt_text, sk, evo, intent, conv, tag="VOICE"):
+    """Analyze intent and execute skill if appropriate. Modifies conv in-place."""
+    analysis = intent.analyze(stt_text, sk, conv)
+    action = (analysis.get("action") or "chat") if analysis else "chat"
+    skill_name = (analysis.get("skill") or "") if analysis else ""
+    if action in ("use", "create", "evolve") and skill_name and skill_name not in ("stt", "tts"):
+        cpr(C.CYAN, f"[{tag}] Intent: {action} → {skill_name}")
+        skill_outcome = evo.handle_request(stt_text, sk, analysis=analysis)
+        if _append_skill_outcome_to_conv(conv, skill_name, skill_outcome,
+                                         " (mówisz głosem, bądź zwięzły)"):
+            intent.record_skill_use(skill_name)
+
+
 def _run_stt_cycle(sm, evo, llm, intent, logger, conv, identity, duration=5, memory=None):
     """Single STT→Intent→Skill/LLM→TTS cycle.
     
@@ -134,50 +188,17 @@ def _run_stt_cycle(sm, evo, llm, intent, logger, conv, identity, duration=5, mem
     from .core import _handle_chat
     
     sk = sm.list_skills()
-    # Step 1: Record audio via STT
-    outcome = evo.handle_request(
-        "[voice]", sk,
-        analysis={"action": "use", "skill": "stt",
-                  "input": {"duration_s": duration, "lang": "pl"},
-                  "goal": "voice_conversation"}
-    )
-    if not outcome or outcome.get("type") != "success":
-        return "error", outcome.get("goal", "stt failed") if outcome else "stt failed"
-    stt_text = _extract_stt_text(outcome)
+    stt_text, err = _record_stt_audio(evo, sk, duration)
+    if err:
+        return "error", err
     if not stt_text:
         return "silence", ""
     cpr(C.GREEN, f"[STT] Usłyszałem: \"{stt_text}\"")
     mprint(f"### 🎤 *{stt_text}*")
     conv.append({"role": "user", "content": f"[głosowo] {stt_text}"})
     
-    # Step 2: Analyze intent — should we use a skill or just chat?
-    analysis = intent.analyze(stt_text, sk, conv)
-    action = (analysis.get("action") or "chat") if analysis else "chat"
-    skill_name = (analysis.get("skill") or "") if analysis else ""
+    _dispatch_voice_intent(stt_text, sk, evo, intent, conv)
     
-    # Step 3: Execute skill if intent says so (skip stt/tts — voice loop handles those)
-    if action in ("use", "create", "evolve") and skill_name and skill_name not in ("stt", "tts"):
-        cpr(C.CYAN, f"[VOICE] Intent: {action} → {skill_name}")
-        skill_outcome = evo.handle_request(stt_text, sk, analysis=analysis)
-        
-        if skill_outcome:
-            otype = skill_outcome.get("type", "")
-            if otype == "success":
-                r = skill_outcome.get("result", {})
-                res_data = r.get("result", {}) if isinstance(r, dict) else r
-                summary = (_json.dumps(res_data, ensure_ascii=False, default=str)[:600]
-                           if isinstance(res_data, dict) else str(res_data)[:600])
-                conv.append({"role": "system", "content":
-                    f"Skill '{skill_name}' wykonany pomyślnie. Wynik: {summary}\n"
-                    f"Podsumuj wynik krótko po polsku (mówisz głosem, bądź zwięzły)."})
-                intent.record_skill_use(skill_name)
-            elif otype in ("failed", "evo_failed"):
-                msg = skill_outcome.get("message", skill_outcome.get("goal", "?"))
-                conv.append({"role": "system", "content":
-                    f"Skill '{skill_name}' nie powiódł się: {str(msg)[:200]}\n"
-                    f"Poinformuj użytkownika po polsku i zaproponuj alternatywę."})
-    
-    # Step 4: Generate natural language response (always — for spoken output)
     response = _handle_chat(llm, sm, logger, conv, identity=identity, memory=memory)
     if response:
         _speak_tts(sm, evo, response)
@@ -265,44 +286,24 @@ def _run_file_input_loop(sm, evo, llm, intent, logger, conv, identity, memory=No
             cpr(C.DIM, f"  [STT] Transkrybuję plik: {Path(wav_path).name}")
             outcome = _run_stt_from_file(sm, evo, wav_path)
 
-            if outcome and outcome.get("type") == "success":
+            if not outcome or outcome.get("type") != "success":
+                err = outcome.get("goal", "stt failed") if outcome else "stt failed"
+                cpr(C.RED, f"  [STT] Błąd: {err}")
+            else:
                 stt_text = _extract_stt_text(outcome)
-                if stt_text:
+                if not stt_text:
+                    cpr(C.YELLOW, "  [STT] Cisza — STT nie rozpoznało tekstu z pliku")
+                else:
                     cpr(C.GREEN, f"  [STT] Rozpoznano: \"{stt_text}\"")
                     mprint(f"### 🎤 *{stt_text}*")
                     conv.append({"role": "user", "content": f"[głosowo/plik] {stt_text}"})
-                    # Route through intent engine (same as _run_stt_cycle)
                     sk = sm.list_skills()
-                    analysis = intent.analyze(stt_text, sk, conv)
-                    act = (analysis.get("action") or "chat") if analysis else "chat"
-                    sk_name = (analysis.get("skill") or "") if analysis else ""
-                    if act in ("use", "create", "evolve") and sk_name and sk_name not in ("stt", "tts"):
-                        cpr(C.CYAN, f"  [FILE] Intent: {act} → {sk_name}")
-                        sk_out = evo.handle_request(stt_text, sk, analysis=analysis)
-                        if sk_out:
-                            ot = sk_out.get("type", "")
-                            if ot == "success":
-                                r = sk_out.get("result", {})
-                                rd = r.get("result", {}) if isinstance(r, dict) else r
-                                s = (_json.dumps(rd, ensure_ascii=False, default=str)[:600]
-                                     if isinstance(rd, dict) else str(rd)[:600])
-                                conv.append({"role": "system", "content":
-                                    f"Skill '{sk_name}' wykonany pomyślnie. Wynik: {s}\n"
-                                    f"Podsumuj wynik krótko po polsku."})
-                                intent.record_skill_use(sk_name)
-                            elif ot in ("failed", "evo_failed"):
-                                conv.append({"role": "system", "content":
-                                    f"Skill '{sk_name}' nie powiódł się."})
+                    _dispatch_voice_intent(stt_text, sk, evo, intent, conv, tag="FILE")
                     response = _handle_chat(
                         llm, sm, logger, conv, identity=identity, memory=memory)
                     if response:
                         _speak_tts(sm, evo, response)
                     intent.record_skill_use("stt")
-                else:
-                    cpr(C.YELLOW, "  [STT] Cisza — STT nie rozpoznało tekstu z pliku")
-            else:
-                err = outcome.get("goal", "stt failed") if outcome else "stt failed"
-                cpr(C.RED, f"  [STT] Błąd: {err}")
         finally:
             try:
                 Path(wav_path).unlink(missing_ok=True)

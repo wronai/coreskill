@@ -213,7 +213,7 @@ SEARCH_KEYWORDS: Dict[str, Tuple[str, ...]] = {
 
 # ─── Shell / command execution keywords ──────────────────────────────
 SHELL_KEYWORDS: Dict[str, Tuple[str, ...]] = {
-    "en": ("run command", "execute", "run", "terminal", "bash", "shell"),
+    "en": ("run command", "execute", "run", "terminal", "bash", "shell", "sudo", "apt", "pip install", "docker"),
     "de": ("befehl ausführen", "ausführen", "terminal", "starte"),
     "fr": ("exécute", "lance", "terminal", "commande"),
     "es": ("ejecuta", "lanza", "terminal", "comando"),
@@ -262,7 +262,7 @@ CREATE_KEYWORDS: Dict[str, Tuple[str, ...]] = {
     "sv": ("skapa skill", "ny skill", "bygga skill", "skriv program"),
     "no": ("lag skill", "ny skill", "bygg skill", "skriv program"),
     "da": ("opret skill", "ny skill", "byg skill", "skriv program"),
-    "pl": ("stwórz skill", "nowy skill", "zbuduj skill", "napisz program", "zbuduj aplikację", "stwórz program", "utwórz"),
+    "pl": ("stwórz", "stwórz skill", "nowy skill", "zbuduj skill", "napisz program", "zbuduj aplikację", "stwórz program", "utwórz"),
     "cs": ("vytvoř skill", "nový skill", "postav skill", "napiš program"),
     "sk": ("vytvor skill", "nový skill", "postav skill", "napíš program"),
     "uk": ("створи скіл", "новий скіл", "побудуй скіл", "напиши програму"),

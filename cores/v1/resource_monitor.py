@@ -11,12 +11,22 @@ from pathlib import Path
 class ResourceMonitor:
     """Detects CPU, RAM, GPU, disk, installed packages."""
 
+    _gpu_cache = None  # class-level: GPU doesn't change during process
+
     def __init__(self):
         self._cache = {}
         self._cache_ttl = 10  # seconds
+        self._snapshot_cache = None
+        self._snapshot_ts = 0
 
     def snapshot(self) -> dict:
-        return {
+        import time
+        now = time.monotonic()
+        if self._snapshot_cache and (now - self._snapshot_ts) < self._cache_ttl:
+            # Update volatile fields only
+            self._snapshot_cache["ram_available_mb"] = self._ram_available()
+            return self._snapshot_cache
+        self._snapshot_cache = {
             "cpu_count": self._cpu_count(),
             "ram_total_mb": self._ram_total(),
             "ram_available_mb": self._ram_available(),
@@ -25,6 +35,8 @@ class ResourceMonitor:
             "python_packages": self._installed_packages(),
             "system_commands": {},  # populated on demand
         }
+        self._snapshot_ts = now
+        return self._snapshot_cache
 
     # --- CPU ---
     def _cpu_count(self) -> int:
@@ -64,16 +76,21 @@ class ResourceMonitor:
 
     # --- GPU ---
     def _detect_gpu(self) -> dict:
+        if ResourceMonitor._gpu_cache is not None:
+            return ResourceMonitor._gpu_cache
+
         # Try torch first
         try:
             import torch
             if torch.cuda.is_available():
-                return {
+                result = {
                     "available": True,
                     "type": "cuda",
                     "name": torch.cuda.get_device_name(0),
                     "vram_mb": torch.cuda.get_device_properties(0).total_mem // (1024 * 1024),
                 }
+                ResourceMonitor._gpu_cache = result
+                return result
         except (ImportError, Exception):
             pass
 
@@ -85,12 +102,14 @@ class ResourceMonitor:
             )
             if r.returncode == 0 and r.stdout.strip():
                 parts = r.stdout.strip().split(", ")
-                return {
+                result = {
                     "available": True,
                     "type": "cuda",
                     "name": parts[0],
                     "vram_mb": int(parts[1]) if len(parts) > 1 else 0,
                 }
+                ResourceMonitor._gpu_cache = result
+                return result
         except (FileNotFoundError, subprocess.TimeoutExpired):
             pass
 
@@ -98,11 +117,14 @@ class ResourceMonitor:
         try:
             r = subprocess.run(["rocm-smi", "--showproductname"], capture_output=True, text=True, timeout=5)
             if r.returncode == 0:
-                return {"available": True, "type": "rocm", "name": "AMD GPU"}
+                result = {"available": True, "type": "rocm", "name": "AMD GPU"}
+                ResourceMonitor._gpu_cache = result
+                return result
         except (FileNotFoundError, subprocess.TimeoutExpired):
             pass
 
-        return {"available": False, "type": None}
+        ResourceMonitor._gpu_cache = {"available": False, "type": None}
+        return ResourceMonitor._gpu_cache
 
     # --- Python packages ---
     def _installed_packages(self) -> dict:
@@ -128,74 +150,75 @@ class ResourceMonitor:
             return False
 
     # --- Requirement checking ---
-    def can_run(self, requirements: dict) -> tuple:
-        """Check if system meets requirements. Returns (bool, reason)."""
-        requirements = requirements or {}
+    def _check_gpu_req(self, requirements):
+        """Check GPU requirements. Returns (ok, reason)."""
+        if not requirements.get("gpu"):
+            return True, ""
+        gpu = self._detect_gpu()
+        if not gpu["available"]:
+            return False, "GPU required but not detected"
+        min_vram = requirements.get("min_vram_mb", 0)
+        if min_vram and gpu.get("vram_mb", 0) < min_vram:
+            return False, f"Need {min_vram}MB VRAM, have {gpu.get('vram_mb', 0)}MB"
+        return True, ""
 
-        # GPU
-        if requirements.get("gpu"):
-            gpu = self._detect_gpu()
-            if not gpu["available"]:
-                return False, "GPU required but not detected"
-            min_vram = requirements.get("min_vram_mb", 0)
-            if min_vram and gpu.get("vram_mb", 0) < min_vram:
-                return False, f"Need {min_vram}MB VRAM, have {gpu.get('vram_mb', 0)}MB"
-
-        # RAM
+    def _check_resource_limits(self, requirements):
+        """Check RAM and disk requirements. Returns (ok, reason)."""
         min_ram = requirements.get("min_ram_mb", 0)
         if min_ram:
             avail = self._ram_available()
             if avail < min_ram:
                 return False, f"Need {min_ram}MB RAM, have {avail}MB available"
-
-        # Disk
         min_disk = requirements.get("min_disk_mb", 0)
         if min_disk:
             free = self._disk_free()
             if free < min_disk:
                 return False, f"Need {min_disk}MB disk, have {free}MB free"
+        return True, ""
 
-        # Python packages
+    def _check_packages_and_commands(self, requirements):
+        """Check python packages, system commands, env vars. Returns (ok, reason)."""
         for pkg in requirements.get("python_packages", []):
             name = pkg.split(">=")[0].split("==")[0].split("<")[0].strip()
             if not self.has_python_package(name):
                 return False, f"Python package '{name}' not installed"
-
-        # System commands
         for cmd in requirements.get("system_packages", []):
             if not self.has_command(cmd):
                 return False, f"System command '{cmd}' not found"
-
-        # System commands (any-of)
         sys_any = requirements.get("system_packages_any", [])
-        if sys_any:
-            if not any(self.has_command(cmd) for cmd in sys_any):
-                return False, f"Need one of system commands: {', '.join(sys_any)}"
-
-        # Env vars
+        if sys_any and not any(self.has_command(cmd) for cmd in sys_any):
+            return False, f"Need one of system commands: {', '.join(sys_any)}"
         for key in requirements.get("env_vars", []):
-            val = os.environ.get(key, "").strip()
-            if not val:
+            if not os.environ.get(key, "").strip():
                 return False, f"Env var '{key}' is required"
+        return True, ""
 
-        # File checks
+    @staticmethod
+    def _check_files(requirements):
+        """Check file existence requirements. Returns (ok, reason)."""
         files_any = requirements.get("files_any", [])
         if files_any:
-            ok = False
-            for p in files_any:
-                try:
-                    if Path(os.path.expanduser(os.path.expandvars(str(p)))).exists():
-                        ok = True
-                        break
-                except Exception:
-                    continue
-            if not ok:
+            if not any(
+                Path(os.path.expanduser(os.path.expandvars(str(p)))).exists()
+                for p in files_any
+            ):
                 return False, "None of required files exist"
-
-        files_all = requirements.get("files_all", [])
-        for p in files_all:
+        for p in requirements.get("files_all", []):
             pp = Path(os.path.expanduser(os.path.expandvars(str(p))))
             if not pp.exists():
                 return False, f"Required file not found: {pp}"
+        return True, ""
 
+    def can_run(self, requirements: dict) -> tuple:
+        """Check if system meets requirements. Returns (bool, reason)."""
+        requirements = requirements or {}
+        for checker in (
+            lambda: self._check_gpu_req(requirements),
+            lambda: self._check_resource_limits(requirements),
+            lambda: self._check_packages_and_commands(requirements),
+            lambda: self._check_files(requirements),
+        ):
+            ok, reason = checker()
+            if not ok:
+                return False, reason
         return True, "OK"

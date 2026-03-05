@@ -86,6 +86,48 @@ class SkillPreflight:
                 f"Line {e.lineno}: {e.msg}",
                 {"line": e.lineno, "offset": e.offset})
 
+    @staticmethod
+    def _check_static_imports(code, tree):
+        """Check for missing stdlib imports via AST. Returns list of missing module names."""
+        imports = set()
+        used_names = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    imports.add(alias.name.split(".")[0])
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                imports.add(node.module.split(".")[0])
+            elif isinstance(node, ast.Name):
+                used_names.add(node.id)
+        return [n for n in used_names
+                if n in STDLIB_MODULES and n not in imports
+                and (f"{n}." in code or f"{n}(" in code)]
+
+    @staticmethod
+    def _check_runtime_import(skill_path):
+        """Run subprocess import test. Returns PreflightResult on failure, None on success."""
+        if not (skill_path and skill_path.exists()):
+            return None
+        test_code = (
+            f"import sys; sys.path.insert(0, '{skill_path.parent}'); "
+            f"import importlib.util; "
+            f"spec = importlib.util.spec_from_file_location('test', '{skill_path}'); "
+            f"mod = importlib.util.module_from_spec(spec); "
+            f"spec.loader.exec_module(mod); "
+            f"print('IMPORT_OK')"
+        )
+        try:
+            r = subprocess.run(
+                [sys.executable, "-c", test_code],
+                capture_output=True, text=True, timeout=10
+            )
+            if "IMPORT_OK" not in r.stdout:
+                error = r.stderr.strip().split("\n")[-1] if r.stderr else "Unknown import error"
+                return PreflightResult(False, "imports", error)
+        except subprocess.TimeoutExpired:
+            return PreflightResult(False, "imports", "Import timed out (>10s)")
+        return None
+
     def check_imports(self, code, skill_path=None):
         """Stage 2: Do all imports resolve? Detect missing stdlib imports."""
         try:
@@ -93,51 +135,16 @@ class SkillPreflight:
         except SyntaxError:
             return PreflightResult(False, "imports", "Cannot parse for import analysis")
 
-        imports = set()
-        used_names = set()
-
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                for alias in node.names:
-                    imports.add(alias.name.split(".")[0])
-            elif isinstance(node, ast.ImportFrom):
-                if node.module:
-                    imports.add(node.module.split(".")[0])
-            elif isinstance(node, ast.Name):
-                used_names.add(node.id)
-
-        missing = []
-        for name in used_names:
-            if name in STDLIB_MODULES and name not in imports:
-                if f"{name}." in code or f"{name}(" in code:
-                    missing.append(name)
-
+        missing = self._check_static_imports(code, tree)
         if missing:
             return PreflightResult(False, "imports",
                 f"Used but not imported: {', '.join(sorted(missing))}. "
                 f"Add: {'; '.join(f'import {m}' for m in sorted(missing))}",
                 {"missing_imports": sorted(missing)})
 
-        # Subprocess import test (catches dynamic issues)
-        if skill_path and skill_path.exists():
-            test_code = (
-                f"import sys; sys.path.insert(0, '{skill_path.parent}'); "
-                f"import importlib.util; "
-                f"spec = importlib.util.spec_from_file_location('test', '{skill_path}'); "
-                f"mod = importlib.util.module_from_spec(spec); "
-                f"spec.loader.exec_module(mod); "
-                f"print('IMPORT_OK')"
-            )
-            try:
-                r = subprocess.run(
-                    [sys.executable, "-c", test_code],
-                    capture_output=True, text=True, timeout=10
-                )
-                if "IMPORT_OK" not in r.stdout:
-                    error = r.stderr.strip().split("\n")[-1] if r.stderr else "Unknown import error"
-                    return PreflightResult(False, "imports", error)
-            except subprocess.TimeoutExpired:
-                return PreflightResult(False, "imports", "Import timed out (>10s)")
+        rt_result = self._check_runtime_import(skill_path)
+        if rt_result:
+            return rt_result
 
         return PreflightResult(True)
 
@@ -175,6 +182,36 @@ class SkillPreflight:
 
         return PreflightResult(True)
 
+    @staticmethod
+    def _collect_existing_imports(tree):
+        """Collect top-level module names already imported in AST."""
+        imports = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    imports.add(alias.name.split(".")[0])
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                imports.add(node.module.split(".")[0])
+        return imports
+
+    @staticmethod
+    def _find_insert_position(lines):
+        """Find the best line index to insert new imports."""
+        # After last existing import if any
+        for i in range(len(lines) - 1, -1, -1):
+            stripped = lines[i].strip()
+            if stripped.startswith("import ") or stripped.startswith("from "):
+                return i + 1
+        # Otherwise after shebang and module docstring
+        pos = 0
+        if lines and lines[0].startswith("#!"):
+            pos = 1
+        if len(lines) > pos and lines[pos].startswith('"""'):
+            for i in range(pos + 1, len(lines)):
+                if '"""' in lines[i]:
+                    return i + 1
+        return pos
+
     def auto_fix_imports(self, code):
         """Auto-fix missing stdlib imports by adding them at the top."""
         try:
@@ -182,48 +219,16 @@ class SkillPreflight:
         except SyntaxError:
             return code
 
-        imports = set()
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                for alias in node.names:
-                    imports.add(alias.name.split(".")[0])
-            elif isinstance(node, ast.ImportFrom):
-                if node.module:
-                    imports.add(node.module.split(".")[0])
-
-        to_add = []
-        for mod in STDLIB_MODULES:
-            if mod not in imports and (f"{mod}." in code or f"{mod}(" in code):
-                to_add.append(mod)
-
+        existing = self._collect_existing_imports(tree)
+        to_add = [m for m in STDLIB_MODULES
+                   if m not in existing and (f"{m}." in code or f"{m}(" in code)]
         if not to_add:
             return code
 
-        import_lines = [f"import {m}" for m in sorted(to_add)]
         lines = code.split("\n")
-
-        # Find last import line
-        last_import = -1
-        for i, line in enumerate(lines):
-            stripped = line.strip()
-            if stripped.startswith("import ") or stripped.startswith("from "):
-                last_import = i
-
-        if last_import >= 0:
-            for j, imp in enumerate(import_lines):
-                lines.insert(last_import + 1 + j, imp)
-        else:
-            insert_at = 0
-            if lines and lines[0].startswith("#!"):
-                insert_at = 1
-            if len(lines) > insert_at and lines[insert_at].startswith('"""'):
-                for i in range(insert_at + 1, len(lines)):
-                    if '"""' in lines[i]:
-                        insert_at = i + 1
-                        break
-            for j, imp in enumerate(import_lines):
-                lines.insert(insert_at + j, imp)
-
+        insert_at = self._find_insert_position(lines)
+        for j, m in enumerate(sorted(to_add)):
+            lines.insert(insert_at + j, f"import {m}")
         return "\n".join(lines)
 
 
@@ -363,6 +368,27 @@ class EvolutionGuard:
 
         return "\n".join(parts) if parts else ""
 
+    _FUNCTIONAL_MARKERS = ("subprocess", "os.system", "urllib", "socket",
+                           "shutil.which", "Popen", "tempfile")
+    _TRIVIAL_LINES = {"pass", "return", "return None", "return {}",
+                      "return True", "return False"}
+
+    @staticmethod
+    def _is_trivial_execute(code):
+        """Check if code has only a trivial execute() returning hardcoded success."""
+        if not re.search(
+            r'def execute\(self[^)]*\):\s*\n\s*return\s*\{\s*["\']success["\']\s*:\s*True\s*\}',
+            code, re.MULTILINE
+        ):
+            return False
+        m = re.search(r'def execute\(self[^)]*\):(.*?)(?=\n    def |\nclass |\Z)',
+                      code, re.DOTALL)
+        if m:
+            body = [l.strip() for l in m.group(1).split("\n")
+                    if l.strip() and not l.strip().startswith("#")]
+            return len(body) <= 2
+        return False
+
     def is_stub_skill(self, skill_path):
         """Detect if skill is a stub (placeholder/test implementation).
         Conservative: only flag clearly non-functional code.
@@ -373,40 +399,20 @@ class EvolutionGuard:
         code = skill_path.read_text()
         lines = [l.strip() for l in code.split("\n") if l.strip()]
 
-        # Skills with actual system calls are never stubs
-        _functional = ("subprocess", "os.system", "urllib", "socket",
-                       "shutil.which", "Popen", "tempfile")
-        if any(f in code for f in _functional):
+        if any(f in code for f in self._FUNCTIONAL_MARKERS):
             return False, ""
-
-        # Check 1: Very short AND no functional code
         if len(lines) < 8:
             return True, f"Too short ({len(lines)} lines) with no functional code"
 
-        # Check 2: Almost no meaningful lines
         body_lines = [l for l in lines
                       if not l.startswith("#") and not l.startswith('"""')
                       and not l.startswith("'''")]
-        trivial = {"pass", "return", "return None", "return {}",
-                   "return True", "return False"}
-        meaningful = [l for l in body_lines if l not in trivial]
+        meaningful = [l for l in body_lines if l not in self._TRIVIAL_LINES]
         if len(meaningful) < 5:
             return True, f"Only {len(meaningful)} meaningful lines"
 
-        # Check 3: Class with ONLY a trivial execute that returns hardcoded success
-        # (not a wrapper like `return SomeClass().execute(...)`)
-        if re.search(
-            r'def execute\(self[^)]*\):\s*\n\s*return\s*\{\s*["\']success["\']\s*:\s*True\s*\}',
-            code, re.MULTILINE
-        ):
-            # Count lines in execute body — if only 1-2 lines, it's a stub
-            m = re.search(r'def execute\(self[^)]*\):(.*?)(?=\n    def |\nclass |\Z)',
-                          code, re.DOTALL)
-            if m:
-                body = [l.strip() for l in m.group(1).split("\n")
-                        if l.strip() and not l.strip().startswith("#")]
-                if len(body) <= 2:
-                    return True, "execute() returns hardcoded success with no logic"
+        if self._is_trivial_execute(code):
+            return True, "execute() returns hardcoded success with no logic"
 
         return False, ""
 

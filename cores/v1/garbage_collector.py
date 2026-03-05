@@ -157,16 +157,25 @@ class EvolutionGarbageCollector:
         report["kept"] = [v.name for v in keep if v.exists()]
         return report
 
+    @staticmethod
+    def _delete_versions(to_delete, keep, dry_run, report):
+        """Delete version dirs not in keep set, updating report."""
+        for vdir in to_delete:
+            if vdir in keep:
+                continue
+            if dry_run:
+                report["deleted"].append(f"[DRY] {vdir.name}")
+            else:
+                shutil.rmtree(vdir, ignore_errors=True)
+                report["deleted"].append(vdir.name)
+
     def cleanup_legacy(self, skill_dir: Path, dry_run: bool = False) -> dict:
         """Clean stubs from a legacy skill directory (v{N} directly under skill)."""
         report = {"skill": skill_dir.name, "total": 0, "deleted": [], "kept": []}
         if not skill_dir.is_dir():
             return report
 
-        all_versions = []
-        stubs = []
-        working = []
-
+        stubs, working = [], []
         for vdir in sorted(skill_dir.iterdir()):
             if not vdir.is_dir() or not vdir.name.startswith("v"):
                 continue
@@ -175,37 +184,14 @@ class EvolutionGarbageCollector:
             sp = vdir / "skill.py"
             if not sp.exists():
                 continue
-            all_versions.append(vdir)
-            if self.is_stub(sp):
-                stubs.append(vdir)
-            else:
-                working.append(vdir)
+            (stubs if self.is_stub(sp) else working).append(vdir)
 
-        report["total"] = len(all_versions)
-
-        # Keep last MAX_ARCHIVE working versions
+        report["total"] = len(stubs) + len(working)
         keep = set(working[-self.MAX_ARCHIVE_VERSIONS:])
 
-        # Delete stubs
-        for vdir in stubs:
-            if vdir in keep:
-                continue
-            if dry_run:
-                report["deleted"].append(f"[DRY] {vdir.name}")
-            else:
-                shutil.rmtree(vdir, ignore_errors=True)
-                report["deleted"].append(vdir.name)
-
-        # Delete excess working versions (keep only last MAX_ARCHIVE)
+        self._delete_versions(stubs, keep, dry_run, report)
         excess = working[:-self.MAX_ARCHIVE_VERSIONS] if len(working) > self.MAX_ARCHIVE_VERSIONS else []
-        for vdir in excess:
-            if vdir in keep:
-                continue
-            if dry_run:
-                report["deleted"].append(f"[DRY] {vdir.name}")
-            else:
-                shutil.rmtree(vdir, ignore_errors=True)
-                report["deleted"].append(vdir.name)
+        self._delete_versions(excess, keep, dry_run, report)
 
         report["kept"] = [v.name for v in keep if v.exists()]
         return report
@@ -305,6 +291,11 @@ class EvolutionGarbageCollector:
                 shutil.rmtree(vdir, ignore_errors=True)
                 deleted.append(f"archive/{vdir.name}")
         return deleted
+
+    def run_cleanup(self) -> int:
+        """Quick cleanup returning count of deleted dirs. Used by AutoRepair boot."""
+        reports = self.cleanup_all(migrate=False)
+        return sum(len(r.get("deleted", [])) for r in reports)
 
     # ── Full Cleanup ────────────────────────────────────────────────
 

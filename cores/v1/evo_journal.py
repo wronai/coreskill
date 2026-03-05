@@ -306,36 +306,32 @@ class EvolutionJournal:
 
         return min(score, 1.0)
 
+    _ERROR_STRATEGY_MAP = (
+        (("import", "module"),             "auto_fix_imports"),
+        (("syntax",),                      "rewrite_from_scratch"),
+        (("timeout",),                     "optimize_performance"),
+        (("stub", "not implemented"),      "rewrite_from_scratch"),
+        (("interface", "get_info", "health_check"), "normal_evolve"),
+        (("preflight",),                   "normal_evolve"),
+    )
+
     def _suggest_strategy(self, skill_name: str, error: str,
                           current_score: float) -> str:
         """Suggest best strategy based on history."""
         if not error:
-            if current_score >= 0.8:
-                return "keep"
-            return "normal_evolve"
+            return "keep" if current_score >= 0.8 else "normal_evolve"
 
         el = error.lower()
-        if "import" in el or "module" in el:
-            return "auto_fix_imports"
-        if "syntax" in el:
-            return "rewrite_from_scratch"
-        if "timeout" in el:
-            return "optimize_performance"
-        if "stub" in el or "not implemented" in el:
-            return "rewrite_from_scratch"
-        if "interface" in el or "get_info" in el or "health_check" in el:
-            return "normal_evolve"  # needs LLM to add missing functions
-        if "preflight" in el:
-            return "normal_evolve"
+        for keywords, strategy in self._ERROR_STRATEGY_MAP:
+            if any(kw in el for kw in keywords):
+                return strategy
 
         # Check history: which strategy worked best for this skill?
         history = self.get_skill_history(skill_name, 5)
-        successful = [h for h in history if h.get("success")]
-        if successful:
-            strategies = [h["strategy"] for h in successful]
-            if strategies:
-                from collections import Counter
-                return Counter(strategies).most_common(1)[0][0]
+        strategies = [h["strategy"] for h in history if h.get("success")]
+        if strategies:
+            from collections import Counter
+            return Counter(strategies).most_common(1)[0][0]
 
         return "normal_evolve"
 

@@ -140,23 +140,33 @@ class LLMClient:
         s["ok"] += 1
         self._cooldowns.pop(model, None)
 
+    # Error classification: (patterns_in_lower, patterns_in_raw) → (action, cooldown_key)
+    # action: "dead" = permanent blacklist, "cooldown" = temporary
+    _ERROR_RULES = (
+        (("notfound", "no endpoints"), ("404",),    "dead", None),
+        (("authentication", "unauthorized"), ("401",), "dead", None),
+        (("ratelimit", "rate limit"), ("429",),      "cooldown", COOLDOWN_RATE_LIMIT),
+        (("timeout", "timed out"), (),                "cooldown", COOLDOWN_TIMEOUT),
+        ((), ("500", "502", "503"),                   "cooldown", COOLDOWN_SERVER_ERR),
+    )
+
+    def _classify_and_penalize(self, model, err):
+        """Classify error and apply dead/cooldown penalty to model."""
+        el = err.lower()
+        for lower_pats, raw_pats, action, cooldown in self._ERROR_RULES:
+            if any(p in el for p in lower_pats) or any(p in err for p in raw_pats):
+                if action == "dead":
+                    self._dead.add(model)
+                else:
+                    self._cooldowns[model] = (time.time() + cooldown, el[:20])
+                return
+        self._cooldowns[model] = (time.time() + COOLDOWN_SERVER_ERR, "unknown")
+
     def _report_fail(self, model, err):
         s = self._stats.setdefault(model, {"ok": 0, "fail": 0})
         s["fail"] += 1
         self._last_errors[model] = err
-        el = err.lower()
-        if "notfound" in el or "404" in err or "no endpoints" in el:
-            self._dead.add(model)
-        elif "401" in err or "authentication" in el or "unauthorized" in el:
-            self._dead.add(model)
-        elif "ratelimit" in el or "rate limit" in el or "429" in err:
-            self._cooldowns[model] = (time.time() + COOLDOWN_RATE_LIMIT, "rate_limit")
-        elif "timeout" in el or "timed out" in el:
-            self._cooldowns[model] = (time.time() + COOLDOWN_TIMEOUT, "timeout")
-        elif "500" in err or "502" in err or "503" in err:
-            self._cooldowns[model] = (time.time() + COOLDOWN_SERVER_ERR, "server_error")
-        else:
-            self._cooldowns[model] = (time.time() + COOLDOWN_SERVER_ERR, "unknown")
+        self._classify_and_penalize(model, err)
 
     # ── Core chat with tiered fallback ──
     def _select_model(self):
@@ -166,83 +176,70 @@ class LLMClient:
         Tries: free → paid (if API key) → local.
         """
         has_api_key = bool(self.api_key and len(self.api_key) > 10)
-        
-        # Determine tier order based on API key availability
-        if has_api_key:
-            tier_order = (TIER_FREE, TIER_PAID, TIER_LOCAL)
-        else:
-            tier_order = (TIER_FREE, TIER_LOCAL)
-        
+        tier_order = (TIER_FREE, TIER_PAID, TIER_LOCAL) if has_api_key else (TIER_FREE, TIER_LOCAL)
         for tier in tier_order:
-            if tier == TIER_PAID and not has_api_key:
-                continue
             for model in self._tiers[tier]:
-                if model == self.model or not self._is_available(model):
-                    continue
-                return model, tier
+                if model != self.model and self._is_available(model):
+                    return model, tier
         return None, None
 
+    def _verbose_log_request(self, messages, temperature, max_tokens):
+        """Log request details when EVO_VERBOSE=1."""
+        model_short = self.model.split('/')[-1] if '/' in self.model else self.model
+        print(f"\n[VERBOSE] LLM Call: {model_short} (tier: {self.active_tier})")
+        print(f"[VERBOSE] Temperature: {temperature}, Max tokens: {max_tokens}")
+        print(f"[VERBOSE] Messages:")
+        for i, msg in enumerate(messages):
+            role = msg.get('role', 'unknown')
+            content = msg.get('content', '')
+            display = content[:200] + "..." if len(content) > 200 else content
+            print(f"  [{i}] {role}: {display.replace(chr(10), ' ')}")
+
+    def _switch_to_fallback(self, model, tier, result):
+        """Switch active model after successful fallback. Returns result."""
+        old_model, old_tier = self.model, self.active_tier
+        self.model = model
+        self.active_tier = tier
+        state = load_state()
+        state["model"] = model
+        state["model_tier"] = tier
+        save_state(state)
+        if self.logger:
+            self.logger.core("model_switch", {
+                "from": old_model, "to": model,
+                "from_tier": old_tier, "to_tier": tier,
+            })
+        if tier != old_tier:
+            cpr(C.DIM, f"[LLM] {old_tier}→{tier}: {model.split('/')[-1]}")
+        return result
+
     def chat(self, messages, temperature=0.7, max_tokens=16384):
-        """Chat with tiered model fallback.
-        
-        Refactored: CC=19 → ~10 by extracting _select_model().
-        """
-        # Verbose logging
-        if os.environ.get("EVO_VERBOSE") == "1":
-            model_short = self.model.split('/')[-1] if '/' in self.model else self.model
-            print(f"\n[VERBOSE] LLM Call: {model_short} (tier: {self.active_tier})")
-            print(f"[VERBOSE] Temperature: {temperature}, Max tokens: {max_tokens}")
-            print(f"[VERBOSE] Messages:")
-            for i, msg in enumerate(messages):
-                role = msg.get('role', 'unknown')
-                content = msg.get('content', '')
-                display = content[:200] + "..." if len(content) > 200 else content
-                display = display.replace('\n', ' ')
-                print(f"  [{i}] {role}: {display}")
-        
-        # 1. Try current model (with retry on rate limit)
+        """Chat with tiered model fallback. CC target: ≤8."""
+        verbose = os.environ.get("EVO_VERBOSE") == "1"
+        if verbose:
+            self._verbose_log_request(messages, temperature, max_tokens)
+
+        # 1. Try current model
         if self._is_available(self.model):
             result = self._try_model(self.model, messages, temperature, max_tokens, is_primary=True)
             if result is not None:
-                if os.environ.get("EVO_VERBOSE") == "1":
-                    print(f"[VERBOSE] Response length: {len(result)} chars")
                 return result
 
-        # 2. Tiered fallback via _select_model
-        has_api_key = bool(self.api_key and len(self.api_key) > 10)
-        
-        if not has_api_key and self.active_tier == TIER_FREE:
+        # 2. Warn if no paid tier available
+        if not (self.api_key and len(self.api_key) > 10) and self.active_tier == TIER_FREE:
             cpr(C.YELLOW, "⚠ Brak klucza API dla OpenRouter — płatne modele niedostępne.")
             cpr(C.DIM, "   Użyj /apikey <twój-klucz> aby włączyć szybsze naprawy.")
-        
+
+        # 3. Tiered fallback
         while True:
             model, tier = self._select_model()
             if model is None:
                 break
-                
             result = self._try_model(model, messages, temperature, max_tokens)
             if result is not None:
-                if os.environ.get("EVO_VERBOSE") == "1":
-                    print(f"[VERBOSE] Fallback to: {model.split('/')[-1]} (tier: {tier})")
-                    print(f"[VERBOSE] Response length: {len(result)} chars")
-                old_model, old_tier = self.model, self.active_tier
-                self.model = model
-                self.active_tier = tier
-                state = load_state()
-                state["model"] = model
-                state["model_tier"] = tier
-                save_state(state)
-                if self.logger:
-                    self.logger.core("model_switch", {
-                        "from": old_model, "to": model,
-                        "from_tier": old_tier, "to_tier": tier,
-                    })
-                if tier != old_tier:
-                    cpr(C.DIM, f"[LLM] {old_tier}→{tier}: {model.split('/')[-1]}")
-                return result
-            # Model failed, loop continues to try next
+                return self._switch_to_fallback(model, tier, result)
 
-        # 3. All failed
+        # 4. All failed
         if self.logger:
             self.logger.core("all_models_failed", {"tiers": self.tier_info()})
         return self._build_error_msg()
@@ -266,58 +263,71 @@ class LLMClient:
             return "[ERROR] Models unavailable. Install ollama or change models."
         return f"[ERROR] All models failed ({self.tier_info()}). Last: {joined[:100]}"
 
-    def _try_model(self, model, messages, temperature, max_tokens, is_primary=False):
+    def _build_completion_kw(self, model, messages, temperature, max_tokens):
+        """Build kwargs dict for litellm.completion."""
         is_local = model.startswith("ollama/")
         kw = dict(model=model, messages=messages,
                   temperature=temperature, max_tokens=max_tokens,
                   timeout=30 if is_local else 15)
         if not is_local:
             kw["api_key"] = self.api_key
+        return kw
 
-        try:
-            from .resilience import with_retry, _HAS_TENACITY
-            if _HAS_TENACITY and is_primary:
-                # tenacity: 2 attempts, 3s backoff for rate limits
-                @with_retry(max_attempts=2, backoff_base=3.0, backoff_max=6.0)
-                def _call():
-                    return litellm.completion(**kw)
-                r = _call()
-                self._report_ok(model)
-                return r.choices[0].message.content
-        except ImportError:
-            pass
-        except Exception as e:
-            err = str(e)
-            if self.logger:
-                self.logger.core("llm_error", {"model": model, "error": err[:200]})
-            self._report_fail(model, err)
-            return None
+    def _try_with_tenacity(self, model, kw):
+        """Try model with tenacity retry. Returns content or None. Raises on non-retry failure."""
+        from .resilience import with_retry, _HAS_TENACITY
+        if not _HAS_TENACITY:
+            return None  # Signal: tenacity not available
+        @with_retry(max_attempts=2, backoff_base=3.0, backoff_max=6.0)
+        def _call():
+            return litellm.completion(**kw)
+        r = _call()
+        self._report_ok(model)
+        return r.choices[0].message.content
 
-        # Fallback: single attempt (non-primary or no tenacity)
+    def _try_single_call(self, model, kw):
+        """Single litellm call with local-timeout retry. Returns content or None."""
+        is_local = model.startswith("ollama/")
         try:
             r = litellm.completion(**kw)
             self._report_ok(model)
             return r.choices[0].message.content
         except Exception as e:
             err = str(e)
-            # Categorize timeout errors specifically
-            if "timeout" in err.lower() or "timed out" in err.lower():
-                err_type = "timeout"
-                # Longer timeout for local models on timeout error
-                if is_local and kw.get("timeout", 0) < 60:
-                    kw["timeout"] = 60
-                    try:
-                        r = litellm.completion(**kw)
-                        self._report_ok(model)
-                        return r.choices[0].message.content
-                    except Exception as retry_e:
-                        err = str(retry_e)
-            else:
-                err_type = "other"
-            if self.logger:
-                self.logger.core("llm_error", {"model": model, "error": err[:200], "type": err_type})
-            self._report_fail(model, err)
+            is_timeout = "timeout" in err.lower() or "timed out" in err.lower()
+            # Retry local models with extended timeout
+            if is_timeout and is_local and kw.get("timeout", 0) < 60:
+                kw["timeout"] = 60
+                try:
+                    r = litellm.completion(**kw)
+                    self._report_ok(model)
+                    return r.choices[0].message.content
+                except Exception as retry_e:
+                    err = str(retry_e)
+            self._log_and_fail(model, err, "timeout" if is_timeout else "other")
             return None
+
+    def _log_and_fail(self, model, err, err_type="other"):
+        """Log error and report model failure."""
+        if self.logger:
+            self.logger.core("llm_error", {"model": model, "error": err[:200], "type": err_type})
+        self._report_fail(model, err)
+
+    def _try_model(self, model, messages, temperature, max_tokens, is_primary=False):
+        """Try a single model. Returns content string or None."""
+        kw = self._build_completion_kw(model, messages, temperature, max_tokens)
+        # Primary model: try with tenacity retry first
+        if is_primary:
+            try:
+                result = self._try_with_tenacity(model, kw)
+                if result is not None:
+                    return result
+            except ImportError:
+                pass
+            except Exception as e:
+                self._log_and_fail(model, str(e))
+                return None
+        return self._try_single_call(model, kw)
 
     def _get_unavailable_reason(self, model: str) -> str:
         """Get human-readable reason why model is unavailable."""
@@ -358,63 +368,63 @@ class LLMClient:
         return self.chat([{"role":"system","content":s},
                           {"role":"user","content":prompt}], 0.2)
 
-    def analyze_need(self, user_msg, skills):
-        """Analyze user request. Keywords FIRST (fast+reliable), LLM only for ambiguous."""
-        ul = user_msg.lower()
-        _evolve_kw = ("zmien", "zmień", "napraw", "popraw", "lepszy", "lepsza",
-                       "ulepszy", "fix", "improve", "change")
-        _create_kw = ("stworz", "stwórz", "zainstaluj", "zrob", "zrób",
-                       "create", "install", "build", "wgraj", "dodaj", "napisz",
-                       "zbuduj", "chcialbym", "chciałbym", "potrzebuje", "potrzebuję",
-                       "zaimplementuj", "implement", "deploy", "aplikacj", "program")
-        _tts_kw = ("glos", "głos", "voice", "tts", "mow", "mów", "glosowo")
-        _speak_kw = ("powiedz", "przywitaj", "say", "speak", "mow ze", "mów ze",
-                     "mow do", "mów do", "pogadac", "pogadaj")
-        _stt_kw = ("slyszysz", "słyszysz", "slychac", "słychać", "mikrofon",
-                   "co mowie", "co mówię", "transkrybuj", "transkrypcja", "stt",
-                   "rozpozn", "nasłuch", "nasluch", "dyktuj", "dictate")
+    # ── Keyword tables for analyze_need ──
+    _EVOLVE_KW = ("zmien", "zmień", "napraw", "popraw", "lepszy", "lepsza",
+                  "ulepszy", "fix", "improve", "change")
+    _CREATE_KW = ("stworz", "stwórz", "zainstaluj", "zrob", "zrób",
+                  "create", "install", "build", "wgraj", "dodaj", "napisz",
+                  "zbuduj", "chcialbym", "chciałbym", "potrzebuje", "potrzebuję",
+                  "zaimplementuj", "implement", "deploy", "aplikacj", "program")
+    _TTS_KW = ("glos", "głos", "voice", "tts", "mow", "mów", "glosowo")
+    _SPEAK_KW = ("powiedz", "przywitaj", "say", "speak", "mow ze", "mów ze",
+                 "mow do", "mów do", "pogadac", "pogadaj")
+    _STT_KW = ("slyszysz", "słyszysz", "slychac", "słychać", "mikrofon",
+               "co mowie", "co mówię", "transkrybuj", "transkrypcja", "stt",
+               "rozpozn", "nasłuch", "nasluch", "dyktuj", "dictate")
+    _CONFIG_INDICATORS = ("model", "gpt", "gemini", "claude", "llama", "qwen",
+                          "przełącz", "zmień na", "używaj")
+    _CREATE_SKIP = frozenset(_CREATE_KW) | frozenset((
+        "skill", "mi", "nowy", "nowa", "do", "sie", "się",
+        "postaci", "jako", "moze", "może", "chce", "chcę",
+        "obslugi", "obsługi", "dokumentow", "dokumentów"))
 
-        # ── PHASE 1: Fast keyword detection (no LLM call needed) ──
-        if any(w in ul for w in _evolve_kw):
-            # FALLBACK: Check if this is actually a config request for LLM
-            # "lepszy model" → configure, "ulepsz skill" → evolve
-            _config_indicators = ("model", "gpt", "gemini", "claude", "llama", "qwen",
-                                "przełącz", "zmień na", "używaj")
-            if any(cfg in ul for cfg in _config_indicators):
-                # This looks like a config request, not evolve - skip to config handling
-                pass  # Skip evolve, let it fall through to config or LLM phase
-            else:
-                for sk_name in skills:
-                    if sk_name in ul:
-                        return {"action":"evolve","skill":sk_name,"feedback":user_msg,"goal":"improve skill"}
-                if any(w in ul for w in _tts_kw):
-                    return {"action":"evolve","skill":"tts","feedback":user_msg,"goal":"improve tts"}
+    def _match_evolve_intent(self, ul, user_msg, skills):
+        """Check for evolve intent. Returns action dict or None."""
+        if not any(w in ul for w in self._EVOLVE_KW):
+            return None
+        if any(cfg in ul for cfg in self._CONFIG_INDICATORS):
+            return None  # Config request, not evolve
+        for sk_name in skills:
+            if sk_name in ul:
+                return {"action": "evolve", "skill": sk_name, "feedback": user_msg, "goal": "improve skill"}
+        if any(w in ul for w in self._TTS_KW):
+            return {"action": "evolve", "skill": "tts", "feedback": user_msg, "goal": "improve tts"}
+        return None
 
-        if any(w in ul for w in _create_kw):
-            words = ul.split()
-            name = "new_skill"
-            skip = set(_create_kw) | {"skill", "mi", "nowy", "nowa", "do", "sie", "się",
-                                       "postaci", "jako", "moze", "może", "chce", "chcę",
-                                       "obslugi", "obsługi", "dokumentow", "dokumentów"}
-            for w in reversed(words):
-                clean = re.sub(r'[^a-z0-9_]', '', w)
-                if clean and clean not in skip and len(clean) > 2:
-                    name = clean
-                    break
-            return {"action":"create","name":name,"description":user_msg,"goal":"fulfill request"}
+    def _match_create_intent(self, ul, user_msg):
+        """Check for create intent. Returns action dict or None."""
+        if not any(w in ul for w in self._CREATE_KW):
+            return None
+        name = "new_skill"
+        for w in reversed(ul.split()):
+            clean = re.sub(r'[^a-z0-9_]', '', w)
+            if clean and clean not in self._CREATE_SKIP and len(clean) > 2:
+                name = clean
+                break
+        return {"action": "create", "name": name, "description": user_msg, "goal": "fulfill request"}
 
-        if any(w in ul for w in _speak_kw):
-            return {"action":"use","skill":"tts","input":{"text":user_msg},"goal":"produce_audio"}
+    def _match_stt_intent(self, ul, skills):
+        """Check for STT intent. Returns action dict or None."""
+        if not any(w in ul for w in self._STT_KW):
+            return None
+        if "stt" in skills:
+            return {"action": "use", "skill": "stt", "input": {"duration_s": 4, "lang": "pl"}, "goal": "transcribe_audio"}
+        return {"action": "create", "name": "stt",
+                "description": "STT: nagrywanie z mikrofonu i transkrypcja po polsku, stdlib+subprocess only.",
+                "goal": "enable_stt"}
 
-        if any(w in ul for w in _stt_kw):
-            if "stt" in skills:
-                return {"action":"use","skill":"stt","input":{"duration_s": 4, "lang": "pl"},"goal":"transcribe_audio"}
-            return {"action":"create","name":"stt","description":"STT: nagrywanie z mikrofonu i transkrypcja po polsku, stdlib+subprocess only.","goal":"enable_stt"}
-
-        if any(w in ul for w in _tts_kw):
-            return {"action":"use","skill":"tts","input":{"text":user_msg},"goal":"produce_audio"}
-
-        # ── PHASE 2: LLM for ambiguous cases (no keyword match) ──
+    def _classify_via_llm(self, user_msg, skills):
+        """LLM fallback for ambiguous cases. Returns action dict."""
         skill_list = json.dumps(skills)
         s = f"""Action classifier. Skills: {skill_list}
 Return ONLY JSON. Rules:
@@ -422,12 +432,31 @@ Return ONLY JSON. Rules:
 2. "tak"/"ok"/"dawaj" = confirm previous → {{"action":"create","name":"<from_context>","description":"<from_context>","goal":"confirm"}}
 3. Pure small-talk only → {{"action":"chat"}}
 PREFER action over chat. When in doubt → create."""
-        raw = self.chat([{"role":"system","content":s},
-                         {"role":"user","content":user_msg}], 0.2, 500)
+        raw = self.chat([{"role": "system", "content": s},
+                         {"role": "user", "content": user_msg}], 0.2, 500)
         try:
             parsed = json.loads(clean_json(raw))
             if parsed.get("action"):
                 return parsed
-        except:
+        except Exception:
             pass
         return {"action": "chat"}
+
+    def analyze_need(self, user_msg, skills):
+        """Analyze user request. Keywords FIRST (fast+reliable), LLM only for ambiguous."""
+        ul = user_msg.lower()
+        # Phase 1: Fast keyword detection (no LLM call)
+        for matcher in (
+            lambda: self._match_evolve_intent(ul, user_msg, skills),
+            lambda: self._match_create_intent(ul, user_msg),
+            lambda: ({"action": "use", "skill": "tts", "input": {"text": user_msg}, "goal": "produce_audio"}
+                     if any(w in ul for w in self._SPEAK_KW) else None),
+            lambda: self._match_stt_intent(ul, skills),
+            lambda: ({"action": "use", "skill": "tts", "input": {"text": user_msg}, "goal": "produce_audio"}
+                     if any(w in ul for w in self._TTS_KW) else None),
+        ):
+            result = matcher()
+            if result is not None:
+                return result
+        # Phase 2: LLM for ambiguous cases
+        return self._classify_via_llm(user_msg, skills)

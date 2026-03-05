@@ -413,6 +413,26 @@ class SmartIntentClassifier:
 
         return IntentResult(action="chat", confidence=0.5, tier="fallback")
 
+    @staticmethod
+    def _aggregate_votes(top, training_data):
+        """Aggregate top similarity matches into votes by (action, skill)."""
+        votes = {}
+        for score, idx in top:
+            ex = training_data[idx]
+            key = (ex.action, ex.skill)
+            if key not in votes:
+                votes[key] = {"score": 0.0, "count": 0, "examples": []}
+            votes[key]["score"] += score
+            votes[key]["count"] += 1
+            votes[key]["examples"].append(ex.phrase[:50])
+        return votes
+
+    _SKILL_INPUT_DEFAULTS = {
+        "tts": lambda msg: {"text": msg},
+        "stt": lambda msg: {"duration_s": 5, "lang": "pl"},
+        "shell": lambda msg: {"command": msg},
+    }
+
     def _tier1_embedding(self, user_msg: str) -> Optional[IntentResult]:
         """Tier 1: Embedding-based similarity matching."""
         self._ensure_embeddings()
@@ -421,57 +441,32 @@ class SmartIntentClassifier:
             return None
 
         try:
-            # Encode user message
             user_vec = self._embedder.encode([user_msg])
             if len(user_vec) == 0:
                 return None
             user_vec = user_vec[0]
 
-            # Find top-K matches
-            scores = []
-            for i, training_vec in enumerate(self._embeddings):
-                sim = self._embedder.similarity(user_vec, training_vec)
-                scores.append((sim, i))
-
+            scores = [(self._embedder.similarity(user_vec, tv), i)
+                      for i, tv in enumerate(self._embeddings)]
             scores.sort(reverse=True)
             top = scores[:5]
 
             if not top or top[0][0] < _INTENT_CONFIG["similarity_min"]:
                 return None
 
-            # Voting: aggregate top matches by (action, skill)
-            votes = {}
-            for score, idx in top:
-                ex = self._training_data[idx]
-                key = (ex.action, ex.skill)
-                if key not in votes:
-                    votes[key] = {"score": 0.0, "count": 0, "examples": []}
-                votes[key]["score"] += score
-                votes[key]["count"] += 1
-                votes[key]["examples"].append(ex.phrase[:50])
-
-            # Best vote
+            votes = self._aggregate_votes(top, self._training_data)
             best_key = max(votes, key=lambda k: votes[k]["score"])
             best = votes[best_key]
-            avg_score = best["score"] / best["count"]
 
-            # Boost confidence if multiple top matches agree
-            confidence = avg_score
+            confidence = best["score"] / best["count"]
             if best["count"] >= 2:
                 confidence = min(confidence + 0.05, 1.0)
             if best["count"] >= 3:
                 confidence = min(confidence + 0.05, 1.0)
 
             action, skill = best_key
-
-            # Build input dict
-            input_data = {}
-            if skill in ("tts",):
-                input_data = {"text": user_msg}
-            elif skill in ("stt",):
-                input_data = {"duration_s": 5, "lang": "pl"}
-            elif skill in ("shell",):
-                input_data = {"command": user_msg}
+            builder = self._SKILL_INPUT_DEFAULTS.get(skill)
+            input_data = builder(user_msg) if builder else {}
 
             return IntentResult(
                 action=action,

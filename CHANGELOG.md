@@ -1,5 +1,23 @@
 ## [Unreleased]
 
+## [1.0.6] - 2026-03-05
+
+### Test
+- Update tests/test_e2e.py
+
+### Other
+- Update cores/v1/auto_repair.py
+- Update cores/v1/core_boot.py
+- Update cores/v1/core_dispatch.py
+- Update cores/v1/drift_detector.py
+- Update cores/v1/evo_engine.py
+- Update cores/v1/evo_journal.py
+- Update cores/v1/garbage_collector.py
+- Update cores/v1/i18n.py
+- Update cores/v1/intent/__init__.py
+- Update cores/v1/intent_engine.py
+- ... and 52 more files
+
 ## [1.0.5] - 2026-03-05
 
 ### Test

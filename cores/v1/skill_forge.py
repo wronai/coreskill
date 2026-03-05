@@ -171,6 +171,16 @@ class SkillForge:
             except Exception:
                 pass
 
+    @staticmethod
+    def _read_json_field(path, field, default=None):
+        """Read a field from a JSON file, returning default on any error."""
+        if not path.exists():
+            return default
+        try:
+            return json.loads(path.read_text()).get(field, default)
+        except (json.JSONDecodeError, OSError):
+            return default
+
     def _load_skill_description(self, name: str) -> str:
         """Load skill description from manifest.json or meta.json."""
         skill_dir = SKILLS_DIR / name
@@ -180,38 +190,31 @@ class SkillForge:
         # Check manifest.json
         manifest = skill_dir / "manifest.json"
         if manifest.exists():
+            data = {}
             try:
                 data = json.loads(manifest.read_text())
-                desc = data.get("description", "")
-                cap = data.get("capability", name)
-                return f"{cap}: {desc}" if desc else cap
             except (json.JSONDecodeError, OSError):
                 pass
+            desc = data.get("description", "")
+            cap = data.get("capability", name)
+            if desc or cap != name:
+                return f"{cap}: {desc}" if desc else cap
 
-        # Check meta.json in latest version
-        for subpath in ("providers",):
-            prov_dir = skill_dir / subpath
-            if prov_dir.is_dir():
-                for provider in sorted(prov_dir.iterdir()):
-                    for vdir in ("stable", "latest"):
-                        meta = provider / vdir / "meta.json"
-                        if meta.exists():
-                            try:
-                                data = json.loads(meta.read_text())
-                                return data.get("description", name)
-                            except (json.JSONDecodeError, OSError):
-                                pass
-
-        # Check legacy v{N} structure
+        # Check meta.json in provider structure then legacy v{N}
+        meta_candidates = []
+        prov_dir = skill_dir / "providers"
+        if prov_dir.is_dir():
+            for provider in sorted(prov_dir.iterdir()):
+                for vdir in ("stable", "latest"):
+                    meta_candidates.append(provider / vdir / "meta.json")
         for vdir in sorted(skill_dir.iterdir(), reverse=True):
             if vdir.is_dir() and vdir.name.startswith("v"):
-                meta = vdir / "meta.json"
-                if meta.exists():
-                    try:
-                        data = json.loads(meta.read_text())
-                        return data.get("description", name)
-                    except (json.JSONDecodeError, OSError):
-                        pass
+                meta_candidates.append(vdir / "meta.json")
+
+        for meta in meta_candidates:
+            desc = self._read_json_field(meta, "description")
+            if desc:
+                return desc
 
         return name
 

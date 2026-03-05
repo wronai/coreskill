@@ -254,47 +254,41 @@ class DriftDetector:
         
         return None
     
+    @staticmethod
+    def _highest_versioned_skill(parent_dir: Path) -> Optional[Path]:
+        """Find skill.py in highest v{N} subdirectory of parent_dir."""
+        versions = []
+        for v in parent_dir.iterdir():
+            if v.is_dir() and v.name.startswith("v"):
+                try:
+                    versions.append((int(v.name[1:]), v))
+                except ValueError:
+                    pass
+        if versions:
+            versions.sort(reverse=True)
+            p = versions[0][1] / "skill.py"
+            if p.exists():
+                return p
+        return None
+
     def _find_latest_version(self, skill_dir: Path) -> Optional[Path]:
         """Find the latest skill.py in a capability directory."""
-        # Check providers structure
         prov_dir = skill_dir / "providers"
         if prov_dir.exists():
             for provider in prov_dir.iterdir():
                 if not provider.is_dir():
                     continue
-                # Try stable, then latest, then highest v{N}
                 for pref in ["stable", "latest"]:
                     p = provider / pref / "skill.py"
                     if p.exists():
                         return p
-                # Try version dirs
-                versions = []
-                for v in provider.iterdir():
-                    if v.is_dir() and v.name.startswith("v"):
-                        try:
-                            versions.append((int(v.name[1:]), v))
-                        except ValueError:
-                            pass
-                if versions:
-                    versions.sort(reverse=True)
-                    p = versions[0][1] / "skill.py"
-                    if p.exists():
-                        return p
+                found = self._highest_versioned_skill(provider)
+                if found:
+                    return found
         else:
-            # Legacy structure
-            versions = []
-            for v in skill_dir.iterdir():
-                if v.is_dir() and v.name.startswith("v"):
-                    try:
-                        versions.append((int(v.name[1:]), v))
-                    except ValueError:
-                        pass
-            if versions:
-                versions.sort(reverse=True)
-                p = versions[0][1] / "skill.py"
-                if p.exists():
-                    return p
-            # Try v1
+            found = self._highest_versioned_skill(skill_dir)
+            if found:
+                return found
             p = skill_dir / "v1" / "skill.py"
             if p.exists():
                 return p

@@ -173,6 +173,71 @@ class SmartIntentClassifier:
             except Exception:
                 pass
 
+    def _keyword_prefilter(self, ul, user_msg):
+        """Stage 0: Fast keyword prefilter. Returns IntentResult or None."""
+        from ..i18n import (
+            ALL_TTS_KEYWORDS, ALL_STT_KEYWORDS, ALL_VOICE_MODE_KEYWORDS,
+            ALL_SEARCH_KEYWORDS, ALL_SHELL_KEYWORDS, ALL_CREATE_KEYWORDS,
+            ALL_EVOLVE_KEYWORDS, ALL_CONFIGURE_KEYWORDS, match_any_keyword,
+        )
+        _KW = "keyword_prefilter"
+        # Table-driven keyword → intent mapping
+        _KEYWORD_RULES = (
+            (ALL_TTS_KEYWORDS,        "use",       "tts"),
+            (ALL_STT_KEYWORDS,        "use",       "stt"),
+            (ALL_VOICE_MODE_KEYWORDS, "use",       "stt"),
+            (ALL_SHELL_KEYWORDS,      "use",       "shell"),
+            (ALL_CREATE_KEYWORDS,     "create",    ""),
+            (ALL_EVOLVE_KEYWORDS,     "evolve",    ""),
+        )
+        # Configure (special: needs target extraction)
+        if match_any_keyword(ul, ALL_CONFIGURE_KEYWORDS):
+            target = self._extract_model_target(user_msg)
+            return IntentResult(action="configure", category="llm", target=target,
+                              confidence=0.95, tier=_KW, goal=user_msg)
+        # Web search (special: exclude openrouter/google model paths)
+        if match_any_keyword(ul, ALL_SEARCH_KEYWORDS):
+            if not ("google" in ul and ("openrouter/google" in ul or "google/gemma" in ul)):
+                return IntentResult(action="use", skill="web_search", confidence=0.95, tier=_KW, goal=user_msg)
+        # Table-driven rules
+        for keywords, action, skill in _KEYWORD_RULES:
+            if match_any_keyword(ul, keywords):
+                return IntentResult(action=action, skill=skill, confidence=0.95, tier=_KW, goal=user_msg)
+        return None
+
+    def _ensemble_classify(self, user_msg, skills, context, embedding_result):
+        """Tier 2: Ensemble voting from embedding + local LLM. Returns IntentResult or None."""
+        self._ensemble.reset()
+        if embedding_result and embedding_result.action != "chat":
+            source = "knn" if "knn" in (embedding_result.tier or "") else "cosine"
+            self._ensemble.add_vote(Vote(
+                action=embedding_result.action, skill=embedding_result.skill,
+                confidence=embedding_result.confidence, source=source))
+        if self._local_llm.available:
+            result_local = self._local_llm.classify(user_msg, skills, context)
+            if result_local and result_local.action != "chat":
+                self._ensemble.add_vote(Vote(
+                    action=result_local.action, skill=result_local.skill,
+                    confidence=result_local.confidence, source="local_llm"))
+        ensemble_result = self._ensemble.decide()
+        if ensemble_result and ensemble_result.confidence >= _INTENT_CONFIG["min_threshold"]:
+            return IntentResult(
+                action=ensemble_result.action,
+                skill=ensemble_result.skill,
+                confidence=ensemble_result.confidence,
+                tier=f"ensemble({ensemble_result.agreement:.0%})",
+                goal=user_msg,
+                all_scores={f"{v.source}:{v.action}:{v.skill}": v.confidence
+                            for v in ensemble_result.votes},
+            )
+        return None
+
+    def _maybe_record(self, result, record):
+        """Record classification if enabled and return the result."""
+        if record and result:
+            self._record_use(result)
+        return result
+
     def classify(self, user_msg: str, skills: list = None,
                  context: str = "", record: bool = True, **kwargs) -> IntentResult:
         """
@@ -191,117 +256,37 @@ class SmartIntentClassifier:
         if not user_msg:
             return IntentResult(action="chat", confidence=1.0, tier="trivial")
         
-        ul = user_msg.lower()
-        
-        # Stage 0: Fast keyword prefilter (high-confidence only)
-        # Uses multilingual keywords from i18n module
-        from ..i18n import (
-            ALL_TTS_KEYWORDS, ALL_STT_KEYWORDS, ALL_VOICE_MODE_KEYWORDS,
-            ALL_SEARCH_KEYWORDS, ALL_SHELL_KEYWORDS, ALL_CREATE_KEYWORDS,
-            ALL_EVOLVE_KEYWORDS, ALL_CONFIGURE_KEYWORDS, match_any_keyword,
-        )
-        
-        # TTS keywords (all European languages)
-        if match_any_keyword(ul, ALL_TTS_KEYWORDS):
-            return IntentResult(action="use", skill="tts", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
-        
-        # Voice/STT keywords (all European languages)
-        if match_any_keyword(ul, ALL_STT_KEYWORDS):
-            return IntentResult(action="use", skill="stt", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
-        
-        # Voice mode (all European languages)
-        if match_any_keyword(ul, ALL_VOICE_MODE_KEYWORDS):
-            return IntentResult(action="use", skill="stt", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
-        
-        # Configure / settings (all European languages) - CHECK THIS FIRST
-        if match_any_keyword(ul, ALL_CONFIGURE_KEYWORDS):
-            target = self._extract_model_target(user_msg)
-            return IntentResult(action="configure", category="llm", target=target,
-                              confidence=0.95, tier="keyword_prefilter", goal=user_msg)
-        
-        # Web search (all European languages)
-        if match_any_keyword(ul, ALL_SEARCH_KEYWORDS):
-            # Avoid matching "google" when part of openrouter/google/... model path
-            if "google" in ul and ("openrouter/google" in ul or "google/gemma" in ul):
-                pass
-            else:
-                return IntentResult(action="use", skill="web_search", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
-        
-        # Shell (all European languages)
-        if match_any_keyword(ul, ALL_SHELL_KEYWORDS):
-            return IntentResult(action="use", skill="shell", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
-        
-        # Create (all European languages)
-        if match_any_keyword(ul, ALL_CREATE_KEYWORDS):
-            return IntentResult(action="create", skill="", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
-        
-        # Evolve/fix (all European languages)
-        if match_any_keyword(ul, ALL_EVOLVE_KEYWORDS):
-            return IntentResult(action="evolve", skill="", confidence=0.95, tier="keyword_prefilter", goal=user_msg)
+        # Stage 0: Fast keyword prefilter
+        kw_result = self._keyword_prefilter(user_msg.lower(), user_msg)
+        if kw_result:
+            return kw_result
 
-        # Tier 1: Embedding similarity
+        # Tier 1: Embedding similarity (fast path if high confidence)
         result = self._embedding_classify(user_msg)
         threshold = self._MODE_THRESHOLDS.get(
             self._embedder._mode or "bow",
             self.CONFIDENCE_THRESHOLD
         )
-        
-        # High-confidence embedding → return directly (fast path)
         if result and result.confidence >= threshold:
-            if record:
-                self._record_use(result)
-            return result
+            return self._maybe_record(result, record)
 
-        # Ensemble voting: collect votes from all available classifiers
-        self._ensemble.reset()
-        
-        # Vote 1: Embedding result (KNN or cosine)
-        if result and result.action != "chat":
-            source = "knn" if "knn" in (result.tier or "") else "cosine"
-            self._ensemble.add_vote(Vote(
-                action=result.action, skill=result.skill,
-                confidence=result.confidence, source=source))
-        
-        # Vote 2: Local LLM (if available)
-        if self._local_llm.available:
-            result_local = self._local_llm.classify(user_msg, skills, context)
-            if result_local and result_local.action != "chat":
-                self._ensemble.add_vote(Vote(
-                    action=result_local.action, skill=result_local.skill,
-                    confidence=result_local.confidence, source="local_llm"))
-        
-        # Decide via ensemble
-        ensemble_result = self._ensemble.decide()
-        if ensemble_result and ensemble_result.confidence >= _INTENT_CONFIG["min_threshold"]:
-            final = IntentResult(
-                action=ensemble_result.action,
-                skill=ensemble_result.skill,
-                confidence=ensemble_result.confidence,
-                tier=f"ensemble({ensemble_result.agreement:.0%})",
-                goal=user_msg,
-                all_scores={f"{v.source}:{v.action}:{v.skill}": v.confidence
-                            for v in ensemble_result.votes},
-            )
-            if record:
-                self._record_use(final)
-            return final
+        # Tier 2: Ensemble voting
+        ensemble = self._ensemble_classify(user_msg, skills, context, result)
+        if ensemble:
+            return self._maybe_record(ensemble, record)
 
         # Tier 3: Remote LLM fallback (last resort)
         if self._llm_client:
             result_remote = self._llm_classify(user_msg, skills, context)
             if result_remote:
-                if record:
-                    self._record_use(result_remote)
-                return result_remote
+                return self._maybe_record(result_remote, record)
 
         # Fallback: use best embedding result even if low confidence
         low_threshold = max(threshold * _INTENT_CONFIG["low_threshold_factor"],
                            _INTENT_CONFIG["min_threshold"])
         if result and result.action != "chat" and result.confidence >= low_threshold:
             result.tier = "embedding_low"
-            if record:
-                self._record_use(result)
-            return result
+            return self._maybe_record(result, record)
 
         # Default: chat
         return IntentResult(action="chat", confidence=0.5, tier="fallback")

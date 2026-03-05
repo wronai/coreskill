@@ -744,6 +744,45 @@ def _test_source_audio(src_name: str, duration: int = 1) -> float:
     return -999.0
 
 
+def _classify_sources(sources):
+    """Classify PulseAudio sources into candidates and monitors."""
+    candidates, monitors = [], []
+    for parts in sources:
+        if len(parts) >= 2:
+            src_name = parts[1]
+            score = _score_source(src_name)
+            if score < 0:
+                monitors.append(src_name)
+            else:
+                candidates.append((score, src_name))
+    candidates.sort(key=lambda x: x[0], reverse=True)
+    return candidates, monitors
+
+
+def _unmute_and_find_best(candidates, diagnostics):
+    """Unmute all candidates and find the one with best audio level."""
+    for _, src_name in candidates:
+        subprocess.run(["pactl", "set-source-mute", src_name, "0"],
+                       capture_output=True, timeout=3)
+        subprocess.run(["pactl", "set-source-volume", src_name, "100%"],
+                       capture_output=True, timeout=3)
+        cpr(C.DIM, f"    PulseAudio input: unmute + 100% → {src_name}")
+        diagnostics.setdefault("fixes_applied", []).append(f"pactl unmute {src_name}")
+
+    if len(candidates) <= 1:
+        return candidates[0][1] if candidates else None
+
+    cpr(C.DIM, f"    Testowanie {len(candidates)} źródeł audio...")
+    best_input, best_db = None, -999.0
+    for score, src_name in candidates:
+        db = _test_source_audio(src_name, duration=1)
+        cpr(C.DIM, f"      {src_name}: {db:.1f}dB (score={score})")
+        if db > best_db:
+            best_db = db
+            best_input = src_name
+    return best_input
+
+
 def try_pulseaudio_fix(diagnostics: dict):
     """Last resort: try PulseAudio source adjustments.
     Prioritizes actual analog input sources over S/PDIF and monitors.
@@ -755,54 +794,17 @@ def try_pulseaudio_fix(diagnostics: dict):
                            capture_output=True, text=True, timeout=5)
         sources = [l.split('\t') for l in r.stdout.strip().split('\n') if l.strip()]
 
-        # Separate real inputs from output monitors and digital inputs
-        candidates = []  # (score, name)
-        monitors = []
-        for parts in sources:
-            if len(parts) >= 2:
-                src_name = parts[1]
-                score = _score_source(src_name)
-                if score < 0:
-                    monitors.append(src_name)
-                    continue
-                candidates.append((score, src_name))
+        candidates, monitors = _classify_sources(sources)
+        best_input = _unmute_and_find_best(candidates, diagnostics)
 
-        # Sort by score descending (best mic first)
-        candidates.sort(key=lambda x: x[0], reverse=True)
-
-        # Unmute all real inputs
-        for _, src_name in candidates:
-            subprocess.run(["pactl", "set-source-mute", src_name, "0"],
-                           capture_output=True, timeout=3)
-            subprocess.run(["pactl", "set-source-volume", src_name, "100%"],
-                           capture_output=True, timeout=3)
-            cpr(C.DIM, f"    PulseAudio input: unmute + 100% → {src_name}")
-            diagnostics.setdefault("fixes_applied", []).append(f"pactl unmute {src_name}")
-
-        # Try each candidate — pick the one with best audio level
-        best_input = None
-        best_db = -999.0
-        if len(candidates) > 1:
-            cpr(C.DIM, f"    Testowanie {len(candidates)} źródeł audio...")
-            for score, src_name in candidates:
-                db = _test_source_audio(src_name, duration=1)
-                cpr(C.DIM, f"      {src_name}: {db:.1f}dB (score={score})")
-                if db > best_db:
-                    best_db = db
-                    best_input = src_name
-        elif candidates:
-            best_input = candidates[0][1]
-
-        # Set the best input as default source
         if best_input:
             subprocess.run(["pactl", "set-default-source", best_input],
                            capture_output=True, timeout=3)
             cpr(C.CYAN, f"    PulseAudio: domyślne źródło → {best_input}")
             diagnostics.setdefault("fixes_applied", []).append(f"pactl default-source {best_input}")
 
-        # Also unmute monitors (low priority)
         for src_name in monitors:
-            if ".monitor" not in src_name:  # Only unmute non-monitors that were rejected
+            if ".monitor" not in src_name:
                 subprocess.run(["pactl", "set-source-mute", src_name, "0"],
                                capture_output=True, timeout=3)
     except Exception:

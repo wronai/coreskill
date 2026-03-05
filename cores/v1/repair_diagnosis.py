@@ -22,65 +22,57 @@ class RepairDiagnosis:
                 names.add(d.name)
         return sorted(names)
     
+    @staticmethod
+    def _has_markdown_artifacts(code):
+        """Check if code contains markdown ``` artifacts outside multiline strings."""
+        in_multiline = False
+        delimiter = None
+        for line in code.split('\n'):
+            stripped = line.strip()
+            if not in_multiline:
+                if stripped.startswith('"""') or stripped.startswith("'''"):
+                    if stripped.count('"""') < 2 and stripped.count("'''") < 2:
+                        in_multiline = True
+                        delimiter = '"""' if '"""' in stripped else "'''"
+                if stripped.startswith('```') and not in_multiline:
+                    return True
+            elif delimiter in stripped:
+                in_multiline = False
+        return False
+
+    def _run_preflight_checks(self, code, path, issues):
+        """Run preflight import and interface checks."""
+        if not (self.sm and hasattr(self.sm, 'preflight')):
+            return
+        result = self.sm.preflight.check_imports(code, path)
+        if not result.ok:
+            issues.append(("imports", result.error, "high"))
+        result = self.sm.preflight.check_interface(code)
+        if not result.ok:
+            issues.append(("interface", result.error, "high"))
+
     def diagnose_skill(self, skill_name):
         """Diagnose all issues for a skill. Returns list of (type, description, severity)."""
-        from .repair_task import RepairTask
-        
         issues = []
         path = self._get_skill_path(skill_name)
-        
         if not path or not path.exists():
             return issues
-        
         try:
             code = path.read_text()
         except Exception as e:
             issues.append(("read_error", f"Cannot read: {e}", "critical"))
             return issues
         
-        # Check 1: Markdown artifacts
-        lines = code.split('\n')
-        in_multiline_string = False
-        string_delimiter = None
-        for line in lines:
-            stripped = line.strip()
-            if not in_multiline_string:
-                if stripped.startswith('"""') or stripped.startswith("'''"):
-                    if stripped.count('"""') < 2 and stripped.count("'''") < 2:
-                        in_multiline_string = True
-                        string_delimiter = '"""' if '"""' in stripped else "'''"
-            else:
-                if string_delimiter in stripped:
-                    in_multiline_string = False
-                    continue
-                continue
-            if stripped.startswith('```') and not in_multiline_string:
-                issues.append(("markdown", "Markdown artifacts in skill code", "critical"))
-                break
-        
-        # Check 2: Syntax
+        if self._has_markdown_artifacts(code):
+            issues.append(("markdown", "Markdown artifacts in skill code", "critical"))
         try:
             ast.parse(code)
         except SyntaxError as e:
             issues.append(("syntax", f"Line {e.lineno}: {e.msg}", "critical"))
             return issues
-        
-        # Check 3: Missing imports
-        if self.sm and hasattr(self.sm, 'preflight'):
-            result = self.sm.preflight.check_imports(code, path)
-            if not result.ok:
-                issues.append(("imports", result.error, "high"))
-        
-        # Check 4: Interface
-        if self.sm and hasattr(self.sm, 'preflight'):
-            result = self.sm.preflight.check_interface(code)
-            if not result.ok:
-                issues.append(("interface", result.error, "high"))
-        
-        # Check 5: Stub detection
+        self._run_preflight_checks(code, path, issues)
         if self.gc and self.gc.is_stub(path):
             issues.append(("stub", "Skill is a stub (no functional code)", "medium"))
-        
         return issues
     
     def _get_skill_path(self, skill_name):

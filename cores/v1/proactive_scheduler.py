@@ -175,6 +175,39 @@ class ProactiveScheduler:
         return "\n".join(lines)
 
 
+def _run_resource_check(adaptive_monitor, logger):
+    """Check resource alerts and log them."""
+    alerts = adaptive_monitor.check_alerts()
+    for metric, level, val in alerts:
+        cpr(C.YELLOW if level == "high" else C.RED,
+            f"[MONITOR] ⚠ {metric} {level}: {val}%")
+        if logger:
+            logger.core("resource_alert", {"metric": metric, "level": level, "value": val})
+
+
+def _run_periodic_gc(gc, logger):
+    """Run garbage collection and log results."""
+    reports = gc.cleanup_all(migrate=False, dry_run=False)
+    total = sum(len(r.get("deleted", [])) for r in reports)
+    if total > 0:
+        cpr(C.DIM, f"[SCHEDULER] GC: usunięto {total} starych wersji")
+        if logger:
+            logger.core("scheduled_gc", {"deleted": total})
+
+
+def _run_health_check(skill_manager, logger):
+    """Check health of all skills and log broken ones."""
+    broken = []
+    for name in list(skill_manager.list_skills().keys()):
+        try:
+            if not skill_manager.check_health(name):
+                broken.append(name)
+        except Exception:
+            broken.append(name)
+    if broken and logger:
+        logger.core("scheduled_health", {"broken": broken})
+
+
 def setup_default_tasks(scheduler: 'ProactiveScheduler',
                         adaptive_monitor=None,
                         gc=None,
@@ -189,43 +222,12 @@ def setup_default_tasks(scheduler: 'ProactiveScheduler',
         skill_manager: SkillManager (optional)
         logger: Logger (optional)
     """
-    # Resource monitoring alerts (every 30s)
     if adaptive_monitor:
-        def _check_resources():
-            alerts = adaptive_monitor.check_alerts()
-            for metric, level, val in alerts:
-                msg = f"[MONITOR] ⚠ {metric} {level}: {val}%"
-                cpr(C.YELLOW if level == "high" else C.RED, msg)
-                if logger:
-                    logger.core("resource_alert", {
-                        "metric": metric, "level": level, "value": val})
-
-        scheduler.register("resource_alerts", _check_resources, interval_s=30)
-
-    # Periodic GC (every hour)
+        scheduler.register("resource_alerts",
+                           lambda: _run_resource_check(adaptive_monitor, logger), interval_s=30)
     if gc:
-        def _periodic_gc():
-            reports = gc.cleanup_all(migrate=False, dry_run=False)
-            total = sum(len(r.get("deleted", [])) for r in reports)
-            if total > 0:
-                cpr(C.DIM, f"[SCHEDULER] GC: usunięto {total} starych wersji")
-                if logger:
-                    logger.core("scheduled_gc", {"deleted": total})
-
-        scheduler.register("periodic_gc", _periodic_gc, interval_s=3600)
-
-    # Health check (every 5 minutes)
+        scheduler.register("periodic_gc",
+                           lambda: _run_periodic_gc(gc, logger), interval_s=3600)
     if skill_manager:
-        def _health_check():
-            broken = []
-            for name in list(skill_manager.list_skills().keys()):
-                try:
-                    ok = skill_manager.check_health(name)
-                    if not ok:
-                        broken.append(name)
-                except Exception:
-                    broken.append(name)
-            if broken and logger:
-                logger.core("scheduled_health", {"broken": broken})
-
-        scheduler.register("health_check", _health_check, interval_s=300)
+        scheduler.register("health_check",
+                           lambda: _run_health_check(skill_manager, logger), interval_s=300)

@@ -341,6 +341,18 @@ class SkillQualityGate:
         report.warnings.append("output_valid:no_success_key")
         return 0.5
 
+    @staticmethod
+    def _has_class_docstrings(tree):
+        """Check if any class in the AST has a docstring."""
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef) and node.body:
+                first = node.body[0]
+                if (isinstance(first, ast.Expr)
+                        and isinstance(first.value, ast.Constant)
+                        and isinstance(first.value.value, str)):
+                    return True
+        return False
+
     def _check_code_quality(self, skill_path: Path,
                             report: QualityReport) -> float:
         """Check 5: Basic code quality metrics."""
@@ -349,12 +361,10 @@ class SkillQualityGate:
             return 0.0
 
         code = skill_path.read_text()
-        lines = code.split("\n")
-        line_count = len(lines)
+        line_count = len(code.split("\n"))
         report.details["line_count"] = line_count
 
         score = 1.0
-
         if line_count < self.MIN_LINES:
             report.warnings.append(f"code_quality:too_short({line_count}L)")
             score -= 0.3
@@ -362,28 +372,15 @@ class SkillQualityGate:
             report.warnings.append(f"code_quality:too_long({line_count}L)")
             score -= 0.2
 
-        # Count functions and classes
         try:
             tree = ast.parse(code)
-            funcs = sum(1 for n in ast.walk(tree)
-                        if isinstance(n, ast.FunctionDef))
-            classes = sum(1 for n in ast.walk(tree)
-                         if isinstance(n, ast.ClassDef))
+            funcs = sum(1 for n in ast.walk(tree) if isinstance(n, ast.FunctionDef))
+            classes = sum(1 for n in ast.walk(tree) if isinstance(n, ast.ClassDef))
             report.details["functions"] = funcs
             report.details["classes"] = classes
-
-            # Check for docstrings in classes
-            has_docstrings = False
-            for node in ast.walk(tree):
-                if isinstance(node, ast.ClassDef):
-                    if (node.body and isinstance(node.body[0], ast.Expr)
-                            and isinstance(node.body[0].value, ast.Constant)
-                            and isinstance(node.body[0].value.value, str)):
-                        has_docstrings = True
-            if not has_docstrings and classes > 0:
+            if classes > 0 and not self._has_class_docstrings(tree):
                 report.warnings.append("code_quality:no_docstrings")
                 score -= 0.1
-
         except SyntaxError:
             score -= 0.5
 

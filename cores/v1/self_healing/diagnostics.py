@@ -198,16 +198,12 @@ class DiagnosticEngine:
                 result = method()
                 checks[name] = result
                 if not result.get("ok"):
-                    desc = result.get("error", "")
-                    if not desc and "missing" in result:
-                        desc = f"Missing: {', '.join(result['missing'])}"
-                    if not desc and "broken" in result:
-                        desc = f"Broken skills: {', '.join(result['broken'])}"
-                    if not desc:
-                        desc = f"{name} check failed"
+                    desc = (result.get("error", "")
+                            or (f"Missing: {', '.join(result['missing'])}" if "missing" in result else "")
+                            or (f"Broken skills: {', '.join(result['broken'])}" if "broken" in result else "")
+                            or f"{name} check failed")
                     issues.append({"check": name, "description": desc,
                                    "critical": result.get("critical", False)})
-                    # Collect auto-fixable commands
                     if result.get("install_cmd"):
                         auto_fixable.append(result["install_cmd"])
             except Exception as e:

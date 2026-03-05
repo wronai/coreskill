@@ -234,89 +234,86 @@ class SelfReflection:
             "error": event.error_msg[:200]
         })
         
+    def _build_diagnostic_checks(self, skill_name):
+        """Build list of diagnostic checks to run. Each: (category, checker, condition, on_fail)."""
+        d = self._diagnostics
+        check_stt = (skill_name == "stt" or not skill_name)
+        checks = [
+            ("llm", d.check_llm_health, True, self._handle_llm_finding),
+            ("system_commands", d.check_system_commands, True, self._handle_syscmd_finding),
+            ("microphone", d.check_microphone, check_stt, self._handle_mic_finding),
+            ("skills", d.check_skills_health, bool(self.sm), self._handle_skills_finding),
+            ("vosk_model", d.check_vosk_model, check_stt, self._handle_vosk_finding),
+            ("tts", d.check_tts_backend, True, self._handle_tts_finding),
+            ("disk", d.check_disk_space, True, self._handle_disk_finding),
+        ]
+        return [(cat, checker, on_fail) for cat, checker, cond, on_fail in checks if cond]
+
+    @staticmethod
+    def _handle_llm_finding(status, rec, auto, user):
+        err = status.get("error", "problem")
+        rec.append(f"LLM: {err}")
+        el = err.lower()
+        if "rate limit" in el:
+            auto.append("poczekaj na reset rate limit")
+        elif "auth" in el:
+            user.append("Sprawdź klucz API w /apikey lub .evo_state.json")
+
+    @staticmethod
+    def _handle_syscmd_finding(status, rec, auto, user):
+        missing = status.get("missing", [])
+        rec.append(f"Brakuje: {', '.join(missing)}")
+        if "sox" in missing or "ffmpeg" in missing:
+            auto.append(f"sudo apt install {' '.join(missing)}")
+
+    @staticmethod
+    def _handle_mic_finding(status, rec, auto, user):
+        rec.append(f"Mikrofon: {status.get('error', 'niedostępny')}")
+        user.append("Podłącz mikrofon lub sprawdź uprawnienia (arecord -l)")
+
+    @staticmethod
+    def _handle_skills_finding(status, rec, auto, user):
+        broken = status.get("broken", [])
+        rec.append(f"Uszkodzone skills: {', '.join(broken)}")
+        auto.append("Automatyczna naprawa na starcie (/fix <skill>)")
+
+    @staticmethod
+    def _handle_vosk_finding(status, rec, auto, user):
+        rec.append("Brak modelu Vosk")
+        auto.append("Pobierz model: curl -L 'https://alphacephei.com/vosk/models/vosk-model-small-pl-0.22.zip'")
+
+    @staticmethod
+    def _handle_tts_finding(status, rec, auto, user):
+        rec.append(f"TTS: {status.get('error', 'problem')}")
+        auto.append("sudo apt install espeak-ng")
+
+    @staticmethod
+    def _handle_disk_finding(status, rec, auto, user):
+        rec.append(f"Mało miejsca: {status.get('free_gb', 0):.1f}GB")
+        user.append("Zwolnij miejsce na dysku")
+
     def run_diagnostic(self, skill_name: str = "", specific_error: str = "") -> DiagnosisReport:
         """Uruchom pełną diagnostykę systemu."""
         cpr(C.CYAN, "[REFLECT] Uruchamiam diagnostykę systemu...")
         
-        findings = []
-        recommendations = []
-        auto_fixable = []
-        requires_user = []
+        findings, recommendations, auto_fixable, requires_user = [], [], [], []
         
-        # 1. Check LLM API status
-        llm_status = self._diagnostics.check_llm_health()
-        findings.append({"category": "llm", **llm_status})
-        if not llm_status["ok"]:
-            recommendations.append(f"LLM: {llm_status.get('error', 'problem')}")
-            if "rate limit" in llm_status.get("error", "").lower():
-                auto_fixable.append("poczekaj na reset rate limit")
-            elif "auth" in llm_status.get("error", "").lower():
-                requires_user.append("Sprawdź klucz API w /apikey lub .evo_state.json")
-                
-        # 2. Check required system commands
-        sys_status = self._diagnostics.check_system_commands()
-        findings.append({"category": "system_commands", **sys_status})
-        if not sys_status["ok"]:
-            missing = sys_status.get("missing", [])
-            recommendations.append(f"Brakuje: {', '.join(missing)}")
-            if "sox" in missing or "ffmpeg" in missing:
-                auto_fixable.append(f"sudo apt install {' '.join(missing)}")
-                
-        # 3. Check microphone availability (if STT used)
-        if skill_name == "stt" or not skill_name:
-            mic_status = self._diagnostics.check_microphone()
-            findings.append({"category": "microphone", **mic_status})
-            if not mic_status["ok"]:
-                recommendations.append(f"Mikrofon: {mic_status.get('error', 'niedostępny')}")
-                requires_user.append("Podłącz mikrofon lub sprawdź uprawnienia (arecord -l)")
-                
-        # 4. Check skills health status
-        if self.sm:
-            skills_status = self._diagnostics.check_skills_health()
-            findings.append({"category": "skills", **skills_status})
-            if not skills_status["ok"]:
-                broken = skills_status.get("broken", [])
-                recommendations.append(f"Uszkodzone skills: {', '.join(broken)}")
-                auto_fixable.append("Automatyczna naprawa na starcie (/fix <skill>)")
-                
-        # 5. Check Vosk model (for STT)
-        if skill_name == "stt" or not skill_name:
-            vosk_status = self._diagnostics.check_vosk_model()
-            findings.append({"category": "vosk_model", **vosk_status})
-            if not vosk_status["ok"]:
-                recommendations.append("Brak modelu Vosk")
-                auto_fixable.append("Pobierz model: curl -L 'https://alphacephei.com/vosk/models/vosk-model-small-pl-0.22.zip'")
-                
-        # 6. Check TTS availability
-        tts_status = self._diagnostics.check_tts_backend()
-        findings.append({"category": "tts", **tts_status})
-        if not tts_status["ok"]:
-            recommendations.append(f"TTS: {tts_status.get('error', 'problem')}")
-            auto_fixable.append("sudo apt install espeak-ng")
+        for category, checker, on_fail in self._build_diagnostic_checks(skill_name):
+            status = checker()
+            findings.append({"category": category, **status})
+            if not status["ok"]:
+                on_fail(status, recommendations, auto_fixable, requires_user)
             
-        # 7. Check disk space
-        disk_status = self._diagnostics.check_disk_space()
-        findings.append({"category": "disk", **disk_status})
-        if not disk_status["ok"]:
-            recommendations.append(f"Mało miejsca: {disk_status.get('free_gb', 0):.1f}GB")
-            requires_user.append("Zwolnij miejsce na dysku")
-            
-        # Określ ogólny status
-        critical_issues = [f for f in findings if not f.get("ok") and f.get("critical", False)]
-        degraded_issues = [f for f in findings if not f.get("ok") and not f.get("critical", False)]
-        
-        if critical_issues:
-            overall = "critical"
-        elif degraded_issues:
-            overall = "degraded"
-        else:
-            overall = "healthy"
+        # Determine overall status
+        has_critical = any(not f.get("ok") and f.get("critical") for f in findings)
+        has_degraded = any(not f.get("ok") and not f.get("critical") for f in findings)
+        overall = "critical" if has_critical else ("degraded" if has_degraded else "healthy")
             
         # Add LLM recommendation if we have specific error
         if specific_error or skill_name:
-            llm_recommendation = self._diagnostics.llm_analyze_error(skill_name, specific_error, findings)
-            if llm_recommendation:
-                recommendations.append(f"[LLM Analysis] {llm_recommendation}")
+            llm_rec = self._diagnostics.llm_analyze_error(skill_name, specific_error, findings)
+            if llm_rec:
+                recommendations.append(f"[LLM Analysis] {llm_rec}")
                 
         report = DiagnosisReport(
             timestamp=datetime.now(timezone.utc).isoformat(),

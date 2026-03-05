@@ -108,6 +108,122 @@ def _init_components(ak, mdl, models, logger, state):
     return llm, sm, pm, evo, intent, provider_sel, resource_mon, identity
 
 
+def _run_boot_repairs(sm, logger, identity):
+    """Run auto-repair, refresh identity, and boot health check."""
+    repairer = AutoRepair(skill_manager=sm, logger=logger, identity=identity)
+    repairer.run_boot_repair()
+    identity.refresh_statuses()
+    report = identity.get_readiness_report()
+    if report["broken"]:
+        cpr(C.YELLOW, f"Nadal uszkodzone: {', '.join(report['broken'])}")
+    if not os.environ.get("EVO_TEXT_ONLY"):
+        sm.boot_health_check()
+    else:
+        cpr(C.DIM, "[Text-only mode: skipping audio health checks]")
+    return repairer
+
+
+def _init_subsystems(llm, sm, evo, logger, state, repairer):
+    """Initialize reflection, metrics, event bus, and adaptive monitor."""
+    from .self_reflection import SelfReflection
+    reflection = SelfReflection(llm, sm, logger, state)
+    evo.set_reflection(reflection)
+    metrics = MetricsCollector()
+    bus = EventBus()
+    bus.wire(
+        reflection=reflection,
+        repairer=repairer,
+        evo=evo,
+        metrics=metrics,
+        quality_gate=sm.quality_gate,
+        logger=logger,
+    )
+    cpr(C.DIM, f"SelfReflection: aktywny | EventBus: {bus.subscriber_count} subscribers")
+    adaptive_mon = AdaptiveResourceMonitor()
+    adaptive_mon.start(interval=5.0)
+    return reflection, metrics, bus, adaptive_mon
+
+
+def _run_drift_scan(drift, logger):
+    """Periodic drift detection across all capabilities."""
+    try:
+        caps = [d.name for d in SKILLS_DIR.iterdir()
+                if d.is_dir() and not d.name.startswith(".")]
+        drifted = [cap for cap in caps if drift.detect(cap).drift_detected]
+        if drifted:
+            cpr(C.YELLOW, f"[DRIFT] Wykryto drift w: {', '.join(drifted)}")
+            if logger:
+                logger.core("scheduled_drift", {"drifted": drifted})
+    except Exception:
+        pass
+
+
+def _run_quality_regression(sm, logger):
+    """Periodic quality regression scan on all skills."""
+    try:
+        regressions = []
+        for name in list(sm.list_skills().keys()):
+            p = sm.skill_path(name)
+            if not p or not p.exists():
+                continue
+            meta_file = p.parent / "meta.json"
+            if meta_file.exists():
+                meta = json.loads(meta_file.read_text())
+                if meta.get("is_regression"):
+                    regressions.append(name)
+        if regressions:
+            cpr(C.YELLOW, f"[QUALITY] Regresje: {', '.join(regressions)}")
+            if logger:
+                logger.core("scheduled_quality_regression", {"skills": regressions})
+    except Exception:
+        pass
+
+
+def _init_scheduler(llm, sm, logger, repairer, metrics, bus, adaptive_mon):
+    """Set up proactive scheduler with default + autonomy tasks."""
+    drift = DriftDetector()
+    scheduler = ProactiveScheduler()
+    gc = EvolutionGarbageCollector()
+    setup_default_tasks(scheduler, adaptive_monitor=adaptive_mon, gc=gc,
+                        skill_manager=sm, logger=logger)
+
+    scheduler.register("drift_scan", lambda: _run_drift_scan(drift, logger), interval_s=600)
+    scheduler.register("quality_regression", lambda: _run_quality_regression(sm, logger), interval_s=1800)
+
+    from .self_healing.diagnostics import DiagnosticEngine
+    diag_engine = DiagnosticEngine(llm_client=llm, skill_manager=sm, logger=logger)
+    autonomy = AutonomyLoop(
+        diagnostics=diag_engine,
+        repairer=repairer,
+        metrics=metrics,
+        event_bus=bus,
+        logger=logger,
+        skill_manager=sm,
+    )
+    scheduler.register("autonomy_cycle", autonomy.scheduled_cycle, interval_s=300)
+    scheduler.start()
+    return scheduler, autonomy
+
+
+def _print_boot_status(llm, sm, sv, provider_sel, logger):
+    """Print boot summary messages."""
+    cpr(C.DIM, f"Model: {llm.model} | Core: {sv.active()} | Tiers: {llm.tier_info()}")
+    sk = sm.list_skills()
+    if sk:
+        cpr(C.GREEN, f"Skills: {', '.join(sk.keys())}")
+    else:
+        cpr(C.YELLOW, "No skills yet. Chat or /create <n>")
+    from .core_dispatch import QUICK_HELP
+    cpr(C.DIM, QUICK_HELP.strip("\n"))
+    caps_with_providers = [c for c in provider_sel.list_capabilities()
+                           if len(provider_sel.list_providers(c)) > 1]
+    if caps_with_providers:
+        cpr(C.DIM, f"Multi-provider skills: {', '.join(caps_with_providers)}")
+    cpr(C.DIM, "/help for commands\n")
+    logger.core("boot", {"model": llm.model, "tier": llm.active_tier,
+                          "tiers": llm.tier_info(), "skills": list(sk.keys())})
+
+
 def boot():
     """Initialize all components. Returns (cmd_ctx, conv, memory) tuple."""
     state = load_state()
@@ -127,143 +243,25 @@ def boot():
     llm, sm, pm, evo, intent, provider_sel, resource_mon, identity = _init_components(
         ak, mdl, models, logger, state)
 
-    # Ensure all config files exist
     cfg_gen = get_config_generator(llm_client=llm)
     cfg_gen.ensure_config_files()
 
-    # Startup: auto-repair (GC + skill fixes + model validation)
-    repairer = AutoRepair(skill_manager=sm, logger=logger, identity=identity)
-    repair_report = repairer.run_boot_repair()
+    repairer = _run_boot_repairs(sm, logger, identity)
 
-    # Refresh identity after repairs
-    identity.refresh_statuses()
-    report = identity.get_readiness_report()
-    if report["broken"]:
-        cpr(C.YELLOW, f"Nadal uszkodzone: {', '.join(report['broken'])}")
-
-    # Multi-level readiness check
-    if not os.environ.get("EVO_TEXT_ONLY"):
-        sm.boot_health_check()
-    else:
-        cpr(C.DIM, "[Text-only mode: skipping audio health checks]")
-
-    # Long-term user memory
     memory = UserMemory(state)
     if memory.directives:
         cpr(C.CYAN, f"📋 Pamięć: {len(memory.directives)} dyrektywa(y) aktywna. /memories aby zobaczyć.")
 
-    # Session configuration layer
     session_cfg = SessionConfig(llm_client=llm, provider_selector=provider_sel)
     cpr(C.DIM, "SessionConfig: gotowy do zmian konfiguracji w locie")
 
-    # Self-reflection system for auto-diagnosis on failures/stalls
-    from .self_reflection import SelfReflection
-    reflection = SelfReflection(llm, sm, logger, state)
-    evo.set_reflection(reflection)
-
-    # Metrics collector
-    metrics = MetricsCollector()
-
-    # Event bus: decouple components
-    bus = EventBus()
-    bus.wire(
-        reflection=reflection,
-        repairer=repairer,
-        evo=evo,
-        metrics=metrics,
-        quality_gate=sm.quality_gate,
-        logger=logger,
-    )
-    cpr(C.DIM, f"SelfReflection: aktywny | EventBus: {bus.subscriber_count} subscribers")
-
-    # Adaptive resource monitor (EWMA trend detection)
-    adaptive_mon = AdaptiveResourceMonitor()
-    adaptive_mon.start(interval=5.0)
-
-    # Drift detector (manifest vs runtime state)
-    drift = DriftDetector()
-
-    # Proactive scheduler (periodic GC, health checks, resource alerts, drift, quality)
-    scheduler = ProactiveScheduler()
-    gc = EvolutionGarbageCollector()
-    setup_default_tasks(scheduler, adaptive_monitor=adaptive_mon, gc=gc,
-                        skill_manager=sm, logger=logger)
-
-    # Additional autonomy tasks
-    def _drift_scan():
-        """Periodic drift detection across all capabilities."""
-        try:
-            caps = [d.name for d in SKILLS_DIR.iterdir()
-                    if d.is_dir() and not d.name.startswith(".")]
-            drifted = []
-            for cap in caps:
-                report = drift.detect(cap)
-                if report.drift_detected:
-                    drifted.append(cap)
-            if drifted:
-                cpr(C.YELLOW, f"[DRIFT] Wykryto drift w: {', '.join(drifted)}")
-                if logger:
-                    logger.core("scheduled_drift", {"drifted": drifted})
-        except Exception:
-            pass
-
-    def _quality_regression_check():
-        """Periodic quality regression scan on all skills."""
-        try:
-            regressions = []
-            for name in list(sm.list_skills().keys()):
-                p = sm.skill_path(name)
-                if not p or not p.exists():
-                    continue
-                meta_file = p.parent / "meta.json"
-                if meta_file.exists():
-                    meta = json.loads(meta_file.read_text())
-                    if meta.get("is_regression"):
-                        regressions.append(name)
-            if regressions:
-                cpr(C.YELLOW, f"[QUALITY] Regresje: {', '.join(regressions)}")
-                if logger:
-                    logger.core("scheduled_quality_regression", {"skills": regressions})
-        except Exception:
-            pass
-
-    scheduler.register("drift_scan", _drift_scan, interval_s=600)
-    scheduler.register("quality_regression", _quality_regression_check, interval_s=1800)
-
-    # Autonomy loop: closed-loop diagnostics → repair → metrics → events
-    from .self_healing.diagnostics import DiagnosticEngine
-    diag_engine = DiagnosticEngine(llm_client=llm, skill_manager=sm, logger=logger)
-    autonomy = AutonomyLoop(
-        diagnostics=diag_engine,
-        repairer=repairer,
-        metrics=metrics,
-        event_bus=bus,
-        logger=logger,
-        skill_manager=sm,
-    )
-    scheduler.register("autonomy_cycle", autonomy.scheduled_cycle, interval_s=300)
-
-    scheduler.start()
+    reflection, metrics, bus, adaptive_mon = _init_subsystems(
+        llm, sm, evo, logger, state, repairer)
+    scheduler, autonomy = _init_scheduler(
+        llm, sm, logger, repairer, metrics, bus, adaptive_mon)
     cpr(C.DIM, f"AdaptiveMonitor: aktywny | Scheduler: {len(scheduler.status())} zadań | AutonomyLoop: aktywny")
 
-    cpr(C.DIM, f"Model: {llm.model} | Core: {sv.active()} | Tiers: {llm.tier_info()}")
-    sk = sm.list_skills()
-    if sk:
-        cpr(C.GREEN, f"Skills: {', '.join(sk.keys())}")
-    else:
-        cpr(C.YELLOW, "No skills yet. Chat or /create <n>")
-
-    from .core_dispatch import QUICK_HELP
-    cpr(C.DIM, QUICK_HELP.strip("\n"))
-
-    caps_with_providers = [c for c in provider_sel.list_capabilities()
-                           if len(provider_sel.list_providers(c)) > 1]
-    if caps_with_providers:
-        cpr(C.DIM, f"Multi-provider skills: {', '.join(caps_with_providers)}")
-
-    cpr(C.DIM, "/help for commands\n")
-    logger.core("boot", {"model": llm.model, "tier": llm.active_tier,
-                          "tiers": llm.tier_info(), "skills": list(sk.keys())})
+    _print_boot_status(llm, sm, sv, provider_sel, logger)
 
     conv = []
     from .core_dispatch import get_commands

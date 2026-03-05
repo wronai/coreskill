@@ -39,10 +39,15 @@ def _load_bootstrap_skill(name):
                     p = vdir / "skill.py"
                     if p.exists():
                         return _load_skill_from_path(p, f"boot_{name}")
-    # Legacy structure: v1/skill.py
-    p = SKILLS_DIR / name / "v1" / "skill.py"
-    if not p.exists(): return None
-    return _load_skill_from_path(p, f"boot_{name}")
+    # Legacy structure: v{N}/skill.py (prefer highest version)
+    skill_dir = SKILLS_DIR / name
+    if skill_dir.is_dir():
+        for vdir in sorted(skill_dir.iterdir(), reverse=True):
+            if vdir.is_dir() and vdir.name.startswith("v"):
+                p = vdir / "skill.py"
+                if p.exists():
+                    return _load_skill_from_path(p, f"boot_{name}")
+    return None
 
 
 def _load_skill_from_path(p, mod_name="skill"):
@@ -117,42 +122,37 @@ class SkillManager:
                 pass
         return False
 
+    def _highest_active_version(self, parent_dir):
+        """Find highest non-rolled-back v{N} in a directory."""
+        vs = [v.name for v in parent_dir.iterdir()
+              if v.is_dir() and v.name.startswith("v") and v.name[1:].isdigit()
+              and not self._is_rolled_back(v)]
+        vs.sort(key=lambda x: int(x[1:]))
+        return vs[-1] if vs else None
+
     def latest_v(self, name):
         d = SKILLS_DIR / name
         if not d.exists(): return None
 
-        # New structure: check active provider
-        provider = self._active_provider(name)
-        if provider:
-            prov_dir = d / "providers" / provider
-            if prov_dir.is_dir():
-                # Prefer stable > latest > highest v{N}
-                if (prov_dir / "stable" / "skill.py").exists():
-                    return "stable"
-                if (prov_dir / "latest" / "skill.py").exists():
-                    return "latest"
-                vs = []
-                for v in prov_dir.iterdir():
-                    if v.is_dir() and v.name.startswith("v") and v.name[1:].isdigit():
-                        if not self._is_rolled_back(v):
-                            vs.append(v.name)
-                vs.sort(key=lambda x: int(x[1:]))
-                return vs[-1] if vs else None
+        # New structure: check active provider (only if providers/ dir exists)
+        if (d / "providers").is_dir():
+            provider = self._active_provider(name)
+            if provider:
+                prov_dir = d / "providers" / provider
+                if prov_dir.is_dir():
+                    for pref in ("stable", "latest"):
+                        if (prov_dir / pref / "skill.py").exists():
+                            return pref
+                    return self._highest_active_version(prov_dir)
 
         # Legacy structure
-        vs = []
-        for v in d.iterdir():
-            if v.is_dir() and v.name.startswith("v") and v.name[1:].isdigit():
-                if not self._is_rolled_back(v):
-                    vs.append(v.name)
-        vs.sort(key=lambda x: int(x[1:]))
-        return vs[-1] if vs else None
+        return self._highest_active_version(d)
 
     def _active_provider(self, name):
         """Get the active provider for a capability. Returns provider name or None."""
         if self.provider_selector:
             providers = self.provider_selector.list_providers(name)
-            if providers and providers != ["default"]:
+            if providers:
                 return self.provider_selector.select(name)
         return None
 

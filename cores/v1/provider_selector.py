@@ -128,6 +128,15 @@ class ProviderSelector:
         meta = self.load_meta(capability, provider)
         return ProviderInfo(provider, meta)
 
+    def _find_first_runnable(self, capability, candidates):
+        """Return the first runnable provider from candidates, or None."""
+        for pname in candidates:
+            info = self.get_provider_info(capability, pname)
+            can_run, _ = self._check_runnable(info)
+            if can_run:
+                return pname
+        return None
+
     def select(self, capability: str,
                prefer: str = "quality",
                force: Optional[str] = None,
@@ -147,13 +156,11 @@ class ProviderSelector:
             providers = self.list_providers(capability)
             if force in providers:
                 return force
-            # Force requested but not available
             return self._fallback(capability)
 
         providers = self.list_providers(capability)
         if not providers:
             return "default"
-
         if len(providers) == 1:
             return providers[0]
 
@@ -161,43 +168,27 @@ class ProviderSelector:
         strategy = manifest.get("selection_strategy", "best_available")
         default_provider = manifest.get("default_provider")
 
-        # Prefer default if runnable (deterministic).
         if strategy == "prefer_default" and default_provider and default_provider in providers:
-            info = self.get_provider_info(capability, default_provider)
-            can_run, _ = self._check_runnable(info)
-            if can_run:
+            if self._find_first_runnable(capability, [default_provider]):
                 return default_provider
 
-        # Score each provider
+        # Score each runnable provider
         scored = []
         for pname in providers:
             info = self.get_provider_info(capability, pname)
-            can_run, reason = self._check_runnable(info)
+            can_run, _ = self._check_runnable(info)
             if can_run:
-                score = self._score(info, prefer, context)
-                scored.append((pname, score, info))
+                scored.append((pname, self._score(info, prefer, context)))
 
-        if not scored:
-            # Nothing can run — only return manifest default if it is runnable.
-            # Otherwise pick the first runnable provider (if any), else return a
-            # deterministic fallback.
-            if default_provider and default_provider in providers:
-                info = self.get_provider_info(capability, default_provider)
-                can_run, _ = self._check_runnable(info)
-                if can_run:
-                    return default_provider
+        if scored:
+            scored.sort(key=lambda x: x[1], reverse=True)
+            return scored[0][0]
 
-            for pname in providers:
-                info = self.get_provider_info(capability, pname)
-                can_run, _ = self._check_runnable(info)
-                if can_run:
-                    return pname
-
-            return default_provider or providers[0]
-
-        # Sort by score descending
-        scored.sort(key=lambda x: x[1], reverse=True)
-        return scored[0][0]
+        # Nothing scored — try default, then first runnable, then fallback
+        if default_provider and self._find_first_runnable(capability, [default_provider]):
+            return default_provider
+        first = self._find_first_runnable(capability, providers)
+        return first or default_provider or providers[0]
 
     def _check_runnable(self, info: ProviderInfo) -> tuple:
         """Check if provider can run on this system."""
@@ -246,38 +237,33 @@ class ProviderSelector:
         manifest = self.load_manifest(capability)
         return manifest.get("default_provider", "default")
 
+    @staticmethod
+    def _resolve_best_skill(base_dir, version=None):
+        """Resolve best skill.py in base_dir: explicit version > stable > latest > highest v{N}."""
+        if version:
+            sp = base_dir / version / "skill.py"
+            return sp if sp.exists() else None
+        for pref in ("stable", "latest"):
+            sp = base_dir / pref / "skill.py"
+            if sp.exists():
+                return sp
+        versions = sorted(v.name for v in base_dir.iterdir()
+                          if v.is_dir() and v.name.startswith("v"))
+        if versions:
+            sp = base_dir / versions[-1] / "skill.py"
+            return sp if sp.exists() else None
+        return None
+
     def get_skill_path(self, capability: str, provider: str,
                        version: Optional[str] = None) -> Optional[Path]:
         """Get the actual skill.py path for a capability/provider/version."""
-        # New structure
         prov_dir = self.skills_dir / capability / "providers" / provider
         if prov_dir.is_dir():
-            if version:
-                sp = prov_dir / version / "skill.py"
-                return sp if sp.exists() else None
-            # Prefer stable > latest > highest v{N}
-            for pref in ("stable", "latest"):
-                sp = prov_dir / pref / "skill.py"
-                if sp.exists():
-                    return sp
-            versions = sorted([
-                v.name for v in prov_dir.iterdir()
-                if v.is_dir() and v.name.startswith("v")
-            ])
-            if versions:
-                return prov_dir / versions[-1] / "skill.py"
+            return self._resolve_best_skill(prov_dir, version)
 
-        # Legacy structure: skills/capability/v{N}/skill.py
         if provider == "default":
             cap_dir = self.skills_dir / capability
-            versions = sorted([
-                v.name for v in cap_dir.iterdir()
-                if v.is_dir() and v.name.startswith("v")
-            ])
-            if versions:
-                target = version if version and version in versions else versions[-1]
-                sp = cap_dir / target / "skill.py"
-                return sp if sp.exists() else None
+            return self._resolve_best_skill(cap_dir, version)
 
         return None
 

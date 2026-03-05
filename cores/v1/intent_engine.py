@@ -409,45 +409,48 @@ class IntentEngine:
     # These are NOT intent classifiers — they extract parameters
     # AFTER the ML classifier has decided the intent.
 
+    _CMD_PREFIXES = ("uruchom ", "wykonaj ", "odpal ", "run ", "exec ")
+    _CMD_STARTS = ("sudo", "apt", "pip", "ls", "cat", "grep", "find",
+                   "echo", "cd", "mkdir", "cp", "mv", "chmod", "systemctl",
+                   "docker", "git", "curl", "wget", "npm", "yarn")
+
+    @staticmethod
+    def _extract_cmd_from_conversation(conv, cmd_starts):
+        """Extract shell command from recent conversation backticks or $ lines."""
+        for m in reversed(conv[-6:]):
+            content = m.get("content", "")
+            for c in re.findall(r'`([^`]+)`', content):
+                c = c.strip()
+                if any(c.startswith(p) for p in cmd_starts):
+                    return c
+            for line in content.split("\n"):
+                line = line.strip()
+                if line.startswith("$ "):
+                    return line[2:]
+        return None
+
     def _extract_shell_command(self, msg, conv=None):
         """Extract actual shell command from message or context."""
         ul = msg.lower()
 
-        # Direct prefixes
-        for prefix in ("uruchom ", "wykonaj ", "odpal ", "run ", "exec "):
+        for prefix in self._CMD_PREFIXES:
             if prefix in ul:
-                idx = ul.index(prefix) + len(prefix)
-                cmd = msg[idx:].strip().strip('"').strip("'")
+                cmd = msg[ul.index(prefix) + len(prefix):].strip().strip('"').strip("'")
                 if cmd:
                     return cmd
 
-        # Common system patterns
         if any(w in ul for w in ("zaktualizuj", "aktualizuj")):
             if "system" in ul or "pakiet" in ul:
                 return "sudo apt update && sudo apt upgrade -y"
             if "pip" in ul:
                 return "pip list --outdated"
 
-        # Direct commands (ls, apt, pip, sudo, etc.)
         first_word = ul.split()[0] if ul.split() else ""
-        _cmd_starts = ("sudo", "apt", "pip", "ls", "cat", "grep", "find",
-                       "echo", "cd", "mkdir", "cp", "mv", "chmod", "systemctl",
-                       "docker", "git", "curl", "wget", "npm", "yarn")
-        if first_word in _cmd_starts:
+        if first_word in self._CMD_STARTS:
             return msg.strip()
 
-        # From recent conversation (backtick commands)
         if conv:
-            for m in reversed(conv[-6:]):
-                content = m.get("content", "")
-                for c in re.findall(r'`([^`]+)`', content):
-                    c = c.strip()
-                    if any(c.startswith(p) for p in _cmd_starts):
-                        return c
-                for line in content.split("\n"):
-                    line = line.strip()
-                    if line.startswith("$ "):
-                        return line[2:]
+            return self._extract_cmd_from_conversation(conv, self._CMD_STARTS)
 
         return None
 
@@ -466,6 +469,36 @@ class IntentEngine:
                 return re.sub(r'[^a-z0-9_]', '_', clean)
         return None
 
+    _SKILL_HINTS = {
+        "kalkulator": ("policz", "oblicz", "kalkulat", "ile wynosi", "calculate", "math"),
+        "password_generator": ("hasło", "haslo", "password", "wygeneruj has"),
+        "text_processor": ("policz słow", "policz slow", "zlicz", "word count",
+                           "count word", "ile słów", "ile slow"),
+        "echo": ("echo ",),
+        "shell": ("uruchom", "wykonaj", "odpal", "run ", "exec ",
+                  "sudo ", "apt ", "pip ", "systemctl ", "docker "),
+        "time": ("godzina", "czas", "time", "data", "zegar"),
+        "weather": ("pogoda", "weather", "temperatura"),
+        "network_info": ("sieć", "siec", "network", "ip ", "ping"),
+        "system_info": ("system", "info o system", "cpu", "ram", "dysk"),
+        "web_search": ("szukaj", "wyszukaj", "search", "google", "znajdź", "znajdz"),
+        "json_validator": ("json", "waliduj", "validate"),
+    }
+
+    def _match_by_hints(self, ul, skills):
+        """Match message against skill keyword hints. Returns skill name or None."""
+        for sk_name, keywords in self._SKILL_HINTS.items():
+            if sk_name in skills and any(kw in ul for kw in keywords):
+                return sk_name
+        # Match by trailing underscore variant
+        for sk in skills:
+            base = sk.rstrip("_")
+            if base != sk and len(base) >= 4:
+                hints = self._SKILL_HINTS.get(base, ())
+                if hints and any(kw in ul for kw in hints):
+                    return sk
+        return None
+
     def _match_existing_skill(self, msg, skills):
         """Match user message to an existing skill by name or keyword hints.
         Returns skill name or None. Used as fallback when ML classifier is uncertain."""
@@ -479,44 +512,14 @@ class IntentEngine:
 
         # 1. Direct skill name match (e.g., "kalkulator", "echo", "shell")
         for sk in skills:
-            # Skip very short names to avoid false positives
             if len(sk) < 3:
                 continue
-            # Exact or substring match of skill name in message
             sk_lower = sk.lower().replace("_", " ")
             if sk_lower in ul or sk.lower() in ul:
                 return sk
 
-        # 2. Action-keyword hints → skill mapping
-        # These map common Polish/English action words to likely skills
-        _HINTS = {
-            "kalkulator": ("policz", "oblicz", "kalkulat", "ile wynosi", "calculate", "math"),
-            "password_generator": ("hasło", "haslo", "password", "wygeneruj has"),
-            "text_processor": ("policz słow", "policz slow", "zlicz", "word count",
-                               "count word", "ile słów", "ile slow"),
-            "echo": ("echo ",),
-            "shell": ("uruchom", "wykonaj", "odpal", "run ", "exec ",
-                      "sudo ", "apt ", "pip ", "systemctl ", "docker "),
-            "time": ("godzina", "czas", "time", "data", "zegar"),
-            "weather": ("pogoda", "weather", "temperatura"),
-            "network_info": ("sieć", "siec", "network", "ip ", "ping"),
-            "system_info": ("system", "info o system", "cpu", "ram", "dysk"),
-            "web_search": ("szukaj", "wyszukaj", "search", "google", "znajdź", "znajdz"),
-            "json_validator": ("json", "waliduj", "validate"),
-        }
-        for sk_name, keywords in _HINTS.items():
-            if sk_name in skills and any(kw in ul for kw in keywords):
-                return sk_name
-
-        # 3. Match by text_processor_ variant (trailing underscore in name)
-        for sk in skills:
-            base = sk.rstrip("_")
-            if base != sk and len(base) >= 4:
-                hints = _HINTS.get(base, ())
-                if hints and any(kw in ul for kw in hints):
-                    return sk
-
-        return None
+        # 2. Action-keyword hints
+        return self._match_by_hints(ul, skills)
 
     def _detect_evolve_target(self, msg, skills):
         """Detect which skill to evolve from message."""
@@ -526,6 +529,21 @@ class IntentEngine:
                 return sk
         return None
 
+    _QUALITY_MODIFIERS = (
+        ("better", ("lepszy", "lepsza", "better", "najlepszy", "best", "premium", "pro", "jakość")),
+        ("worse",  ("gorszy", "gorsza", "worse", "simpler", "prostszy", "gorszej")),
+        ("faster", ("szybszy", "szybsza", "szybciej", "faster", "fast", "speed")),
+        ("free",   ("darmowy", "free", "tańszy", "cheap")),
+        ("local",  ("lokalny", "local", "offline")),
+    )
+    _VOICE_ON_KW = ("włącz", "enable", "on", "aktywuj")
+    _VOICE_OFF_KW = ("wyłącz", "wyłacz", "disable", "off", "dezaktywuj", "mute")
+    _LLM_PATTERNS = (
+        r'(gemini[-]?[a-z0-9.]*)', r'(gpt[-]?[0-9.]*)', r'(claude[-]?[a-z0-9.]*)',
+        r'(llama[-]?[a-z0-9._]*)', r'(qwen[-]?[0-9.]*)',
+    )
+    _AUDIO_PROVIDERS = ("coqui", "piper", "espeak", "pyttsx3", "whisper", "vosk", "faster-whisper")
+
     def _extract_config_target(self, msg: str, category: str) -> str:
         """Extract configuration target from message.
         
@@ -534,52 +552,31 @@ class IntentEngine:
         import re
         ul = msg.lower()
         
-        # Quality modifiers
-        if any(w in ul for w in ("lepszy", "lepsza", "better", "najlepszy", "best", "premium", "pro", "jakość")):
-            return "better"
-        if any(w in ul for w in ("gorszy", "gorsza", "worse", "simpler", "prostszy", "gorszej")):
-            return "worse"
-        if any(w in ul for w in ("szybszy", "szybsza", "szybciej", "faster", "fast", "speed")):
-            return "faster"
-        if any(w in ul for w in ("darmowy", "free", "tańszy", "cheap")):
-            return "free"
-        if any(w in ul for w in ("lokalny", "local", "offline")):
-            return "local"
+        # Quality modifiers (table-driven)
+        for result, keywords in self._QUALITY_MODIFIERS:
+            if any(w in ul for w in keywords):
+                return result
         
         # Voice on/off
         if category == "voice":
-            if any(w in ul for w in ("włącz", "enable", "on", "aktywuj")):
+            if any(w in ul for w in self._VOICE_ON_KW):
                 return "on"
-            if any(w in ul for w in ("wyłącz", "wyłacz", "disable", "off", "dezaktywuj", "mute")):
+            if any(w in ul for w in self._VOICE_OFF_KW):
                 return "off"
         
-        # Specific model/provider names (extract from message)
-        # LLM models
+        # LLM model extraction
         if category == "llm":
-            # Prefer explicit vendor/model patterns e.g. "qwen/qwen3.5-flash-02-23"
-            # Allow optional openrouter prefix.
             m = re.search(r'(?:openrouter/)?([a-z0-9_.-]+/[a-z0-9_.:-]+)', ul)
             if m:
                 return m.group(1)
-
-        patterns = [
-            r'(gemini[-]?[a-z0-9.]*)',
-            r'(gpt[-]?[0-9.]*)',
-            r'(claude[-]?[a-z0-9.]*)',
-            r'(llama[-]?[a-z0-9._]*)',
-            r'(qwen[-]?[0-9.]*)',
-        ]
-        if category == "llm":
-            for p in patterns:
+            for p in self._LLM_PATTERNS:
                 m = re.search(p, ul)
                 if m:
                     return m.group(1)
         
-        # TTS/STT providers - extract any word that could be a provider name
+        # TTS/STT provider names
         if category in ("tts", "stt"):
-            # Common provider names
-            providers = ["coqui", "piper", "espeak", "pyttsx3", "whisper", "vosk", "faster-whisper"]
-            for p in providers:
+            for p in self._AUDIO_PROVIDERS:
                 if p in ul:
                     return p
         

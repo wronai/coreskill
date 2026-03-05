@@ -226,47 +226,27 @@ class EvoEngine:
             self._run_auto_reflection("unhandled")
         return None
 
-    def _run_auto_reflection(self, trigger_skill: str):
-        """Run auto-reflection after 3 consecutive failures or unhandled events.
-        Diagnoses system, attempts auto-fixes, logs results to journal."""
-        ctx = self.failure_tracker.consume_failures()
-        n_fail = len(ctx["failures"])
-        n_unhandled = len(ctx["unhandled"])
-        reflection_num = ctx["reflection_number"]
-
-        cpr(C.YELLOW, f"\n[REFLECT] === Auto-refleksja #{reflection_num} ===")
-        cpr(C.YELLOW, f"[REFLECT] Powód: {n_fail} błędów, {n_unhandled} nieobsłużonych")
-        self.log.core("auto_reflection_trigger", {
-            "reflection_num": reflection_num,
-            "failures": n_fail, "unhandled": n_unhandled,
-            "trigger": trigger_skill,
-        })
-
-        # Determine which skill to focus diagnostics on
-        focus_skill = ""
-        last_error = ""
+    @staticmethod
+    def _log_failure_summary(ctx):
+        """Print failure summary and return (focus_skill, last_error)."""
+        focus_skill, last_error = "", ""
         if ctx["failures"]:
-            # Most recent failing skill
             focus_skill = ctx["failures"][-1].get("skill", "")
             last_error = ctx["failures"][-1].get("error", "")
-            # Show failure summary
             skill_counts = {}
             for f in ctx["failures"]:
                 s = f.get("skill", "?")
                 skill_counts[s] = skill_counts.get(s, 0) + 1
             for s, c in skill_counts.items():
                 cpr(C.DIM, f"[REFLECT]   {s}: {c}x failed")
-
         if ctx["unhandled"]:
-            cpr(C.DIM, f"[REFLECT]   {n_unhandled} wiadomości bez reakcji")
+            cpr(C.DIM, f"[REFLECT]   {len(ctx['unhandled'])} wiadomości bez reakcji")
             for u in ctx["unhandled"][-2:]:
-                cpr(C.DIM, f"[REFLECT]     ‘{u['msg'][:60]}’")
+                cpr(C.DIM, f"[REFLECT]     '{u['msg'][:60]}'")
+        return focus_skill, last_error
 
-        # Try event bus path first (decoupled)
-        overall_status = "unknown"
-        fixes_applied = []
-        requires_user = []
-        bus_handled = False
+    def _try_event_bus_reflection(self, trigger_skill, ctx, reflection_num):
+        """Try event bus for reflection. Returns (handled, status, fixes, requires_user)."""
         try:
             from .event_bus import reflection_needed, ReflectionNeededEvent, _HAS_BLINKER
             if _HAS_BLINKER and reflection_needed.receivers:
@@ -276,16 +256,36 @@ class EvoEngine:
                     unhandled=ctx["unhandled"],
                     reflection_number=reflection_num,
                 )
-                results = reflection_needed.send(self, event=evt)
-                for _, diag_result in results:
+                for _, diag_result in reflection_needed.send(self, event=evt):
                     if diag_result:
-                        overall_status = diag_result.overall_status
-                        fixes_applied = diag_result.fixes_applied
-                        requires_user = diag_result.requires_user
-                        bus_handled = True
-                        break
+                        return True, diag_result.overall_status, diag_result.fixes_applied, diag_result.requires_user
         except ImportError:
             pass
+        return False, "unknown", [], []
+
+    def _run_auto_reflection(self, trigger_skill: str):
+        """Run auto-reflection after 3 consecutive failures or unhandled events.
+        Diagnoses system, attempts auto-fixes, logs results to journal."""
+        ctx = self.failure_tracker.consume_failures()
+        reflection_num = ctx["reflection_number"]
+
+        cpr(C.YELLOW, f"\n[REFLECT] === Auto-refleksja #{reflection_num} ===")
+        cpr(C.YELLOW, f"[REFLECT] Powód: {len(ctx['failures'])} błędów, {len(ctx['unhandled'])} nieobsłużonych")
+        self.log.core("auto_reflection_trigger", {
+            "reflection_num": reflection_num,
+            "failures": len(ctx["failures"]), "unhandled": len(ctx["unhandled"]),
+            "trigger": trigger_skill,
+        })
+
+        focus_skill, last_error = self._log_failure_summary(ctx)
+
+        if ctx["unhandled"]:
+            cpr(C.DIM, f"[REFLECT]   {len(ctx['unhandled'])} wiadomości bez reakcji")
+            for u in ctx["unhandled"][-2:]:
+                cpr(C.DIM, f"[REFLECT]     ‘{u['msg'][:60]}’")
+
+        bus_handled, overall_status, fixes_applied, requires_user = \
+            self._try_event_bus_reflection(trigger_skill, ctx, reflection_num)
 
         # Fallback: direct call (backward compat when bus not wired)
         if not bus_handled and self.reflection:
@@ -518,13 +518,59 @@ class EvoEngine:
         return {"type": "success", "skill": skill_name,
                 "result": result, "goal": goal}
 
+    def _try_auto_fix_imports(self, skill_name):
+        """Try to auto-fix imports for a skill. Returns True if fixed."""
+        sp = self.sm.skill_path(skill_name)
+        if not (sp and sp.exists()):
+            return False
+        code = sp.read_text()
+        fixed = self.sm.preflight.auto_fix_imports(code)
+        if fixed != code:
+            sp.write_text(fixed)
+            cpr(C.GREEN, f"[PIPE] Auto-fixed imports, retrying...")
+            self.log.skill(skill_name, "auto_fix_imports", {})
+            return True
+        return False
+
+    def _auto_install_deps(self, skill_name, missing):
+        """Auto-install missing pip dependencies."""
+        if not missing:
+            return
+        cpr(C.YELLOW, f"[PIPE] Missing deps: {', '.join(missing)}")
+        import subprocess as _sp
+        for pkg in missing:
+            cpr(C.DIM, f"[PIPE] Auto-install: pip install {pkg}...")
+            try:
+                r = _sp.run(
+                    [sys.executable, "-m", "pip", "install", pkg, "-q"],
+                    capture_output=True, text=True, timeout=60)
+                if r.returncode == 0:
+                    cpr(C.GREEN, f"[PIPE] ✓ Installed {pkg}")
+                    self.log.skill(skill_name, "auto_install_dep", {"pkg": pkg})
+                else:
+                    cpr(C.DIM, f"[PIPE] pip install {pkg} failed: {r.stderr[:80]}")
+            except Exception as e:
+                cpr(C.DIM, f"[PIPE] pip install {pkg} error: {e}")
+
+    def _diagnose_with_fallback(self, skill_name, error_info):
+        """Run diagnosis, repairing devops tool if it itself fails."""
+        diag = self.sm.diagnose_skill(skill_name)
+        if diag.get("phase") in ("diagnostic_tool_failed", "diagnostic_validation_error"):
+            cpr(C.YELLOW, f"[PIPE] Diagnostic tool failed: {diag.get('error', 'unknown')}")
+            cpr(C.CYAN, f"[PIPE] Attempting to repair devops diagnostic tool...")
+            ok, msg = self.sm.smart_evolve("devops", "Fix validation error - add proper input validation for empty path parameter")
+            if ok:
+                cpr(C.GREEN, f"[PIPE] Repaired devops: {msg}")
+            cpr(C.DIM, f"[PIPE] Retrying '{skill_name}' with fallback diagnosis...")
+            diag = {"phase": "runtime", "error": error_info}
+        return diag
+
     def _exec_handle_failure(self, skill_name, error_info, seen_errors,
                             attempt, max_retries, effective_inp, user_msg,
                             history_avoid, version):
         """Handle failure outcome. Returns True if should retry."""
         cpr(C.YELLOW, f"[PIPE] ✗ Failed: {error_info[:100]}")
 
-        # Check for repeated errors
         err_key = error_info[:80]
         if err_key in seen_errors:
             cpr(C.RED, f"[PIPE] Same error repeated, stopping.")
@@ -534,71 +580,25 @@ class EvoEngine:
         if attempt >= max_retries:
             return False
 
-        # Record in guard
         self.evo_guard.record_error(skill_name, error_info, version)
 
-        # Journal-enhanced reflection
         j_refl = self.journal.reflect(skill_name, {"error": error_info}, error=error_info)
         suggested = j_refl.get("suggested_strategy", "")
         avoid = j_refl.get("avoid_patterns", [])
         cpr(C.DIM, f"[JOURNAL] Sugestia: {suggested} | "
                    f"Unikaj: {'; '.join(avoid[:2]) if avoid else 'brak'}")
 
-        # Determine strategy
         strategy = self.evo_guard.suggest_strategy(skill_name, error_info)
         effective_strategy = suggested if suggested and suggested != "normal_evolve" else strategy["strategy"]
         cpr(C.DIM, f"[PIPE] Reflect: strategy={effective_strategy}")
 
-        # Auto-fix imports
-        if effective_strategy == "auto_fix_imports":
-            sp = self.sm.skill_path(skill_name)
-            if sp and sp.exists():
-                code = sp.read_text()
-                fixed = self.sm.preflight.auto_fix_imports(code)
-                if fixed != code:
-                    sp.write_text(fixed)
-                    cpr(C.GREEN, f"[PIPE] Auto-fixed imports, retrying...")
-                    self.log.skill(skill_name, "auto_fix_imports", {})
-                    return True
+        if effective_strategy == "auto_fix_imports" and self._try_auto_fix_imports(skill_name):
+            return True
 
-        # Diagnose and evolve
         cpr(C.DIM, f"[PIPE] Diagnose + evolve '{skill_name}'...")
-        diag = self.sm.diagnose_skill(skill_name)
+        diag = self._diagnose_with_fallback(skill_name, error_info)
+        self._auto_install_deps(skill_name, diag.get("missing", []))
 
-        # Check if diagnostic tool itself failed
-        if diag.get("phase") in ("diagnostic_tool_failed", "diagnostic_validation_error"):
-            cpr(C.YELLOW, f"[PIPE] Diagnostic tool failed: {diag.get('error', 'unknown')}")
-            cpr(C.CYAN, f"[PIPE] Attempting to repair devops diagnostic tool...")
-            # Try to repair devops itself
-            ok, msg = self.sm.smart_evolve("devops", "Fix validation error - add proper input validation for empty path parameter")
-            if ok:
-                cpr(C.GREEN, f"[PIPE] Repaired devops: {msg}")
-            # Retry original skill with fallback diagnosis
-            cpr(C.DIM, f"[PIPE] Retrying '{skill_name}' with fallback diagnosis...")
-            # Use raw test as fallback
-            diag = {"phase": "runtime", "error": error_info}
-
-        missing = diag.get("missing", [])
-
-        # Auto-install missing deps
-        if missing:
-            cpr(C.YELLOW, f"[PIPE] Missing deps: {', '.join(missing)}")
-            import subprocess as _sp
-            for pkg in missing:
-                cpr(C.DIM, f"[PIPE] Auto-install: pip install {pkg}...")
-                try:
-                    r = _sp.run(
-                        [sys.executable, "-m", "pip", "install", pkg, "-q"],
-                        capture_output=True, text=True, timeout=60)
-                    if r.returncode == 0:
-                        cpr(C.GREEN, f"[PIPE] ✓ Installed {pkg}")
-                        self.log.skill(skill_name, "auto_install_dep", {"pkg": pkg})
-                    else:
-                        cpr(C.DIM, f"[PIPE] pip install {pkg} failed: {r.stderr[:80]}")
-                except Exception as e:
-                    cpr(C.DIM, f"[PIPE] pip install {pkg} error: {e}")
-
-        # Build evolve context
         evolve_ctx = error_info
         evolve_ctx += f"\nActual input: {str(effective_inp)[:200]}"
         evolve_ctx += ("\nIMPORTANT: params always has 'text' key. "
@@ -652,6 +652,38 @@ class EvoEngine:
 
         return {"type": "failed", "skill": skill_name, "goal": goal}
 
+    def _try_single_provider(self, skill_name, alt_provider, inp, goal, user_msg):
+        """Try loading and executing a single provider. Returns outcome dict or None."""
+        sp = self.sm.provider_selector.get_skill_path(skill_name, alt_provider)
+        if not sp or not sp.exists():
+            cpr(C.DIM, f"[CHAIN] {alt_provider}: no skill file, skipping")
+            return None
+        try:
+            import importlib.util
+            spec = importlib.util.spec_from_file_location(
+                f"chain_{skill_name}_{alt_provider}", str(sp))
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            for attr in dir(mod):
+                obj = getattr(mod, attr)
+                if isinstance(obj, type) and hasattr(obj, "execute") and attr != "type":
+                    result = obj().execute(inp or {})
+                    validation = self._validate_result(skill_name,
+                        {"success": True, "result": result}, goal, user_msg)
+                    if validation["verdict"] in ("success", "partial"):
+                        self.provider_chain.record_success(skill_name, alt_provider)
+                        cpr(C.GREEN, f"[CHAIN] ✓ {alt_provider} succeeded")
+                        self.log.core("chain_fallback_success", {
+                            "skill": skill_name, "provider": alt_provider})
+                        return {"type": "success", "skill": skill_name,
+                                "result": {"success": True, "result": result},
+                                "goal": goal, "provider": alt_provider}
+                    break
+        except Exception as e:
+            cpr(C.DIM, f"[CHAIN] {alt_provider} failed: {str(e)[:60]}")
+            self.provider_chain.record_failure(skill_name, alt_provider, str(e))
+        return None
+
     def _try_fallback_providers(self, skill_name, inp, goal, user_msg):
         """Try alternative providers from the chain when primary fails."""
         if not self.provider_chain or not self.sm.provider_selector:
@@ -659,9 +691,8 @@ class EvoEngine:
 
         chain = self.provider_chain.select_with_fallback(skill_name)
         if len(chain) < 2:
-            return None  # no alternatives
+            return None
 
-        # Skip first (already tried as primary)
         current = self.sm._active_provider(skill_name)
         alternatives = [p for p in chain if p != current]
         if not alternatives:
@@ -672,39 +703,46 @@ class EvoEngine:
 
         for alt_provider in alternatives:
             cpr(C.DIM, f"[CHAIN] Trying {skill_name}/{alt_provider}...")
-            # Get skill path for this provider
-            sp = self.sm.provider_selector.get_skill_path(skill_name, alt_provider)
-            if not sp or not sp.exists():
-                cpr(C.DIM, f"[CHAIN] {alt_provider}: no skill file, skipping")
-                continue
-
-            try:
-                # Load and run directly
-                import importlib.util
-                spec = importlib.util.spec_from_file_location(
-                    f"chain_{skill_name}_{alt_provider}", str(sp))
-                mod = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(mod)
-                for attr in dir(mod):
-                    obj = getattr(mod, attr)
-                    if isinstance(obj, type) and hasattr(obj, "execute") and attr != "type":
-                        result = obj().execute(inp or {})
-                        validation = self._validate_result(skill_name, 
-                            {"success": True, "result": result}, goal, user_msg)
-                        if validation["verdict"] in ("success", "partial"):
-                            self.provider_chain.record_success(skill_name, alt_provider)
-                            cpr(C.GREEN, f"[CHAIN] ✓ {alt_provider} succeeded")
-                            self.log.core("chain_fallback_success", {
-                                "skill": skill_name, "provider": alt_provider})
-                            return {"type": "success", "skill": skill_name,
-                                    "result": {"success": True, "result": result},
-                                    "goal": goal, "provider": alt_provider}
-                        break
-            except Exception as e:
-                cpr(C.DIM, f"[CHAIN] {alt_provider} failed: {str(e)[:60]}")
-                self.provider_chain.record_failure(skill_name, alt_provider, str(e))
+            outcome = self._try_single_provider(skill_name, alt_provider, inp, goal, user_msg)
+            if outcome:
+                return outcome
 
         cpr(C.YELLOW, f"[CHAIN] All fallback providers exhausted for {skill_name}")
+        return None
+
+    @staticmethod
+    def _validate_stt_result(inner):
+        """Validate STT-specific result. Returns verdict dict or None."""
+        if inner.get("hardware_ok") is False:
+            return {"verdict": "fail",
+                    "reason": f"STT hardware error: {inner.get('error', 'Unknown hardware error')}"}
+        if inner.get("has_sound") is False:
+            db_level = inner.get("audio_level_db", -999)
+            return {"verdict": "partial",
+                    "reason": f"STT silence detected ({db_level:.1f}dB). Check microphone and speak louder."}
+        spoken = inner.get("spoken") or inner.get("text") or ""
+        if not spoken.strip():
+            return {"verdict": "partial",
+                    "reason": "STT returned empty transcription (silence or mic issue)"}
+        return None
+
+    @staticmethod
+    def _validate_web_search_result(inner):
+        """Validate web_search-specific result. Returns verdict dict or None."""
+        results = inner.get("results", [])
+        query = inner.get("query", "").lower()
+        _LOCAL_NET_KW = (
+            "kamer", "camera", "rtsp", "onvif", "sieć lokal", "local network",
+            "lan ", "lan:", "skanuj", "scan", "urządzenia w sieci", "devices in network",
+            "ip w sieci", "ip in network", "drukark", "printer", "router",
+        )
+        if not results:
+            if any(kw in query for kw in _LOCAL_NET_KW):
+                return {"verdict": "partial",
+                        "reason": f"web_search: no results for local network query '{query[:50]}'. "
+                                  f"Requires dedicated network scanner skill."}
+            return {"verdict": "partial",
+                    "reason": f"web_search: empty results for '{query[:50]}'"}
         return None
 
     def _validate_result(self, skill_name, result, goal, user_msg):
@@ -718,149 +756,127 @@ class EvoEngine:
         if not isinstance(inner, dict):
             return {"verdict": "success", "reason": "non-dict result, trusting skill"}
 
-        # Inner explicitly failed
         if inner.get("success") is False:
             return {"verdict": "fail",
                     "reason": inner.get("error", "inner result success=False")}
 
-        # Skill-specific validation
-        if skill_name == "stt":
-            spoken = inner.get("spoken") or inner.get("text") or ""
-            
-            # STT v2: hardware check failed
-            if inner.get("hardware_ok") is False:
-                error_msg = inner.get("error", "Unknown hardware error")
-                return {"verdict": "fail",
-                        "reason": f"STT hardware error: {error_msg}"}
-            
-            # STT v2: no sound detected
-            if inner.get("has_sound") is False:
-                db_level = inner.get("audio_level_db", -999)
-                warning = inner.get("warning", "No sound detected")
-                return {"verdict": "partial",
-                        "reason": f"STT silence detected ({db_level:.1f}dB). Check microphone and speak louder."}
-            
-            # Legacy: empty transcription (should not happen with v2, but keep for compatibility)
-            if not spoken.strip():
-                return {"verdict": "partial",
-                        "reason": "STT returned empty transcription (silence or mic issue)"}
+        # Skill-specific validators
+        _VALIDATORS = {
+            "stt": self._validate_stt_result,
+            "web_search": self._validate_web_search_result,
+        }
+        validator = _VALIDATORS.get(skill_name)
+        if validator:
+            v = validator(inner)
+            if v:
+                return v
 
         if skill_name == "shell":
             exit_code = inner.get("exit_code", 0)
             if exit_code != 0:
-                stderr = inner.get("stderr", "")[:200]
                 return {"verdict": "partial",
-                        "reason": f"exit_code={exit_code}: {stderr}"}
+                        "reason": f"exit_code={exit_code}: {inner.get('stderr', '')[:200]}"}
 
-        if skill_name == "tts":
-            if inner.get("error"):
-                return {"verdict": "fail", "reason": inner["error"]}
-
-        # web_search: empty results for local network queries should trigger new skill suggestion
-        if skill_name == "web_search":
-            results = inner.get("results", [])
-            query = inner.get("query", "").lower()
-            # Check if query is about local network (cameras, devices, scanning)
-            _local_net_keywords = (
-                "kamer", "camera", "rtsp", "onvif", "sieć lokal", "local network",
-                "lan ", "lan:", "skanuj", "scan", "urządzenia w sieci", "devices in network",
-                "ip w sieci", "ip in network", "drukark", "printer", "router",
-            )
-            is_local_net_query = any(kw in query for kw in _local_net_keywords)
-            if is_local_net_query and (not results or len(results) == 0):
-                return {
-                    "verdict": "partial",
-                    "reason": f"web_search: no results for local network query '{query[:50]}'. "
-                              f"Requires dedicated network scanner skill."
-                }
-            # Generic empty results - still partial but less urgent
-            if not results or len(results) == 0:
-                return {
-                    "verdict": "partial",
-                    "reason": f"web_search: empty results for '{query[:50]}'"
-                }
+        if skill_name == "tts" and inner.get("error"):
+            return {"verdict": "fail", "reason": inner["error"]}
 
         return {"verdict": "success", "reason": "skill reports success"}
 
-    def _autonomous_stt_repair(self, skill_name, result, user_msg):
-        """Autonomous diagnosis and repair for STT empty transcription.
-        Returns (fixed, message, new_result)."""
-        import shutil, subprocess, os
+    @staticmethod
+    def _ensure_vosk_model():
+        """Ensure Vosk model is available. Returns True if model exists."""
+        import subprocess
         from pathlib import Path
-
-        cpr(C.CYAN, "[AUTO] Diagnozuję problem ze STT...")
-
-        # Check 1: vosk-transcriber exists
-        if not shutil.which("vosk-transcriber"):
-            cpr(C.YELLOW, "[AUTO] Brak vosk-transcriber")
-            return False, "Brak vosk-transcriber. Zainstaluj: pip install vosk", result
-
-        # Check 2: Model exists
         model_paths = [
             Path.home() / ".cache" / "vosk" / "vosk-model-small-pl-0.22",
             Path.home() / ".cache" / "vosk" / "model",
             Path("/usr/share/vosk/model"),
         ]
-        has_model = any(p.exists() for p in model_paths)
+        if any(p.exists() for p in model_paths):
+            return True
+        cpr(C.YELLOW, "[AUTO] Brak modelu Vosk dla PL")
+        cpr(C.DIM, "[AUTO] Próbuję pobrać model...")
+        try:
+            cmd = ("mkdir -p ~/.cache/vosk && cd ~/.cache/vosk && "
+                   "curl -L -o model.zip 'https://alphacephei.com/vosk/models/vosk-model-small-pl-0.22.zip' && "
+                   "unzip -q model.zip && rm model.zip")
+            r = subprocess.run(cmd, shell=True, capture_output=True, timeout=120)
+            if r.returncode == 0:
+                cpr(C.GREEN, "[AUTO] Model pobrany ✓")
+                return True
+            cpr(C.YELLOW, "[AUTO] Nie udało się pobrać modelu")
+        except Exception as e:
+            cpr(C.YELLOW, f"[AUTO] Błąd pobierania: {e}")
+        return False
 
-        if not has_model:
-            cpr(C.YELLOW, "[AUTO] Brak modelu Vosk dla PL")
-            cpr(C.DIM, "[AUTO] Próbuję pobrać model...")
-            try:
-                # Try to download model via shell skill
-                cmd = ("mkdir -p ~/.cache/vosk && cd ~/.cache/vosk && "
-                       "curl -L -o model.zip 'https://alphacephei.com/vosk/models/vosk-model-small-pl-0.22.zip' && "
-                       "unzip -q model.zip && rm model.zip")
-                r = subprocess.run(cmd, shell=True, capture_output=True, timeout=120)
-                if r.returncode == 0:
-                    cpr(C.GREEN, "[AUTO] Model pobrany ✓")
-                    has_model = True
-                else:
-                    cpr(C.YELLOW, "[AUTO] Nie udało się pobrać modelu")
-            except Exception as e:
-                cpr(C.YELLOW, f"[AUTO] Błąd pobierania: {e}")
-
-        # Check 3: Microphone test
+    @staticmethod
+    def _test_microphone():
+        """Test microphone. Returns (ok, error_msg)."""
+        import subprocess
+        from pathlib import Path
         cpr(C.DIM, "[AUTO] Testuję mikrofon...")
         try:
-            test_cmd = ["arecord", "-d", "1", "-f", "S16_LE", "-r", "16000", "-c", "1", "/tmp/stt_test.wav"]
-            r = subprocess.run(test_cmd, capture_output=True, timeout=5)
+            r = subprocess.run(
+                ["arecord", "-d", "1", "-f", "S16_LE", "-r", "16000", "-c", "1", "/tmp/stt_test.wav"],
+                capture_output=True, timeout=5)
             if r.returncode != 0:
                 cpr(C.YELLOW, "[AUTO] Mikrofon nie działa - sprawdź permissions")
-                return False, "Mikrofon niedostępny. Sprawdź: arecord -l", result
-            # Check if recorded file has content
-            if Path("/tmp/stt_test.wav").exists():
-                size = Path("/tmp/stt_test.wav").stat().st_size
-                if size < 1000:
-                    cpr(C.YELLOW, f"[AUTO] Mikrofon nagrywa ciszę ({size}b)")
-                    return False, "Mikrofon działa ale nagrywa ciszę - sprawdź ustawienia", result
+                return False, "Mikrofon niedostępny. Sprawdź: arecord -l"
+            wav = Path("/tmp/stt_test.wav")
+            if wav.exists() and wav.stat().st_size < 1000:
+                cpr(C.YELLOW, f"[AUTO] Mikrofon nagrywa ciszę ({wav.stat().st_size}b)")
+                return False, "Mikrofon działa ale nagrywa ciszę - sprawdź ustawienia"
             cpr(C.GREEN, "[AUTO] Mikrofon OK ✓")
+            return True, ""
         except Exception as e:
             cpr(C.YELLOW, f"[AUTO] Test mikrofonu nieudany: {e}")
+            return True, ""  # non-fatal
 
-        # Check 4: Try alternative provider (whisper)
+    def _try_stt_with_provider(self, skill_name, provider=None):
+        """Try STT with optional provider override. Returns (text, result) or (None, None)."""
+        inp = {"duration_s": 4, "lang": "pl"}
+        if provider:
+            inp["_provider"] = provider
+        result = self.sm.exec_skill(skill_name, inp=inp)
+        if result.get("success"):
+            inner = result.get("result", {})
+            text = inner.get("spoken") or inner.get("text", "")
+            if text.strip():
+                return text, result
+        return None, None
+
+    def _autonomous_stt_repair(self, skill_name, result, user_msg):
+        """Autonomous diagnosis and repair for STT empty transcription.
+        Returns (fixed, message, new_result)."""
+        import shutil
+        from pathlib import Path
+
+        cpr(C.CYAN, "[AUTO] Diagnozuję problem ze STT...")
+
+        if not shutil.which("vosk-transcriber"):
+            cpr(C.YELLOW, "[AUTO] Brak vosk-transcriber")
+            return False, "Brak vosk-transcriber. Zainstaluj: pip install vosk", result
+
+        has_model = self._ensure_vosk_model()
+
+        mic_ok, mic_err = self._test_microphone()
+        if not mic_ok:
+            return False, mic_err, result
+
+        # Try whisper fallback if no vosk model
         if not has_model:
             cpr(C.CYAN, "[AUTO] Próbuję alternatywnego providera (whisper)...")
-            # Check whisper availability
             if shutil.which("whisper") or Path.home().joinpath(".local/bin/whisper").exists():
-                # Force whisper provider
-                result = self.sm.exec_skill(skill_name, inp={"duration_s": 4, "lang": "pl", "_provider": "whisper"})
-                if result.get("success"):
-                    inner = result.get("result", {})
-                    text = inner.get("spoken") or inner.get("text", "")
-                    if text.strip():
-                        cpr(C.GREEN, "[AUTO] Whisper działa! Przełączam...")
-                        return True, f"Używam alternatywnego providera (whisper): {text[:50]}", result
+                text, new_result = self._try_stt_with_provider(skill_name, "whisper")
+                if text:
+                    cpr(C.GREEN, "[AUTO] Whisper działa! Przełączam...")
+                    return True, f"Używam alternatywnego providera (whisper): {text[:50]}", new_result
 
         if has_model:
             cpr(C.GREEN, "[AUTO] Wszystko sprawdzone. Ponawiam z nowym modelem...")
-            # Retry with explicit model path
-            result = self.sm.exec_skill(skill_name, inp={"duration_s": 4, "lang": "pl"})
-            if result.get("success"):
-                inner = result.get("result", {})
-                text = inner.get("spoken") or inner.get("text", "")
-                if text.strip():
-                    return True, f"Teraz działa: {text[:100]}", result
+            text, new_result = self._try_stt_with_provider(skill_name)
+            if text:
+                return True, f"Teraz działa: {text[:100]}", new_result
 
         return False, "Nie udało się automatycznie naprawić. Sprawdź: /diagnose stt", result
 

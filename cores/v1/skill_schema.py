@@ -208,52 +208,34 @@ class SkillSchemaValidator:
                 errors=[f"Read error: {e}"]
             )
     
+    _TYPE_MAP = {
+        "object": dict, "array": list, "string": str,
+        "integer": int, "boolean": bool, "number": (int, float),
+    }
+
     def _validate_against_schema(self, data: dict, schema_name: str) -> ValidationResult:
         """Internal validation using simple schema checking."""
         schema = self._schemas.get(schema_name, {})
         errors = []
-        warnings = []
         
         # Check required fields
-        required = schema.get("required", [])
-        for field in required:
+        for field in schema.get("required", []):
             if field not in data:
                 errors.append(f"Missing required field: {field}")
         
-        # Check type constraints
-        if "properties" in schema:
-            for field, field_schema in schema["properties"].items():
-                if field in data:
-                    value = data[field]
-                    expected_type = field_schema.get("type")
-                    
-                    if expected_type == "object" and not isinstance(value, dict):
-                        errors.append(f"{field}: expected object, got {type(value).__name__}")
-                    elif expected_type == "array" and not isinstance(value, list):
-                        errors.append(f"{field}: expected array, got {type(value).__name__}")
-                    elif expected_type == "string" and not isinstance(value, str):
-                        errors.append(f"{field}: expected string, got {type(value).__name__}")
-                    elif expected_type == "integer" and not isinstance(value, int):
-                        errors.append(f"{field}: expected integer, got {type(value).__name__}")
-                    elif expected_type == "boolean" and not isinstance(value, bool):
-                        errors.append(f"{field}: expected boolean, got {type(value).__name__}")
-                    elif expected_type == "number" and not isinstance(value, (int, float)):
-                        errors.append(f"{field}: expected number, got {type(value).__name__}")
+        # Check type constraints and enum values in one pass
+        for field, field_schema in schema.get("properties", {}).items():
+            if field not in data:
+                continue
+            value = data[field]
+            expected_type = field_schema.get("type")
+            if expected_type and expected_type in self._TYPE_MAP:
+                if not isinstance(value, self._TYPE_MAP[expected_type]):
+                    errors.append(f"{field}: expected {expected_type}, got {type(value).__name__}")
+            if "enum" in field_schema and value not in field_schema["enum"]:
+                errors.append(f"{field}: '{value}' not in allowed values: {field_schema['enum']}")
         
-        # Check enum values
-        if "properties" in schema:
-            for field, field_schema in schema["properties"].items():
-                if field in data and "enum" in field_schema:
-                    value = data[field]
-                    allowed = field_schema["enum"]
-                    if value not in allowed:
-                        errors.append(f"{field}: '{value}' not in allowed values: {allowed}")
-        
-        return ValidationResult(
-            valid=len(errors) == 0,
-            errors=errors,
-            warnings=warnings
-        )
+        return ValidationResult(valid=len(errors) == 0, errors=errors, warnings=[])
 
 
 # ─── Blueprint Registry ────────────────────────────────────────────────

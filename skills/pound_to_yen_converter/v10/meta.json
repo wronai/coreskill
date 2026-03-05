@@ -1,8 +1,0 @@
-{
-  "name": "pound_to_yen_converter",
-  "version": "v10",
-  "description": "Skill odpowiadaj\u0105cy na zapytanie: 'przelicz tysi\u0105c funt\u00f3w szterling\u00f3w na jeny japo\u0144skie'. Zadanie: odpowiedzie\u0107 na to pytanie/potrzeb\u0119 u\u017cytkownika. Funkcjonalno\u015b\u0107: przelicz tysi\u0105c funt\u00f3w szterling\u00f3w na jeny japo\u0144skie",
-  "created_at": "2026-03-05T10:37:57.144704+00:00",
-  "checksum": "beb46f1470e0d3bc75668f78dd5520e9",
-  "quality_score": 0.94
-}

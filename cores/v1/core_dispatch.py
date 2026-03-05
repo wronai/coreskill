@@ -466,35 +466,31 @@ def _cmd_fix(a1, **ctx):
         cpr(C.DIM, "Spróbuj użyć innego providera lub sprawdź /diagnose")
 
 
+def _print_skill_health(name, report):
+    """Print health report for a single skill."""
+    ok = report.get("ok", True)
+    cpr(C.GREEN if ok else C.YELLOW, f"\n[{name}] {'✓ OK' if ok else '⚠ PROBLEM'}")
+    deps = report.get("deps", {})
+    if deps:
+        dep_str = "  ".join(f"{k}={'✓' if v else '✗'}" for k, v in deps.items())
+        cpr(C.DIM, f"  deps:  {dep_str}")
+    for hw_k, hw_v in report.get("hardware", {}).items():
+        if isinstance(hw_v, bool):
+            cpr(C.DIM if hw_v else C.YELLOW, f"  hw:    {hw_k}={'✓' if hw_v else '✗'}")
+        elif hw_v:
+            cpr(C.DIM, f"  hw:    {hw_k}: {hw_v}")
+    for res_k, res_v in report.get("resources", {}).items():
+        cpr(C.DIM if res_v else C.YELLOW, f"  res:   {res_k}: {res_v or 'MISSING'}")
+    for issue in report.get("issues", []):
+        cpr(C.YELLOW, f"  ⚠  {issue}")
+
+
 def _cmd_health(a1, **ctx):
     """Show skill readiness/health status: /health [skill_name]"""
     sm = ctx["sm"]
-    if a1:
-        skills_to_check = [a1]
-    else:
-        skills_to_check = sorted(sm.list_skills().keys())
+    skills_to_check = [a1] if a1 else sorted(sm.list_skills().keys())
     for name in skills_to_check:
-        r = sm.readiness_check(name)
-        ok = r.get("ok", True)
-        issues = r.get("issues", [])
-        deps = r.get("deps", {})
-        hw = r.get("hardware", {})
-        res = r.get("resources", {})
-        color = C.GREEN if ok else C.YELLOW
-        status = "✓ OK" if ok else "⚠ PROBLEM"
-        cpr(color, f"\n[{name}] {status}")
-        if deps:
-            dep_str = "  ".join(f"{k}={'✓' if v else '✗'}" for k, v in deps.items())
-            cpr(C.DIM, f"  deps:  {dep_str}")
-        for hw_k, hw_v in hw.items():
-            if isinstance(hw_v, bool):
-                cpr(C.DIM if hw_v else C.YELLOW, f"  hw:    {hw_k}={'✓' if hw_v else '✗'}")
-            elif hw_v:
-                cpr(C.DIM, f"  hw:    {hw_k}: {hw_v}")
-        for res_k, res_v in res.items():
-            cpr(C.DIM if res_v else C.YELLOW, f"  res:   {res_k}: {res_v or 'MISSING'}")
-        for issue in issues:
-            cpr(C.YELLOW, f"  ⚠  {issue}")
+        _print_skill_health(name, sm.readiness_check(name))
 
 
 def _cmd_voice(a1, **ctx):
@@ -674,51 +670,94 @@ def _check_proactive_learning(intent):
             cpr(C.DIM, "  Napisz 'stwórz <name>' lub /create <name> aby zbudować.")
 
 
-def _handle_chat(llm, sm, logger, conv, identity=None, memory=None):
-    """Generate LLM response. Returns response text (or None on error)."""
-    # Build context components
-    _env_ctx = _build_env_context()
-    _skills_info = _build_skills_info(sm)
-    
-    # Get base system prompt
-    if identity:
-        sp = identity.build_system_prompt()
-    else:
-        sp = _build_fallback_system_prompt(sm)
+def _append_truncated(sp, header, lines, limit=20):
+    """Append up to `limit` lines with a header to system prompt."""
+    if not lines:
+        return sp
+    sp += f"\n\n{header}:\n" + "\n".join(lines[:limit])
+    if len(lines) > limit:
+        sp += f"\n  ... i {len(lines) - limit} innych"
+    return sp
 
-    # Augment with env and skills info
-    if _env_ctx:
-        sp += "\n\nZMIENNE ŚRODOWISKOWE (maskowane):\n" + "\n".join(_env_ctx[:20])
-        if len(_env_ctx) > 20:
-            sp += f"\n  ... i {len(_env_ctx) - 20} innych"
-    if _skills_info:
-        sp += "\n\nSKILLS (skrót):\n" + "\n".join(_skills_info[:20])
-        if len(_skills_info) > 20:
-            sp += f"\n  ... i {len(_skills_info) - 20} innych"
-    
-    # Add memory context
+
+def _build_full_system_prompt(sm, llm, identity=None, memory=None):
+    """Assemble complete system prompt with env, skills, memory, and model info."""
+    sp = identity.build_system_prompt() if identity else _build_fallback_system_prompt(sm)
+    sp = _append_truncated(sp, "ZMIENNE ŚRODOWISKOWE (maskowane)", _build_env_context())
+    sp = _append_truncated(sp, "SKILLS (skrót)", _build_skills_info(sm))
     if memory:
         mem_ctx = memory.build_system_context()
         if mem_ctx:
             sp = mem_ctx + "\n\n" + sp
-    
-    # Add active model info to system prompt
     model_short = llm.model.split('/')[-1] if '/' in llm.model else llm.model
     sp += f"\n\n[Aktywny model: {model_short} ({llm.active_tier})]"
-    
+    return sp, model_short
+
+
+def _handle_chat(llm, sm, logger, conv, identity=None, memory=None):
+    """Generate LLM response. Returns response text (or None on error)."""
+    sp, model_short = _build_full_system_prompt(sm, llm, identity, memory)
     cpr(C.DIM, f"Thinking... [{model_short}]")
     r = llm.chat([{"role": "system", "content": sp}] + conv[-20:])
     if r and "[ERROR]" in r:
         logger.core("chat_error", {"error": r[:200]})
         cpr(C.RED, f"evo> {r}")
         return None
-    # Validate: detect hallucinated skill usage in LLM response
     if r:
         r = _sanitize_chat_response(r, sm, logger)
     conv.append({"role": "assistant", "content": r})
     mprint(f"**evo>** {r}\n")
     logger.core("chat_response", {"length": len(r) if r else 0})
     return r
+
+
+def _display_shell_result(res_data, conv):
+    """Display shell command outcome and append to conversation."""
+    cmd = res_data.get("command", "?")
+    exit_code = res_data.get("exit_code", "?")
+    stdout = res_data.get("stdout", "").strip()
+    stderr = res_data.get("stderr", "").strip()
+    ok = res_data.get("success", True)
+    icon = "✅" if ok else "⚠️"
+    md = f"### {icon} `$ {cmd}` (exit: {exit_code})\n"
+    if stdout:
+        md += f"```\n{stdout[:3000]}\n```\n"
+    if stderr and not ok:
+        md += f"**stderr:** `{stderr[:500]}`\n"
+    mprint(md)
+    conv.append({"role": "assistant", "content":
+        f"Wykonałem: `{cmd}` → exit {exit_code}\n{stdout[:500]}"})
+
+
+def _display_generic_result(skill, res_data, conv):
+    """Display generic skill outcome and append to conversation."""
+    md = f"### ✅ `{skill}` — done\n"
+    _skip = ("success", "available_backends", "raw", "audio_path",
+             "exit_code", "stderr", "command")
+    if isinstance(res_data, dict):
+        for k, v in res_data.items():
+            if k not in _skip and v:
+                md += f"- **{k}**: {v}\n"
+    mprint(md)
+    conv.append({"role": "assistant", "content": f"Executed {skill} successfully."})
+
+
+def _handle_suggestion(outcome, conv):
+    """Display and record skill creation suggestion if present."""
+    suggestion = outcome.get("suggestion")
+    if not suggestion:
+        return
+    skill_name = suggestion.get("skill_name", "?")
+    desc = suggestion.get("description", "")
+    reason = suggestion.get("reason", "")
+    cpr(C.CYAN, f"\n💡 SUGESTIA: Brak odpowiedniego skillu!")
+    cpr(C.YELLOW, f"   Powód: {reason}")
+    cpr(C.GREEN, f"   Proponowany skill: '{skill_name}'")
+    cpr(C.DIM, f"   Opis: {desc[:80]}")
+    cpr(C.CYAN, f"   Powiedz: 'stwórz {skill_name}' aby go zbudować.")
+    conv.append({"role": "system", "content":
+        f"System sugeruje stworzenie nowego skillu '{skill_name}' "
+        f"ponieważ: {reason}. Użytkownik może powiedzieć 'stwórz {skill_name}' aby zbudować."})
 
 
 def _handle_outcome(outcome, intent, conv, identity=None):
@@ -731,48 +770,11 @@ def _handle_outcome(outcome, intent, conv, identity=None):
         r = outcome.get("result", {})
         intent.record_skill_use(skill)
         res_data = r.get("result", {}) if isinstance(r, dict) else r
-
-        # Special shell output display
         if skill == "shell" and isinstance(res_data, dict):
-            cmd = res_data.get("command", "?")
-            exit_code = res_data.get("exit_code", "?")
-            stdout = res_data.get("stdout", "").strip()
-            stderr = res_data.get("stderr", "").strip()
-            ok = res_data.get("success", True)
-            icon = "✅" if ok else "⚠️"
-            md = f"### {icon} `$ {cmd}` (exit: {exit_code})\n"
-            if stdout:
-                md += f"```\n{stdout[:3000]}\n```\n"
-            if stderr and not ok:
-                md += f"**stderr:** `{stderr[:500]}`\n"
-            mprint(md)
-            conv.append({"role": "assistant", "content":
-                f"Wykonałem: `{cmd}` → exit {exit_code}\n{stdout[:500]}"})
+            _display_shell_result(res_data, conv)
         else:
-            md = f"### ✅ `{skill}` — done\n"
-            _skip = ("success", "available_backends", "raw", "audio_path",
-                     "exit_code", "stderr", "command")
-            if isinstance(res_data, dict):
-                for k, v in res_data.items():
-                    if k not in _skip and v:
-                        md += f"- **{k}**: {v}\n"
-            mprint(md)
-            conv.append({"role": "assistant", "content": f"Executed {skill} successfully."})
-        
-        # Handle skill creation suggestion
-        suggestion = outcome.get("suggestion")
-        if suggestion:
-            skill_name = suggestion.get("skill_name", "?")
-            desc = suggestion.get("description", "")
-            reason = suggestion.get("reason", "")
-            cpr(C.CYAN, f"\n💡 SUGESTIA: Brak odpowiedniego skillu!")
-            cpr(C.YELLOW, f"   Powód: {reason}")
-            cpr(C.GREEN, f"   Proponowany skill: '{skill_name}'")
-            cpr(C.DIM, f"   Opis: {desc[:80]}")
-            cpr(C.CYAN, f"   Powiedz: 'stwórz {skill_name}' aby go zbudować.")
-            conv.append({"role": "system", "content": 
-                f"System sugeruje stworzenie nowego skillu '{skill_name}' "
-                f"ponieważ: {reason}. Użytkownik może powiedzieć 'stwórz {skill_name}' aby zbudować."})
+            _display_generic_result(skill, res_data, conv)
+        _handle_suggestion(outcome, conv)
         return True
     elif otype == "evo_failed":
         mprint(f"### ❌ Build failed\n{outcome.get('message', '')}")
