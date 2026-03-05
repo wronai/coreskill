@@ -4,9 +4,7 @@ import urllib.request
 import urllib.parse
 import html.parser
 import re
-import socket
-import threading
-import time
+import sys
 
 
 class SimpleHTMLTextExtractor(html.parser.HTMLParser):
@@ -118,78 +116,29 @@ class WebSearchSkill:
 
         return search_result
 
-    def execute(self, params: dict) -> dict:
+    def execute(self, input_data: dict) -> dict:
         """evo-engine interface."""
-        try:
-            text = params.get("text", "")
-            action = params.get("action", "search")
-            
-            # Parse query from text if not explicitly provided
-            if not action and "search" in text.lower():
-                action = "search"
-            if not action and "fetch" in text.lower():
-                action = "fetch"
-            if not action and "read" in text.lower():
-                action = "search_and_read"
-            
-            # Extract query from text
-            query = ""
-            if action == "search":
-                # Extract search query from text
-                query = re.sub(r'(search|find|look up|query|google|duckduckgo)', '', text, flags=re.IGNORECASE).strip()
-                if not query:
-                    query = text.strip()
-            elif action == "fetch":
-                # Extract URL from text
-                url_match = re.search(r'(https?://[^\s]+)', text)
-                if url_match:
-                    query = url_match.group(1)
-                else:
-                    return {"success": False, "error": "No URL found in request", "spoken": "Nie znaleziono adresu URL w zapytaniu."}
-            elif action == "search_and_read":
-                query = re.sub(r'(search|find|look up|query|read|fetch)', '', text, flags=re.IGNORECASE).strip()
-                if not query:
-                    query = text.strip()
-            else:
-                query = text.strip()
-            
-            # Execute the appropriate action
-            if action == "search":
-                result = self.search_duckduckgo(query, max_results=5)
-                if result["success"]:
-                    # Prepare spoken response
-                    if result.get("results"):
-                        titles = [r["title"] for r in result["results"][:3]]
-                        spoken = f"Znalazłem {len(result['results'])} wyników. Oto pierwsze: " + "; ".join(titles[:3])
-                    else:
-                        spoken = "Nie znalazłem żadnych wyników."
-                    result["spoken"] = spoken
-                else:
-                    result["spoken"] = "Wystąpił błąd podczas wyszukiwania."
-                return result
-            elif action == "fetch":
-                result = self.fetch_page_text(query)
-                if result["success"]:
-                    result["spoken"] = f"Załadowałem stronę: {query}. Treść: {result['text'][:200]}..."
-                else:
-                    result["spoken"] = f"Nie udało się załadować strony: {query}"
-                return result
-            elif action == "search_and_read":
-                result = self.search_and_summarize(query)
-                if result["success"]:
-                    if result.get("results"):
-                        titles = [r["title"] for r in result["results"][:2]]
-                        spoken = f"Wyszukałem: {query}. Oto wyniki: " + "; ".join(titles)
-                    else:
-                        spoken = f"Nie znalazłem wyników dla: {query}"
-                    result["spoken"] = spoken
-                else:
-                    result["spoken"] = "Wystąpił błąd podczas wyszukiwania."
-                return result
-            else:
-                return {"success": False, "error": f"Nieznana akcja: {action}", "spoken": f"Nie rozumiem polecenia: {action}"}
-        except Exception as e:
-            return {"success": False, "error": str(e), "spoken": "Wystąpił błąd podczas przetwarzania zapytania."}
+        action = input_data.get("action", "search")
+        query = input_data.get("query", input_data.get("text", ""))
+
+        if action == "search":
+            result = self.search_duckduckgo(query)
+            if result["success"]:
+                spoken = f"Znalazłem {len(result.get('results', []))} wyników dla: {query}. Pierwszy wynik: {result['results'][0]['title'] if result.get('results') else 'brak wyników'}."
+                result["spoken"] = spoken
+            return result
+        elif action == "fetch":
+            result = self.fetch_page_text(input_data.get("url", ""))
+            if result["success"]:
+                result["spoken"] = f"Załadowano stronę: {input_data.get('url', '')}. Treść: {result['text'][:200]}..."
+            return result
+        elif action == "search_and_read":
+            result = self.search_and_summarize(query)
+            if result["success"]:
+                spoken = f"Znalazłem {len(result.get('results', []))} wyników dla: {query}. Pierwszy wynik: {result['results'][0]['title'] if result.get('results') else 'brak wyników'}."
+                result["spoken"] = spoken
+            return result
+        return {"success": False, "error": f"Unknown action: {action}"}
 
 
 def get_info():
@@ -204,12 +153,13 @@ def get_info():
 
 def health_check():
     try:
-        # Verify skill structure and imports (no network calls — DNS failure ≠ broken code)
-        import urllib.request, urllib.parse, html.parser
+        # Verify basic functionality without network calls
         w = WebSearchSkill()
         assert callable(getattr(w, "execute", None))
         assert callable(getattr(w, "search_duckduckgo", None))
         assert callable(getattr(w, "fetch_page_text", None))
+        # Verify stdlib imports are available
+        import urllib.request, urllib.parse, html.parser
         return {"status": "ok"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
